@@ -306,6 +306,11 @@ CTEs, catalog and auth schemas, and non-allowlisted relations.
 
 ## 8. LLM provider and prompt design
 
+> The AI layer has its own document: [`docs/AI_SYSTEM_DESIGN.md`](docs/AI_SYSTEM_DESIGN.md)
+> covers the plan-type interface, prompt architecture, structured output,
+> failure modes, the injection threat model and how the AI layer is evaluated.
+> This section is the summary.
+
 **Provider: AWS Bedrock**, one provider, one model, configurable. The adapter
 uses the Anthropic SDK's Bedrock client with a forced `emit_plan` tool call, so
 the response is a typed object rather than prose to be parsed. One bounded
