@@ -8,3 +8,20 @@ dist/
 build/
 .DS_Store
 schema/generated/
+
+# --- application additions ---
+*.db
+*.sqlite
+*.sqlite3
+.env.local
+.env.*.local
+node_modules/
+web/dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+evals/runs/
+*.log
+.aws-sam/
