@@ -31,21 +31,21 @@ ALLOWED_TABLES = {
     "app_ref.product_classification",
 }
 
+# A strict ALLOWLIST, enforced for every function node in the tree.
+#
+# A denylist was tried first and was the wrong shape: sqlglot models hundreds of
+# functions as their own node classes, so `generate_series` arrived as
+# ExplodingGenerateSeries and slipped past a list of forbidden names. An
+# allowlist inverts the failure mode -- anything unrecognised is refused, so a
+# function this code has never heard of cannot execute.
+#
+# The set is deliberately tiny. Measured against every metric shape the
+# compiler can produce, it emits exactly five: SUM, COUNT, COALESCE, NULLIF and
+# CAST. UPPER appears with product-name filters. The rest are ordinary,
+# side-effect-free aggregates kept for headroom.
 ALLOWED_FUNCTIONS = {
-    "sum", "count", "avg", "min", "max", "coalesce", "nullif", "round",
-    "upper", "lower", "abs", "any", "cast", "to_char", "greatest", "least",
-    "distinct",
-}
-
-# Anything that changes session state, reaches the filesystem or network, or
-# reads catalog/identity data.
-FORBIDDEN_FUNCTIONS = {
-    "set_config", "current_setting", "pg_read_file", "pg_read_binary_file",
-    "pg_ls_dir", "lo_import", "lo_export", "dblink", "dblink_connect",
-    "pg_sleep", "pg_terminate_backend", "pg_cancel_backend", "query_to_xml",
-    "pg_stat_file", "copy", "current_user", "session_user", "current_database",
-    "has_table_privilege", "has_column_privilege", "generate_series",
-    "pg_notify", "set_role",
+    "sum", "count", "coalesce", "nullif", "cast", "upper", "lower",
+    "min", "max", "avg", "round", "abs", "greatest", "least", "any",
 }
 
 FORBIDDEN_SCHEMAS = {"pg_catalog", "information_schema", "app_auth", "app_conv", "app_meta"}
@@ -133,14 +133,17 @@ def validate(sql: str, *, wac_authorized: bool) -> ValidationResult:
 
     functions: set[str] = set()
     for func in tree.find_all(exp.Func):
-        fname = (func.sql_name() or type(func).__name__).lower()
+        # An Anonymous node carries the real name in .name; sql_name() would
+        # just report "ANONYMOUS" and make the audit trail useless.
+        raw = func.name if isinstance(func, exp.Anonymous) else func.sql_name()
+        fname = (raw or type(func).__name__).lower()
         functions.add(fname)
-        if fname in FORBIDDEN_FUNCTIONS:
-            raise SqlValidationError(f"forbidden function: {fname}")
+        if fname not in ALLOWED_FUNCTIONS:
+            raise SqlValidationError(f"function not on the allowlist: {fname}")
     for anon in tree.find_all(exp.Anonymous):
         fname = (anon.name or "").lower()
         functions.add(fname)
-        if fname in FORBIDDEN_FUNCTIONS or fname not in ALLOWED_FUNCTIONS:
+        if fname not in ALLOWED_FUNCTIONS:
             raise SqlValidationError(f"function not on the allowlist: {fname}")
 
     # Pricing. This repeats a check the database already enforces through column

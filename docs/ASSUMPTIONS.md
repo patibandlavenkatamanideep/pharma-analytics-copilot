@@ -314,6 +314,28 @@ The README requires a public cloud URL and states AWS is *preferred, not
 required*, so a single container plus managed PostgreSQL elsewhere satisfies the
 deliverable. That decision point is recorded now rather than discovered late.
 
+---
+
+## A16 — System catalogs stay readable; the application layer is what refuses them
+
+**Finding.** PostgreSQL grants `pg_catalog` and `information_schema` to PUBLIC by
+design, and the analytics runtime roles inherit that. A security test asserting
+the database refuses them failed, correctly.
+
+**Decision.** Do not revoke. Revoking catalog access from PUBLIC breaks ordinary
+client operation (drivers, `\d`, introspection) and is not supported practice.
+
+**Why the exposure is bounded.** The catalogs contain no business data: no sales,
+no organizations, no pricing, no identity rows. They expose object and role
+*names*. Reaching them at all requires sending arbitrary SQL, and there is no
+path to do so: the compiler emits only server-owned statements, the validator
+rejects both schemas by name, and no endpoint accepts SQL text.
+
+**What is tested.** `test_catalog_access_is_blocked_by_the_validator` asserts the
+application refuses them, and the claim in DESIGN.md is worded to match — the
+catalogs are blocked by the application, not by the database. The stronger claim
+would have been untrue.
+
 Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
 so that every non-LLM layer is testable now. Nothing in this document claims a
 deployment or live measurement that has not occurred.
