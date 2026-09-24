@@ -204,6 +204,7 @@ def render(
     scope_note: str,
     max_rows: int,
     source_coverage: dict[str, Any] | None = None,
+    max_bytes: int | None = None,
 ) -> Answer:
     truncated = len(rows) > max_rows
     shown = rows[:max_rows]
@@ -232,6 +233,20 @@ def render(
         item["value"] = row.get("value")
         item["value_formatted"] = format_value(row.get("value"), query.unit)
         table.append(item)
+
+    # A row cap is not a size cap. 5,000 rows of short account codes and 5,000
+    # rows of long organization names are the same number of rows and very
+    # different responses, and max_result_bytes existed in the configuration
+    # while being read by nothing -- a limit that looked like a control and
+    # enforced nothing. Trimmed from the end, so the ranking that decided the
+    # order is preserved.
+    if max_bytes:
+        import json
+
+        while table and len(json.dumps(table, default=str).encode()) > max_bytes:
+            drop = max(1, len(table) // 10)
+            del table[-drop:]
+            truncated = True
 
     return Answer(
         headline=headline,

@@ -167,6 +167,31 @@ describe("identity isolation in the UI", () => {
     expect(last.conversation_id).toBeNull();
   });
 
+  it("starts a new conversation without signing out", async () => {
+    render(<App />);
+    await signIn("exec@example.com");
+    await askSomething("What is our total revenue this quarter?");
+    await act(async () => {
+      global.fetch.release(EXEC_ANSWER);
+      await Promise.resolve();
+    });
+    await waitFor(() =>
+      expect(document.body.textContent).toContain("250,766,926"),
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /new conversation/i }));
+    });
+
+    // The transcript is cleared and the next question is not a follow-up.
+    expect(document.body.textContent).not.toContain("250,766,926");
+    await askSomething("What are my top accounts?");
+    const last = global.fetch.askIssued[global.fetch.askIssued.length - 1];
+    expect(last.conversation_id).toBeNull();
+    // Still signed in.
+    expect(document.body.textContent).toContain("exec@example.com");
+  });
+
   it("shows no error turn when a request is cancelled by signing out", async () => {
     render(<App />);
     await signIn("exec@example.com");

@@ -106,8 +106,8 @@ is the only coherent target for evaluating access control
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
-python3 -m pytest tests -q                   # 180 tests
-python3 -m pytest tests/security -q --release-gate --min-tests 95   # release gate
+python3 -m pytest tests -q                   # 302 tests
+python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
 cd web && npm test                           # 4 browser tests (identity isolation)
 ```
@@ -157,14 +157,20 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 
 ## Status
 
-Verified on the full dataset: ingestion, the authorization boundary (95 tests),
+Verified on the full dataset: ingestion, the authorization boundary (115 tests),
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
-**Deployed and running** at <https://44-217-117-172.sslip.io> — one EC2
-instance on AWS with the app, PostgreSQL and Caddy under Docker Compose, real
-Let's Encrypt HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on
-Bedrock. `infra/smoke.sh` passes against it end to end.
+**Deployed** at <https://44-217-117-172.sslip.io> — one EC2 instance on AWS
+with the app, PostgreSQL and Caddy under Docker Compose, real Let's Encrypt
+HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on Bedrock.
+`infra/smoke.sh` passed against it end to end on 2026-09-24.
+
+That deployment has **not been contacted since**: the hardening work recorded
+in [REMEDIATION.md](docs/REMEDIATION.md) was done entirely offline, and none of
+the fixes below have been deployed. Current availability is therefore
+unverified rather than disproved, and the running instance is the pre-hardening
+build.
 
 Live natural-language accuracy was measured at **37/38** on 2026-09-24 against
 Claude Opus 4.5 on Bedrock. **That figure is withdrawn pending re-measurement.**
@@ -177,6 +183,18 @@ live set has not been re-run (that needs paid inference), so no accuracy number
 is claimed here ([EVALUATION.md](docs/EVALUATION.md),
 [REMEDIATION.md](docs/REMEDIATION.md)).
 
-Honest limitations: a single host has no redundancy, and deployed latency under
-concurrency has not been measured. See
-[DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven).
+### Known open gaps
+
+Recorded rather than rounded off. Full detail in
+[REMEDIATION.md](docs/REMEDIATION.md).
+
+| Gap | Effect today |
+|---|---|
+| No metric expresses "a filtered subset over the unfiltered whole" | "What percentage of volume comes from 340B accounts?" is answered with a count **and a note saying the proportion cannot be computed**, not with 12.27% |
+| The offline planner does not apply a product classification filter | "Generic share" is answered as company brand share **with the substitution disclosed**. The live model does apply it |
+| The browser suite is not repeatable on this machine | `npx vitest run` completes only on its first invocation under `~/Desktop`; the tests pass, but they are not a reliable gate here |
+| Live accuracy unmeasured under the repaired judge | Needs paid inference; the previous 37/38 is withdrawn, not restated |
+| Dev-only npm advisories (1 critical, 1 high, 3 moderate) | `npm audit --omit=dev` is clean, so nothing ships in `dist/`; clearing them needs a vite 6→8 toolchain migration |
+| Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
+
+This is not called production-ready while those remain.

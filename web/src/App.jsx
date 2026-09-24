@@ -273,6 +273,19 @@ export default function App() {
     setDataset(dataset);
   };
 
+  // Starting over without signing out. A conversation carries a plan and a
+  // frozen cohort forward, so there was no way to ask an unrelated question
+  // except to sign out and back in -- and the transcript is where a previous
+  // answer's figures are still on screen.
+  const newConversation = () => {
+    inFlight.current?.abort();
+    inFlight.current = null;
+    setTurns([]);
+    setConversationId(null);
+    setQuestion("");
+    setBusy(false);
+  };
+
   const signOut = async () => {
     newIdentity();
     setUser(null);
@@ -369,6 +382,14 @@ export default function App() {
               no pricing
             </span>
           )}
+          <button
+            className="link"
+            onClick={newConversation}
+            disabled={turns.length === 0}
+            title="Clear this thread and start an unrelated question"
+          >
+            New conversation
+          </button>
           <button className="link" onClick={signOut}>
             Sign out
           </button>

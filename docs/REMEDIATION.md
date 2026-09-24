@@ -103,8 +103,8 @@ evidence), **remaining**, **blocked**.
 | R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | **fixed** | `test_quality_warnings.py` (7; all fail before) | `4c005ba` |
 | R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | **fixed** | `app/analytics/intent.py`; `test_intent_fidelity.py` (25) | `9312ee5` |
 | R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | `9312ee5` |
-| R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | **fixed** | `test_snapshot_publication.py` (5; all fail before) | _phase 5_ |
-| R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | pending | | |
+| R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | **fixed** | `test_snapshot_publication.py` (5; all fail before) | `a4fdb59` |
+| R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | **fixed** | `test_audit_contract.py` (7) · `test_packaging_and_limits.py` (12; 11 fail before) · `test_login_throttling.py` (8) | _phase 6_ |
 | R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
 | R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
 | R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | `0d83a29` |
@@ -150,6 +150,12 @@ result proves** — which is deliberately narrower than "it passed".
 | 26 | injected failure in `_validate` during a load | offline | disposable | previous snapshot still published, tables non-empty | A failed load leaves the last good answer serving rather than a half-loaded one, and does not supersede it. |
 | 27 | manifest vs live rows after a reload | offline | disposable | ids, counts and anchor agree | Rows and manifest now commit together. Before, the new rows were briefly live under the previous snapshot's reporting anchor — so "this quarter" was resolved against the wrong calendar. |
 | 28 | `pytest tests -q` | offline | working + disposable | **282 passed** | After phase 5. |
+| 29 | `python -m build --wheel`, inspect contents | offline | n/a | `metrics.yaml` present; before: **no non-`.py` file at all** | The registry is read at import, so the wheel could not start. |
+| 30 | `render(...)` with 2,000 wide rows | offline | synthetic | table ≤ the byte limit, `truncated` set | `max_result_bytes` was configured and read by nothing. A row cap is not a size cap. |
+| 31 | `pytest tests/security/test_login_throttling.py` | offline | disposable | 8 passed | A password could be guessed without limit and without trace. Now limited per identity **and** per source, 429 not 401, no password or clear IP in the log, and a refusal is not itself counted so an attacker cannot hold a user out indefinitely. |
+| 32 | `pytest tests/security/test_audit_contract.py` | offline | disposable | 7 passed | Answered, denied and clarified requests all leave a row; it carries hashes, counts, timings and identity, and never the question, the SQL, the headline or a currency amount. |
+| 33 | `npx vitest run` after the UI change | jsdom | stubbed fetch | **not obtained** | Same stall as ledger row 8b. `npm run build` succeeds; the New-conversation control and its test are committed unverified-this-run, and the limitation is listed in the README's open gaps. |
+| 34 | `pytest tests -q` | offline | working + disposable | **309 passed** | After phase 6. Release gate 115 passed. |
 
 ---
 

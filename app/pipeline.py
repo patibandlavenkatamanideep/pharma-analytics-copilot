@@ -312,6 +312,7 @@ class Pipeline:
                 scope_note=scope_note(principal, plan),
                 max_rows=self.settings.max_result_rows,
                 source_coverage=dataset.get("source_coverage") or {},
+                max_bytes=self.settings.max_result_bytes,
             )
         except GrainError as exc:
             # The rows are not at the grain the plan declared, so the table

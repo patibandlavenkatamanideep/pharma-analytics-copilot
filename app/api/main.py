@@ -125,6 +125,10 @@ def login(body: LoginRequest, request: Request, response: Response) -> dict[str,
             user_agent=request.headers.get("user-agent"),
             ip=request.client.host if request.client else None,
         )
+    except identity.RateLimited as exc:
+        # 429, not 401: the credentials were never checked, and a client that
+        # cannot tell the difference will keep hammering.
+        raise HTTPException(status_code=429, detail=str(exc)) from None
     except identity.AuthenticationError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from None
 

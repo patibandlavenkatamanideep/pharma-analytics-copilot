@@ -15,6 +15,13 @@ dependencies = { file = ["requirements.txt"] }
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+# The metric registry is not documentation -- app/analytics/registry.py reads
+# it at import and the process cannot start without it. Without this the wheel
+# contained only .py files, so an installed copy raised FileNotFoundError on
+# the first import of the registry. Verified by tests/unit/test_packaging.py.
+[tool.setuptools.package-data]
+"app.analytics" = ["*.yaml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
