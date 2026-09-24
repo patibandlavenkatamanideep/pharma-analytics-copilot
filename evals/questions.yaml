@@ -1,10 +1,17 @@
-# Held-out evaluation set.
+# Regression and development coverage. NOT a held-out set.
 #
-# These questions are NOT the examples used in the planner prompt. The prompt
-# carries metric definitions and window semantics; it does not carry these
-# phrasings. Several are deliberate paraphrases of the supplied sample questions
-# rather than copies, and a few are compositional questions that appear nowhere
-# in the documentation, so the set measures generalisation rather than recall.
+# These questions are not in the planner prompt -- the prompt carries metric
+# definitions and window semantics, not these phrasings -- so they are not
+# memorised. But they were used DURING development: the commit that introduced
+# them is "add a held-out question set and runner; fix what it caught", and
+# what it caught was fixed in the same change. Metric definitions and planner
+# behaviour were then adjusted in response to later runs.
+#
+# That makes this a development set. A score on it measures whether known
+# behaviour still holds, which is worth having, but it is not an estimate of
+# accuracy on unseen questions and must not be quoted as one. A genuine
+# held-out set has to be written against the documentation, sealed before the
+# system is tuned, and run once.
 #
 # `expect` is how a result is judged, and never comes from the system under
 # test:
@@ -12,8 +19,13 @@
 #   plan     -- the produced plan must have these fields (used where the number
 #               is not the interesting part, e.g. window disambiguation)
 #   denied   -- the request must be refused, with an alternative offered
-#   warning  -- the answer must carry a data-quality warning
-#   nonempty -- the answer must return rows (coverage, not exact value)
+#   warning  -- the answer must carry a named data-quality warning
+#   nonempty -- the answer must return rows FOR A NAMED METRIC (coverage, not
+#               exact value). The metric is required: without it this is a row
+#               counter that passes on any answer at all.
+#   any_of   -- one of several acceptable outcomes. Where "answered_with_note"
+#               is allowed, note_contains is required, so that a boilerplate
+#               note cannot stand in for one that addresses the question.
 #
 # tolerance: relative, applied to numeric comparisons. Ordering ties are
 # resolved by comparing id SETS rather than sequences where noted.
@@ -114,6 +126,7 @@ questions:
     note: documented as acceptable to show only their own territory
     expect:
       type: nonempty
+      metric: paid_pack_units
       max_rows: 1
 
   - id: geo-03
@@ -174,6 +187,7 @@ questions:
     question: "Show me Zenovax market share for my territory"
     expect:
       type: nonempty
+      metric: brand_market_share
 
   # --- data sources ---------------------------------------------------------
 
@@ -222,8 +236,24 @@ questions:
     family: three_forty_b
     principal: exec
     question: "What percentage of our volume comes from 340B accounts this quarter?"
+    note: |
+      KNOWN GAP, expected to fail. The question asks for a proportion and the
+      plan language has no metric for one: there is no way to express "a
+      filtered subset over the unfiltered whole" for 340B. The system answers
+      in packs instead, which is a different question.
+
+      The oracle below is the proportion that was actually asked for. It is
+      left failing on purpose rather than rewritten to match what the system
+      does -- see R08 in docs/REMEDIATION.md.
     expect:
-      type: nonempty
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(CASE WHEN o.is_340b = 1 THEN s.pack_units ELSE 0 END)::numeric
+               / NULLIF(sum(s.pack_units), 0) AS share
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
 
   - id: b340-02
     family: three_forty_b
@@ -279,6 +309,7 @@ questions:
     question: "What is our volume year to date?"
     expect:
       type: nonempty
+      metric: paid_pack_units
 
   # --- growth and trend -----------------------------------------------------
 
@@ -371,13 +402,19 @@ questions:
     question: "Which GPO has the highest Gemtara volume in my region this quarter?"
     expect:
       type: nonempty
+      metric: paid_pack_units
 
   - id: comp-03
     family: compositional
     principal: exec
     question: "Show me hub dispense volume by archetype for the last three months"
+    note: |
+      docs/data_source_guide.md defines hub_dispense as the free-drug patient
+      assistance channel, so pap_volume is the documented answer here, not
+      paid_pack_units.
     expect:
       type: nonempty
+      metric: pap_volume
 
   # --- ambiguity and unsupported requests -----------------------------------
 
@@ -392,6 +429,10 @@ questions:
     expect:
       type: any_of
       allowed: [clarify, denied, answered_with_note]
+      # A note only counts if it addresses THIS question. Without these
+      # needles the case passed on company brand share of 71.79%, qualified
+      # by nothing but the boilerplate incomplete-period note.
+      note_contains: [generic, derived, classification, non-brand]
 
   - id: amb-02
     family: ambiguity
@@ -408,7 +449,7 @@ questions:
     principal: exec
     turns:
       - question: "What are my top 5 accounts by pack units this quarter?"
-        expect: {type: nonempty, max_rows: 5}
+        expect: {type: nonempty, metric: paid_pack_units, max_rows: 5}
       - question: "Now break that down by quarter"
         expect: {type: keeps_dimension, dimension: account}
       - question: "Exclude 340B accounts"
@@ -419,6 +460,6 @@ questions:
     principal: ram
     turns:
       - question: "Who are my top 3 accounts this quarter?"
-        expect: {type: nonempty, max_rows: 3}
+        expect: {type: nonempty, metric: paid_pack_units, max_rows: 3}
       - question: "Show me those same accounts by month"
         expect: {type: frozen_cohort}

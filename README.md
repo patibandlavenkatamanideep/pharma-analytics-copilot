@@ -107,13 +107,18 @@ is the only coherent target for evaluating access control
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
 python3 -m pytest tests -q                   # 180 tests
-python3 -m pytest tests/security -q          # the release gate
+python3 -m pytest tests/security -q --release-gate --min-tests 95   # release gate
 
 cd web && npm test                           # 4 browser tests (identity isolation)
 ```
 
 Expected values in the integration tests come from SQL written by hand in the
 test files, never from the compiler under test.
+
+`--release-gate` is not decoration. Plain `pytest tests/security -q` exits 0
+when every test in it *skips*, which is what happens with no database loaded —
+a green tick for a run that checked nothing. The flag fails the run if any test
+skipped or if fewer than `--min-tests` were collected.
 
 Three databases, kept apart on purpose:
 
@@ -161,9 +166,16 @@ instance on AWS with the app, PostgreSQL and Caddy under Docker Compose, real
 Let's Encrypt HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on
 Bedrock. `infra/smoke.sh` passes against it end to end.
 
-Live natural-language accuracy is **37/38 (97.4%)** on a held-out question set —
-measured, with the one miss recorded rather than rewritten away
-([EVALUATION.md](docs/EVALUATION.md)).
+Live natural-language accuracy was measured at **37/38** on 2026-09-24 against
+Claude Opus 4.5 on Bedrock. **That figure is withdrawn pending re-measurement.**
+The judge that produced it has since been shown to accept semantic false
+positives, and two of the 38 cases passed under rules now known to be vacuous —
+one accepted any non-empty result for a question asking for a percentage, the
+other accepted a boilerplate note as a qualifying one. The stored run record is
+kept as dated historical evidence and the repaired judge is in place, but the
+live set has not been re-run (that needs paid inference), so no accuracy number
+is claimed here ([EVALUATION.md](docs/EVALUATION.md),
+[REMEDIATION.md](docs/REMEDIATION.md)).
 
 Honest limitations: a single host has no redundancy, and deployed latency under
 concurrency has not been measured. See

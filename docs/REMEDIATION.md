@@ -35,6 +35,19 @@ backdated.
 
 ### Defects reproduced against this exact HEAD, before any edit
 
+### Scores restated under the repaired judge
+
+| | Before (old judge) | After |
+|---|---|---|
+| Offline set | 38/38 | **36/38** |
+| Live (Bedrock, 2026-09-24) | 37/38 | **withdrawn, not re-measured** — needs paid inference |
+
+The live record is preserved as dated historical evidence. Re-judging it from
+the stored file is only partly possible, because the runner did not record the
+answer (R16); `b340-01`'s live plan was a two-row `is_340b` breakdown rather
+than a percentage and would now fail, while `amb-01`'s live plan did carry
+`classifications: [generic]` and cannot be rescored from what was saved.
+
 **PAP denominator** (independent hand SQL vs the compiler, coherent fixture):
 
 ```
@@ -63,10 +76,10 @@ evidence), **remaining**, **blocked**.
 
 | ID | Finding | Phase | Status | Evidence | Commit |
 |---|---|---|---|---|---|
-| R01 | History/list/titles authorized only by owner, not by current scope or pricing permission; stored headlines can carry WAC amounts and old-territory labels | 1 | **fixed** | `tests/security/test_session_authorization.py` — 8 tests; 4 fail on `f8d6d31` | _phase 1_ |
-| R02 | `resolve()` ignores disabled credentials; cookie name inconsistently applied; rotation/revocation undefined; startup privilege checks test fixed role names rather than effective grants | 1 | **fixed** | `test_session_lifecycle.py` (6; 5 fail before) · `test_privilege_boundary.py` (6; 4 fail before) | _phase 1_ |
-| R03 | A delayed response from a previous identity can update the UI after an account switch | 1 | **fixed** | `web/src/__tests__/identity-isolation.test.jsx` — 4 tests pass against the fixed component. The before/after comparison is **not** recorded: see the note below. | _phase 1_ |
-| R04 | Evaluation judge accepts semantic false positives; tuned set described as held out; release command tolerates skips and empty selections | 2 | pending | | |
+| R01 | History/list/titles authorized only by owner, not by current scope or pricing permission; stored headlines can carry WAC amounts and old-territory labels | 1 | **fixed** | `tests/security/test_session_authorization.py` — 8 tests; 4 fail on `f8d6d31` | `0d83a29` |
+| R02 | `resolve()` ignores disabled credentials; cookie name inconsistently applied; rotation/revocation undefined; startup privilege checks test fixed role names rather than effective grants | 1 | **fixed** | `test_session_lifecycle.py` (6; 5 fail before) · `test_privilege_boundary.py` (6; 4 fail before) | `0d83a29` |
+| R03 | A delayed response from a previous identity can update the UI after an account switch | 1 | **fixed** | `web/src/__tests__/identity-isolation.test.jsx` — 4 tests pass against the fixed component. The before/after comparison is **not** recorded: see the note below. | `0d83a29` |
+| R04 | Evaluation judge accepts semantic false positives; tuned set described as held out; release command tolerates skips and empty selections | 2 | **fixed** | `tests/unit/test_eval_judge.py` (18 adversarial cases; **12 pass the old judge**) · `tests/unit/test_release_gate.py` (4) | _phase 2_ |
 | R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | pending | | |
 | R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | pending | | |
 | R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | pending | | |
@@ -75,8 +88,9 @@ evidence), **remaining**, **blocked**.
 | R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | pending | | |
 | R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | pending | | |
 | R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
-| R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | _phase 1_ |
-| R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | _phase 1_ |
+| R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
+| R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | `0d83a29` |
+| R16 | Run records stored the plan and SQL but not the answer, so a stored run cannot be re-judged after the judge changes — `amb-01`'s live result could not be rescored | 2 | **fixed** | `scripts/run_evals.py` now records headline, notes, warnings and rows | _phase 2_ |
 | R15 | Dev-only npm advisories (vite dev server, vitest API server): 1 critical, 1 high, 3 moderate. `npm audit --omit=dev` is clean, so nothing ships in `dist/`. No semver-compatible fix exists; clearing them needs vite 6→8 + vitest 2→5, a build-toolchain migration | 6 | **accepted, recorded** | `npm audit --omit=dev` → 0 vulnerabilities | |
 
 ---
@@ -99,6 +113,10 @@ result proves** — which is deliberately narrower than "it passed".
 | 8 | `npx vitest run` (`web/`) | jsdom, no network | stubbed fetch | 4 passed (122 ms of test time, 240 s of collection) | A response issued to one identity cannot reach the next one's screen, and signing in clears the transcript and conversation id. |
 | 8b | same, against the pre-fix component | jsdom | stubbed fetch | **not obtained** | Four attempts stalled in vitest's collection phase with every process at 0% CPU — the same macOS filesystem stall already diagnosed for a Python venv under `~/Desktop`. Clearing the vite cache, moving it off `~/Desktop` and forcing a single fork did not help; only the first vitest invocation after install ever completed. So R03's fix is evidenced by the passing tests and by the code, not by a measured before/after. Reproducible on a checkout outside `~/Desktop`. |
 | 9 | `npm run build` | — | — | built in 15.25 s | The production bundle still builds after the test tooling was added. |
+| 10 | `pytest tests/unit/test_eval_judge.py` | offline | fakes only | 18 passed / **12 fail** against the pre-repair judge | The judge now rejects: a boilerplate note standing in for a qualifying one; a packs answer to a percentage question; `warning` with no needle; an empty oracle matching an empty answer; groups the oracle never produced; `no_pricing` judged without ever seeing the SQL; currency in the headline; a typo'd expectation type. |
+| 11 | `python3 scripts/run_evals.py` (offline) | offline | `full-182fd9082327` | **36/38**, 2 failed | Under the repaired judge, on the same dataset that previously reported 38/38. The two failures are `b340-01` and `amb-01` — the cases the old rules were hiding. |
+| 12 | `pytest tests/security -q --release-gate --min-tests 95` | offline | working + disposable | 95 passed | The gate now fails on a skip or a short collection. Previously `pytest tests/security -q` exited 0 with every test skipped. |
+| 13 | `pytest tests -q` | offline | working + disposable | **202 passed** | 148 at baseline, 180 after phase 1, 202 after phase 2. |
 
 ---
 

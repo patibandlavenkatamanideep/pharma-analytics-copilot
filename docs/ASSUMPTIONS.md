@@ -351,7 +351,7 @@ appears only in third-party market research is counted as an account we sell to.
 Measured on the full dataset: **8,916 instead of 7,116**, a 25% overstatement
 with no error and no visible symptom.
 
-**Found by** the held-out evaluation set, comparing against an independently
+**Found by** the regression evaluation set, comparing against an independently
 written reference query. Reading the code would not have revealed it, because
 the code did exactly what it looked like it did.
 

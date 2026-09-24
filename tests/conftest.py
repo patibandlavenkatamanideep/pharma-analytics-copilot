@@ -174,3 +174,8 @@ def _close_pools_at_end():
     from app.db import close_pools
 
     close_pools()
+
+
+# The --release-gate plugin lives in its own module so it can be loaded
+# independently; see tests/release_gate.py for why the gate exists.
+pytest_plugins = ["tests.release_gate"]

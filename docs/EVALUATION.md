@@ -34,7 +34,7 @@ Every push runs the whole no-spend path on a clean Ubuntu runner. Run
 | Verify the security boundary is intact | ✅ |
 | Security suite (release gate) | ✅ |
 | Full test suite | ✅ |
-| Held-out question set | ✅ |
+| Regression question set (not held out) | ✅ |
 | Frontend build | ✅ |
 
 This is the fresh-checkout gate in practice: a machine that has never seen the
@@ -200,18 +200,34 @@ York Metro and Dallas. A RAM in New York Metro sees 90 packs of it, an Exec sees
 
 ---
 
-## 5. Held-out question set
+## 5. Regression question set
 
 `evals/questions.yaml` — 38 checks across 15 families, run by
-`scripts/run_evals.py`. These are **held out**: the planner prompt carries
-metric definitions and window semantics, not these phrasings. Several are
-deliberate paraphrases of the supplied samples rather than copies, and the
-`compositional` family asks for combinations that appear in no document.
+`scripts/run_evals.py`.
+
+**This is not a held-out set, and an earlier version of this document said it
+was.** The planner prompt does not carry these phrasings, so they are not
+memorised; but they were used during development. The commit that introduced
+them is *"add a held-out question set and runner; fix what it caught"*, and
+what it caught was fixed in the same change; metric definitions were adjusted
+in response to later runs. A score here therefore measures whether known
+behaviour still holds. It is regression coverage, not an estimate of accuracy
+on unseen questions, and must not be quoted as one.
+
+A genuine held-out set would have to be written against the supplied
+documentation, sealed before any tuning, and run once. That has not been done
+and is listed as outstanding work.
 
 ```
 $ python3 scripts/run_evals.py
-38/38 passed
+36/38 passed, 2 failed
 ```
+
+The two failures are real and deliberately left standing — `b340-01` (the plan
+language has no metric for a proportion, so a percentage question is answered
+in packs) and `amb-01` (generic share answered as company brand share). Both
+passed before the judge was repaired. See R04/R08 in
+[REMEDIATION.md](REMEDIATION.md).
 
 | Family | Checks | What it covers |
 |---|---:|---|
@@ -237,7 +253,25 @@ pass/fail with a reason, latency and token usage.
 Measured, not projected. Three runs, each the full set, each recorded in
 `evals/runs/`:
 
-| Run | Score | Change |
+> **These scores are withdrawn pending re-measurement.** They were produced by
+> the judge as it stood on 2026-09-24, which has since been shown to accept
+> semantic false positives: `b340-01` passed on any non-empty result although
+> it asks for a percentage, and `amb-01` passed because a boilerplate
+> incomplete-period note satisfied a "qualifying note" requirement. Re-running
+> the live set needs paid inference and is out of scope for this offline phase,
+> so the runs below are kept as **dated historical evidence of what was
+> measured at the time**, not as a current accuracy claim.
+>
+> Re-judging from the stored records is only partly possible: they recorded the
+> plan and SQL but not the answer. `b340-01`'s live plan was
+> `paid_pack_units` grouped by `is_340b` — a two-row breakdown, not the
+> percentage asked for, so it would now fail. `amb-01`'s live plan did carry
+> `classifications: [generic]`, so the live model handled the ambiguity
+> materially better than the offline planner does, but whether its note
+> satisfies the repaired rule cannot be established from the record. The runner
+> now stores the answer as well, so this cannot recur.
+
+| Run | Score (old judge) | Change |
 |---|---:|---|
 | First live run | **31/38** (81.6%) | baseline |
 | After two prompt fixes | **36/38** (94.7%) | +5 |
@@ -263,7 +297,7 @@ current month and **said so** in its interpretation; the reference SQL assumed
 R3M. The phrase is genuinely ambiguous and the model disclosed its reading, so
 this is a flaw in the question rather than in the system. Rewriting the
 reference to make it pass would be exactly the adjustment this document warns
-against, so it stays a miss and the score stays 37/38.
+against, so it stays a miss.
 
 **Offline runs are still not an accuracy measurement.** The runner prints that
 on every offline run: with the deterministic planner it exercises the compiler,

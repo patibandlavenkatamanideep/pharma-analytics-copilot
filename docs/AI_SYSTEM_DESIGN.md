@@ -180,7 +180,7 @@ Extracting a structured plan from a sentence is a constrained task, not a
 reasoning task. `effort: low` is the right setting for it and materially reduces
 both latency and cost. This is a per-route decision, not a global downgrade —
 it is configurable via `PAC_LLM_EFFORT`, and the right way to change it is to
-measure the held-out set at each level rather than to reason about it.
+measure the regression set at each level rather than to reason about it.
 
 ### One bounded repair, then stop
 
@@ -297,12 +297,20 @@ for old text to become new instructions.
 
 The layer that cannot be unit-tested needs its own method.
 
-**Held-out, not memorised.** `evals/questions.yaml` holds 38 checks. The prompt
-carries metric definitions and window semantics, not these phrasings. Several
-are deliberate paraphrases of the supplied samples rather than copies, and the
-`compositional` family asks for combinations that appear in no document —
-"rank non-340B hospital accounts by Zenovax volume this quarter" is three
-filters and a product the documentation never combines.
+**Not memorised — but not held out either.** `evals/questions.yaml` holds 38
+checks. The prompt carries metric definitions and window semantics, not these
+phrasings, and the `compositional` family asks for combinations that appear in
+no document — "rank non-340B hospital accounts by Zenovax volume this quarter"
+is three filters and a product the documentation never combines. So the
+questions are not memorised.
+
+They were still used *during* development, and the prompt and metric registry
+were changed in response to runs against them. That makes this a regression
+set, not a held-out one, and an earlier version of this document called it
+held out. A score on it says whether known behaviour still holds; it is not an
+estimate of accuracy on unseen questions. A real held-out set has to be written
+against the documentation, sealed before tuning, and run once — outstanding
+work, not something already done.
 
 **Never graded by a model.** Expected answers are reference SQL written by hand
 in the question file, or structural assertions about the plan. Using a model to
@@ -311,7 +319,7 @@ correlate with the thing being measured.
 
 **Never graded by the system under test.** If the expectation came from the
 compiler, the suite would agree with any compiler bug. This is not hypothetical:
-the held-out set found that `account_count` had no source filter and was
+the set found that `account_count` had no source filter and was
 counting organizations from third-party market data as accounts we sell to —
 8,916 instead of 7,116. The code looked right. Only an independent query
 disagreed.
@@ -319,9 +327,15 @@ disagreed.
 **Reported as counts, not percentages.** A rounded figure invites adjusting the
 question set until it improves. Runs record the specific misses.
 
-**Current state, measured.** Offline the set scored 30/38 then 38/38 — that is
-the pipeline, not language understanding. **Live on Claude Opus 4.5 via Bedrock
-it scored 31/38, then 36/38, then 37/38 (97.4%).**
+**Current state.** Offline the set scores 36/38 — that is the pipeline, not
+language understanding, and the two failures are real (a percentage question
+the plan language cannot express, and generic share answered as brand share).
+
+Live on Claude Opus 4.5 via Bedrock it scored 31/38, then 36/38, then 37/38.
+**Those live figures are withdrawn pending re-measurement**: the judge that
+produced them accepted semantic false positives, and two cases passed under
+rules now known to be vacuous. The repaired judge is in place; re-running the
+live set needs paid inference and has not been done.
 
 The progression is the useful part. Six of the seven first-run failures were one
 gap, and it was in the prompt rather than the model: the documented default that
@@ -393,7 +407,8 @@ table has columns waiting for them.
 
 ## 12. What I would do next
 
-1. **Measure live accuracy** on the held-out set and report counts and misses.
+1. **Re-measure live accuracy** under the repaired judge, on a genuinely
+   held-out set, and report counts and misses.
 2. **Sweep effort levels** (`low`/`medium`/`high`) against the same set — the
    `low` default is reasoned, not measured.
 3. **Prompt-cache the stable prefix.** The registry summary and vocabularies are

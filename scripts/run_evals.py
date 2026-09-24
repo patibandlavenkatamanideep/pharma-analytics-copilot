@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the held-out evaluation set.
+"""Run the regression evaluation set.
 
   python3 scripts/run_evals.py                       # offline planner, free
   python3 scripts/run_evals.py --provider bedrock    # COSTS MONEY
@@ -13,6 +13,10 @@ Two things this deliberately does NOT do:
     offline planner is a keyword matcher; an offline run checks that the
     compiler, authorization, execution and rendering layers work, and the
     report says so on its face.
+  * It does not present this set as held out. The questions were used during
+    development and the system was changed in response to them, so a score
+    here is regression coverage, not an accuracy estimate. See the header of
+    evals/questions.yaml.
 
 Every run writes a timestamped JSON record to evals/runs/ containing the
 question, principal, dataset id, metric and policy versions, the produced plan
@@ -70,6 +74,24 @@ def close(a: Any, b: Any, tolerance: float) -> bool:
 # Judgements
 # ---------------------------------------------------------------------------
 
+class SpecificationError(ValueError):
+    """The expectation itself is unusable, so the question cannot be scored.
+
+    Raised rather than returned as a failure: a question that can never pass
+    and a question that is written wrong are different problems, and only one
+    of them is the system's fault.
+    """
+
+
+def _text_of(answer) -> str:
+    """Everything in an answer a person would actually read."""
+    parts = [answer.headline, answer.scope_note, answer.period_note]
+    parts += list(answer.notes) + list(answer.warnings)
+    for row in answer.table:
+        parts += [str(v) for v in row.values()]
+    return " ".join(str(p) for p in parts if p)
+
+
 def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
     kind = spec["type"]
     answer = result.answer
@@ -82,22 +104,39 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
         return True, "refused with an alternative"
 
     if kind == "warning":
+        # An expectation with no needle passed any answer, including one
+        # carrying no warning at all. There is no useful reading of
+        # "must warn about nothing in particular".
+        needle = spec.get("contains", "").strip().lower()
+        if not needle:
+            raise SpecificationError(
+                "type: warning requires `contains:` naming the warning expected")
         if not answer:
             return False, f"no answer ({result.status})"
-        needle = spec.get("contains", "").lower()
         joined = " ".join(answer.warnings).lower()
-        if needle and needle not in joined:
-            return False, f"no warning containing {needle!r}"
-        return True, "data-quality warning present"
+        if needle not in joined:
+            return False, f"no warning containing {needle!r} (warnings: {answer.warnings})"
+        return True, f"warning containing {needle!r}"
 
     if kind == "nonempty":
+        # Coverage only, and only for a NAMED metric. Without that this was a
+        # row counter: b340-01 asked what percentage of volume comes from 340B
+        # accounts and passed on 59,419 packs, because packs are rows too.
+        expected_metric = spec.get("metric")
+        if not expected_metric:
+            raise SpecificationError(
+                "type: nonempty requires `metric:` -- otherwise any answer with "
+                "rows passes, whatever it measured")
         if result.status != "answered" or not answer:
             return False, f"status {result.status}"
         if answer.row_count == 0:
             return False, "no rows"
+        actual_metric = (result.plan or {}).get("metric")
+        if actual_metric != expected_metric:
+            return False, f"metric {actual_metric!r}, expected {expected_metric!r}"
         if "max_rows" in spec and answer.row_count > spec["max_rows"]:
             return False, f"{answer.row_count} rows exceeds max {spec['max_rows']}"
-        return True, f"{answer.row_count} row(s)"
+        return True, f"{expected_metric}, {answer.row_count} row(s)"
 
     if kind == "volume_alternative":
         # Either refuse with an alternative, or answer in volume and say why.
@@ -113,9 +152,18 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
         return False, f"status {result.status}"
 
     if kind == "no_pricing":
-        if result.sql and "wac" in result.sql.lower():
+        # This has to be able to SEE the SQL. With include_sql off, result.sql
+        # is None and the check certified a statement it never read.
+        if not result.sql:
+            raise SpecificationError(
+                "type: no_pricing requires the run to capture SQL (include_sql)")
+        if "wac" in result.sql.lower():
             return False, "SQL CONTAINS WAC"
-        if answer and any("$" in str(r.get("value_formatted", "")) for r in answer.table):
+        if not answer:
+            return True, "no answer, so no pricing"
+        # The headline carries the figure; checking only value_formatted missed it.
+        text = _text_of(answer)
+        if "$" in text:
             return False, "response contains currency"
         return True, "no pricing reached the response"
 
@@ -137,11 +185,31 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
 
     if kind == "any_of":
         allowed = set(spec["allowed"])
-        if result.status in allowed:
+        needles = [n.lower() for n in spec.get("note_contains", [])]
+
+        if "answered_with_note" in allowed and not needles:
+            # amb-01 asked for generic share, returned company BRAND share at
+            # 71.79%, and passed -- because every answer covering the current
+            # period carries an incomplete-period note, and any note counted.
+            raise SpecificationError(
+                "answered_with_note requires `note_contains:` naming what the "
+                "note must actually address")
+
+        if result.status in allowed and result.status != "answered":
             return True, result.status
         if "answered_with_note" in allowed and result.status == "answered":
-            if answer and (answer.notes or answer.warnings):
-                return True, "answered with a qualifying note"
+            if not answer:
+                return False, "answered with no answer body"
+            joined = " ".join(list(answer.notes) + list(answer.warnings)).lower()
+            hit = next((n for n in needles if n in joined), None)
+            if hit is None:
+                return False, (
+                    "no note addressing the question "
+                    f"(wanted one of {needles}; got {answer.notes + answer.warnings})"
+                )
+            return True, f"note addresses {hit!r}"
+        if result.status in allowed:
+            return True, result.status
         return False, f"status {result.status} not in {sorted(allowed)}"
 
     if kind == "sql":
@@ -153,23 +221,43 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
         if compare == "scalar":
             expected = list(rows[0].values())[0] if rows else None
             actual = answer.table[0]["value"] if answer.table else None
+            # close(None, None) is True, so an empty answer used to "match" an
+            # empty oracle. Neither side may be empty: a reference that
+            # produces nothing is a broken question, not a passing one.
+            if expected is None:
+                raise SpecificationError(
+                    "reference SQL produced no value; the question cannot be scored")
+            if actual is None:
+                return False, f"expected {expected!r}, got no value"
             ok = close(expected, actual, tolerance)
             return ok, f"expected {expected!r}, got {actual!r}"
 
         if compare == "top_ids":
             expected_ids = [list(r.values())[0] for r in rows]
+            if not expected_ids:
+                raise SpecificationError(
+                    "reference SQL produced no ids; the question cannot be scored")
             actual_ids = [r.get("dim0_id") for r in answer.table][: len(expected_ids)]
+            if len(actual_ids) < len(expected_ids):
+                return False, f"got {len(actual_ids)} ids, expected {len(expected_ids)}"
             # Compare as sets: equal values may tie in either order.
             if set(expected_ids) == set(actual_ids):
                 return True, f"{len(expected_ids)} ids match"
             missing = set(expected_ids) - set(actual_ids)
-            return False, f"missing {sorted(missing)[:5]}"
+            extra = set(actual_ids) - set(expected_ids)
+            return False, f"missing {sorted(missing)[:5]}, unexpected {sorted(extra)[:5]}"
 
         if compare == "rows":
             expected_map = {str(r["label"]): r["value"] for r in rows}
-            actual_map = {
-                str(r.get("dim0")): r.get("value") for r in answer.table
-            }
+            if not expected_map:
+                raise SpecificationError(
+                    "reference SQL produced no groups; the question cannot be scored")
+            actual_map = {str(r.get("dim0")): r.get("value") for r in answer.table}
+            # Both directions. Checking only that the expected groups are
+            # present ignored groups the oracle never produced.
+            unexpected = set(actual_map) - set(expected_map)
+            if unexpected:
+                return False, f"groups not in the reference: {sorted(unexpected)[:5]}"
             for label, value in expected_map.items():
                 if label not in actual_map:
                     return False, f"missing group {label!r}"
@@ -177,7 +265,11 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
                     return False, f"{label}: expected {value!r}, got {actual_map[label]!r}"
             return True, f"{len(expected_map)} group(s) match"
 
-    return False, f"unknown expectation type {kind!r}"
+        raise SpecificationError(f"unknown comparison {compare!r}")
+
+    # A typo used to become a question that simply never passed, which reads
+    # as a system failure in the report.
+    raise SpecificationError(f"unknown expectation type {kind!r}")
 
 
 def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
@@ -313,6 +405,24 @@ def main() -> int:
                 "reason": reason,
                 "plan": result.plan,
                 "sql": result.sql,
+                # The ANSWER is recorded too, not just the plan. Without it a
+                # stored run cannot be re-judged after the judge is corrected:
+                # when this judge was repaired, amb-01's live result could not
+                # be rescored because its notes had never been written down,
+                # and the reason string was all that survived.
+                "answer": None if not result.answer else {
+                    "headline": result.answer.headline,
+                    "columns": result.answer.columns,
+                    "rows": result.answer.table[:20],
+                    "row_count": result.answer.row_count,
+                    "truncated": result.answer.truncated,
+                    "scope_note": result.answer.scope_note,
+                    "period_note": result.answer.period_note,
+                    "notes": result.answer.notes,
+                    "warnings": result.answer.warnings,
+                },
+                "alternative": result.alternative,
+                "message": result.message,
                 "latency_ms": elapsed_ms,
                 "timings": result.timings,
                 "input_tokens": usage.get("input_tokens"),
