@@ -150,23 +150,33 @@ jobs:
             echo "expected a startup refusal; got:"; tail -20 nodb.log; exit 1
           fi
 
-      # The image must also contain everything needed to provision and run.
-      - name: Provision and load using the image itself
+      # The image must also contain everything needed to provision, not just to
+      # serve. Passwords are supplied as environment variables and --no-env
+      # keeps the container from writing a .env, so nothing has to be copied
+      # back out of a container that deliberately does not run as root.
+      - name: Provision the database using the image itself
         env:
-          PGHOST: 127.0.0.1
+          PAC_DB_OWNER_PASSWORD: ci-owner-pw
+          PAC_DB_AUTH_PASSWORD: ci-auth-pw
+          PAC_DB_EXEC_PASSWORD: ci-exec-pw
+          PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
           docker run --rm --network host \
             -e PAC_DB_HOST=127.0.0.1 \
             -e PAC_ADMIN_DSN=postgresql://postgres:ci-postgres@127.0.0.1:5432/postgres \
-            -v "$PWD/.env-out:/out" \
+            -e PAC_DB_OWNER_PASSWORD -e PAC_DB_AUTH_PASSWORD \
+            -e PAC_DB_EXEC_PASSWORD -e PAC_DB_SCOPED_PASSWORD \
             pharma-analytics-copilot:ci \
-            sh -c "python scripts/bootstrap_db.py --drop && cp /app/.env /out/.env" \
-            || { echo "bootstrap from the image failed"; exit 1; }
+            python scripts/bootstrap_db.py --drop --no-env
           echo "bootstrapped from inside the image"
 
       - name: Start the container against the database
+        env:
+          PAC_DB_OWNER_PASSWORD: ci-owner-pw
+          PAC_DB_AUTH_PASSWORD: ci-auth-pw
+          PAC_DB_EXEC_PASSWORD: ci-exec-pw
+          PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
-          set -a; . ./.env-out/.env; set +a
           docker run -d --name pac --network host \
             -e PAC_DB_HOST=127.0.0.1 \
             -e PAC_DB_OWNER_PASSWORD="$PAC_DB_OWNER_PASSWORD" \
