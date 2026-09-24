@@ -22,7 +22,6 @@ web/dist/
 .mypy_cache/
 htmlcov/
 .coverage
-evals/runs/
 *.log
 .aws-sam/
 
