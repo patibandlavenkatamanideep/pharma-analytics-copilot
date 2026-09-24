@@ -525,7 +525,9 @@ Stated plainly rather than implied.
   headers are refused.
 
 **Not yet true at the time of writing**
-- **No cloud deployment.** The public URL deliverable is outstanding.
+- **Deployed latency under concurrency is unmeasured.** The performance figures
+  in §10 are from a local machine; the deployed instance is a 2 GB t4g.small and
+  will be slower.
 - **Live accuracy is measured: 37/38 (97.4%)** on the held-out set with Claude
   Opus 4.5 on Bedrock, planner p50 3.46 s. The single miss is a question whose
   phrasing ("right now") is ambiguous; the model disclosed its reading and the
@@ -552,10 +554,11 @@ cheaper and safer), multi-provider routing, an agent loop (no open-ended
 exploration is required), charts.
 
 **What I would do next, in order**
-1. Deploy and measure — the public URL is the biggest outstanding gap.
-2. Live held-out evaluation once the model gate clears, reporting exact counts
-   and misses rather than a rounded percentage.
-3. Concurrency and cost measurement under realistic load.
+1. Re-run the benchmark against the deployed instance — the §10 figures are
+   local, and a 2 GB t4g.small will be slower.
+2. Move the database to RDS and put two instances behind a load balancer. The
+   application needs no change: it keeps no state in memory.
+3. Cost measurement under realistic load.
 4. Replace the offline planner's keyword rules with a small local model for CI,
    so the fallback path degrades more gracefully.
 5. A richer clarification flow — today an ambiguous question is answered with a

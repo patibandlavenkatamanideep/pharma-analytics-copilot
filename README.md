@@ -1,5 +1,7 @@
 # Pharma Analytics Copilot
 
+### 🔗 Live: **https://44-217-117-172.sslip.io**
+
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is
 enforced by PostgreSQL, not by the application's good intentions.
@@ -137,9 +139,15 @@ Verified on the full dataset: ingestion, the authorization boundary (63 tests),
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
-Live natural-language accuracy is **37/38 (97.4%)** on a held-out question set
-with Claude Opus 4.5 on Bedrock — measured, with the one miss recorded rather
-than rewritten away ([EVALUATION.md](docs/EVALUATION.md)).
+**Deployed and running** at <https://44-217-117-172.sslip.io> — one EC2
+instance on AWS with the app, PostgreSQL and Caddy under Docker Compose, real
+Let's Encrypt HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on
+Bedrock. `infra/smoke.sh` passes against it end to end.
 
-Not yet true: **there is no cloud deployment**, so no public URL and no
-deployed-latency figures. See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven).
+Live natural-language accuracy is **37/38 (97.4%)** on a held-out question set —
+measured, with the one miss recorded rather than rewritten away
+([EVALUATION.md](docs/EVALUATION.md)).
+
+Honest limitations: a single host has no redundancy, and deployed latency under
+concurrency has not been measured. See
+[DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven).
