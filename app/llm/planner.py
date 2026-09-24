@@ -34,6 +34,20 @@ class PlannerError(RuntimeError):
     """The question could not be turned into a plan."""
 
 
+# Which filter a frozen cohort belongs in, per the grain it was collected at.
+# A dimension that is not here (a period, for instance) has no cohort: "those
+# same months" is a time window, not a population.
+COHORT_FILTER_FIELD = {
+    "account": "account_ids",
+    "facility": "facility_ids",
+    "product": "product_names",
+    "gpo": "gpo_names",
+    "archetype": "org_archetypes",
+    "territory": "territories",
+    "region": "regions",
+}
+
+
 @dataclass
 class PlanningContext:
     """Everything the planner is allowed to know.
@@ -60,6 +74,7 @@ class PlanningContext:
     all_regions: list[str] = field(default_factory=list)
     previous_plan: dict[str, Any] | None = None
     previous_cohort: list[str] = field(default_factory=list)
+    previous_cohort_dimension: str | None = None
 
 
 class Planner(Protocol):
@@ -627,8 +642,16 @@ class OfflinePlanner:
             update["standalone_only"] = True
 
         # "those accounts" freezes the previous cohort rather than re-ranking.
+        #
+        # The cohort goes into the filter that matches the grain it was
+        # collected at. It used to go into account_ids whatever it held, so a
+        # cohort of products became a list of organization ids and matched
+        # nothing -- a follow-up that looked like it worked and returned an
+        # empty or wrong population.
         if re.search(r"\bthose\b|\bthese\b|\bsame\b", q) and context.previous_cohort:
-            update["account_ids"] = list(context.previous_cohort)
+            target = COHORT_FILTER_FIELD.get(context.previous_cohort_dimension or "")
+            if target:
+                update[target] = list(context.previous_cohort)
 
         return filters.model_copy(update=update) if update else filters
 

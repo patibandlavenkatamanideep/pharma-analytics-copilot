@@ -47,6 +47,10 @@ class ConversationState:
     conversation_id: str
     previous_plan: dict[str, Any] | None = None
     previous_cohort: list[str] = field(default_factory=list)
+    # The dimension those ids are FOR. A cohort without its grain is just a
+    # list of strings, and was being reapplied as account ids whatever it
+    # actually held.
+    previous_cohort_dimension: str | None = None
     next_seq: int = 1
     reset_reason: str | None = None
 
@@ -127,7 +131,7 @@ def open_conversation(
                 return ConversationState(conversation_id=new_id, reset_reason=incompatible)
 
             cur.execute(
-                "SELECT plan, resolved_cohort, seq FROM app_conv.turns "
+                "SELECT plan, resolved_cohort, cohort_dimension, seq FROM app_conv.turns "
                 "WHERE conversation_id = %s AND status = 'answered' "
                 "ORDER BY seq DESC LIMIT 1",
                 (conversation_id,),
@@ -144,6 +148,7 @@ def open_conversation(
                 conversation_id=conversation_id,
                 previous_plan=last["plan"] if last else None,
                 previous_cohort=list(last["resolved_cohort"] or []) if last else [],
+                previous_cohort_dimension=last["cohort_dimension"] if last else None,
                 next_seq=next_seq,
             )
 
@@ -167,8 +172,22 @@ def record_turn(
     cohort: list[str],
     answer_text: str,
     status: str,
+    cohort_dimension: str | None = None,
 ) -> None:
     with auth_transaction() as cur:
+        # Serialise writers on this conversation for the rest of the
+        # transaction. Sequence numbers were computed by reading max(seq) in
+        # one request and inserting in another, so two concurrent turns picked
+        # the same number; the insert said ON CONFLICT DO NOTHING and one of
+        # them disappeared. The user saw their answer and the conversation had
+        # no record of the question.
+        #
+        # A lock rather than a retry loop: retries race too, and the contended
+        # case here is two turns in the same thread of conversation, which is
+        # rare and short.
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))",
+                    (state.conversation_id,))
+
         # Writing is authorized by the same current rule as reading: a turn
         # must not be appended to a thread the principal could no longer open.
         cur.execute(
@@ -179,20 +198,30 @@ def record_turn(
         if cur.fetchone() is None:
             raise ConversationAccessError("That conversation does not exist.")
 
+        # Decided under the lock, so it cannot collide.
+        cur.execute(
+            "SELECT COALESCE(max(seq), 0) + 1 AS seq FROM app_conv.turns "
+            "WHERE conversation_id = %s",
+            (state.conversation_id,),
+        )
+        seq = cur.fetchone()["seq"]
+
         cur.execute(
             """
             INSERT INTO app_conv.turns
-                (conversation_id, seq, question, plan, resolved_cohort, answer_text, status)
-            VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s)
-            ON CONFLICT (conversation_id, seq) DO NOTHING
+                (conversation_id, seq, question, plan, resolved_cohort,
+                 cohort_dimension, answer_text, status)
+            VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
             """,
             (
-                state.conversation_id, state.next_seq, question[:2000],
+                state.conversation_id, seq, question[:2000],
                 json.dumps(plan, default=str) if plan else None,
-                json.dumps(cohort),
+                json.dumps(cohort), cohort_dimension,
                 answer_text[:8000], status,
             ),
         )
+        state.next_seq = seq + 1
+
         cur.execute(
             "UPDATE app_conv.conversations SET updated_at = now(), "
             "title = COALESCE(title, %s) WHERE conversation_id = %s",

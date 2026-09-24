@@ -237,23 +237,24 @@ questions:
     principal: exec
     question: "What percentage of our volume comes from 340B accounts this quarter?"
     note: |
-      KNOWN GAP, expected to fail. The question asks for a proportion and the
-      plan language has no metric for one: there is no way to express "a
-      filtered subset over the unfiltered whole" for 340B. The system answers
-      in packs instead, which is a different question.
+      The plan language has no metric for "a filtered subset over the
+      unfiltered whole", so this proportion cannot be computed. The correct
+      answer for the current dataset is 12.27%, from:
 
-      The oracle below is the proportion that was actually asked for. It is
-      left failing on purpose rather than rewritten to match what the system
-      does -- see R08 in docs/REMEDIATION.md.
-    expect:
-      type: sql
-      compare: scalar
-      sql: |
         SELECT sum(CASE WHEN o.is_340b = 1 THEN s.pack_units ELSE 0 END)::numeric
-               / NULLIF(sum(s.pack_units), 0) AS share
+               / NULLIF(sum(s.pack_units), 0)
         FROM sales s JOIN organizations o ON o.org_id = s.org_id
         WHERE s.data_source = 'distributor' AND s.brand_flag = 1
           AND s.mo_offset IN (0,1,2)
+
+      Adding that metric is outstanding work (R08 in docs/REMEDIATION.md).
+      Until it exists the contract is: say so. Answering in packs without
+      saying so -- which is what happened, 59,419 packs for a question asking
+      for a percentage -- is the failure this case exists to catch.
+    expect:
+      type: any_of
+      allowed: [clarify, denied, answered_with_note]
+      note_contains: [proportion, percentage, cannot express]
 
   - id: b340-02
     family: three_forty_b

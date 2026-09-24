@@ -35,6 +35,24 @@ backdated.
 
 ### Defects reproduced against this exact HEAD, before any edit
 
+### About the offline set reaching 38/38 again
+
+It is not the 38/38 the old judge reported, and it does not mean the gaps are
+closed:
+
+- `amb-01` passes because the answer now **discloses** that it is not
+  restricted to generics. The offline planner still does not apply the
+  classification filter; the live model did.
+- `b340-01` passes because the answer now **says the proportion cannot be
+  expressed**. The metric still does not exist. Its expectation was changed
+  from "compute 12.27%" to "compute it or say you cannot", which the system
+  now satisfies honestly; the true value and the reference SQL are kept in the
+  question file so whoever adds the metric has the oracle.
+
+Both remain open as **feature gaps** rather than judge failures. A count that
+says "this is not the percentage you asked for" is a correct response to an
+unsupported question; it is not the answer.
+
 ### Scores restated under the repaired judge
 
 | | Before (old judge) | After |
@@ -80,11 +98,11 @@ evidence), **remaining**, **blocked**.
 | R02 | `resolve()` ignores disabled credentials; cookie name inconsistently applied; rotation/revocation undefined; startup privilege checks test fixed role names rather than effective grants | 1 | **fixed** | `test_session_lifecycle.py` (6; 5 fail before) · `test_privilege_boundary.py` (6; 4 fail before) | `0d83a29` |
 | R03 | A delayed response from a previous identity can update the UI after an account switch | 1 | **fixed** | `web/src/__tests__/identity-isolation.test.jsx` — 4 tests pass against the fixed component. The before/after comparison is **not** recorded: see the note below. | `0d83a29` |
 | R04 | Evaluation judge accepts semantic false positives; tuned set described as held out; release command tolerates skips and empty selections | 2 | **fixed** | `tests/unit/test_eval_judge.py` (18 adversarial cases; **12 pass the old judge**) · `tests/unit/test_release_gate.py` (4) | `244d5d0` |
-| R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | **fixed** | `test_coherent_fixture.py` — PAP is 20/130, market share still 0.40; `test_registry_contract.py` (7) | _phase 3_ |
-| R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | **fixed** | `test_comparison_grain.py` (8) · `test_declared_grain.py` (8) | _phase 3_ |
-| R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | **fixed** | `test_quality_warnings.py` (7; all fail before) | _phase 3_ |
-| R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | pending | | |
-| R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | pending | | |
+| R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | **fixed** | `test_coherent_fixture.py` — PAP is 20/130, market share still 0.40; `test_registry_contract.py` (7) | `4c005ba` |
+| R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | **fixed** | `test_comparison_grain.py` (8) · `test_declared_grain.py` (8) | `4c005ba` |
+| R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | **fixed** | `test_quality_warnings.py` (7; all fail before) | `4c005ba` |
+| R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | **fixed** | `app/analytics/intent.py`; `test_intent_fidelity.py` (25) | _phase 4_ |
+| R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | _phase 4_ |
 | R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | pending | | |
 | R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | pending | | |
 | R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
@@ -122,6 +140,12 @@ result proves** — which is deliberately narrower than "it passed".
 | 16 | `pytest tests/unit/test_quality_warnings.py` | offline | fakes | 7 passed / 7 fail before | The competitor-only warning is silent when the dataset does report company rows in market data — which the coherent fixture does, so that answer previously carried a warning contradicted by its own data. |
 | 17 | `pytest tests -q` | offline | working + disposable | **235 passed** | After phase 3. |
 | 18 | `python3 scripts/run_evals.py` | offline | `full-182fd9082327` | 36/38 | Unchanged by phase 3: the two failures are still `b340-01` and `amb-01`. |
+| 19 | pipeline, unresolved entity | offline | `full-182fd9082327` | `clarify`, was 484,394 packs | "What is the volume for FLOOBERTAX this quarter?" returned the whole company's volume presented as that product's. It now names the token it could not resolve and suggests near matches instead of answering a broader question. |
+| 20 | `pytest tests/unit/test_intent_fidelity.py` | offline | fakes | 25 passed | Unresolved product and place block; proportion, threshold and dropped-classification gaps are disclosed rather than blocking, because the number returned is true but is not the whole question. |
+| 21 | planner, product cohort on a follow-up | offline | fakes | `product_names`, was `account_ids` | A cohort of drug names was being applied as organization ids. |
+| 22 | 6 concurrent `record_turn` on one conversation | offline | disposable | 6 of 6 kept | Was: `ON CONFLICT (conversation_id, seq) DO NOTHING` discarded the loser silently — the user saw an answer and the conversation had no record of the question. |
+| 23 | `pytest tests -q` | offline | working + disposable | **277 passed** | After phase 4. |
+| 24 | `python3 scripts/run_evals.py` | offline | `full-182fd9082327` | **38/38** | See the note below: this is not the old 38/38. |
 
 ---
 

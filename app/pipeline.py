@@ -28,6 +28,7 @@ from typing import Any
 
 from app.analytics.compiler import Compiler, CompileError
 from app.analytics.entities import vocabulary_for
+from app.analytics.intent import blocking, find_gaps
 from app.analytics.periods import PeriodError
 from app.analytics.registry import get_registry
 from app.analytics.render import Answer, GrainError, render
@@ -152,6 +153,7 @@ class Pipeline:
             all_regions=vocab.all_regions,
             previous_plan=state.previous_plan,
             previous_cohort=state.previous_cohort,
+            previous_cohort_dimension=state.previous_cohort_dimension,
         )
 
         t0 = time.perf_counter()
@@ -178,6 +180,32 @@ class Pipeline:
             audit["input_tokens"] = usage.get("input_tokens")
             audit["output_tokens"] = usage.get("output_tokens")
         audit["model_id"] = getattr(self.planner, "model_id", "offline")
+
+        # --- 4b. intent fidelity ---------------------------------------------
+        # Does the plan answer the question that was asked? A plan can be
+        # valid, compile cleanly and return a confident number for a DIFFERENT
+        # question, and nothing downstream can tell: the SQL, the scope and the
+        # rendering are all correct. Checked here rather than inside a planner
+        # so it holds for every planner, including a model that drops a filter
+        # it could not resolve.
+        gaps = find_gaps(question, plan, vocab)
+        audit["intent_gaps"] = [g.kind for g in gaps]
+        blockers = blocking(gaps)
+        if blockers:
+            # Answering would silently broaden the question: drop an
+            # unresolvable product filter and the reply is the whole company's
+            # volume presented as that product's.
+            message = " ".join(g.message() for g in blockers)
+            self._record(principal, state, question, plan.model_dump(mode="json"),
+                         [], message, "clarify")
+            return finish(
+                PipelineResult(
+                    status="clarify", conversation_id=state.conversation_id,
+                    message=message, plan=plan.model_dump(mode="json"),
+                ),
+                "clarify", denial_reason="unresolved_entity",
+            )
+        disclosures = [g.message() for g in gaps]
 
         # --- 5. clarify -----------------------------------------------------
         if plan.clarification:
@@ -305,6 +333,10 @@ class Pipeline:
             answer.notes.insert(0, state.reset_reason)
         if plan.interpretation:
             answer.notes.insert(0, plan.interpretation)
+        # Non-blocking gaps: the number is true, it just is not the whole
+        # question. Said first, because it changes how the figure reads.
+        for disclosure in reversed(disclosures):
+            answer.notes.insert(0, disclosure)
 
         # --- 11. persist ----------------------------------------------------
         cohort = [
@@ -314,6 +346,7 @@ class Pipeline:
         self._record(
             principal, state, question, plan.model_dump(mode="json"),
             cohort, answer.headline, "answered",
+            cohort_dimension=plan.dimensions[0].value if plan.dimensions else None,
         )
 
         return finish(
@@ -334,11 +367,13 @@ class Pipeline:
     def _record(
         self, principal: Principal, state: ConversationState, question: str,
         plan: dict[str, Any] | None, cohort: list[str], answer_text: str, status: str,
+        cohort_dimension: str | None = None,
     ) -> None:
         try:
             record_turn(
                 principal, state, question=question, plan=plan,
                 cohort=cohort, answer_text=answer_text, status=status,
+                cohort_dimension=cohort_dimension,
             )
         except Exception:                       # never fail a request on bookkeeping
             log.warning("failed to persist conversation turn", exc_info=True)
