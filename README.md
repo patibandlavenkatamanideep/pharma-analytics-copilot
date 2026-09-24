@@ -30,6 +30,8 @@ DDL, seed data and the generator are unmodified.
 | Know where the supplied data contradicts its docs | [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) |
 | Run or operate it | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) |
 | See test results | [`docs/EVALUATION.md`](docs/EVALUATION.md) |
+| See a real transcript, including the refusals | [`docs/DEMO.md`](docs/DEMO.md) — generated, not written |
+| Know what was found and fixed in review, and what is still open | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) |
 
 ---
 
@@ -106,7 +108,7 @@ is the only coherent target for evaluating access control
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
-python3 -m pytest tests -q                   # 302 tests
+python3 -m pytest tests -q                   # 309 tests
 python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
 cd web && npm test                           # 4 browser tests (identity isolation)

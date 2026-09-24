@@ -104,8 +104,8 @@ evidence), **remaining**, **blocked**.
 | R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | **fixed** | `app/analytics/intent.py`; `test_intent_fidelity.py` (25) | `9312ee5` |
 | R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | `9312ee5` |
 | R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | **fixed** | `test_snapshot_publication.py` (5; all fail before) | `a4fdb59` |
-| R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | **fixed** | `test_audit_contract.py` (7) · `test_packaging_and_limits.py` (12; 11 fail before) · `test_login_throttling.py` (8) | _phase 6_ |
-| R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
+| R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | **fixed** | `test_audit_contract.py` (7) · `test_packaging_and_limits.py` (12; 11 fail before) · `test_login_throttling.py` (8) | `5f09611` |
+| R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | **fixed** | See *Documentation reconciled* below | _phase 7_ |
 | R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
 | R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | `0d83a29` |
 | R16 | Run records stored the plan and SQL but not the answer, so a stored run cannot be re-judged after the judge changes — `amb-01`'s live result could not be rescored | 2 | **fixed** | `scripts/run_evals.py` now records headline, notes, warnings and rows | `244d5d0` |
@@ -179,3 +179,87 @@ The existing deployment record and `evals/runs/reference-bedrock-full.json`
 (37/38) are **preserved as dated historical evidence**. The reviewer did not
 contact the deployment, and neither does this phase; current availability is
 therefore unverified rather than disproved.
+
+---
+
+## Documentation reconciled (phase 7)
+
+| Contradiction | Was | Now |
+|---|---|---|
+| Token measurement | `docs/EVALUATION.md` said "token usage measured — 526,722 in / 18,572 out" and, **two lines later**, "Model token usage and spend: not measured" | One statement: usage measured and recorded per question in `evals/runs/`; spend not priced, because Bedrock bills at partner rates |
+| Deployment | The same list said "Deployment: none. No cloud URL" while the README gave the URL | "Deployed measurements: none" — the system is deployed, every figure in that document is local, and the older line is acknowledged as having been true when written |
+| Held-out set | Four documents called the question set held out | Corrected in phase 2 across the question file, the runner, README, EVALUATION.md, AI_SYSTEM_DESIGN.md and ASSUMPTIONS.md |
+| Live accuracy | `37/38 (97.4%)` quoted as current | Withdrawn pending re-measurement, with the reason and the preserved record |
+| Demo narration | "Pricing is **refused** for this role" | The pipeline answers with a labelled volume substitute (`status: answered`). Corrected in `scripts/make_demo.py`, so the regenerated transcript says so, and in the recording script |
+| Recording guide | Lived inside `docs/DEMO.md`, which `scripts/make_demo.py` **overwrites** | Moved to `docs/DEMO_SCRIPT.md`; regenerating the transcript would have silently deleted it |
+| Test counts | README claimed 63, then 148 | 302 total, 115 in the release gate, both checked against a collection count |
+
+One data correction went with it: the working manifest predated the
+conversion-factor coverage measurement, so every equivalents answer carried a
+"coverage was not measured" caveat. The count was measured against the live
+data (0 products affected) and written into the published manifest, rather
+than leaving a permanent caveat that says nothing.
+
+---
+
+## Handoff: what is done, and what is next
+
+### Done in this phase — all offline, all local, no AWS or hosted CI
+
+Seven commits from `6c6d632`, one per phase, each with its own verification:
+
+| Commit | Phase |
+|---|---|
+| `f8d6d31` | baseline recorded, two headline defects reproduced |
+| `0d83a29` | authorization re-evaluated per request; session lifecycle |
+| `244d5d0` | evaluation judge repaired; release gate made real |
+| `4c005ba` | ratio populations; comparison grains; evidence-based warnings |
+| `9312ee5` | intent coverage; typed cohorts; concurrent turns |
+| `a4fdb59` | atomic snapshot publication; repeatable reloads |
+| `5f09611` | packaging, result-size limit, login throttling, audit contract |
+
+Tests went from **148** to **309**. **52** of the new ones were run against
+the unfixed code and observed to fail, which is the only claim worth making
+about a regression test:
+
+| Suite | Failed before the fix |
+|---|---:|
+| `test_session_authorization.py` | 4 of 8 |
+| `test_session_lifecycle.py` | 5 of 6 |
+| `test_privilege_boundary.py` | 4 of 5 |
+| `test_eval_judge.py` | 12 of 18 |
+| `test_comparison_grain.py` + `test_coherent_fixture.py` | 4 |
+| `test_quality_warnings.py` | 7 of 7 |
+| `test_snapshot_publication.py` | 5 of 5 |
+| `test_packaging_and_limits.py` | 11 of 12 |
+
+The rest are regression guards for behaviour that was already correct, or
+cover code that did not exist to fail against (`test_declared_grain.py`,
+`test_intent_fidelity.py`, `test_cohort_typing.py`, `test_turn_concurrency.py`,
+`test_audit_contract.py`, `test_login_throttling.py`, `test_release_gate.py`).
+Those are not counted above.
+
+### Next, in the order I would do it
+
+1. **Re-measure live accuracy** under the repaired judge. This is the one
+   thing that needs paid inference, and until it is done there is no current
+   accuracy number. Expect it to be lower than 37/38.
+2. **Deploy the hardened build.** The running instance is pre-hardening. Until
+   it is redeployed, the deployed system still has the authorization defect
+   fixed in `0d83a29`.
+3. **Add a proportion metric** ("a filtered subset over the unfiltered whole").
+   The oracle and the expected value are already in `evals/questions.yaml`
+   under `b340-01`.
+4. **Teach the offline planner the classification filter**, so "generic share"
+   is answered rather than disclosed as unanswered. The live model already
+   does this.
+5. **Write a genuinely held-out set** — against the supplied documentation,
+   sealed before any further tuning, run once.
+6. **Make the browser suite repeatable**, on a checkout outside `~/Desktop`.
+7. **Clear the dev-only npm advisories** via vite 6→8 and vitest 2→5.
+
+### Not attempted, and why
+
+Bedrock or any hosted-model call, deployment, container execution, hosted CI,
+and anything touching an AWS account, model access, cost or billing. The brief
+for this phase excluded all of it.

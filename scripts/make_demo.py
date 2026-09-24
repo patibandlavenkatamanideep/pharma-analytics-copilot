@@ -29,7 +29,8 @@ SCRIPT = [
     ("ram", "Exclude 340B accounts", True,
      "Another follow-up. Only the 340B filter changes -- the ranking and window survive."),
     ("ram", "What is my total revenue in dollars this quarter?", False,
-     "Pricing is refused for this role, and a labelled volume alternative is offered."),
+     "Pricing is not available at this access level. The answer says so and "
+     "reports volume in packs instead -- a labelled substitution, not a refusal."),
     ("ram", "Show me sales in the Texas territory", False,
      "A territory outside scope is refused by name, not silently re-scoped."),
     ("director", "How are the territories in my region performing this quarter?", True,
@@ -187,7 +188,7 @@ def main() -> int:
     w("| Territory scope applied before aggregation | RAM's first answer |")
     w("| Follow-up keeps the population, adds a grain | \"break that down by quarter\" |")
     w("| Follow-up changes one filter, keeps the ranking | \"exclude 340B\" |")
-    w("| Pricing refused with a usable alternative | RAM's revenue question |")
+    w("| Pricing withheld, volume substituted and labelled | RAM's revenue question |")
     w("| Out-of-scope territory refused by name | \"sales in the Texas territory\" |")
     w("| Director sees strictly more than the RAM inside it | Director's territories |")
     w("| Only an authorised Exec sees WAC | Exec's revenue answer |")

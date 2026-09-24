@@ -445,14 +445,20 @@ Stated explicitly so nothing is implied by omission.
 
 - **Deployed behaviour: not measured.** The live figures above are from a local
   run against Bedrock; nothing has been measured on deployed infrastructure.
-- **Deployment: none.** No cloud URL, so no deployed latency, cold-start or
-  availability figures. All timings here are local PostgreSQL 16 on an Apple
-  Silicon laptop and will differ on managed infrastructure.
+- **Deployed measurements: none.** The system *is* deployed (see the README),
+  but every figure in this document is from a local run: PostgreSQL 16 on an
+  Apple Silicon laptop, which will differ from managed infrastructure. No
+  deployed latency, cold-start or availability figure has been taken. An
+  earlier version of this list said "Deployment: none. No cloud URL", which
+  was true when it was written and stopped being true when the system was
+  deployed.
 - **Cost: token usage measured, spend not priced.** The three live runs used
-  **526,722 input / 18,572 output tokens** in total. Bedrock's per-token rate is
-  not quoted here because it is billed by AWS at partner pricing; the usage
-  figures are what this system can honestly report.
-- **Model token usage and spend: not measured**, for the same reason.
+  **526,722 input / 18,572 output tokens** in total, as reported by the
+  provider and recorded per question in `evals/runs/`. Bedrock's per-token rate
+  is not quoted because it is billed by AWS at partner pricing, so the usage
+  counts are what can honestly be reported and the dollar figure is not.
+  (This list previously carried both "token usage measured" and "token usage
+  ... not measured", two lines apart.)
 
 When the model gate clears, the live suite will report exact counts and the
 specific misses — not a rounded percentage, and not a figure adjusted by
