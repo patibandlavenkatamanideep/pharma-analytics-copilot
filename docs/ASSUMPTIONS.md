@@ -284,14 +284,36 @@ environment variables and never committed.
 
 ---
 
-## A14 — Open items pending external access
+## A14 — Deadline
+
+**Cutoff: Thursday 25 September 2026, 16:00 America/New_York.** Recorded
+2026-09-23 21:16 EDT, leaving ~42.5 hours. The submitted repository, public URL
+and evidence must all exist before that instant; nothing is backdated and no
+post-cutoff change counts as part of the submission.
+
+Priority under time pressure is fixed in advance so it is not renegotiated late:
+security and correctness gates are never weakened to fit the clock. Optional
+scope (charts, weighted trends, result caching, extra adapters) is dropped first.
+
+---
+
+## A15 — Open items pending external access
 
 | Item | State | Effect |
 |---|---|---|
-| AWS credentials | `sts get-caller-identity` → `InvalidClientTokenId` (static keys dated 2026-01-02) | Blocks Bedrock and RDS/App Runner deployment |
-| Bedrock model access | Unverified — depends on the above | Live NL accuracy unmeasured until resolved |
+| AWS credentials | Working — `arn:aws:iam::071493957402:user/pharma_bedrock`, verified via `sts:GetCallerIdentity` | — |
+| IAM permissions | `AdministratorAccess` + `AmazonBedrockFullAccess` attached | — |
+| Bedrock model availability | `anthropic.claude-opus-5` listed in `us-east-1` | — |
+| Bedrock invocation | **Blocked.** `AccessDeniedException: Your account is currently being verified` (AWS states under 2 hours) | Live NL accuracy unmeasurable until it clears |
+| AWS service provisioning | Untested; new-account verification may also gate RDS/App Runner | Deployment topology unconfirmed |
 | Assessment assistance rules | Not yet confirmed by the candidate | Attribution recorded in commits regardless |
 
-Work proceeds locally against PostgreSQL 16 with a deterministic offline planner so that every
-non-LLM layer is testable now. Nothing in this document claims a deployment or live measurement that
-has not occurred.
+**Contingency.** If verification has not cleared by roughly 2026-09-24 21:00 EDT
+(~19 hours before cutoff), the public-URL deliverable moves to a non-AWS host.
+The README requires a public cloud URL and states AWS is *preferred, not
+required*, so a single container plus managed PostgreSQL elsewhere satisfies the
+deliverable. That decision point is recorded now rather than discovered late.
+
+Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
+so that every non-LLM layer is testable now. Nothing in this document claims a
+deployment or live measurement that has not occurred.
