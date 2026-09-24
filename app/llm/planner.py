@@ -325,8 +325,11 @@ class OfflinePlanner:
 
         metric = self._metric(q, context)
         dimensions = self._dimensions(q, metric)
-        window = self._window(q, prev)
-        filters = self._filters(q, context, prev)
+        window = self._window(q, prev if is_follow_up else {})
+        # Filters carry over ONLY on a follow-up. A fresh question in the same
+        # thread must not silently inherit an earlier "exclude 340B" and answer
+        # something narrower than what was asked.
+        filters = self._filters(q, context, prev if is_follow_up else {})
         dimensions = self._implied_dimensions(q, dimensions, filters)
         ranking = self._ranking(q, dimensions)
         comparison = self._comparison(q, metric, window)
@@ -337,12 +340,32 @@ class OfflinePlanner:
             )
 
         interpretation = None
+        if is_follow_up:
+            carried = []
+            f = filters
+            if f.is_340b.value != "include":
+                carried.append(
+                    "340B accounts excluded" if f.is_340b.value == "exclude"
+                    else "340B accounts only"
+                )
+            if f.product_names:
+                carried.append(", ".join(f.product_names))
+            if f.gpo_names:
+                carried.append(", ".join(f.gpo_names))
+            if f.active_only:
+                carried.append("active organizations only")
+            if carried:
+                interpretation = "Still applying: " + "; ".join(carried) + "."
+
         if metric == MetricKey.paid_pack_units and re.search(
             r"\brevenue\b|\bdollars?\b|\bsales in \$|\$", q
         ) and not context.wac_authorized:
-            interpretation = (
+            pricing_note = (
                 "Pricing is restricted at your access level, so this shows sales "
                 "volume in packs rather than revenue."
+            )
+            interpretation = (
+                f"{pricing_note} {interpretation}" if interpretation else pricing_note
             )
 
         return AnalyticalPlan(
@@ -498,6 +521,8 @@ class OfflinePlanner:
         for pattern, name in self.WINDOWS:
             if re.search(pattern, q):
                 return TimeWindow(kind="named", named=NamedWindow(name))
+        # Only a follow-up inherits the previous window; `prev` is empty
+        # otherwise, so a new question defaults to R3M and says so.
         if prev.get("time"):
             return TimeWindow.model_validate(prev["time"])
         return TimeWindow(kind="named", named=NamedWindow.r3m)

@@ -176,7 +176,66 @@ York Metro and Dallas. A RAM in New York Metro sees 90 packs of it, an Exec sees
 
 ---
 
-## 5. Performance
+## 5. Held-out question set
+
+`evals/questions.yaml` — 38 checks across 15 families, run by
+`scripts/run_evals.py`. These are **held out**: the planner prompt carries
+metric definitions and window semantics, not these phrasings. Several are
+deliberate paraphrases of the supplied samples rather than copies, and the
+`compositional` family asks for combinations that appear in no document.
+
+```
+$ python3 scripts/run_evals.py
+38/38 passed
+```
+
+| Family | Checks | What it covers |
+|---|---:|---|
+| account_ranking | 3 | top/bottom N, paraphrased "biggest by volume" |
+| hierarchy | 2 | distinct account counts, standalone facilities |
+| geography | 3 | region breakdown, RAM limited to one territory, refusal |
+| product / market_share | 4 | product volume, share vs reference, impossible-ratio warning |
+| data_source | 2 | free drug, paid + free |
+| gpo / 340B | 3 | multi-GPO comparison, exclusion arithmetic |
+| periods | 4 | last month, literal six months, explicit quarters, YTD |
+| growth | 2 | volume growth vs share trend in points |
+| security | 5 | the scenarios in `docs/security_model.md`, plus injection |
+| compositional | 3 | filter combinations found in no document |
+| ambiguity | 2 | generic share, an unanswerably vague question |
+| multi_turn | 5 | two threads: added grain, changed filter, frozen cohort |
+
+Each run writes a JSON record to `evals/runs/` with the principal, dataset id,
+metric and policy versions, the produced plan and SQL, expected vs actual,
+pass/fail with a reason, latency and token usage.
+
+**This is not a natural-language accuracy figure.** The runner prints that on
+every offline run. With the deterministic planner it exercises the compiler,
+authorization, execution and rendering layers; measuring NL accuracy requires
+`--provider bedrock`, which is blocked (§8).
+
+### What the first run caught
+
+The set scored **30/38** on its first run. All eight failures were real, and
+one was a metric bug rather than a planner gap:
+
+| Failure | Diagnosis |
+|---|---|
+| Distinct account count off by 1,800 | **Metric bug.** `account_count` and `facility_count` had no source filter, so they counted organizations across distributor, hub *and* market data — 8,916 instead of 7,116. An account appearing only in third-party market data was being counted as one we sell to. Both are now scoped to paid demand. |
+| RAM asking for Texas got an answer | Answered with their *own* territory's numbers. Not a leak, but it answers a question they did not ask. Place names are now recognised from the whole dataset so an out-of-scope one is refused **by name**. |
+| "total volume including free drug" | Read as PAP volume — the bare free-drug branch was tested first. |
+| "gained the most market share" | Produced a share level, not a trend in percentage points. |
+| "Q1 2026" | Only "2026 Q1" was recognised. |
+| "hospital accounts" | Archetype was recognised as vocabulary but never applied as a filter. |
+| "excluding 340B accounts" | A bare "accounts" forced an account grouping, so a total became a per-account ranking. |
+| "Compare Onmark vs ION" | Filtered correctly but did not group by GPO. |
+
+The first row is the one that matters: it produced a plausible number that no
+amount of reading the code would have flagged. Only an independently written
+reference query caught it.
+
+---
+
+## 6. Performance
 
 Measured on the full dataset, local PostgreSQL 16, offline planner (so these
 exclude model latency).
@@ -215,7 +274,7 @@ column": the first guess was off by nearly three orders of magnitude.
 
 ---
 
-## 6. Bugs these tests found
+## 7. Bugs these tests found
 
 Each would have produced a confidently wrong answer in a demo.
 
@@ -234,7 +293,7 @@ comparing against independently written reference SQL caught them.
 
 ---
 
-## 7. Not measured
+## 8. Not measured
 
 Stated explicitly so nothing is implied by omission.
 

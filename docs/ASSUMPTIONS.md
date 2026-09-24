@@ -336,6 +336,52 @@ application refuses them, and the claim in DESIGN.md is worded to match — the
 catalogs are blocked by the application, not by the database. The stronger claim
 would have been untrue.
 
+---
+
+## A17 — Counting metrics count what we sold to, not what exists
+
+**Decision.** `account_count` and `facility_count` are scoped to paid demand
+(`data_source = 'distributor'`, `brand_flag = 1`) like every other default
+volume metric.
+
+**Why this is not obvious.** They were first written with no source filter,
+which reads as neutral — "count the distinct accounts" — but is not. Without it
+the count spans distributor, hub **and** market data, so an organization that
+appears only in third-party market research is counted as an account we sell to.
+Measured on the full dataset: **8,916 instead of 7,116**, a 25% overstatement
+with no error and no visible symptom.
+
+**Found by** the held-out evaluation set, comparing against an independently
+written reference query. Reading the code would not have revealed it, because
+the code did exactly what it looked like it did.
+
+**Consequence for phrasing.** "How many accounts do we have" and "how many
+accounts did we sell to" are different questions. The system answers the second
+and labels the metric, per [A11](#a11--semantic-distinctions-the-system-must-not-blur).
+
+---
+
+## A18 — An out-of-scope place is refused by name, not silently re-scoped
+
+**Decision.** The planner recognises **every** territory and region name in the
+dataset, not only those inside the principal's scope. Authorization then refuses
+the ones outside it, naming what the user *can* see.
+
+**The alternative, rejected.** Originally the planner only knew the names in
+scope. A RAM in New York Metro asking "show me sales in the Texas territory"
+therefore matched no territory at all, applied no filter, and received their own
+territory's numbers — a confident, correct-looking answer to a question they did
+not ask. No data leaked, but the user would have read New York Metro figures as
+Texas figures.
+
+**Why this is safe.** `docs/security_model.md` states that `zip_territory` is
+unrestricted reference data visible to every role, so the names are not secret.
+Recognising a name is not the same as authorizing access to its data: the
+refusal happens in `authorize()`, before anything is compiled.
+
+**Principle.** Silently answering a different question is worse than refusing.
+A refusal is legible; a quietly re-scoped answer is not.
+
 Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
 so that every non-LLM layer is testable now. Nothing in this document claims a
 deployment or live measurement that has not occurred.
