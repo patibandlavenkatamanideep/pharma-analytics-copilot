@@ -275,8 +275,8 @@ class OfflinePlanner:
     ]
 
     DIMENSION_WORDS = [
-        (r"\bby territor\w*|\bper territor\w*", Dimension.territory),
-        (r"\bby region\b|\bper region\b", Dimension.region),
+        (r"\bby territor\w*|\bper territor\w*|\b(?:all|each|every|compare)\s+territor\w*|\bterritories in\b", Dimension.territory),
+        (r"\bby region\b|\bper region\b|\b(?:all|each|every|compare)\s+regions?\b", Dimension.region),
         (r"\bby state\b", Dimension.state),
         (r"\bby month\b|\bmonthly\b|\bmonth over month\b", Dimension.period_mo),
         (r"\bby quarter\b|\bquarterly\b|\bquarter over quarter\b", Dimension.period_qtr),
@@ -294,9 +294,25 @@ class OfflinePlanner:
         (r"\bby account\b|\bby health system\b|\baccounts?\b", Dimension.account),
     ]
 
+    # Phrases that mean "change one thing about the last answer" rather than
+    # "ask a new question".
+    FOLLOW_UP = re.compile(
+        r"^\s*(now|then|also|and|ok|okay)\b|"
+        r"\bbreak (?:that|this|it) down\b|\bbreak down\b|"
+        r"\bthose\b|\bthese\b|\bthat\b|\bsame\b|\binstead\b|"
+        r"\bwhat about\b|\bhow about\b|\bexclude\b|\bonly\b",
+        re.IGNORECASE,
+    )
+
     def plan(self, question: str, context: PlanningContext) -> AnalyticalPlan:
         q = question.lower().strip()
         prev = context.previous_plan or {}
+
+        # A follow-up PATCHES the previous plan. Recomputing it from scratch
+        # would silently drop the population, the window and the ranking the
+        # user is still talking about -- "break that down by quarter" must keep
+        # the same accounts, not replace them with a single company total.
+        is_follow_up = bool(prev) and bool(self.FOLLOW_UP.search(q))
 
         metric = self._metric(q, context)
         dimensions = self._dimensions(q, metric)
@@ -304,6 +320,11 @@ class OfflinePlanner:
         filters = self._filters(q, context, prev)
         ranking = self._ranking(q, dimensions)
         comparison = self._comparison(q, metric, window)
+
+        if is_follow_up:
+            metric, dimensions, window, ranking, comparison = self._merge(
+                q, prev, metric, dimensions, window, ranking, comparison, context
+            )
 
         interpretation = None
         if metric == MetricKey.paid_pack_units and re.search(
@@ -321,6 +342,63 @@ class OfflinePlanner:
         )
 
     # -- pieces --------------------------------------------------------------
+
+    def _merge(self, q, prev, metric, dimensions, window, ranking, comparison, context):
+        """Apply only what the follow-up actually changed."""
+        prev_dims = [Dimension(d) for d in prev.get("dimensions", [])]
+        prev_metric = MetricKey(prev["metric"]) if prev.get("metric") else metric
+
+        # Metric: keep the previous one unless this question names a different
+        # one explicitly. A bare "exclude 340B" is not a metric change.
+        names_metric = bool(
+            re.search(
+                r"market share|revenue|dollars?|\$|free drug|patient assistance|\bpap\b|"
+                r"equivalents?|how many|count|growth|grew|declin",
+                q,
+            )
+        )
+        if not names_metric:
+            metric = prev_metric
+
+        # Dimensions: "break down by X" ADDS a grain to the existing one.
+        added = [d for d in dimensions if d not in prev_dims]
+        if re.search(r"\bbreak (?:that|this|it)? ?down\b|\bbreakdown\b|\balso by\b", q):
+            dimensions = (prev_dims + added)[:2]
+        elif added:
+            # "by region instead" replaces; otherwise extend.
+            dimensions = added[:2] if re.search(r"\binstead\b", q) else (prev_dims + added)[:2]
+        else:
+            dimensions = prev_dims
+
+        # Window: keep the previous one unless this question names a period.
+        if not self._names_window(q):
+            prev_time = prev.get("time")
+            if prev_time:
+                from app.analytics.plan import TimeWindow
+                window = TimeWindow.model_validate(prev_time)
+
+        # Ranking: a follow-up that does not re-rank keeps the previous ranking,
+        # so "exclude 340B" narrows the same top-5 question rather than
+        # returning every account.
+        if ranking is None and prev.get("ranking") and dimensions:
+            from app.analytics.plan import Ranking
+            ranking = Ranking.model_validate(prev["ranking"])
+
+        # A frozen cohort is never re-ranked.
+        if re.search(r"\bthose\b|\bthese\b|\bsame\b", q) and context.previous_cohort:
+            ranking = None
+
+        # Keep a comparison the previous plan had, if the metric still needs one.
+        if comparison is None and prev.get("comparison"):
+            from app.analytics.plan import TimeWindow
+            comparison = TimeWindow.model_validate(prev["comparison"])
+
+        return metric, dimensions, window, ranking, comparison
+
+    def _names_window(self, q: str) -> bool:
+        if re.search(r"\b(20\d{2})[ -]?q([1-4])\b", q):
+            return True
+        return any(re.search(pattern, q) for pattern, _ in self.WINDOWS)
 
     def _metric(self, q: str, context: PlanningContext) -> MetricKey:
         if re.search(r"market share|share of market|\bshare\b", q):
@@ -411,23 +489,24 @@ class OfflinePlanner:
         filters = Filters.model_validate(carried) if carried else Filters()
         update: dict[str, Any] = {}
 
-        found = [p for p in context.known_products if re.search(rf"\b{re.escape(p.lower())}\b", q)]
-        if found:
+        # Every vocabulary match is anchored on word boundaries. Plain substring
+        # matching silently produced wrong answers: the GPO "ION" matches inside
+        # "reg-ION", so "territories in my region" was filtered to ION-affiliated
+        # accounts only, quietly cutting a Director's totals by ~80%.
+        def mentioned(values: list[str]) -> list[str]:
+            return [v for v in values if v and re.search(rf"\b{re.escape(v.lower())}\b", q)]
+
+        if found := mentioned(context.known_products):
             update["product_names"] = found
-        subs = [s for s in context.known_subcategories if s.lower() in q]
-        if subs:
+        if subs := mentioned(context.known_subcategories):
             update["market_subcategories"] = subs
-        cats = [c for c in context.known_categories if c.lower() in q]
-        if cats:
+        if cats := mentioned(context.known_categories):
             update["market_categories"] = cats
-        gpos = [g for g in context.known_gpos if g and g.lower() in q]
-        if gpos:
+        if gpos := mentioned(context.known_gpos):
             update["gpo_names"] = gpos
-        terrs = [t for t in context.known_territories if t.lower() in q]
-        if terrs:
+        if terrs := mentioned(context.known_territories):
             update["territories"] = terrs
-        regions = [r for r in context.known_regions if r.lower() in q]
-        if regions:
+        if regions := mentioned(context.known_regions):
             update["regions"] = regions
 
         if re.search(r"exclude 340b|non-?340b|excluding 340b|without 340b", q):
