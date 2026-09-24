@@ -49,11 +49,27 @@ async def lifespan(app: FastAPI):
 
     global _pipeline
     _pipeline = Pipeline(build_planner(settings))
-    dataset = _pipeline.current_dataset()
-    log.info(
-        "serving dataset %s (%s), planner=%s",
-        dataset["dataset_id"], dataset["load_mode"], settings.llm_provider,
-    )
+
+    # A missing dataset is NOT fatal. The container must come up and report
+    # itself unready so an orchestrator can see the state; exiting here would
+    # crash-loop a fresh deployment during the window between the first boot
+    # and the first data load. /ready returns 503 until a snapshot is
+    # published, which is what should gate traffic.
+    #
+    # A broken security boundary IS fatal (checked above), because that is a
+    # misconfiguration no amount of waiting fixes.
+    try:
+        dataset = _pipeline.current_dataset()
+        log.info(
+            "serving dataset %s (%s), planner=%s",
+            dataset["dataset_id"], dataset["load_mode"], settings.llm_provider,
+        )
+    except Exception as exc:
+        log.warning(
+            "starting with no published dataset (%s); /ready will report 503 "
+            "until scripts/load_data.py has run", exc,
+        )
+
     yield
     close_pools()
 

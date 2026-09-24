@@ -145,14 +145,26 @@ trade-off for an assessment and should not be described as production-ready.
 
 ## Status of these artifacts
 
-**The image has not been built.** This machine had no container runtime; one was
-installed to verify the Dockerfile and then removed when the disk filled. The
-Dockerfile and `compose.yaml` are therefore **written but unverified** — treat
-the first `docker build` as a step that may need fixing, not as a proven path.
-Everything else in this repository has been run.
+**The image builds and runs.** It is built and exercised on every push by the
+`image` job in `.github/workflows/ci.yml`, which asserts that it:
 
-Nothing has been deployed. There is no AWS infrastructure, no ECR repository,
-no RDS instance and no public URL.
+- **refuses to start when no database is reachable** — startup verifies the
+  database security boundary, so a mis-provisioned deployment fails loudly
+  rather than quietly serving unrestricted data;
+- can **provision the database from inside the image**, proving it carries
+  working scripts and not just the server;
+- serves `/health` 200 against a real database;
+- returns `/ready` **503** until a dataset is published, so a container with a
+  half-loaded refresh never takes traffic;
+- serves the built UI from the same origin, refuses `/api/me` with 401, and
+  does not run as root.
+
+`compose.yaml` itself is still **unverified** — no run of `docker compose up`
+has happened — but the image it builds is the one CI exercises.
+
+**Nothing has been deployed.** There is no AWS infrastructure, no ECR
+repository, no RDS instance and no public URL. The deployment steps below are
+written from the AWS documentation and have not been executed.
 
 ---
 
