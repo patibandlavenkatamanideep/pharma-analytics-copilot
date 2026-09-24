@@ -319,11 +319,22 @@ disagreed.
 **Reported as counts, not percentages.** A rounded figure invites adjusting the
 question set until it improves. Runs record the specific misses.
 
-**Current state:** the set scored 30/38 on its first run and 38/38 after fixes,
-**using the offline planner**. That measures the pipeline, not language
-understanding. Live accuracy is unmeasured because no model can be invoked yet;
-when it can, the same set runs with `--provider bedrock` and reports exact
-counts with the misses named.
+**Current state, measured.** Offline the set scored 30/38 then 38/38 — that is
+the pipeline, not language understanding. **Live on Claude Opus 4.5 via Bedrock
+it scored 31/38, then 36/38, then 37/38 (97.4%).**
+
+The progression is the useful part. Six of the seven first-run failures were one
+gap, and it was in the prompt rather than the model: the documented default that
+a bare "volume" means pack units was written in `ASSUMPTIONS.md` but never
+stated to the model, and the registry described both volume metrics as "volume".
+The model chose reasonably given what it was told. The seventh was a follow-up
+dropping the ranking. Both fixes are general rules, not per-question patches,
+and the question set was not modified.
+
+The last miss is kept deliberately: "right now" is ambiguous, the model read it
+as the current month and disclosed that, and the reference SQL assumed R3M.
+Rewriting the reference to reach 38/38 would be the exact failure this method
+exists to avoid.
 
 ---
 
@@ -356,7 +367,7 @@ vocabularies are at their smallest):
 |---|---:|
 | Input tokens per question | ~4,060 |
 | Output tokens (the plan) | ~150–170 |
-| Planner latency | ~3.0–3.2 s |
+| Planner latency | p50 3.46 s, p95 4.72 s |
 
 The input is larger than the ~1,500–2,500 first estimated, because the metric
 registry summary and the entity vocabularies are both unconditional (§3). That

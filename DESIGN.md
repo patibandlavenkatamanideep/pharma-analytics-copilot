@@ -331,8 +331,15 @@ that a model's wording drifted. It is labelled throughout as not a language
 model, and it is never presented as measuring NL accuracy.
 
 **Model availability note.** This AWS account cannot invoke the Claude 5 family
-(`AccessDeniedException: not available for this account`). Opus 4.5, Sonnet 4.5
-and Haiku 4.5 are listed and reachable, so the configured model is Opus 4.5.
+(`AccessDeniedException: not available for this account`). Opus 4.5 is enabled
+and verified working, and is the configured model.
+
+Bedrock serves Claude through two endpoints and the model id decides which:
+the Messages-API endpoint for newer unprefixed ids, and the legacy
+InvokeModel path for dated releases reached via a cross-region inference
+profile. The adapter picks the client from the shape of the id, because sending
+a dated id to the wrong endpoint returns a bare 404 that reads like a
+permissions problem and is not one.
 
 ---
 
@@ -490,10 +497,10 @@ Stated plainly rather than implied.
 
 **Not yet true at the time of writing**
 - **No cloud deployment.** The public URL deliverable is outstanding.
-- **No live-model accuracy measurement.** Bedrock requires an Anthropic use-case
-  details form to be submitted for this account; until then the live planner
-  cannot be exercised and no accuracy number exists. The offline planner is not
-  a substitute and no figure from it is presented as NL accuracy.
+- **Live accuracy is measured: 37/38 (97.4%)** on the held-out set with Claude
+  Opus 4.5 on Bedrock, planner p50 3.46 s. The single miss is a question whose
+  phrasing ("right now") is ambiguous; the model disclosed its reading and the
+  miss is kept rather than rewritten away. See `docs/EVALUATION.md` §5.
 - Cold-start and cost have not been measured. Concurrency has (§10).
 
 **Operational limitations**

@@ -137,8 +137,9 @@ Verified on the full dataset: ingestion, the authorization boundary (63 tests),
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
-Not yet true: there is no cloud deployment, and no live-model accuracy has been
-measured — this AWS account still needs Anthropic use-case details submitted
-before Bedrock will serve a model. The deterministic offline planner keeps every
-other layer testable in the meantime and is never presented as an NL accuracy
-measurement. See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven).
+Live natural-language accuracy is **37/38 (97.4%)** on a held-out question set
+with Claude Opus 4.5 on Bedrock — measured, with the one miss recorded rather
+than rewritten away ([EVALUATION.md](docs/EVALUATION.md)).
+
+Not yet true: **there is no cloud deployment**, so no public URL and no
+deployed-latency figures. See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven).

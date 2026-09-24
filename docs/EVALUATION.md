@@ -232,10 +232,42 @@ Each run writes a JSON record to `evals/runs/` with the principal, dataset id,
 metric and policy versions, the produced plan and SQL, expected vs actual,
 pass/fail with a reason, latency and token usage.
 
-**This is not a natural-language accuracy figure.** The runner prints that on
-every offline run. With the deterministic planner it exercises the compiler,
-authorization, execution and rendering layers; measuring NL accuracy requires
-`--provider bedrock`, which is blocked (§8).
+### Live results — Claude Opus 4.5 on Bedrock
+
+Measured, not projected. Three runs, each the full set, each recorded in
+`evals/runs/`:
+
+| Run | Score | Change |
+|---|---:|---|
+| First live run | **31/38** (81.6%) | baseline |
+| After two prompt fixes | **36/38** (94.7%) | +5 |
+| After indexing the period-label path | **37/38** (97.4%) | +1 |
+
+`us.anthropic.claude-opus-4-5-20251101-v1:0`, ~4,670 input / ~160 output tokens
+per question, planner latency **p50 3.46 s, p95 4.72 s**.
+
+**What the first run found, and how it was fixed.** Six of the seven failures
+were a single gap, and it was mine rather than the model's: `docs/ASSUMPTIONS.md`
+says a bare "volume" means pack units, but **the prompt never said so**, and the
+registry described `paid_pack_units` and `paid_equivalents` both as "volume". The
+model reasonably picked equivalents. Stating the default in the prompt and
+rewording the registry fixed all six. The seventh was a follow-up dropping the
+ranking, fixed by naming the ranking in the carry-forward instruction.
+
+Both are general rules taken from the documented defaults, not per-question
+patches. The question set was not touched.
+
+**The remaining miss is recorded, not removed.** `acc-02`, *"Show me my five
+biggest accounts by volume right now"* — the model read "right now" as the
+current month and **said so** in its interpretation; the reference SQL assumed
+R3M. The phrase is genuinely ambiguous and the model disclosed its reading, so
+this is a flaw in the question rather than in the system. Rewriting the
+reference to make it pass would be exactly the adjustment this document warns
+against, so it stays a miss and the score stays 37/38.
+
+**Offline runs are still not an accuracy measurement.** The runner prints that
+on every offline run: with the deterministic planner it exercises the compiler,
+authorization, execution and rendering layers only.
 
 ### What the first run caught
 
@@ -377,16 +409,15 @@ comparing against independently written reference SQL caught them.
 
 Stated explicitly so nothing is implied by omission.
 
-- **Live natural-language accuracy: not measured.** Bedrock requires Anthropic
-  use-case details to be submitted for this AWS account; until that clears, no
-  model can be invoked and no accuracy figure exists. The held-out question set
-  is prepared but unrun. The offline planner's behaviour is **not** a substitute
-  and no percentage is claimed.
+- **Deployed behaviour: not measured.** The live figures above are from a local
+  run against Bedrock; nothing has been measured on deployed infrastructure.
 - **Deployment: none.** No cloud URL, so no deployed latency, cold-start or
   availability figures. All timings here are local PostgreSQL 16 on an Apple
   Silicon laptop and will differ on managed infrastructure.
-- **Cost: not measured.** No model has been invoked, so there is no token
-  usage or spend to report. (Concurrency **has** now been measured — see §6.)
+- **Cost: token usage measured, spend not priced.** The three live runs used
+  **526,722 input / 18,572 output tokens** in total. Bedrock's per-token rate is
+  not quoted here because it is billed by AWS at partner pricing; the usage
+  figures are what this system can honestly report.
 - **Model token usage and spend: not measured**, for the same reason.
 
 When the model gate clears, the live suite will report exact counts and the
