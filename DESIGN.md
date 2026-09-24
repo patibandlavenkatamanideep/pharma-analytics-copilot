@@ -436,7 +436,7 @@ document. It scored 30/38 on its first run and 38/38 after the fixes below.
 
 CI (`.github/workflows/ci.yml`) runs the whole no-spend path on every push:
 bootstrap, the **full** dataset, the coherent fixture, a startup assertion that
-the security boundary is intact, the security gate, all 134 tests and the
+the security boundary is intact, the security gate, all 148 tests and the
 held-out set. Full data rather than seed on purpose — under seed most scoped
 accounts resolve to nothing and the security tests would pass vacuously.
 

@@ -110,7 +110,7 @@ python3 scripts/load_data.py --mode seed
 python3 scripts/build_fixture_db.py
 
 # Tests
-python3 -m pytest tests -q               # 134
+python3 -m pytest tests -q               # 148
 python3 -m pytest tests/security -q      # the release gate
 ```
 
