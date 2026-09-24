@@ -76,6 +76,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--admin-dsn", default=os.environ.get("PAC_ADMIN_DSN", "postgresql:///postgres"))
     ap.add_argument("--drop", action="store_true", help="drop and recreate the database")
+    ap.add_argument(
+        "--no-env",
+        action="store_true",
+        help="do not write .env (use when provisioning a secondary database, so "
+             "the application's own configuration is not repointed at it)",
+    )
     args = ap.parse_args()
 
     passwords = resolve_passwords()
@@ -169,7 +175,10 @@ def main() -> int:
             )
         )
 
-    write_env(passwords)
+    if args.no_env:
+        print("  .env left untouched (--no-env)")
+    else:
+        write_env(passwords)
     print("\nbootstrap complete")
     return 0
 

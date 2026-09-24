@@ -335,7 +335,11 @@ class Compiler:
                 out += "ORDER BY dim0_id ASC\n"
             else:
                 out += f"ORDER BY {value_col} DESC NULLS LAST\n"
-            out += f"LIMIT {int(self.max_rows)}\n"
+            # One more than the cap, so the renderer can tell a result that
+            # exactly fills the cap from one that was cut short. With LIMIT
+            # equal to the cap the two are indistinguishable and truncation is
+            # silently reported as a complete answer.
+            out += f"LIMIT {int(self.max_rows) + 1}\n"
         return out
 
     def _columns(self, plan: AnalyticalPlan, extra: list[str] | None = None) -> list[str]:
@@ -405,26 +409,33 @@ class Compiler:
             # A3: the denominator covers EVERY market_data row in the same market
             # subcategory as the numerator's products -- never narrowed to the
             # company drug name, and never restricted to brand_flag = 1.
-            sub_clauses = ["brand_flag = 1"]
-            sub_params: list[Any] = []
             f = plan.filters
-            if f.product_names:
-                sub_clauses.append("upper(drug_name) = ANY(%s)")
-                sub_params.append([v.upper() for v in f.product_names])
-            if f.ndcs:
-                sub_clauses.append("ndc = ANY(%s)")
-                sub_params.append(list(f.ndcs))
             if f.market_subcategories:
-                sub_clauses.append("market_subcategory = ANY(%s)")
-                sub_params.append(list(f.market_subcategories))
-            if f.market_categories:
-                sub_clauses.append("market_category = ANY(%s)")
-                sub_params.append(list(f.market_categories))
-            den_extra_clauses.append(
-                "p.market_subcategory IN (SELECT DISTINCT market_subcategory FROM products"
-                f" WHERE {' AND '.join(sub_clauses)})"
-            )
-            den_extra_params += sub_params
+                # The user named the market, so use it directly. Deriving it
+                # from our own brands instead would return nothing for a market
+                # we do not compete in, turning "what is the Carboplatin
+                # market" into an empty answer rather than a real one.
+                den_extra_clauses.append("p.market_subcategory = ANY(%s)")
+                den_extra_params.append(list(f.market_subcategories))
+            elif f.market_categories:
+                den_extra_clauses.append("p.market_category = ANY(%s)")
+                den_extra_params.append(list(f.market_categories))
+            else:
+                # No market named: infer it from the company products the
+                # numerator covers, so ZENOVAX is measured against Docetaxel.
+                sub_clauses = ["brand_flag = 1"]
+                sub_params: list[Any] = []
+                if f.product_names:
+                    sub_clauses.append("upper(drug_name) = ANY(%s)")
+                    sub_params.append([v.upper() for v in f.product_names])
+                if f.ndcs:
+                    sub_clauses.append("ndc = ANY(%s)")
+                    sub_params.append(list(f.ndcs))
+                den_extra_clauses.append(
+                    "p.market_subcategory IN (SELECT DISTINCT market_subcategory FROM products"
+                    f" WHERE {' AND '.join(sub_clauses)})"
+                )
+                den_extra_params += sub_params
 
         # The denominator must not inherit product identity from the numerator:
         # keeping the drug-name filter would make the market equal our own sales.
