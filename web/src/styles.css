@@ -200,6 +200,19 @@ main {
 .bubble.denied { background: var(--deny-bg); border-color: var(--deny-line); }
 .bubble.error { background: #fbf4f3; }
 
+/* A clarifying question is not a failure -- it reads as the assistant asking
+   something back, so it must not look like the refusal or error states. */
+.bubble.clarify {
+  background: #f3f7fb;
+  border-color: var(--accent);
+  border-left-width: 3px;
+}
+.bubble.clarify .headline::before {
+  content: "Quick question — ";
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .headline { margin: 0; font-weight: 600; }
 
 .alternative {
