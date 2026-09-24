@@ -5,7 +5,7 @@ document says so rather than leaving an impression.
 
 ```
 $ python3 -m pytest tests -q
-134 passed in 10.96s
+148 passed in 24.96s
 ```
 
 | Suite | Tests | Result | Time |
@@ -13,8 +13,9 @@ $ python3 -m pytest tests -q
 | `tests/unit` — semantics, schema, formatting | 41 | ✅ all pass | 0.03 s |
 | `tests/integration/test_metrics.py` — 2M rows vs hand-written SQL | 16 | ✅ all pass | ~3 s |
 | `tests/integration/test_coherent_fixture.py` — intended contract | 14 | ✅ all pass | 0.2 s |
+| `tests/integration/test_failure_handling.py` — failure paths | 14 | ✅ all pass | ~8 s |
 | `tests/security` — authorization boundary | 63 | ✅ all pass | 7.95 s |
-| **Total** | **134** | **✅ 0 failures, 0 skipped** | **10.96 s** |
+| **Total** | **148** | **✅ 0 failures, 0 skipped** | **24.96 s** |
 
 Dataset under test: `full-182fd9082327` — 2,000,000 sales, 40,000
 organizations, 40 products, 29,728 ZIP mappings, 23 users.
@@ -255,6 +256,27 @@ one was a metric bug rather than a planner gap:
 The first row is the one that matters: it produced a plausible number that no
 amount of reading the code would have flagged. Only an independently written
 reference query caught it.
+
+---
+
+## 5b. Failure paths
+
+The system is judged as much by what it does when something breaks. The rule
+throughout: **never produce a number that did not come from the database.**
+
+| Failure | Behaviour | Verified |
+|---|---|---|
+| Provider returns an invalid plan twice | Useful error naming what to try; provider internals not leaked to the user | ✅ |
+| Provider timeout / unreachable | Propagates to a safe 500 rather than being swallowed into an answer | ✅ |
+| Any failed request | Still written to the audit trail, with status and reason | ✅ |
+| Query exceeds the 5 s budget | Cancelled; advice to narrow, no partial result | ✅ |
+| Database unavailable | Reported; response contains no fabricated figure | ✅ |
+| No matching rows | "No data reported" — explicitly *not* a confirmed zero | ✅ |
+| Unknown entity | Never silently substituted for a similar one | ✅ |
+| Oversized or empty question | Rejected by the request schema | ✅ |
+| Unbounded limit | Not constructible — the plan type forbids it | ✅ |
+| Incompatible schema | Load refused, naming the differing tables/columns/types | ✅ |
+| Additive schema change | Compatible; fingerprint unchanged so results stay traceable | ✅ |
 
 ---
 

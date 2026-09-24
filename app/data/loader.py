@@ -27,6 +27,7 @@ from psycopg import sql
 
 from app.data.classification import RULE_VERSION, classify
 from app.data.manifest import MAPPING_VERSION, LoadReport, file_sha256
+from app.data.schema_contract import CONTRACT_VERSION, require_compatible
 from app.db import owner_transaction
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -403,6 +404,20 @@ def load(mode: str) -> LoadReport:
     try:
         # One transaction: either the whole snapshot lands or none of it does.
         with owner_transaction() as cur:
+            # Before anything is truncated or written: refuse a database whose
+            # shape this system cannot answer questions about. Failing here is
+            # far better than failing mid-query, or -- worse -- succeeding
+            # against columns that happen to still exist.
+            schema = require_compatible(cur)
+            report.source_coverage["schema_fingerprint"] = schema.fingerprint
+            report.source_coverage["schema_contract_version"] = CONTRACT_VERSION
+            if schema.extra_columns:
+                report.warn(
+                    "schema_has_extra_columns",
+                    f"{len(schema.extra_columns)} column(s) outside the contract are "
+                    "present and ignored; this does not affect any answer",
+                    columns=sorted(schema.extra_columns),
+                )
             _truncate_business_data(cur)
             if mode == "full":
                 _load_full(cur, report)

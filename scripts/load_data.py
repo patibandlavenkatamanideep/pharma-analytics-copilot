@@ -17,6 +17,7 @@ import sys
 import time
 
 from app.data.loader import LoadError, load
+from app.data.schema_contract import SchemaIncompatible
 from app.db import close_pools
 
 
@@ -29,6 +30,10 @@ def main() -> int:
     started = time.time()
     try:
         report = load(args.mode)
+    except SchemaIncompatible as exc:
+        # Already a fully formed, user-facing explanation naming what differs.
+        print(f"\nLOAD REFUSED\n\n{exc}\n", file=sys.stderr)
+        return 2
     except LoadError as exc:
         print(f"LOAD FAILED: {exc}", file=sys.stderr)
         return 1

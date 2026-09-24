@@ -23,6 +23,7 @@ DDL, seed data and the generator are unmodified.
 | If you want to | Read |
 |---|---|
 | Understand the design and the trade-offs | [`DESIGN.md`](DESIGN.md) |
+| Understand how the AI layer is designed and bounded | [`docs/AI_SYSTEM_DESIGN.md`](docs/AI_SYSTEM_DESIGN.md) |
 | See every decision, with evidence and alternatives | [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) |
 | Know where the supplied data contradicts its docs | [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) |
 | Run or operate it | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) |
@@ -90,7 +91,7 @@ is the only coherent target for evaluating access control
 
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
-python3 -m pytest tests -q                   # 134 tests
+python3 -m pytest tests -q                   # 148 tests
 python3 -m pytest tests/security -q          # the release gate
 ```
 

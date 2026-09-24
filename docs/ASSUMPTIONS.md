@@ -382,6 +382,36 @@ refusal happens in `authorize()`, before anything is compiled.
 **Principle.** Silently answering a different question is worse than refusing.
 A refusal is legible; a quietly re-scoped answer is not.
 
+---
+
+## A19 — The supported schema is enforced, not just documented
+
+**Decision.** `app/data/schema_contract.py` declares the five supplied tables
+and every column the supplied DDL defines, with its PostgreSQL type. The loader
+checks the live database against it **before truncating or writing anything**,
+and refuses an incompatible one with a message naming the differing tables,
+columns and types.
+
+**Why enforce rather than document.** The compiler is built on fixed
+identifiers, which is what makes it safe. Against a moved schema that same
+property turns dangerous in two ways: a query fails with an opaque SQL error
+deep inside a CTE, or — much worse — it succeeds against columns that happen to
+still exist and returns confident wrong numbers. Neither is acceptable, and a
+sentence in a README prevents neither.
+
+**What counts as compatible.** New rows, names, values, periods and combinations
+within the supplied schema. Columns *beyond* the contract are compatible and
+ignored, so an additive migration cannot break a working deployment, and they do
+not change the fingerprint — stored results stay traceable across one.
+
+**What is deliberately not attempted.** Mapping a genuinely different schema. It
+would require validated join definitions, and inferring those is exactly the
+"invent a join and hope" behaviour this design exists to avoid.
+
+**Recorded, not just checked.** The fingerprint and contract version go into the
+ingestion manifest alongside the source hashes, so any answer can be traced to
+the schema that produced it.
+
 Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
 so that every non-LLM layer is testable now. Nothing in this document claims a
 deployment or live measurement that has not occurred.

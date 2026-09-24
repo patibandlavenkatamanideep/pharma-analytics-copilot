@@ -402,7 +402,7 @@ policy version and metric version.
 
 ## 11. Testing
 
-134 tests, all passing, in three layers that deliberately do different jobs.
+148 tests, all passing, in four layers that deliberately do different jobs.
 
 | Layer | Count | What it proves |
 |---|---:|---|
@@ -410,6 +410,7 @@ policy version and metric version.
 | Integration | 16 | Metric correctness against 2M rows, vs **hand-written reference SQL** |
 | Coherent fixture | 14 | The intended market-share contract, on a separate hand-calculated database |
 | Security | 63 | The authorization boundary, from three directions |
+| Failure paths | 14 | Provider outage, query timeout, database down, empty results, oversized input, schema mismatch |
 
 **Expected values never come from the compiler under test.** Integration
 expectations are SQL written by hand in the test files; if the compiler and the
@@ -492,9 +493,11 @@ Stated plainly rather than implied.
 
 **Operational limitations**
 - Single-host deployment has no availability guarantee.
-- The schema contract is fixed. New rows, names, values, periods and
-  combinations within the supplied schema are supported; a different schema is
-  not, and a fingerprint check should fail safely rather than invent joins.
+- The schema contract is fixed and **enforced**. New rows, names, values,
+  periods and combinations within the supplied schema are supported; a
+  different schema is refused at load time by `app/data/schema_contract.py`,
+  naming the exact tables, columns and types that differ. Additive columns are
+  compatible and do not change the fingerprint.
 - The offline planner is a keyword matcher and will mis-read phrasings the
   live model would handle.
 
@@ -514,8 +517,8 @@ exploration is required), charts.
 3. Concurrency and cost measurement under realistic load.
 4. Replace the offline planner's keyword rules with a small local model for CI,
    so the fallback path degrades more gracefully.
-5. A schema fingerprint check at load, so an incompatible dataset is refused
-   with a clear message instead of producing wrong joins.
+5. A richer clarification flow — today an ambiguous question is answered with a
+   stated interpretation more often than it asks. Asking is sometimes better.
 
 **The decision I am least sure about** is treating `metric_definitions.md`'s
 "sources should never be mixed in a single ratio" as forbidding contamination
