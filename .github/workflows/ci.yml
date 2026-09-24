@@ -1,0 +1,103 @@
+name: CI
+
+# Runs everything that needs no credentials and no spend: PostgreSQL in a
+# service container, the FULL 2,000,000-row dataset, and the deterministic
+# offline planner.
+#
+# Full data rather than seed, deliberately. Seed zip_territory carries only 9 of
+# the 15 territory labels the users table references, so most scoped accounts
+# resolve to nothing and the security tests would pass vacuously
+# (docs/ASSUMPTIONS.md#a5). A green build on seed data would mean very little.
+# Generating and loading costs about two and a half minutes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
+    env:
+      PAC_DB_HOST: 127.0.0.1
+      PAC_DB_PORT: "5432"
+      PAC_ADMIN_DSN: postgresql://postgres:ci-postgres@127.0.0.1:5432/postgres
+      PAC_LLM_PROVIDER: offline
+      PYTHONPATH: ${{ github.workspace }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+
+      - name: Bootstrap database, roles and security policies
+        run: python scripts/bootstrap_db.py --drop
+
+      - name: Generate the full dataset
+        run: python schema/generate_data.py
+
+      - name: Load the full dataset
+        run: python scripts/load_data.py --mode full
+
+      - name: Build the coherent-market fixture database
+        run: python scripts/build_fixture_db.py
+
+      - name: Verify the security boundary is intact
+        run: |
+          python - <<'PY'
+          from app.db import verify_runtime_role_safety
+          problems = verify_runtime_role_safety()
+          if problems:
+              raise SystemExit("SECURITY BOUNDARY BROKEN: " + "; ".join(problems))
+          print("boundary intact")
+          PY
+
+      - name: Security suite (release gate)
+        run: python -m pytest tests/security -q
+
+      - name: Full test suite
+        run: python -m pytest tests -q
+
+      - name: Held-out question set (offline planner, no spend)
+        run: python scripts/run_evals.py
+
+      - name: Upload evaluation record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-run
+          path: evals/runs/
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - run: npm --prefix web run build

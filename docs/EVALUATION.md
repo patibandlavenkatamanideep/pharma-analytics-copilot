@@ -249,6 +249,41 @@ exclude model latency).
 | Exclude 340B, top 5 accounts | 423 ms | 453 ms |
 | Weighted share trend by account | — | 870 ms |
 
+### Latency distribution and concurrency
+
+`scripts/benchmark.py`, 10 question shapes spanning the cost range, 5
+iterations each, full dataset. Percentiles rather than an average, because the
+average hides the tail that decides whether a request hits the timeout.
+
+| Shape | p50 @1 | p95 @1 | p50 @8 | p95 @8 |
+|---|---:|---:|---:|---:|
+| scalar total | 32 ms | 96 ms | 107 ms | 113 ms |
+| market share | 48 ms | 86 ms | 100 ms | 110 ms |
+| scoped top-N (RAM) | 55 ms | 57 ms | 119 ms | 123 ms |
+| revenue by product | 67 ms | 69 ms | 132 ms | 138 ms |
+| region breakdown (Director) | 84 ms | 84 ms | 127 ms | 134 ms |
+| scoped share (RAM) | 114 ms | 117 ms | 232 ms | 255 ms |
+| product grouping | 126 ms | 150 ms | 302 ms | 313 ms |
+| share by territory | 127 ms | 128 ms | 225 ms | 231 ms |
+| top-N accounts | 211 ms | 220 ms | 369 ms | 381 ms |
+| growth comparison | 450 ms | 502 ms | 764 ms | 793 ms |
+| **overall** | **96 ms** | **450 ms** | **138 ms** | **764 ms** |
+
+| Concurrency | Throughput | Overall p95 | Errors |
+|---:|---:|---:|---:|
+| 1 | 7.5 req/s | 450 ms | 0 / 50 |
+| 8 | 32.2 req/s | 764 ms | 0 / 50 |
+
+8× the concurrency yields 4.3× the throughput with latency roughly doubling and
+no errors, timeouts or pool exhaustion — the connection pool (8 per runtime
+role) is the limiting factor, as intended. Every shape stays well inside the 5 s
+statement budget; the most expensive, a two-window growth comparison over all
+accounts, peaks at 793 ms under load.
+
+These exclude model latency by design: the offline planner is used, so the
+figures isolate database, compile and render cost. A live provider adds its own
+round trip on top.
+
 ### The index that measurement changed
 
 A bare `(ndc)` index on `sales` looked reasonable and was wrong:
@@ -303,8 +338,10 @@ Stated explicitly so nothing is implied by omission.
   is prepared but unrun. The offline planner's behaviour is **not** a substitute
   and no percentage is claimed.
 - **Deployment: none.** No cloud URL, so no deployed latency, cold-start or
-  availability figures.
-- **Concurrency and cost: not measured.** Single-user timings only.
+  availability figures. All timings here are local PostgreSQL 16 on an Apple
+  Silicon laptop and will differ on managed infrastructure.
+- **Cost: not measured.** No model has been invoked, so there is no token
+  usage or spend to report. (Concurrency **has** now been measured — see §6.)
 - **Model token usage and spend: not measured**, for the same reason.
 
 When the model gate clears, the live suite will report exact counts and the
