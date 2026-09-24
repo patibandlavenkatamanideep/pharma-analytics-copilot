@@ -185,12 +185,19 @@ jobs:
             -e PAC_DB_SCOPED_PASSWORD="$PAC_DB_SCOPED_PASSWORD" \
             -e PAC_LLM_PROVIDER=offline -e PAC_COOKIE_SECURE=false \
             pharma-analytics-copilot:ci
+          # GitHub runs steps with `bash -e`, so a bare `[ ... ] && break` aborts
+          # the step the first time the condition is false. `if` does not.
+          code=""
           for i in $(seq 1 30); do
             code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/health || true)
-            [ "$code" = "200" ] && break
+            if [ "$code" = "200" ]; then break; fi
             sleep 2
           done
-          [ "$code" = "200" ] || { echo "never became healthy"; docker logs pac; exit 1; }
+          if [ "$code" != "200" ]; then
+            echo "never became healthy (last code: ${code:-none})"
+            docker logs pac
+            exit 1
+          fi
           echo "/health 200"
 
       # No data has been loaded, so readiness must be false. A container that
