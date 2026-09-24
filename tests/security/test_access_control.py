@@ -17,7 +17,7 @@ from app.analytics.plan import AnalyticalPlan
 from app.analytics.validator import SqlValidationError, validate
 from app.auth.policy import AuthorizationError, authorize, build_principal
 from app.db import ScopeBindingError, analytics_transaction
-from tests.conftest import needs_db
+from tests.conftest import needs_db, needs_full
 
 pytestmark = [pytest.mark.security, needs_db]
 
@@ -190,8 +190,15 @@ def test_unset_scope_denies_by_default():
         conn.rollback()
 
 
+# needs full data: seed zip_territory carries only 9 of the 15 territory labels, so Texas and New York Metro both resolve to nothing and the test would pass vacuously (docs/ASSUMPTIONS.md#a5).
+@needs_full
 def test_scope_does_not_leak_across_pooled_connections():
-    """Interleave two principals on the same pool; neither sees the other's rows."""
+    """Interleave two principals on the same pool; neither sees the other's rows.
+
+    Needs full data: seed zip_territory carries only 9 of the 15 territory
+    labels, so Texas and New York Metro both resolve to nothing there and the
+    test would pass vacuously (docs/ASSUMPTIONS.md#a5).
+    """
     results = []
     for _ in range(3):
         for kind, value in [("territory", "Texas"), ("territory", "New York Metro")]:
@@ -316,8 +323,12 @@ def test_statement_timeout_is_bound_on_every_analytics_transaction():
         assert cur.fetchone()["transaction_read_only"] == "on"
 
 
+# needs full data: 271 seed rows cannot outrun a 5 second budget.
+@needs_full
 def test_statement_timeout_cancels_runaway_queries():
     """A query that outruns the budget is cancelled, not left running.
+
+    Needs full data: 271 seed rows cannot outrun a 5 second budget.
 
     A LIMIT does not bound the cost of the aggregation beneath it, which is
     exactly why a timeout is the real defence.

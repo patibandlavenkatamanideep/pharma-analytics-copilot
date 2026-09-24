@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from app.analytics.plan import AnalyticalPlan
-from tests.conftest import needs_db, reference_scalar, run_plan
+from tests.conftest import needs_db, needs_full, reference_scalar, run_plan
 
 pytestmark = [pytest.mark.integration, needs_db]
 
@@ -162,8 +162,14 @@ def test_denominator_is_not_narrowed_to_our_own_drug(compiler, anchor, exec_user
     assert rows[0]["denominator"] is not None and rows[0]["denominator"] > 0
 
 
+# needs full data: the seed fixture has too few market_data rows for every company subcategory to appear on both sides of the bridge.
+@needs_full
 def test_share_by_product_is_measured_against_its_subcategory(compiler, anchor, exec_user):
-    """Grouping by product must not collapse the market to that product."""
+    """Grouping by product must not collapse the market to that product.
+
+    Needs full data: the seed fixture has too few market_data rows for every
+    company subcategory to be represented on both sides of the bridge.
+    """
     by_product, _ = run_plan(
         compiler,
         AnalyticalPlan.model_validate(
@@ -285,9 +291,14 @@ def test_accounts_roll_up_to_grandparent_with_standalone_fallback(
     assert total_shown <= company_total
 
 
+# needs full data: the seed fixture has 85 organizations, far under the result cap.
+@needs_full
 def test_a_truncated_result_is_flagged_not_silently_capped(compiler, anchor, exec_user):
     """There are more than max_result_rows accounts, so this result is cut
-    short; the renderer must say so."""
+    short; the renderer must say so.
+
+    Needs full data: the seed fixture has 85 organizations, far under the cap.
+    """
     from app.analytics.render import render
     from app.auth.policy import scope_note
 
