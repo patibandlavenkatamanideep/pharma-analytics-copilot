@@ -32,6 +32,14 @@ class Vocabulary:
     archetypes: list[str] = field(default_factory=list)
     territories: list[str] = field(default_factory=list)
     regions: list[str] = field(default_factory=list)
+    # Every territory/region name in the dataset, for RECOGNITION only.
+    # zip_territory is unrestricted reference data, so these names are not
+    # secret. The planner needs them so that a request naming a place outside
+    # the principal's scope is recognised and REFUSED with a clear message,
+    # instead of being silently answered with the principal's own data --
+    # which looks like an answer to a question they did not ask.
+    all_territories: list[str] = field(default_factory=list)
+    all_regions: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -110,10 +118,18 @@ def vocabulary_for(principal: Principal) -> Vocabulary:
             "WHERE org_archetype IS NOT NULL ORDER BY 1"
         )
         archetypes = [r["org_archetype"] for r in cur.fetchall()]
+        cur.execute("SELECT DISTINCT territory_name FROM zip_territory ORDER BY 1")
+        all_territories = [r["territory_name"] for r in cur.fetchall() if r["territory_name"]]
+        cur.execute(
+            "SELECT DISTINCT region_name FROM zip_territory "
+            "WHERE region_name IS NOT NULL ORDER BY 1"
+        )
+        all_regions = [r["region_name"] for r in cur.fetchall()]
 
     return Vocabulary(
         products=products, subcategories=subs, categories=cats,
         gpos=gpos, archetypes=archetypes, territories=territories, regions=regions,
+        all_territories=all_territories, all_regions=all_regions,
     )
 
 

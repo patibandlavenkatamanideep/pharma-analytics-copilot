@@ -54,6 +54,10 @@ class PlanningContext:
     known_archetypes: list[str] = field(default_factory=list)
     known_territories: list[str] = field(default_factory=list)
     known_regions: list[str] = field(default_factory=list)
+    # Recognition-only vocabularies (see entities.Vocabulary): naming a place
+    # outside scope must produce a refusal, not a quietly re-scoped answer.
+    all_territories: list[str] = field(default_factory=list)
+    all_regions: list[str] = field(default_factory=list)
     previous_plan: dict[str, Any] | None = None
     previous_cohort: list[str] = field(default_factory=list)
 
@@ -291,7 +295,12 @@ class OfflinePlanner:
         (r"\bby (?:market )?subcategor\w*", Dimension.market_subcategory),
         (r"\bby (?:data )?source\b", Dimension.data_source),
         (r"\bby facilit\w*", Dimension.facility),
-        (r"\bby account\b|\bby health system\b|\baccounts?\b", Dimension.account),
+        # Deliberately NOT a bare \baccounts?\b: "excluding 340B accounts" is a
+        # filter qualifier, not a request to break the answer down by account.
+        (r"\bby account\b|\bper account\b|\beach account\b|\bby health system\b|"
+         r"\bwhich accounts\b|\bwhich health systems\b|"
+         r"\b(?:top|bottom|rank|ranked|list|biggest|largest|smallest)\b[^.?]*"
+         r"\b(accounts?|health systems?)\b", Dimension.account),
     ]
 
     # Phrases that mean "change one thing about the last answer" rather than
@@ -318,6 +327,7 @@ class OfflinePlanner:
         dimensions = self._dimensions(q, metric)
         window = self._window(q, prev)
         filters = self._filters(q, context, prev)
+        dimensions = self._implied_dimensions(q, dimensions, filters)
         ranking = self._ranking(q, dimensions)
         comparison = self._comparison(q, metric, window)
 
@@ -402,20 +412,30 @@ class OfflinePlanner:
 
     def _metric(self, q: str, context: PlanningContext) -> MetricKey:
         if re.search(r"market share|share of market|\bshare\b", q):
-            if re.search(r"trend|chang\w+|grew|grown|declin\w+|movement", q):
+            if re.search(
+                r"trend|chang\w+|grew|grown|gain\w*|lost|losing|los\w*|"
+                r"declin\w+|movement|improv\w+|versus the prior|vs the prior", q
+            ):
                 return MetricKey.share_trend_pp
             return MetricKey.brand_market_share
+        # Checked BEFORE the bare free-drug branch: "total volume including free
+        # drug" contains "free drug" and would otherwise be read as PAP volume.
+        if re.search(r"including free|total volume including|paid and free", q):
+            return MetricKey.total_volume_incl_free
         if re.search(r"free drug|patient assistance|\bpap\b|hub dispense", q):
             if re.search(r"percent|proportion|share of total|% of", q):
                 return MetricKey.pap_proportion
             return MetricKey.pap_volume
-        if re.search(r"including free|total volume including", q):
-            return MetricKey.total_volume_incl_free
         if re.search(r"market size|total market|market volume", q):
             return MetricKey.market_equivalents
-        if re.search(r"how many (?:accounts|health systems)|account count|number of accounts", q):
+        if re.search(
+            r"how many[^?]*\b(accounts|health systems|systems|idns)\b|"
+            r"account count|number of (?:distinct )?accounts|count of accounts", q
+        ):
             return MetricKey.account_count
-        if re.search(r"how many facilit|facility count|number of facilit", q):
+        if re.search(
+            r"how many[^?]*\bfacilit\w+|facility count|number of (?:distinct )?facilit\w+", q
+        ):
             return MetricKey.facility_count
         # "trend" alongside a period grain means a time series (volume plotted
         # per month), not a single growth figure. Only treat it as growth when
@@ -455,11 +475,26 @@ class OfflinePlanner:
             dims = [d for d in dims if d not in (Dimension.account, Dimension.facility)]
         return dims[:2]
 
+    def _implied_dimensions(self, q: str, dims, filters):
+        """Grains implied by what the question compares rather than names."""
+        out = list(dims)
+        comparing = bool(re.search(r"\bcompare\b|\bvs\.?\b|\bversus\b", q))
+        if comparing and len(filters.gpo_names) > 1 and Dimension.gpo not in out:
+            out.insert(0, Dimension.gpo)
+        if comparing and len(filters.org_archetypes) > 1 and Dimension.archetype not in out:
+            out.insert(0, Dimension.archetype)
+        if comparing and len(filters.product_names) > 1 and Dimension.product not in out:
+            out.insert(0, Dimension.product)
+        return out[:2]
+
     def _window(self, q: str, prev: dict[str, Any]):
         from app.analytics.plan import NamedWindow, TimeWindow
 
-        if m := re.search(r"\b(20\d{2})[ -]?q([1-4])\b", q):
-            return TimeWindow(kind="period_labels", period_labels=[f"{m.group(1)}-Q{m.group(2)}"])
+        # Both orderings appear in practice: "2026 Q1" and "Q1 2026".
+        labels = [f"{y}-Q{n}" for y, n in re.findall(r"\b(20\d{2})[ -]?q([1-4])\b", q)]
+        labels += [f"{y}-Q{n}" for n, y in re.findall(r"\bq([1-4])[ -](20\d{2})\b", q)]
+        if labels:
+            return TimeWindow(kind="period_labels", period_labels=sorted(set(labels)))
         for pattern, name in self.WINDOWS:
             if re.search(pattern, q):
                 return TimeWindow(kind="named", named=NamedWindow(name))
@@ -504,9 +539,11 @@ class OfflinePlanner:
             update["market_categories"] = cats
         if gpos := mentioned(context.known_gpos):
             update["gpo_names"] = gpos
-        if terrs := mentioned(context.known_territories):
+        if archetypes := mentioned(context.known_archetypes):
+            update["org_archetypes"] = archetypes
+        if terrs := mentioned(context.all_territories or context.known_territories):
             update["territories"] = terrs
-        if regions := mentioned(context.known_regions):
+        if regions := mentioned(context.all_regions or context.known_regions):
             update["regions"] = regions
 
         if re.search(r"exclude 340b|non-?340b|excluding 340b|without 340b", q):

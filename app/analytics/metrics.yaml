@@ -177,6 +177,10 @@ metrics:
     anchor: "docs/account_analytics.md#organization-hierarchy"
     kind: "count_distinct"
     count_entity: "account"
+    # Without these the count spans every source, so an account that only
+    # appears in third-party market data would be counted as one we sell to.
+    sources: ["distributor"]
+    company_only: true
     requires_wac: false
     description: >
       Distinct top-level accounts. The counted entity is always stated, and
@@ -188,6 +192,8 @@ metrics:
     anchor: "docs/account_analytics.md#organization-hierarchy"
     kind: "count_distinct"
     count_entity: "facility"
+    sources: ["distributor"]
+    company_only: true
     requires_wac: false
     description: >
       Distinct facility organizations. "Active facilities" additionally filters

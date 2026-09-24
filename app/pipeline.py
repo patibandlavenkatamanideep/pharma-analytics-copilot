@@ -134,6 +134,8 @@ class Pipeline:
             known_archetypes=vocab.archetypes,
             known_territories=vocab.territories,
             known_regions=vocab.regions,
+            all_territories=vocab.all_territories,
+            all_regions=vocab.all_regions,
             previous_plan=state.previous_plan,
             previous_cohort=state.previous_cohort,
         )
