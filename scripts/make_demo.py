@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime as dt
 import pathlib
-import secrets
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -44,7 +43,7 @@ SCRIPT = [
 
 
 def main() -> int:
-    from app.auth.identity import authenticate, set_credential
+    from app.auth.policy import principal_for_user_id
     from app.config import get_settings
     from app.db import close_pools, owner_transaction
     from app.llm.planner import build_planner
@@ -74,11 +73,9 @@ def main() -> int:
         )
         rows = {r["role"]: r for r in cur.fetchall()}
 
-    principals = {}
-    for role, row in rows.items():
-        password = secrets.token_urlsafe(16)
-        set_credential(row["user_id"], password)
-        principals[role] = authenticate(row["email"], password)[1]
+    # Built directly from the users table -- no password is minted, so running
+    # this never disturbs credentials that have been issued to anyone.
+    principals = {role: principal_for_user_id(row["user_id"]) for role, row in rows.items()}
 
     provider = settings.llm_provider
     model = getattr(planner, "model_id", "deterministic offline planner")

@@ -147,6 +147,37 @@ def authorize(plan: AnalyticalPlan, principal: Principal) -> None:
         # zip_territory mapping.
 
 
+def principal_for_user_id(user_id: str) -> Principal:
+    """Build a Principal straight from the supplied users table.
+
+    For server-side tooling (demo generation, evaluation, benchmarking) that
+    already runs with database access and has no business authenticating.
+
+    This exists because the alternative was worse: those scripts used to call
+    set_credential() to mint a password so they could log in, which silently
+    ROTATED the real user's credential every time one of them ran -- once
+    invalidating evaluator logins that had already been handed out.
+
+    Authorization is unchanged: the Principal is built by the same
+    build_principal() the request path uses, so role, scope and pricing
+    permission come from the same place and fail closed the same way. This is
+    not a way to bypass a check; it is a way to skip a login that was never
+    needed.
+    """
+    from app.db import auth_transaction
+
+    with auth_transaction() as cur:
+        cur.execute(
+            "SELECT user_id, email, full_name, role, territory_name, region_name, "
+            "can_view_wac FROM users WHERE user_id = %s",
+            (user_id,),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise AuthorizationError(f"no such user_id: {user_id}")
+    return build_principal(row)
+
+
 def scope_note(principal: Principal, plan: AnalyticalPlan) -> str:
     """One line describing what the answer covers, shown with every result."""
     if principal.role == "exec":

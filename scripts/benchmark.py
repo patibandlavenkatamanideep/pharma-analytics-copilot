@@ -19,7 +19,6 @@ import argparse
 import concurrent.futures
 import json
 import pathlib
-import secrets
 import sys
 import time
 
@@ -59,7 +58,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
-    from app.auth.identity import authenticate, set_credential
+    from app.auth.policy import principal_for_user_id
     from app.db import close_pools, owner_transaction
     from app.llm.planner import OfflinePlanner
     from app.pipeline import Pipeline
@@ -85,11 +84,9 @@ def main() -> int:
         )
         rows = cur.fetchall()
 
-    principals = {}
-    for row in rows:
-        password = secrets.token_urlsafe(16)
-        set_credential(row["user_id"], password)
-        principals[row["role"]] = authenticate(row["email"], password)[1]
+    # Built directly from the users table -- no password is minted, so running
+    # this never disturbs credentials that have been issued to anyone.
+    principals = {row["role"]: principal_for_user_id(row["user_id"]) for row in rows}
 
     print(f"dataset {dataset['dataset_id']} "
           f"({dataset['row_counts'].get('sales', 0):,} sales rows)")

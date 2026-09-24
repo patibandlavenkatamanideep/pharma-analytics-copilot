@@ -222,11 +222,10 @@ def main() -> int:
 
     get_settings.cache_clear()
 
-    from app.auth.identity import authenticate, set_credential
+    from app.auth.policy import principal_for_user_id
     from app.db import close_pools, owner_transaction
     from app.llm.planner import build_planner
     from app.pipeline import Pipeline
-    import secrets
 
     spec = yaml.safe_load(QUESTIONS.read_text())
     questions = spec["questions"]
@@ -254,11 +253,9 @@ def main() -> int:
             """
         )
         rows = cur.fetchall()
-    principals = {}
-    for row in rows:
-        password = secrets.token_urlsafe(16)
-        set_credential(row["user_id"], password)
-        principals[row["role"]] = authenticate(row["email"], password)[1]
+    # Built directly from the users table -- no password is minted, so running
+    # this never disturbs credentials that have been issued to anyone.
+    principals = {row["role"]: principal_for_user_id(row["user_id"]) for row in rows}
 
     planner = build_planner()
     pipeline = Pipeline(planner)
