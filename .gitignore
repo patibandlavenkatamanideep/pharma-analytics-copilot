@@ -25,3 +25,6 @@ htmlcov/
 evals/runs/
 *.log
 .aws-sam/
+
+# provisioned evaluator credentials (never commit)
+evaluator_logins.json

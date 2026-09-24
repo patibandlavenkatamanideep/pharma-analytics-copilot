@@ -17,6 +17,7 @@ another user's request.
 
 from __future__ import annotations
 
+import atexit
 import logging
 from contextlib import contextmanager
 from typing import Iterator, Literal
@@ -47,8 +48,18 @@ def get_pool(role: Literal["owner", "auth", "exec", "scoped"]) -> ConnectionPool
 
 def close_pools() -> None:
     for pool in _POOLS.values():
-        pool.close()
+        try:
+            pool.close()
+        except Exception:                      # pragma: no cover - best effort
+            log.warning("pool close failed", exc_info=True)
     _POOLS.clear()
+
+
+# psycopg_pool's worker threads are not daemons, so an exception escaping a
+# script leaves the interpreter waiting on them and the process appears to hang
+# for ~20s before printing "couldn't stop thread". Registering the teardown at
+# exit means pools are released on every path, not just the happy one.
+atexit.register(close_pools)
 
 
 class ScopeBindingError(RuntimeError):
