@@ -62,7 +62,13 @@ look better.
 Requires PostgreSQL 16+, Python 3.11+, Node 18+.
 
 ```bash
-# 1. Provision the database, roles and schema
+# 0. Install. `pip install -e .` puts `app` on the path, which every script needs.
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements-dev.txt && pip install -e .
+
+# 1. Provision the database, roles and schema.
+#    Needs a PostgreSQL superuser once; the application itself never runs as one.
+#    Generated passwords are written to .env (0600, gitignored).
 python3 scripts/bootstrap_db.py --drop
 
 # 2. Generate the full dataset (40k orgs, 2M sales) and load it
@@ -78,6 +84,12 @@ uvicorn app.api.main:app --host 127.0.0.1 --port 8010
 ```
 
 Open <http://127.0.0.1:8010> and sign in with one of the printed accounts.
+
+> **macOS:** if Python start-up is inexplicably slow (tens of seconds at 0% CPU),
+> the virtualenv is under a TCC-protected folder such as `~/Desktop` or
+> `~/Documents` and macOS is revalidating the compiled extensions on every
+> launch. Measured here: 82 s versus 0.11 s. Create it elsewhere, e.g.
+> `python3 -m venv ~/.venvs/pac`.
 
 For development against the small fixture instead, use
 `scripts/load_data.py --mode seed` — but note that under seed data most RAM
