@@ -345,29 +345,30 @@ permissions problem and is not one.
 
 ## 8b. Cloud services used, and why
 
-Deployed at **https://44-217-117-172.sslip.io** — a single EC2 instance running the app,
-PostgreSQL and Caddy under Docker Compose.
+Deployed at **https://44-217-117-172.sslip.io** — a single EC2 instance running
+the app, PostgreSQL and Caddy under Docker Compose.
 
-| Service | Choice | Why this and not the alternative |
+| Service | Choice | Why this, and not the alternative |
 |---|---|---|
-| Compute | EC2  (ARM Graviton) | ~\/mo. App Runner + RDS is the more "cloud-native" answer at ~\–80/mo and adds a VPC connector, private subnets and security-group plumbing — more surface to misconfigure for an app that comfortably fits one box. ARM because Graviton is cheaper per vCPU and the image builds natively on it. |
-| Database | PostgreSQL 16 in a container, on the same host | RDS would be the right call for a real deployment (managed backups, failover). Here it doubles the cost and adds a network hop for a dataset that fits in the instance's storage. The trade-off is stated below rather than hidden. |
-| TLS | Caddy | Obtains and renews a Let's Encrypt certificate unattended. An ALB would cost more than the instance itself; nginx + certbot is more moving parts for the same result. |
-| DNS |  | Resolves `<ip>.sslip.io` to that IP, so Let's Encrypt will issue a real certificate without buying a domain. Let's Encrypt will not issue for a bare IP or an  name, and plain HTTP would break login because the session cookie is . |
-| LLM | Bedrock, Claude Opus 4.5 | Keeps inference in the same account and bill. The Claude 5 family is not enabled on this account. |
-| Bedrock auth | EC2 instance role | No AWS keys on the box. The attached policy allows  on Anthropic models only — not , not other providers. |
-| Storage | 30 GB gp3 + 4 GB swap | Swap because a 2 GB instance cannot complete the Vite build without it. |
-| Network | Security group: 22 from one IP, 80/443 public | PostgreSQL publishes no host port at all and is reachable only over the private compose network. |
+| Compute | EC2 `t4g.small` (ARM Graviton) | ~$12/mo. App Runner + RDS is the more "cloud-native" answer at ~$50–80/mo, and adds a VPC connector, private subnets and security-group plumbing — more surface to misconfigure for an app that fits comfortably on one box. ARM because Graviton is cheaper per vCPU and the image builds natively on it. |
+| Database | PostgreSQL 16 in a container on the same host | RDS is the right call for a real deployment: managed backups, point-in-time recovery, failover. Here it roughly doubles the cost for a dataset that fits in the instance's storage. The trade-off is stated below rather than hidden. |
+| TLS | Caddy | Obtains and renews a Let's Encrypt certificate unattended — no certbot, no cron. An ALB would cost more than the instance itself; nginx + certbot is more moving parts for the same result. |
+| DNS | `sslip.io` | Resolves `<ip>.sslip.io` to that IP, so Let's Encrypt issues a real certificate without buying a domain. Let's Encrypt will not issue for a bare IP or an `ec2-….amazonaws.com` name, and plain HTTP would break login outright, because the session cookie is `Secure`. |
+| LLM | Bedrock — Claude Opus 4.5 | Keeps inference in the same account and on the same bill. The Claude 5 family is not enabled on this account. |
+| Bedrock auth | EC2 instance role | No AWS keys on the box. The attached policy allows `InvokeModel` on Anthropic models only — not `bedrock:*`, and not other providers. |
+| Storage | 30 GB gp3, plus 4 GB swap | Swap because a 2 GB instance cannot finish the Vite build without it. |
+| Network | Security group: 22 from one address, 80/443 public | PostgreSQL publishes no host port at all; it is reachable only over the private compose network. |
 
 **The honest limitation:** this is a single host. There is no redundancy, and a
 host failure or a restart is downtime. That is an acceptable trade for an
-assessment and should not be described as production-ready. The path to
-production from here is RDS with automated backups and more than one instance
-behind a load balancer — the application needs no change for either, because it
-holds no state in memory: sessions and conversations live in PostgreSQL.
+assessment and should not be described as production-ready.
 
-**Cost:** roughly \/month while running (instance \, storage \.40,
-elastic IP free while attached). Stopping the instance drops it to storage only.
+The path from here needs no application change, because nothing is held in
+memory — sessions and conversations live in PostgreSQL. Move the database to
+RDS, put two instances behind a load balancer, and the same image runs.
+
+**Cost:** roughly **$15/month** while running — instance $12, storage $2.40,
+elastic IP free while attached. Stopping the instance drops it to storage only.
 
 ---
 
