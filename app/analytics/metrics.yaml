@@ -36,8 +36,9 @@ metrics:
     component: pack_units
     requires_wac: false
     description: >
-      Purchased volume in packs. Distributor source only; hub dispense (free
-      drug) and market data are excluded by default.
+      Purchased volume in packs. THE DEFAULT for "volume", "sales", "demand"
+      and "units" when the user does not say otherwise. Distributor source
+      only; hub dispense (free drug) and market data are excluded by default.
 
   paid_equivalents:
     label: "paid equivalents"
@@ -49,7 +50,9 @@ metrics:
     component: equivalents
     requires_wac: false
     description: >
-      Purchased volume normalized across package sizes by unit_conversion_factor.
+      Dose-normalised units, comparing different package sizes on one basis via
+      unit_conversion_factor. Use ONLY when the user says "equivalents" or asks
+      for a normalised measure -- a bare "volume" means paid_pack_units.
 
   pap_volume:
     label: "patient assistance (free drug) volume"

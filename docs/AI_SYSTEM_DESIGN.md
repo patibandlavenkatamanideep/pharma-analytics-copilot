@@ -346,9 +346,23 @@ defensible to add first.
 
 ## 11. Cost and latency profile
 
-Per question: **one** model call, low effort, a system prompt of roughly
-1,500–2,500 tokens (registry summary plus vocabularies) and a plan output under
-200 tokens. No streaming, no chained calls, no summarisation pass.
+Per question: **one** model call, no streaming, no chained calls, no
+summarisation pass.
+
+Measured live against Opus 4.5 on Bedrock (a RAM-scoped question, so the
+vocabularies are at their smallest):
+
+| | Measured |
+|---|---:|
+| Input tokens per question | ~4,060 |
+| Output tokens (the plan) | ~150–170 |
+| Planner latency | ~3.0–3.2 s |
+
+The input is larger than the ~1,500–2,500 first estimated, because the metric
+registry summary and the entity vocabularies are both unconditional (§3). That
+is the cost of not making the rules depend on retrieval, and it is the single
+biggest lever available: the prompt is already ordered stable-content-first, so
+caching that prefix would remove most of it (§12).
 
 Measured, excluding model latency (offline planner, full 2M-row dataset):
 

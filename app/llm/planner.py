@@ -102,6 +102,10 @@ def build_system_prompt(context: PlanningContext) -> str:
         "- 'sales', 'volume' and 'demand' mean PAID demand: the distributor source,",
         "  company brand only. Never include hub_dispense unless the user asks for",
         "  free drug, PAP or 'including free drug'.",
+        "- A bare 'volume', 'sales', 'demand' or 'units' means paid_pack_units.",
+        "  Choose paid_equivalents ONLY when the user says 'equivalents' or asks",
+        "  for a dose-normalised measure. Both are volume measures, but packs are",
+        "  the default and equivalents must be asked for.",
         "- Market share ALWAYS uses brand_market_share. Never build it from two",
         "  volume metrics.",
         "- 'Accounts' means the account dimension (top-level health system).",
@@ -147,10 +151,14 @@ def build_system_prompt(context: PlanningContext) -> str:
             "",
             "This is a FOLLOW-UP. The previous plan was:",
             json.dumps(context.previous_plan, indent=2, default=str),
-            "Carry forward everything the user did not change. 'Break that down by X' "
-            "adds a dimension and keeps the filters and window. 'Compare to last year' "
+            "Carry forward everything the user did not change -- the metric, the "
+            "dimensions, the filters, the time window AND THE RANKING. 'Break that "
+            "down by X' adds a dimension and keeps the rest. 'Compare to last year' "
             "adds a comparison and keeps the population. 'Exclude 340B' sets "
-            "filters.is_340b='exclude' and changes nothing else.",
+            "filters.is_340b='exclude' and changes nothing else: if the previous plan "
+            "ranked the top 5, the new plan still ranks the top 5. Drop the ranking "
+            "only when the user asks for a frozen cohort ('those accounts') or asks "
+            "to stop ranking.",
         ]
         if context.previous_cohort:
             parts += [

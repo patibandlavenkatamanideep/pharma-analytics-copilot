@@ -38,6 +38,27 @@ CREATE INDEX IF NOT EXISTS ix_sales_source_wk ON sales (data_source, wk_offset);
 CREATE INDEX IF NOT EXISTS ix_sales_period_qtr ON sales (period_qtr);
 CREATE INDEX IF NOT EXISTS ix_sales_period_mo  ON sales (period_mo);
 
+-- The same shape as ix_sales_source_mo_org, but for the period-LABEL path.
+--
+-- Found by the live evaluation, not by reasoning. The offline planner resolves
+-- "this quarter" to mo_offset IN (0,1,2); the live model resolved it to
+-- period_qtr = '2026-Q3'. Both are legitimate readings, but only the first had
+-- a covering index, and the difference was severe once organizations was
+-- joined for a 340B filter:
+--
+--   period_qtr + org join, as the owner (RLS bypassed)          73 ms
+--   period_qtr + org join, through the RLS-enabled role      5,389 ms   <- timeout
+--   after these indexes, through the RLS-enabled role           190 ms
+--
+-- The 74x gap between the same query with and without RLS is the point worth
+-- remembering: the sales policy probes organizations per row, so a query shape
+-- that cannot use a covering index pays for that probe 69,000 times. Indexes
+-- have to be measured under the security policies, not without them.
+CREATE INDEX IF NOT EXISTS ix_sales_source_qtr_org
+    ON sales (data_source, period_qtr, org_id) INCLUDE (pack_units, ndc);
+CREATE INDEX IF NOT EXISTS ix_sales_source_mo_label_org
+    ON sales (data_source, period_mo, org_id) INCLUDE (pack_units, ndc);
+
 -- The organizations RLS policy joins on zip; the reverse direction (find the
 -- ZIPs in a territory/region) is what the planner usually prefers for a scoped
 -- principal, so both sides are indexed.
