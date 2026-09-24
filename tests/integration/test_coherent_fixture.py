@@ -138,6 +138,53 @@ def test_free_drug_does_not_change_paid_demand_or_share(fixture_env):
     assert total[0]["value"] == pytest.approx(130.0)
 
 
+def test_pap_proportion_uses_the_same_product_population_on_both_sides(fixture_env):
+    """PAP share of ZENOVAX volume is 20 / (110 + 20), not 20 / everything.
+
+    The compiler stripped product identity from EVERY ratio denominator. That
+    is right for market share -- the market is not our own sales -- and wrong
+    for this one, where the question is what proportion of THIS product's
+    volume was free. The denominator became the whole company's paid+free
+    volume, so the reported proportion was 20/175 = 11.43% instead of
+    20/130 = 15.38%: a real number, in the right units, quietly understating
+    the answer by a third.
+
+    Both components are hand-calculated in the fixture header and asserted
+    independently in test_free_drug_does_not_change_paid_demand_or_share.
+    """
+    rows = run({"metric": "pap_proportion",
+                "filters": {"product_names": ["ZENOVAX"]}, "time": R3M})
+    assert rows[0]["value"] == pytest.approx(20.0 / 130.0)
+
+
+def test_pap_proportion_for_the_whole_company_is_not_the_same_as_one_product(
+    fixture_env
+):
+    """The unfiltered figure must still be the unfiltered figure.
+
+    Guards the fix from the other side: making the denominator follow the
+    filters must not change what happens when there are none.
+    """
+    everything = run({"metric": "pap_proportion", "filters": {}, "time": R3M})
+    zenovax = run({"metric": "pap_proportion",
+                   "filters": {"product_names": ["ZENOVAX"]}, "time": R3M})
+    assert everything[0]["value"] != pytest.approx(zenovax[0]["value"])
+
+
+def test_market_share_denominator_still_ignores_our_own_product_identity(
+    fixture_env
+):
+    """The market is not our sales -- the strip must survive for this metric.
+
+    ZENOVAX share is 40%: 40 company equivalents over 100 in the Docetaxel
+    subcategory. If the denominator inherited the product filter it would be
+    40/40 = 100%.
+    """
+    rows = run({"metric": "brand_market_share",
+                "filters": {"product_names": ["ZENOVAX"]}, "time": R3M})
+    assert rows[0]["value"] == pytest.approx(0.40)
+
+
 def test_zero_denominator_is_null_not_zero_and_not_an_error(fixture_env):
     """Paclitaxel has company volume but no market volume."""
     rows = run({"metric": "brand_market_share",

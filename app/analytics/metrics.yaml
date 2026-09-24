@@ -8,7 +8,7 @@
 # `sql` fragments are templates over a fixed set of pre-aggregated component
 # names owned by the compiler -- they are not user- or model-reachable strings.
 
-version: "1.0.0"
+version: "1.1.0"
 
 # --- shared component expressions -------------------------------------------
 components:
@@ -49,6 +49,7 @@ metrics:
     aggregate: "SUM"
     component: equivalents
     requires_wac: false
+    quality_checks: ["conversion_factor_coverage"]
     description: >
       Dose-normalised units, comparing different package sizes on one basis via
       unit_conversion_factor. Use ONLY when the user says "equivalents" or asks
@@ -88,6 +89,7 @@ metrics:
     aggregate: "SUM"
     component: equivalents
     requires_wac: false
+    quality_checks: ["conversion_factor_coverage"]
     description: >
       Third-party reported market volume for the relevant market. Includes
       competitors and, where present, company brand.
@@ -114,9 +116,14 @@ metrics:
     # A3: the denominator is scoped to the market subcategory of the products in
     # the numerator, never to the company drug name and never to brand_flag = 1.
     denominator_scope: "market_subcategory"
+    # The market is not our own sales, so product identity is DROPPED from the
+    # denominator. Declared rather than inferred: the compiler used to apply
+    # this widening to every ratio, which is right here and wrong for
+    # pap_proportion.
+    denominator_population: "surrounding_market"
     zero_denominator: "null"
     requires_wac: false
-    quality_checks: ["denominator_completeness", "ratio_above_one"]
+    quality_checks: ["denominator_completeness", "ratio_above_one", "conversion_factor_coverage"]
     description: >
       Company distributor equivalents divided by total market equivalents in the
       same market subcategory, with identical population and period filters.
@@ -128,6 +135,10 @@ metrics:
     kind: "ratio"
     numerator: pap_volume
     denominator: total_volume_incl_free
+    # Both sides describe the SAME products. "What proportion of Zenovax
+    # volume was free" is 20 / (110 + 20), not 20 / everything the company
+    # sold. Widening the denominator here understated the proportion.
+    denominator_population: "same_population"
     zero_denominator: "null"
     requires_wac: false
     description: >

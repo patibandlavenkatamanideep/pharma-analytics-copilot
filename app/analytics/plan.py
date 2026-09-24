@@ -186,6 +186,13 @@ class AnalyticalPlan(BaseModel):
             raise ValueError(f"metric {self.metric} requires a comparison window")
         if self.ranking and not self.dimensions:
             raise ValueError("ranking requires at least one dimension to rank")
+        # The dimension list IS the declared grain. A repeated dimension does
+        # not refine it -- it produces two identical columns and invites the
+        # reader to believe the rows are broken down more finely than they are.
+        if len(set(self.dimensions)) != len(self.dimensions):
+            duplicated = sorted({d.value for d in self.dimensions
+                                 if list(self.dimensions).count(d) > 1})
+            raise ValueError(f"dimensions must be distinct; repeated: {duplicated}")
         return self
 
     def fingerprint(self) -> str:

@@ -57,21 +57,71 @@ def _dimension_labels(plan: AnalyticalPlan) -> list[str]:
 
 
 def check_quality(
-    rows: list[dict[str, Any]], query: CompiledQuery, plan: AnalyticalPlan
+    rows: list[dict[str, Any]],
+    query: CompiledQuery,
+    plan: AnalyticalPlan,
+    source_coverage: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Data-quality findings derived from the returned values."""
+    """Data-quality findings derived from the returned values AND the dataset.
+
+    source_coverage comes from the dataset manifest, measured at ingestion. It
+    is required for any warning that is a claim about the loaded data rather
+    than about these rows.
+    """
     warnings: list[str] = []
+    coverage = source_coverage or {}
 
     if "denominator_completeness" in query.quality_checks:
-        # A3: market_data holds only competitor rows in the supplied data, so
-        # the denominator is not the total market it is documented to be.
-        warnings.append(
-            "Market share here divides our distributor volume by the reported market "
-            "total. In this dataset the market source contains only competitor "
-            "products, so the denominator understates the true total market. Treat "
-            "these percentages as indicative of relative position, not as a "
-            "reliable share."
-        )
+        # A3: in the supplied data every market_data row has brand_flag = 0, so
+        # the denominator is a competitor-only total rather than the documented
+        # total market.
+        #
+        # But that is a property of a DATASET, not of this metric, and the
+        # loader already measures it per load. Emitting it unconditionally
+        # meant the warning was asserted even where it was untrue -- on the
+        # coherent fixture, which deliberately does report a company brand in
+        # market data, the answer carried a warning saying it does not. A
+        # caveat that appears whatever the data says teaches the reader to
+        # ignore caveats.
+        company_rows = coverage.get("market_data_company_rows")
+        if company_rows == 0:
+            warnings.append(
+                "Market share here divides our distributor volume by the reported "
+                "market total. In this dataset the market source contains only "
+                "competitor products, so the denominator understates the true total "
+                "market. Treat these percentages as indicative of relative position, "
+                "not as a reliable share."
+            )
+        elif company_rows is None:
+            # Not measured is not the same as measured-and-fine.
+            warnings.append(
+                "Market completeness was not measured for this dataset, so the "
+                "denominator may not be the total market it is documented to be."
+            )
+
+    if "conversion_factor_coverage" in query.quality_checks:
+        # Equivalents are pack_units * unit_conversion_factor. A missing or
+        # non-positive factor makes that product's term NULL, and SUM skips
+        # NULLs -- so its volume silently leaves the total while the answer
+        # still calls it a total.
+        #
+        # The policy is to EXCLUDE rather than guess: substituting 1 would
+        # invent equivalents at an unknown strength, and 0 would assert the
+        # product sold nothing. Excluding is the only option that does not
+        # fabricate, but it is only honest if the answer says so.
+        missing = coverage.get("products_missing_conversion_factor")
+        if missing:
+            warnings.append(
+                f"{missing} product(s) have a missing or non-positive unit "
+                "conversion factor. Equivalents cannot be computed for them, so "
+                "their volume is excluded from this figure rather than guessed. "
+                "The total is therefore a lower bound."
+            )
+        elif missing is None:
+            warnings.append(
+                "Conversion-factor coverage was not measured for this dataset, so "
+                "equivalents may exclude products whose factor is missing."
+            )
 
     if "ratio_above_one" in query.quality_checks:
         impossible = [
@@ -117,6 +167,35 @@ def check_quality(
     return warnings
 
 
+class GrainError(RuntimeError):
+    """The result is not at the grain the plan declared.
+
+    Raised rather than rendered. A duplicated group means some join fanned out
+    and the rows no longer mean what their labels say: the same account
+    appearing twice reads as two accounts, and any total a person adds up by
+    eye is wrong. There is no honest way to display that, so the request fails
+    instead of returning a plausible-looking table.
+    """
+
+
+def _assert_declared_grain(rows: list[dict[str, Any]], plan: AnalyticalPlan) -> None:
+    if not plan.dimensions:
+        if len(rows) > 1:
+            raise GrainError(
+                f"plan declares no dimensions but the query returned {len(rows)} rows")
+        return
+    keys = [f"dim{i}_id" for i in range(len(plan.dimensions))]
+    seen: set[tuple] = set()
+    for row in rows:
+        key = tuple(row.get(k) for k in keys)
+        if key in seen:
+            raise GrainError(
+                f"duplicate group {key!r} at declared grain "
+                f"{[d.value for d in plan.dimensions]}"
+            )
+        seen.add(key)
+
+
 def render(
     rows: list[dict[str, Any]],
     query: CompiledQuery,
@@ -124,9 +203,12 @@ def render(
     *,
     scope_note: str,
     max_rows: int,
+    source_coverage: dict[str, Any] | None = None,
 ) -> Answer:
     truncated = len(rows) > max_rows
     shown = rows[:max_rows]
+
+    _assert_declared_grain(rows, plan)
 
     period = f"Reporting window: {query.window_label}."
     if query.comparison_label:
@@ -157,7 +239,7 @@ def render(
         columns=[*_dimension_labels(plan), query.metric_label],
         scope_note=scope_note,
         period_note=period,
-        warnings=check_quality(rows, query, plan),
+        warnings=check_quality(rows, query, plan, source_coverage),
         notes=list(query.notes),
         row_count=len(rows),
         truncated=truncated,

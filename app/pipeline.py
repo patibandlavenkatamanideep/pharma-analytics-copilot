@@ -30,7 +30,7 @@ from app.analytics.compiler import Compiler, CompileError
 from app.analytics.entities import vocabulary_for
 from app.analytics.periods import PeriodError
 from app.analytics.registry import get_registry
-from app.analytics.render import Answer, render
+from app.analytics.render import Answer, GrainError, render
 from app.analytics.validator import SqlValidationError, validate
 from app.auth.policy import AuthorizationError, Principal, authorize, scope_note
 from app.config import get_settings
@@ -275,11 +275,32 @@ class Pipeline:
         audit["row_count"] = len(rows)
 
         # --- 10. render -----------------------------------------------------
-        answer = render(
-            rows, query, plan,
-            scope_note=scope_note(principal, plan),
-            max_rows=self.settings.max_result_rows,
-        )
+        try:
+            answer = render(
+                rows, query, plan,
+                scope_note=scope_note(principal, plan),
+                max_rows=self.settings.max_result_rows,
+                source_coverage=dataset.get("source_coverage") or {},
+            )
+        except GrainError as exc:
+            # The rows are not at the grain the plan declared, so the table
+            # would read as more groups than there are. This is our bug, not
+            # the user's question -- but showing a wrong table is worse than
+            # showing none, so it fails closed and is logged with the plan.
+            log.error("grain violation for request %s: %s", request_id, exc)
+            self._record(principal, state, question, plan.model_dump(mode="json"),
+                         [], "internal consistency check failed", "error")
+            return finish(
+                PipelineResult(
+                    status="error", conversation_id=state.conversation_id,
+                    message=(
+                        "That result did not pass an internal consistency check, so "
+                        "it is not being shown. This has been logged."
+                    ),
+                    plan=plan.model_dump(mode="json"),
+                ),
+                "grain_error", denial_reason=str(exc)[:200],
+            )
         if state.reset_reason:
             answer.notes.insert(0, state.reset_reason)
         if plan.interpretation:

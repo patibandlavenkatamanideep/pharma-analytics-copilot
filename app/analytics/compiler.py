@@ -389,7 +389,19 @@ class Compiler:
         spec: dict[str, Any],
         window: ResolvedWindow,
         anchor: dict[str, Any],
+        *,
+        apply_limit: bool = True,
     ) -> CompiledQuery:
+        """apply_limit=False when this ratio is one SIDE of a comparison.
+
+        A display cap is about how much to show, so it belongs to the final
+        answer. Applied to a comparison's input it silently changes what the
+        answer means: each period is cut to its top rows BY SHARE, and the
+        change is then computed from two different truncated populations. A
+        product ranked outside the cap this period but with the largest share
+        movement disappears from the result entirely -- which is precisely the
+        row the question was asking for.
+        """
         num_key, den_key = spec["numerator"], spec["denominator"]
         subcategory_scoped = spec.get("denominator_scope") == "market_subcategory"
 
@@ -437,11 +449,25 @@ class Compiler:
                 )
                 den_extra_params += sub_params
 
-        # The denominator must not inherit product identity from the numerator:
-        # keeping the drug-name filter would make the market equal our own sales.
-        den_filters = plan.filters.model_copy(
-            update={"product_names": [], "ndcs": [], "strengths": [], "classifications": []}
-        )
+        # What the denominator is a proportion OF is declared by the metric,
+        # not decided here.
+        #
+        # For market share the denominator must NOT inherit product identity:
+        # keeping the drug-name filter would make "the market" equal our own
+        # sales, and share would always be 100%.
+        #
+        # For PAP share both sides describe the same products, and widening
+        # the denominator turns "what proportion of Zenovax volume was free"
+        # into "Zenovax free volume as a share of everything we sold" --
+        # 20/175 rather than 20/130. Same units, same shape, quietly wrong.
+        population = spec["denominator_population"]
+        if population == "surrounding_market":
+            den_filters = plan.filters.model_copy(
+                update={"product_names": [], "ndcs": [], "strengths": [],
+                        "classifications": []}
+            )
+        else:
+            den_filters = plan.filters
 
         num_sql, num_params, num_needs = self._leaf_select(
             num_key, plan.filters, window, dims=requested, join_dims=num_join_dims
@@ -499,7 +525,8 @@ class Compiler:
                 "       n.value / NULLIF(d.value, 0) AS value\n"
                 "FROM num n CROSS JOIN den d\n"
             )
-        sql += self._order_and_limit(plan)
+        if apply_limit:
+            sql += self._order_and_limit(plan)
 
         notes: list[str] = []
         if bridged:
@@ -533,7 +560,8 @@ class Compiler:
         def side(w: ResolvedWindow) -> tuple[str, list[Any]]:
             sub = plan.model_copy(update={"metric": MetricKey(base_key), "ranking": None})
             if base_spec.get("kind") == "ratio":
-                q = self._compile_ratio(sub, base_spec, w, anchor)
+                # No display cap on an input: see _compile_ratio's docstring.
+                q = self._compile_ratio(sub, base_spec, w, anchor, apply_limit=False)
                 return q.sql, q.params
             body, params, needs = self._leaf_select(
                 base_key, plan.filters, w, dims=list(plan.dimensions)

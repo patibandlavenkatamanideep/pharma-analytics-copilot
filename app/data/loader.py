@@ -208,13 +208,19 @@ def _validate(cur: Any, report: LoadReport) -> None:
         "SELECT count(*) AS n FROM products "
         "WHERE unit_conversion_factor IS NULL OR unit_conversion_factor <= 0"
     )
-    if (n := cur.fetchone()["n"]):
+    n = cur.fetchone()["n"]
+    if n:
         report.warn(
             "conversion_factor_missing",
             f"{n} products have a missing or non-positive unit_conversion_factor; "
             "their equivalents resolve to NULL rather than 0 or 1",
             products=n,
         )
+    # Recorded whether or not it is zero, so a query-time warning can cite
+    # measured evidence instead of asserting a property of the data. Without
+    # this the ingestion report knew, and every answer built on equivalents
+    # silently dropped those products and presented the result as a total.
+    report.source_coverage["products_missing_conversion_factor"] = n
 
     # --- the two equivalents formulas disagree (A2) -------------------------
     cur.execute(

@@ -12,12 +12,49 @@ import yaml
 REGISTRY_PATH = pathlib.Path(__file__).with_name("metrics.yaml")
 
 
+DENOMINATOR_POPULATIONS = frozenset({"surrounding_market", "same_population"})
+
+
+class RegistryError(ValueError):
+    """The registry itself is inconsistent. Raised at load, not at query time."""
+
+
 class MetricRegistry:
     def __init__(self, raw: dict[str, Any], digest: str) -> None:
         self.version: str = raw["version"]
         self.digest = digest
         self.components: dict[str, Any] = raw["components"]
         self.metrics: dict[str, Any] = raw["metrics"]
+        self._validate()
+
+    def _validate(self) -> None:
+        """Every ratio must say what its denominator is a proportion OF.
+
+        The compiler previously decided this for itself and applied the same
+        widening to all of them: it dropped product identity from every
+        denominator, which is correct for market share (the market is not our
+        own sales) and wrong for PAP share (both sides are the same products).
+        A new ratio metric would have silently inherited whichever behaviour
+        happened to be coded. Declaring it is now mandatory.
+        """
+        for key, spec in self.metrics.items():
+            if spec.get("kind") != "ratio":
+                continue
+            population = spec.get("denominator_population")
+            if population is None:
+                raise RegistryError(
+                    f"metric {key!r} is a ratio but does not declare "
+                    f"denominator_population (one of {sorted(DENOMINATOR_POPULATIONS)})"
+                )
+            if population not in DENOMINATOR_POPULATIONS:
+                raise RegistryError(
+                    f"metric {key!r} declares denominator_population "
+                    f"{population!r}, expected one of {sorted(DENOMINATOR_POPULATIONS)}"
+                )
+            for side in ("numerator", "denominator"):
+                if spec.get(side) and spec[side] not in self.metrics:
+                    raise RegistryError(
+                        f"metric {key!r} names an unknown {side} {spec[side]!r}")
 
     def get(self, key: str) -> dict[str, Any]:
         try:

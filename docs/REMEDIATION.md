@@ -31,7 +31,7 @@ backdated.
 | Fixture database | `pharma_analytics_fixture` (coherent market) |
 | Test databases | **none yet** — disposable ones are created per phase; the working database is never dropped or truncated |
 | Test baseline | **148 passed**, 0 failed, 0 skipped (41 unit in 0.04 s; full suite 61 s) |
-| Contract versions | metric `1.0.0`, policy `1.0.0`, schema contract `1.0.0`, mapping `1.0.0` |
+| Contract versions | metric `1.0.0` → **`1.1.0`** in phase 3 (PAP denominator semantics changed), policy `1.0.0`, schema contract `1.0.0`, mapping `1.0.0` |
 
 ### Defects reproduced against this exact HEAD, before any edit
 
@@ -79,10 +79,10 @@ evidence), **remaining**, **blocked**.
 | R01 | History/list/titles authorized only by owner, not by current scope or pricing permission; stored headlines can carry WAC amounts and old-territory labels | 1 | **fixed** | `tests/security/test_session_authorization.py` — 8 tests; 4 fail on `f8d6d31` | `0d83a29` |
 | R02 | `resolve()` ignores disabled credentials; cookie name inconsistently applied; rotation/revocation undefined; startup privilege checks test fixed role names rather than effective grants | 1 | **fixed** | `test_session_lifecycle.py` (6; 5 fail before) · `test_privilege_boundary.py` (6; 4 fail before) | `0d83a29` |
 | R03 | A delayed response from a previous identity can update the UI after an account switch | 1 | **fixed** | `web/src/__tests__/identity-isolation.test.jsx` — 4 tests pass against the fixed component. The before/after comparison is **not** recorded: see the note below. | `0d83a29` |
-| R04 | Evaluation judge accepts semantic false positives; tuned set described as held out; release command tolerates skips and empty selections | 2 | **fixed** | `tests/unit/test_eval_judge.py` (18 adversarial cases; **12 pass the old judge**) · `tests/unit/test_release_gate.py` (4) | _phase 2_ |
-| R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | pending | | |
-| R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | pending | | |
-| R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | pending | | |
+| R04 | Evaluation judge accepts semantic false positives; tuned set described as held out; release command tolerates skips and empty selections | 2 | **fixed** | `tests/unit/test_eval_judge.py` (18 adversarial cases; **12 pass the old judge**) · `tests/unit/test_release_gate.py` (4) | `244d5d0` |
+| R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | **fixed** | `test_coherent_fixture.py` — PAP is 20/130, market share still 0.40; `test_registry_contract.py` (7) | _phase 3_ |
+| R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | **fixed** | `test_comparison_grain.py` (8) · `test_declared_grain.py` (8) | _phase 3_ |
+| R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | **fixed** | `test_quality_warnings.py` (7; all fail before) | _phase 3_ |
 | R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | pending | | |
 | R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | pending | | |
 | R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | pending | | |
@@ -90,7 +90,7 @@ evidence), **remaining**, **blocked**.
 | R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
 | R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
 | R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | `0d83a29` |
-| R16 | Run records stored the plan and SQL but not the answer, so a stored run cannot be re-judged after the judge changes — `amb-01`'s live result could not be rescored | 2 | **fixed** | `scripts/run_evals.py` now records headline, notes, warnings and rows | _phase 2_ |
+| R16 | Run records stored the plan and SQL but not the answer, so a stored run cannot be re-judged after the judge changes — `amb-01`'s live result could not be rescored | 2 | **fixed** | `scripts/run_evals.py` now records headline, notes, warnings and rows | `244d5d0` |
 | R15 | Dev-only npm advisories (vite dev server, vitest API server): 1 critical, 1 high, 3 moderate. `npm audit --omit=dev` is clean, so nothing ships in `dist/`. No semver-compatible fix exists; clearing them needs vite 6→8 + vitest 2→5, a build-toolchain migration | 6 | **accepted, recorded** | `npm audit --omit=dev` → 0 vulnerabilities | |
 
 ---
@@ -117,6 +117,11 @@ result proves** — which is deliberately narrower than "it passed".
 | 11 | `python3 scripts/run_evals.py` (offline) | offline | `full-182fd9082327` | **36/38**, 2 failed | Under the repaired judge, on the same dataset that previously reported 38/38. The two failures are `b340-01` and `amb-01` — the cases the old rules were hiding. |
 | 12 | `pytest tests/security -q --release-gate --min-tests 95` | offline | working + disposable | 95 passed | The gate now fails on a skip or a short collection. Previously `pytest tests/security -q` exited 0 with every test skipped. |
 | 13 | `pytest tests -q` | offline | working + disposable | **202 passed** | 148 at baseline, 180 after phase 1, 202 after phase 2. |
+| 14 | `pytest tests/integration/test_coherent_fixture.py` | offline | coherent fixture | 17 passed | PAP share of ZENOVAX is 20/130 = 0.1538, not 20/175 = 0.1143. Market share stays 0.40, so the widening that is correct for market share survived. Both fail before the fix. |
+| 15 | compile `share_trend_pp` with `max_rows=2` | offline | n/a (SQL structure) | no `LIMIT` inside the CTEs | Each period is no longer truncated before the change is computed. Before: `LIMIT 3` in both CTEs, so "which product gained the most share" was computed from two independently truncated top-3 lists. |
+| 16 | `pytest tests/unit/test_quality_warnings.py` | offline | fakes | 7 passed / 7 fail before | The competitor-only warning is silent when the dataset does report company rows in market data — which the coherent fixture does, so that answer previously carried a warning contradicted by its own data. |
+| 17 | `pytest tests -q` | offline | working + disposable | **235 passed** | After phase 3. |
+| 18 | `python3 scripts/run_evals.py` | offline | `full-182fd9082327` | 36/38 | Unchanged by phase 3: the two failures are still `b340-01` and `amb-01`. |
 
 ---
 
