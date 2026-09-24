@@ -19,6 +19,29 @@ $ python3 -m pytest tests -q
 Dataset under test: `full-182fd9082327` — 2,000,000 sales, 40,000
 organizations, 40 products, 29,728 ZIP mappings, 23 users.
 
+### Continuous integration
+
+Every push runs the whole no-spend path on a clean Ubuntu runner. Run
+`35950493703` on commit `133cef1` — **all steps green**:
+
+| Step | Result |
+|---|---|
+| Bootstrap database, roles and security policies | ✅ |
+| Generate the full dataset (40k orgs, 2M sales) | ✅ |
+| Load the full dataset | ✅ |
+| Build the coherent-market fixture database | ✅ |
+| Verify the security boundary is intact | ✅ |
+| Security suite (release gate) | ✅ |
+| Full test suite | ✅ |
+| Held-out question set | ✅ |
+| Frontend build | ✅ |
+
+This is the fresh-checkout gate in practice: a machine that has never seen the
+project clones it, provisions PostgreSQL, generates and loads two million rows,
+and runs everything. It uses the **full** dataset rather than seed, because
+under seed most scoped accounts resolve to nothing and the security tests would
+pass vacuously.
+
 ---
 
 ## 1. How expectations are produced

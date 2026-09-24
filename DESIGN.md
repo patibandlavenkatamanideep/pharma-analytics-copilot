@@ -381,6 +381,19 @@ The result cap fetches `cap + 1` rows so a truncated answer is distinguishable
 from one that merely fills the cap — with `LIMIT` equal to the cap they are
 identical and truncation is silently reported as a complete answer.
 
+Under load, ten question shapes measured five times each
+(`scripts/benchmark.py`):
+
+| Concurrency | Overall p50 | Overall p95 | Throughput | Errors |
+|---:|---:|---:|---:|---:|
+| 1 | 96 ms | 450 ms | 7.5 req/s | 0 / 50 |
+| 8 | 138 ms | 764 ms | 32.2 req/s | 0 / 50 |
+
+8× the concurrency gives 4.3× the throughput with latency roughly doubling and
+no timeouts — the per-role pool of 8 connections is the limiting factor, as
+intended. These exclude model latency by design, so it is clear which layer
+costs what.
+
 **No result cache.** Not measured as necessary. If one is added, its key must
 include principal, scope, pricing permission, normalized plan, dataset version,
 policy version and metric version.
@@ -414,6 +427,18 @@ Metamorphic properties tested: free drug moves neither paid demand nor share;
 total equals the sum of the RAM totals inside the region; renaming does not
 merge distinct ids; out-of-scope data cannot change a RAM's result.
 
+Beyond the suite, `evals/questions.yaml` holds 38 **held-out** checks across 15
+families, run by `scripts/run_evals.py`. The planner prompt carries metric
+definitions and window semantics, not these phrasings; several are deliberate
+paraphrases and the compositional family asks for combinations found in no
+document. It scored 30/38 on its first run and 38/38 after the fixes below.
+
+CI (`.github/workflows/ci.yml`) runs the whole no-spend path on every push:
+bootstrap, the **full** dataset, the coherent fixture, a startup assertion that
+the security boundary is intact, the security gate, all 134 tests and the
+held-out set. Full data rather than seed on purpose — under seed most scoped
+accounts resolve to nothing and the security tests would pass vacuously.
+
 ### Bugs these tests found
 
 Worth listing, because each would have produced a confidently wrong answer:
@@ -431,6 +456,17 @@ Worth listing, because each would have produced a confidently wrong answer:
 4. **Truncation was invisible** (§10).
 5. **A market we do not compete in returned nothing** instead of the real market.
 6. **`generate_series` slipped past the validator's denylist** (§7).
+7. **Counting metrics counted the wrong population.** `account_count` had no
+   source filter, so organizations appearing only in third-party market data
+   were counted as accounts we sell to — 8,916 instead of 7,116, a 25%
+   overstatement with no visible symptom.
+8. **A fresh question inherited an earlier turn's filters.** After "exclude
+   340B", an unrelated question three turns later silently kept the exclusion
+   and returned a total 9% below the truth. Filters now carry only on a detected
+   follow-up, and carrying is disclosed in the answer.
+9. **An out-of-scope territory was answered instead of refused.** A RAM asking
+   for Texas received their own territory's numbers — no leak, but an answer to
+   a question they did not ask.
 
 ---
 
@@ -452,7 +488,7 @@ Stated plainly rather than implied.
   details form to be submitted for this account; until then the live planner
   cannot be exercised and no accuracy number exists. The offline planner is not
   a substitute and no figure from it is presented as NL accuracy.
-- Concurrency, cold-start and cost have not been measured.
+- Cold-start and cost have not been measured. Concurrency has (§10).
 
 **Operational limitations**
 - Single-host deployment has no availability guarantee.
