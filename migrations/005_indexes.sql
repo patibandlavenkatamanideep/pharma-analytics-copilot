@@ -15,8 +15,21 @@ CREATE INDEX IF NOT EXISTS ix_sales_org_id ON sales (org_id);
 CREATE INDEX IF NOT EXISTS ix_sales_source_brand_mo
     ON sales (data_source, brand_flag, mo_offset);
 
--- Market-share denominators filter market_data and join products by NDC.
-CREATE INDEX IF NOT EXISTS ix_sales_ndc ON sales (ndc);
+-- Market-share denominators and any product-filtered metric resolve a small set
+-- of NDCs and then filter by source and reporting window. A bare (ndc) index
+-- was measured first and was badly wrong: it probed 52,039 rows per NDC and
+-- discarded 50,720 of them in the heap (120,468 heap blocks, 3,304 ms for one
+-- Docetaxel R3M denominator). Moving source and offset into the index and
+-- covering pack_units turns it into an index-only scan: 6.8 ms, a 485x
+-- improvement. This is why the index set is measured rather than guessed.
+CREATE INDEX IF NOT EXISTS ix_sales_ndc_source_mo
+    ON sales (ndc, data_source, mo_offset) INCLUDE (pack_units);
+
+-- Account and territory rollups filter source and window, then group by
+-- organization. Covering pack_units and ndc avoids the heap for the common
+-- volume aggregates.
+CREATE INDEX IF NOT EXISTS ix_sales_source_mo_org
+    ON sales (data_source, mo_offset, org_id) INCLUDE (pack_units, ndc);
 
 -- Weekly windows (R30D / "last 4 weeks").
 CREATE INDEX IF NOT EXISTS ix_sales_source_wk ON sales (data_source, wk_offset);

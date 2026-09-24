@@ -80,10 +80,15 @@ def analytics_transaction(
     pool = get_pool("exec" if wac_authorized else "scoped")
 
     with pool.connection() as conn:
-        conn.read_only = True
         conn.autocommit = False
         try:
             with conn.cursor() as cur:
+                # Read-only is declared with an explicit statement rather than
+                # psycopg's connection attribute: the attribute is applied when
+                # the pool hands the connection back, which interacts badly with
+                # a transaction that ended in an error. A statement inside the
+                # transaction is scoped to exactly this transaction.
+                cur.execute("SET TRANSACTION READ ONLY")
                 # set_config(..., is_local => true) rather than SET LOCAL: it is
                 # the parameterized form, so no value is ever interpolated into
                 # SQL text, and it is equally transaction-scoped -- every setting
