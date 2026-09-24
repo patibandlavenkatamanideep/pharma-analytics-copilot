@@ -1,0 +1,17 @@
+.git
+.venv
+web/node_modules
+web/dist
+schema/generated
+tests
+evals
+docs
+*.md
+!README.md
+.env
+.env.*
+evaluator_logins.json
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache

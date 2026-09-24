@@ -1,0 +1,49 @@
+# Local and single-host deployment.
+#
+# The database port is NOT published to the host: only the app container can
+# reach PostgreSQL, over the private compose network.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PAC_DB_NAME:-pharma_analytics}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # deliberately no `ports:` — the database is not reachable from outside
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PAC_DB_HOST: db
+      PAC_DB_PORT: "5432"
+      PAC_DB_NAME: ${PAC_DB_NAME:-pharma_analytics}
+      PAC_DB_OWNER_PASSWORD: ${PAC_DB_OWNER_PASSWORD:?}
+      PAC_DB_AUTH_PASSWORD: ${PAC_DB_AUTH_PASSWORD:?}
+      PAC_DB_EXEC_PASSWORD: ${PAC_DB_EXEC_PASSWORD:?}
+      PAC_DB_SCOPED_PASSWORD: ${PAC_DB_SCOPED_PASSWORD:?}
+      PAC_LLM_PROVIDER: ${PAC_LLM_PROVIDER:-offline}
+      PAC_BEDROCK_REGION: ${PAC_BEDROCK_REGION:-us-east-1}
+      PAC_BEDROCK_MODEL_ID: ${PAC_BEDROCK_MODEL_ID:-}
+      PAC_COOKIE_SECURE: ${PAC_COOKIE_SECURE:-true}
+      PAC_ENVIRONMENT: cloud
+      # Credentials come from the task role in AWS; these are for local runs.
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
