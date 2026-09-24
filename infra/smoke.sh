@@ -51,12 +51,20 @@ if [ -z "$LOGINS" ]; then
   [ "$FAILURES" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "$FAILURES FAILED"; exit 1; }
 fi
 
-read_login() { python3 -c "
-import json,sys
-for x in json.load(open('$LOGINS')):
-    if x['role'] == '$1':
-        print(x['$2']); break
-"; }
+read_login() { LOGINS="$LOGINS" ROLE="$1" FIELD="$2" python3 -c '
+import json, os, sys
+for x in json.load(open(os.environ["LOGINS"])):
+    if x["role"] == os.environ["ROLE"]:
+        print(x[os.environ["FIELD"]]); break
+'; }
+
+# Build the login body with python rather than string-interpolating into JSON:
+# a password containing a quote or a backslash would otherwise produce invalid
+# JSON, and the failure looks like a rejected login rather than a broken test.
+login_body() { EMAIL="$1" PASSWORD="$2" python3 -c '
+import json, os
+print(json.dumps({"email": os.environ["EMAIL"], "password": os.environ["PASSWORD"]}))
+'; }
 
 echo "== roles see different scopes =="
 for role in exec director ram; do
@@ -64,8 +72,7 @@ for role in exec director ram; do
   [ -z "$email" ] && { fail "no $role in $LOGINS"; continue; }
 
   body=$(curl -s -c "$JAR.$role" -X POST -H 'Content-Type: application/json' \
-    -d "$(python3 -c "import json,sys;print(json.dumps({'email':'$email','password':'$password'}))")" \
-    "$BASE/api/login")
+    -d "$(login_body "$email" "$password")" "$BASE/api/login")
   scope=$(echo "$body" | sed -n 's/.*"scope": *"\([^"]*\)".*/\1/p')
   [ -n "$scope" ] && pass "$role signs in — scope: $scope" || { fail "$role login failed: $body"; continue; }
 

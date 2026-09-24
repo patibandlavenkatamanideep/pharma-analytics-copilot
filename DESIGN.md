@@ -343,6 +343,34 @@ permissions problem and is not one.
 
 ---
 
+## 8b. Cloud services used, and why
+
+Deployed at **https://44-217-117-172.sslip.io** — a single EC2 instance running the app,
+PostgreSQL and Caddy under Docker Compose.
+
+| Service | Choice | Why this and not the alternative |
+|---|---|---|
+| Compute | EC2  (ARM Graviton) | ~\/mo. App Runner + RDS is the more "cloud-native" answer at ~\–80/mo and adds a VPC connector, private subnets and security-group plumbing — more surface to misconfigure for an app that comfortably fits one box. ARM because Graviton is cheaper per vCPU and the image builds natively on it. |
+| Database | PostgreSQL 16 in a container, on the same host | RDS would be the right call for a real deployment (managed backups, failover). Here it doubles the cost and adds a network hop for a dataset that fits in the instance's storage. The trade-off is stated below rather than hidden. |
+| TLS | Caddy | Obtains and renews a Let's Encrypt certificate unattended. An ALB would cost more than the instance itself; nginx + certbot is more moving parts for the same result. |
+| DNS |  | Resolves `<ip>.sslip.io` to that IP, so Let's Encrypt will issue a real certificate without buying a domain. Let's Encrypt will not issue for a bare IP or an  name, and plain HTTP would break login because the session cookie is . |
+| LLM | Bedrock, Claude Opus 4.5 | Keeps inference in the same account and bill. The Claude 5 family is not enabled on this account. |
+| Bedrock auth | EC2 instance role | No AWS keys on the box. The attached policy allows  on Anthropic models only — not , not other providers. |
+| Storage | 30 GB gp3 + 4 GB swap | Swap because a 2 GB instance cannot complete the Vite build without it. |
+| Network | Security group: 22 from one IP, 80/443 public | PostgreSQL publishes no host port at all and is reachable only over the private compose network. |
+
+**The honest limitation:** this is a single host. There is no redundancy, and a
+host failure or a restart is downtime. That is an acceptable trade for an
+assessment and should not be described as production-ready. The path to
+production from here is RDS with automated backups and more than one instance
+behind a load balancer — the application needs no change for either, because it
+holds no state in memory: sessions and conversations live in PostgreSQL.
+
+**Cost:** roughly \/month while running (instance \, storage \.40,
+elastic IP free while attached). Stopping the instance drops it to storage only.
+
+---
+
 ## 9. Conversation
 
 Persisted state is the **typed plan and the resolved entity ids** — never SQL,
