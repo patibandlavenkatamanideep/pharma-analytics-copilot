@@ -201,6 +201,14 @@ def ask(body: AskRequest, user: CurrentUser) -> dict[str, Any]:
     }
     if result.alternative:
         payload["alternative"] = result.alternative
+    if body.include_sql:
+        # The typed plan is returned alongside the SQL, under the same explicit
+        # request. It is strictly less sensitive than the SQL -- it names a
+        # metric key, dimensions and filter values, and by construction cannot
+        # contain a role, a scope, a table or a column -- and it is the thing
+        # actually worth inspecting, because it is what the model produced and
+        # what everything downstream was compiled from.
+        payload["plan"] = result.plan
     if result.sql:
         payload["sql"] = result.sql
     if result.answer:
