@@ -29,7 +29,6 @@ from typing import Any
 from app.analytics.compiler import Compiler, CompileError
 from app.analytics.entities import vocabulary_for
 from app.analytics.periods import PeriodError
-from app.analytics.plan import AnalyticalPlan
 from app.analytics.registry import get_registry
 from app.analytics.render import Answer, render
 from app.analytics.validator import SqlValidationError, validate

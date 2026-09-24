@@ -7,7 +7,6 @@ checkout can run the unit suite before loading 2M rows.
 
 from __future__ import annotations
 
-import json
 import pathlib
 import secrets
 

@@ -20,7 +20,6 @@ import concurrent.futures
 import json
 import pathlib
 import secrets
-import statistics
 import sys
 import time
 

@@ -103,13 +103,24 @@ jobs:
       - run: npm --prefix web run build
 
   # The container image is a deliverable, so it is built on every push rather
-  # than trusted. It is built but not pushed anywhere: no registry, no cloud,
-  # no cost beyond runner minutes.
+  # than trusted. Built and exercised, never pushed: no registry, no cloud, no
+  # cost beyond runner minutes.
   image:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: ci-postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+
     steps:
       - uses: actions/checkout@v4
-
       - uses: docker/setup-buildx-action@v3
 
       - name: Build the image
@@ -122,29 +133,76 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: The image starts and serves /health without a database
+      # The application refuses to serve unless it can verify the database
+      # security boundary. That is deliberate -- a mis-provisioned deployment
+      # must fail loudly rather than quietly serve unrestricted data -- so the
+      # first assertion is that it does NOT come up without a database.
+      - name: It refuses to start with no database
         run: |
-          docker run -d --name pac -p 8000:8000 \
-            -e PAC_LLM_PROVIDER=offline \
+          docker run --rm --name pac-nodb \
+            -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline \
+            pharma-analytics-copilot:ci \
+            timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8000 \
+            > nodb.log 2>&1 && echo "started anyway" || true
+          if grep -qiE "connection refused|boundary" nodb.log; then
+            echo "refused to serve without a database, as designed"
+          else
+            echo "expected a startup refusal; got:"; tail -20 nodb.log; exit 1
+          fi
+
+      # The image must also contain everything needed to provision and run.
+      - name: Provision and load using the image itself
+        env:
+          PGHOST: 127.0.0.1
+        run: |
+          docker run --rm --network host \
             -e PAC_DB_HOST=127.0.0.1 \
+            -e PAC_ADMIN_DSN=postgresql://postgres:ci-postgres@127.0.0.1:5432/postgres \
+            -v "$PWD/.env-out:/out" \
+            pharma-analytics-copilot:ci \
+            sh -c "python scripts/bootstrap_db.py --drop && cp /app/.env /out/.env" \
+            || { echo "bootstrap from the image failed"; exit 1; }
+          echo "bootstrapped from inside the image"
+
+      - name: Start the container against the database
+        run: |
+          set -a; . ./.env-out/.env; set +a
+          docker run -d --name pac --network host \
+            -e PAC_DB_HOST=127.0.0.1 \
+            -e PAC_DB_OWNER_PASSWORD="$PAC_DB_OWNER_PASSWORD" \
+            -e PAC_DB_AUTH_PASSWORD="$PAC_DB_AUTH_PASSWORD" \
+            -e PAC_DB_EXEC_PASSWORD="$PAC_DB_EXEC_PASSWORD" \
+            -e PAC_DB_SCOPED_PASSWORD="$PAC_DB_SCOPED_PASSWORD" \
+            -e PAC_LLM_PROVIDER=offline -e PAC_COOKIE_SECURE=false \
             pharma-analytics-copilot:ci
-          # /health must answer even with no database reachable; /ready must
-          # NOT, because there is no published dataset. A container that
-          # reported ready here would take traffic it cannot serve.
           for i in $(seq 1 30); do
-            code=$(docker exec pac python -c \
-              "import urllib.request as u;print(u.urlopen('http://127.0.0.1:8000/health',timeout=2).status)" \
-              2>/dev/null) && break
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/health || true)
+            [ "$code" = "200" ] && break
             sleep 2
           done
-          echo "health: ${code:-none}"
-          [ "${code:-}" = "200" ] || { echo "container never became healthy"; docker logs pac; exit 1; }
+          [ "$code" = "200" ] || { echo "never became healthy"; docker logs pac; exit 1; }
+          echo "/health 200"
 
-      - name: The built UI is inside the image
+      # No data has been loaded, so readiness must be false. A container that
+      # reported ready here would take traffic it cannot serve.
+      - name: It is healthy but NOT ready without a published dataset
         run: |
-          docker exec pac test -f /app/web/dist/index.html \
-            || { echo "frontend missing from the image"; exit 1; }
-          echo "web/dist present"
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/ready)
+          echo "/ready -> $code"
+          [ "$code" = "503" ] || { echo "expected 503 before any data is loaded"; exit 1; }
+
+      - name: The built UI is served from the image
+        run: |
+          docker exec pac test -f /app/web/dist/index.html
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)
+          [ "$code" = "200" ] || { echo "UI not served ($code)"; exit 1; }
+          echo "UI served from the same origin"
+
+      - name: Unauthenticated API access is refused
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/me)
+          [ "$code" = "401" ] || { echo "expected 401, got $code"; exit 1; }
+          echo "/api/me -> 401"
 
       - name: It does not run as root
         run: |
