@@ -35,7 +35,7 @@ from app.analytics.validator import SqlValidationError, validate
 from app.auth.policy import AuthorizationError, Principal, authorize, scope_note
 from app.config import get_settings
 from app.conversation.state import ConversationState, open_conversation, record_turn
-from app.db import ScopeBindingError, analytics_transaction, auth_transaction, owner_transaction
+from app.db import ScopeBindingError, analytics_transaction, auth_transaction
 from app.llm.planner import Planner, PlannerError
 
 log = logging.getLogger(__name__)
@@ -66,8 +66,15 @@ class Pipeline:
     # -- dataset manifest ----------------------------------------------------
 
     def current_dataset(self) -> dict[str, Any]:
-        """The published snapshot. A partially loaded refresh is never visible."""
-        with owner_transaction() as cur:
+        """The published snapshot. A partially loaded refresh is never visible.
+
+        Read over the auth connection, not the owner one. This runs on every
+        ask(), and the owner role can create and drop objects and owns the
+        protected tables -- there is no reason for the serving process to use
+        it to read one manifest row. The auth role holds exactly SELECT on
+        app_meta.dataset_manifest.
+        """
+        with auth_transaction() as cur:
             cur.execute(
                 "SELECT dataset_id, load_mode, reporting_anchor, row_counts, warnings, "
                 "       published_at, source_coverage "
@@ -95,7 +102,15 @@ class Pipeline:
         dataset = self.current_dataset()
         anchor = dataset["reporting_anchor"]
 
-        state = open_conversation(principal, conversation_id)
+        # Continuation is bound to the dataset and the semantic contracts, not
+        # only to who is asking: a refresh or a contract bump makes a carried
+        # plan incomparable rather than merely old.
+        state = open_conversation(
+            principal, conversation_id,
+            dataset_id=dataset["dataset_id"],
+            metric_version=get_registry().version,
+            policy_version=POLICY_VERSION,
+        )
 
         audit: dict[str, Any] = {
             "request_id": request_id,

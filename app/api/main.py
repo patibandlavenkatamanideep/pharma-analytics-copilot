@@ -11,10 +11,11 @@ and then they see only the statement their own principal was authorized to run.
 from __future__ import annotations
 
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -87,11 +88,21 @@ def pipeline() -> Pipeline:
 # Identity
 # ---------------------------------------------------------------------------
 
-def current_principal(
-    pac_session: Annotated[str | None, Cookie()] = None,
-) -> Principal:
+def session_token(request: Request) -> str | None:
+    """Read the session cookie under its CONFIGURED name.
+
+    Previously this was a `pac_session: Cookie()` parameter, which makes
+    FastAPI read whichever cookie is named after the parameter. Login and
+    logout used settings.cookie_name, so configuring any other name silently
+    broke authentication: the cookie was set and cleared under one name and
+    looked for under another. One accessor now, used by every path.
+    """
+    return request.cookies.get(get_settings().cookie_name)
+
+
+def current_principal(request: Request) -> Principal:
     """Resolve the caller. The browser supplies only an opaque token."""
-    principal = identity.resolve(pac_session)
+    principal = identity.resolve(session_token(request))
     if principal is None:
         raise HTTPException(status_code=401, detail="Not signed in.")
     return principal
@@ -130,11 +141,8 @@ def login(body: LoginRequest, request: Request, response: Response) -> dict[str,
 
 
 @app.post("/api/logout")
-def logout(
-    response: Response,
-    pac_session: Annotated[str | None, Cookie()] = None,
-) -> dict[str, str]:
-    identity.revoke(pac_session)
+def logout(request: Request, response: Response) -> dict[str, str]:
+    identity.revoke(session_token(request))
     response.delete_cookie(get_settings().cookie_name, path="/")
     return {"status": "signed out"}
 
@@ -187,10 +195,19 @@ def ask(body: AskRequest, user: CurrentUser) -> dict[str, Any]:
     except ConversationAccessError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
     except Exception:
-        log.exception("unhandled pipeline failure")
+        # An unhandled failure still has to be investigable. Without an id in
+        # the response there is nothing to connect the user's report to the
+        # log line, so the message was a dead end for both sides. The id is
+        # generated here, logged with the traceback, and returned on its own --
+        # it identifies the log entry and discloses nothing about the cause.
+        failure_id = uuid.uuid4().hex[:16]
+        log.exception("unhandled pipeline failure (request_id=%s)", failure_id)
         raise HTTPException(
             status_code=500,
-            detail="Something went wrong answering that. Please try again.",
+            detail={
+                "message": "Something went wrong answering that. Please try again.",
+                "request_id": failure_id,
+            },
         ) from None
 
     payload: dict[str, Any] = {

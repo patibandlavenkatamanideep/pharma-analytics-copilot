@@ -125,9 +125,15 @@ def resolve(token: str | None) -> Principal | None:
                    u.region_name, u.can_view_wac
             FROM app_auth.sessions s
             JOIN users u ON u.user_id = s.user_id
+            -- A disabled credential must also kill sessions already issued
+            -- under it. Without this join, disabling an account left every
+            -- outstanding session working until it expired on its own, which
+            -- is the opposite of what disabling is for.
+            JOIN app_auth.credentials c ON c.user_id = s.user_id
             WHERE s.token_hash = %s
               AND s.revoked_at IS NULL
               AND s.expires_at > now()
+              AND c.disabled IS NOT TRUE
             """,
             (_token_hash(token),),
         )
@@ -163,8 +169,15 @@ def revoke_all_for_user(user_id: str) -> int:
         return cur.rowcount
 
 
-def set_credential(user_id: str, password: str) -> None:
-    """Create or replace a credential. Used only by the provisioning script."""
+def set_credential(user_id: str, password: str, *, revoke_sessions: bool = True) -> None:
+    """Create or replace a credential. Used only by the provisioning script.
+
+    Rotating a password revokes that user's outstanding sessions by default.
+    The alternative -- leaving them live -- means a rotation prompted by a
+    suspected compromise does not actually end the compromised session, which
+    makes the rotation close to useless. Callers that genuinely want to seed a
+    credential without disturbing live sessions must say so explicitly.
+    """
     with auth_transaction() as cur:
         cur.execute("SELECT 1 FROM users WHERE user_id = %s", (user_id,))
         if cur.fetchone() is None:
@@ -178,6 +191,33 @@ def set_credential(user_id: str, password: str) -> None:
             """,
             (user_id, hash_password(password)),
         )
+        if revoke_sessions:
+            cur.execute(
+                "UPDATE app_auth.sessions SET revoked_at = now() "
+                "WHERE user_id = %s AND revoked_at IS NULL",
+                (user_id,),
+            )
+
+
+def set_disabled(user_id: str, disabled: bool) -> None:
+    """Disable or re-enable a credential.
+
+    Disabling revokes outstanding sessions as well as blocking new logins, so
+    the effect is immediate rather than eventual. resolve() also checks the
+    flag, so a session issued in the same instant is still refused.
+    """
+    with auth_transaction() as cur:
+        cur.execute(
+            "UPDATE app_auth.credentials SET disabled = %s, updated_at = now() "
+            "WHERE user_id = %s",
+            (disabled, user_id),
+        )
+        if disabled:
+            cur.execute(
+                "UPDATE app_auth.sessions SET revoked_at = now() "
+                "WHERE user_id = %s AND revoked_at IS NULL",
+                (user_id,),
+            )
 
 
 def purge_expired_sessions() -> int:

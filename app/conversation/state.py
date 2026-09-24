@@ -4,10 +4,27 @@ What is persisted is the structured plan and the resolved entity ids, never SQL
 and never result rows. A follow-up therefore patches a typed object rather than
 re-parsing old prose, and old text can never overwrite who the user is.
 
-Every read is filtered by owner_user_id: knowing a conversation id is not
-enough to open it. A conversation also records the scope it was created under,
-so if the owner's role or assignment changes, carried-over state is discarded
-rather than silently reused under different permissions.
+Authorization here is CURRENT, not historical. Ownership answers "whose is
+this"; it does not answer "may they see it now".
+
+That distinction matters because stored material is not inert. An answer
+headline can embed a WAC amount ("Gross revenue: $250,766,926.42") or a
+territory label, and the conversation title is the question text. Filtering by
+owner alone meant a user who had since lost pricing permission, or been moved
+to another territory, could still read both back through the history and list
+endpoints -- with the list leaking titles even where a body was withheld.
+
+So every path -- open, list, load, write -- requires the conversation's
+recorded scope fingerprint to still equal the principal's current one. The
+fingerprint covers user, role, scope value and pricing permission, so losing
+WAC or changing territory makes prior material inaccessible immediately, with
+no separate revocation step. Continuation additionally requires the dataset and
+semantic contract versions to match, because a refresh makes a carried plan
+incomparable rather than merely old.
+
+Retention is deliberately not deletion: the rows remain for an administrator or
+audit path under a different policy. What changes is that the ordinary
+endpoints stop returning them.
 """
 
 from __future__ import annotations
@@ -38,17 +55,33 @@ def _new_id() -> str:
     return "c_" + secrets.token_urlsafe(12)
 
 
+# One SQL predicate, used by every read and write, so the four paths cannot
+# drift apart. Parameter order is (conversation_id?, owner_user_id, fingerprint).
+_CURRENT_AUTH = "owner_user_id = %s AND scope_fingerprint = %s"
+
+
 def open_conversation(
-    principal: Principal, conversation_id: str | None
+    principal: Principal,
+    conversation_id: str | None,
+    *,
+    dataset_id: str | None = None,
+    metric_version: str | None = None,
+    policy_version: str | None = None,
 ) -> ConversationState:
-    """Open an existing conversation or start a new one."""
+    """Open an existing conversation or start a new one.
+
+    Continuation requires the scope fingerprint AND the dataset and semantic
+    contract versions to still match. A refresh or a contract bump makes a
+    carried plan incomparable, not merely stale.
+    """
     fingerprint = principal.fingerprint()
 
     with auth_transaction() as cur:
         if conversation_id:
             # Owner check and scope check in one statement.
             cur.execute(
-                "SELECT conversation_id, owner_user_id, scope_fingerprint "
+                "SELECT conversation_id, owner_user_id, scope_fingerprint, "
+                "       dataset_id, metric_version, policy_version "
                 "FROM app_conv.conversations WHERE conversation_id = %s",
                 (conversation_id,),
             )
@@ -60,22 +93,38 @@ def open_conversation(
                 # user's conversation exists is not disclosed.
                 raise ConversationAccessError("That conversation does not exist.")
 
+            incompatible = None
             if row["scope_fingerprint"] != fingerprint:
-                # Access changed since this thread started. Start clean rather
-                # than carry a cohort the user may no longer be allowed to see.
+                incompatible = (
+                    "Your access level changed, so this conversation started fresh "
+                    "rather than reusing earlier results."
+                )
+            elif dataset_id and row["dataset_id"] and row["dataset_id"] != dataset_id:
+                incompatible = (
+                    "The underlying data was refreshed, so this conversation started "
+                    "fresh rather than comparing against the previous snapshot."
+                )
+            elif (metric_version and row["metric_version"]
+                  and row["metric_version"] != metric_version) or (
+                  policy_version and row["policy_version"]
+                  and row["policy_version"] != policy_version):
+                incompatible = (
+                    "The metric or policy definitions changed, so this conversation "
+                    "started fresh rather than reusing an incomparable plan."
+                )
+
+            if incompatible:
+                # Do not carry the cohort, the plan, or anything derived from
+                # them across an authorization or semantic boundary.
                 new_id = _new_id()
                 cur.execute(
-                    "INSERT INTO app_conv.conversations "
-                    "(conversation_id, owner_user_id, scope_fingerprint) VALUES (%s, %s, %s)",
-                    (new_id, principal.user_id, fingerprint),
+                    "INSERT INTO app_conv.conversations (conversation_id, owner_user_id, "
+                    "scope_fingerprint, dataset_id, metric_version, policy_version) "
+                    "VALUES (%s, %s, %s, %s, %s, %s)",
+                    (new_id, principal.user_id, fingerprint, dataset_id,
+                     metric_version, policy_version),
                 )
-                return ConversationState(
-                    conversation_id=new_id,
-                    reset_reason=(
-                        "Your access level changed, so this conversation started fresh "
-                        "rather than reusing earlier results."
-                    ),
-                )
+                return ConversationState(conversation_id=new_id, reset_reason=incompatible)
 
             cur.execute(
                 "SELECT plan, resolved_cohort, seq FROM app_conv.turns "
@@ -100,9 +149,11 @@ def open_conversation(
 
         new_id = _new_id()
         cur.execute(
-            "INSERT INTO app_conv.conversations "
-            "(conversation_id, owner_user_id, scope_fingerprint) VALUES (%s, %s, %s)",
-            (new_id, principal.user_id, fingerprint),
+            "INSERT INTO app_conv.conversations (conversation_id, owner_user_id, "
+            "scope_fingerprint, dataset_id, metric_version, policy_version) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (new_id, principal.user_id, fingerprint, dataset_id,
+             metric_version, policy_version),
         )
         return ConversationState(conversation_id=new_id)
 
@@ -118,10 +169,12 @@ def record_turn(
     status: str,
 ) -> None:
     with auth_transaction() as cur:
+        # Writing is authorized by the same current rule as reading: a turn
+        # must not be appended to a thread the principal could no longer open.
         cur.execute(
-            "SELECT 1 FROM app_conv.conversations "
-            "WHERE conversation_id = %s AND owner_user_id = %s",
-            (state.conversation_id, principal.user_id),
+            f"SELECT 1 FROM app_conv.conversations "
+            f"WHERE conversation_id = %s AND {_CURRENT_AUTH}",
+            (state.conversation_id, principal.user_id, principal.fingerprint()),
         )
         if cur.fetchone() is None:
             raise ConversationAccessError("That conversation does not exist.")
@@ -149,10 +202,14 @@ def record_turn(
 
 def list_conversations(principal: Principal, limit: int = 25) -> list[dict[str, Any]]:
     with auth_transaction() as cur:
+        # The title is the question text, which is itself user content, so the
+        # whole row is withheld rather than blanked -- a redacted entry would
+        # still disclose that a conversation exists under a scope the principal
+        # no longer holds.
         cur.execute(
-            "SELECT conversation_id, title, updated_at FROM app_conv.conversations "
-            "WHERE owner_user_id = %s ORDER BY updated_at DESC LIMIT %s",
-            (principal.user_id, limit),
+            f"SELECT conversation_id, title, updated_at FROM app_conv.conversations "
+            f"WHERE {_CURRENT_AUTH} ORDER BY updated_at DESC LIMIT %s",
+            (principal.user_id, principal.fingerprint(), limit),
         )
         return [dict(r) for r in cur.fetchall()]
 
@@ -164,9 +221,11 @@ def load_history(principal: Principal, conversation_id: str) -> list[dict[str, A
             SELECT t.seq, t.question, t.answer_text, t.status, t.created_at
             FROM app_conv.turns t
             JOIN app_conv.conversations c ON c.conversation_id = t.conversation_id
-            WHERE t.conversation_id = %s AND c.owner_user_id = %s
+            WHERE t.conversation_id = %s
+              AND c.owner_user_id = %s
+              AND c.scope_fingerprint = %s
             ORDER BY t.seq
             """,
-            (conversation_id, principal.user_id),
+            (conversation_id, principal.user_id, principal.fingerprint()),
         )
         return [dict(r) for r in cur.fetchall()]

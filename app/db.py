@@ -161,53 +161,134 @@ def owner_transaction(autocommit: bool = False) -> Iterator[psycopg.Cursor]:
 
 
 def verify_runtime_role_safety() -> list[str]:
-    """Assert at startup that the runtime roles cannot bypass the controls above.
+    """Assert at startup that the roles we actually connect as cannot bypass the
+    controls above.
 
-    Returns a list of problems; an empty list means the boundary holds. This is
-    checked on every boot so a mis-provisioned database fails loudly instead of
-    silently serving unrestricted data.
+    Returns a list of problems; an empty list means the boundary holds.
+
+    Two things this deliberately does NOT do any more:
+
+      * It does not test a hardcoded list of role names. The names are read
+        from the configuration, so the roles inspected are the ones the
+        application will really log in as. Checking `pac_rt_scoped` while the
+        process connects as something else proves nothing.
+
+      * It does not read role attributes only. SUPERUSER and BYPASSRLS are
+        reachable through role MEMBERSHIP -- a role with neither attribute set
+        can `SET ROLE` to one that has them -- so membership is resolved
+        transitively with pg_has_role(). Likewise column and table access is
+        asked via has_*_privilege(), which accounts for privileges inherited
+        from granted roles rather than only those granted directly.
+
+    A role named in the configuration but missing from the database is itself a
+    problem. The previous version filtered pg_roles by name, so a missing role
+    simply produced no rows and the check passed.
     """
+    settings = get_settings()
+    analytics_roles = {
+        "exec": settings.db_exec_user,
+        "scoped": settings.db_scoped_user,
+    }
+    connecting = {**analytics_roles, "auth": settings.db_auth_user}
     problems: list[str] = []
-    with owner_transaction() as cur:
+
+    # Over the auth connection, not the owner one: everything consulted below
+    # lives in pg_catalog and is readable by any role, so the serving process
+    # never needs owner credentials. Ingestion still does, and keeps them.
+    with auth_transaction() as cur:
+        cur.execute(
+            "SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)",
+            (list(connecting.values()),),
+        )
+        present = {r["rolname"] for r in cur.fetchall()}
+        for purpose, name in connecting.items():
+            if name not in present:
+                problems.append(f"configured {purpose} role {name!r} does not exist")
+
+        usable = [n for n in connecting.values() if n in present]
+        if not usable:
+            return problems
+
+        # SUPERUSER / BYPASSRLS, including where they are reachable by being a
+        # member of some other role that holds them.
         cur.execute(
             """
-            SELECT rolname, rolsuper, rolbypassrls
-            FROM pg_roles
-            WHERE rolname IN ('pac_rt_exec','pac_rt_scoped','pac_exec_login','pac_scoped_login')
-            """
+            SELECT m.rolname AS member, r.rolname AS held, r.rolsuper, r.rolbypassrls
+            FROM pg_roles m
+            JOIN pg_roles r ON pg_has_role(m.oid, r.oid, 'MEMBER')
+            WHERE m.rolname = ANY(%s) AND (r.rolsuper OR r.rolbypassrls)
+            """,
+            (usable,),
         )
         for row in cur.fetchall():
-            if row["rolsuper"]:
-                problems.append(f"{row['rolname']} is SUPERUSER")
-            if row["rolbypassrls"]:
-                problems.append(f"{row['rolname']} has BYPASSRLS")
-
-        # RLS must be enabled on both protected tables.
-        cur.execute(
-            "SELECT relname, relrowsecurity FROM pg_class "
-            "WHERE relname IN ('organizations','sales') AND relkind = 'r'"
-        )
-        for row in cur.fetchall():
-            if not row["relrowsecurity"]:
-                problems.append(f"RLS not enabled on {row['relname']}")
-
-        # The scoped role must hold no privilege whatsoever on sales.wac, and
-        # must not hold a table-wide grant that would supersede the column list.
-        cur.execute(
-            "SELECT has_column_privilege('pac_rt_scoped', 'sales', 'wac', 'SELECT') AS can_wac"
-        )
-        if cur.fetchone()["can_wac"]:
-            problems.append("pac_rt_scoped can SELECT sales.wac")
-
-        cur.execute("SELECT has_table_privilege('pac_rt_scoped', 'users', 'SELECT') AS can_users")
-        if cur.fetchone()["can_users"]:
-            problems.append("pac_rt_scoped can read the users table")
-
-        for schema in ("app_auth", "app_conv", "app_meta"):
-            cur.execute(
-                "SELECT has_schema_privilege('pac_rt_scoped', %s, 'USAGE') AS u", (schema,)
+            attrs = ", ".join(
+                a for a, on in (("SUPERUSER", row["rolsuper"]),
+                                ("BYPASSRLS", row["rolbypassrls"])) if on
             )
-            if cur.fetchone()["u"] and schema != "app_meta":
-                problems.append(f"pac_rt_scoped has USAGE on {schema}")
+            via = "" if row["held"] == row["member"] else f" via membership in {row['held']}"
+            problems.append(f"{row['member']} has {attrs}{via}")
+
+        for table in ("organizations", "sales"):
+            cur.execute(
+                "SELECT c.relrowsecurity, c.relforcerowsecurity, "
+                "       pg_get_userbyid(c.relowner) AS owner, "
+                "       (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies "
+                "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                "WHERE c.relname = %s AND c.relkind = 'r' AND n.nspname = 'public'",
+                (table,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                problems.append(f"protected table {table} is missing")
+                continue
+            if not row["relrowsecurity"]:
+                problems.append(f"RLS not enabled on {table}")
+            if row["policies"] == 0:
+                # Enabled with no policy denies everything, which is safe but
+                # means the deployment is broken rather than protected.
+                problems.append(f"RLS enabled on {table} but no policy is defined")
+            # An owner bypasses its own table's RLS unless FORCE is set, so an
+            # analytics role must never own a protected table.
+            for purpose, name in analytics_roles.items():
+                if name in present and row["owner"] == name and not row["relforcerowsecurity"]:
+                    problems.append(
+                        f"{purpose} role {name} owns {table} without FORCE ROW LEVEL SECURITY"
+                    )
+
+        scoped = settings.db_scoped_user
+        if scoped in present:
+            # Effective, not direct: has_column_privilege resolves inheritance.
+            cur.execute(
+                "SELECT has_column_privilege(%s, 'sales', 'wac', 'SELECT') AS can_wac",
+                (scoped,),
+            )
+            if cur.fetchone()["can_wac"]:
+                problems.append(f"{scoped} can SELECT sales.wac")
+
+            cur.execute(
+                "SELECT has_table_privilege(%s, 'users', 'SELECT') AS can_users", (scoped,))
+            if cur.fetchone()["can_users"]:
+                problems.append(f"{scoped} can read the users table")
+
+            # The identity and conversation schemas are not the analytics
+            # role's business. (app_meta is not listed here because the scoped
+            # role has no USAGE on it either -- the manifest is read over the
+            # auth connection.)
+            for schema in ("app_auth", "app_conv"):
+                cur.execute(
+                    "SELECT has_schema_privilege(%s, %s, 'USAGE') AS u", (scoped, schema))
+                if cur.fetchone()["u"]:
+                    problems.append(f"{scoped} has USAGE on {schema}")
+
+        # The exec role is the only one that may price. If it cannot, execs get
+        # errors instead of answers, so the deployment is misprovisioned too.
+        exec_role = settings.db_exec_user
+        if exec_role in present:
+            cur.execute(
+                "SELECT has_column_privilege(%s, 'sales', 'wac', 'SELECT') AS can_wac",
+                (exec_role,),
+            )
+            if not cur.fetchone()["can_wac"]:
+                problems.append(f"{exec_role} cannot SELECT sales.wac")
 
     return problems

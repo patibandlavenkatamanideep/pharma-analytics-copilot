@@ -7,7 +7,21 @@ const api = async (path, options = {}) => {
     ...options,
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.detail || "Something went wrong.");
+  if (!res.ok) {
+    // `detail` is a plain string for expected refusals, and an object carrying
+    // a request id for an unhandled failure. Showing the id gives the user
+    // something to quote when reporting it.
+    const detail = body.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : detail?.message || "Something went wrong.";
+    const err = new Error(
+      detail?.request_id ? `${message} (reference ${detail.request_id})` : message,
+    );
+    err.requestId = detail?.request_id;
+    throw err;
+  }
   return body;
 };
 
@@ -209,13 +223,40 @@ export default function App() {
   const [showSql, setShowSql] = useState(false);
   const bottom = useRef(null);
 
+  // Every sign-in and sign-out bumps this. A request captures the value it was
+  // issued under and refuses to touch state if it has moved on since.
+  //
+  // Without it, a slow /api/ask that resolves after the user signs out writes
+  // its answer into the transcript anyway -- `setTurns` does not know the
+  // identity changed -- and because signing in did not clear the transcript,
+  // the next person to sign in on that browser saw the previous person's
+  // answer, headline figures included.
+  const identityEpoch = useRef(0);
+  const inFlight = useRef(null);
+
+  const newIdentity = () => {
+    identityEpoch.current += 1;
+    inFlight.current?.abort();
+    inFlight.current = null;
+    setTurns([]);
+    setConversationId(null);
+    setQuestion("");
+    setBusy(false);
+    return identityEpoch.current;
+  };
+
   useEffect(() => {
+    const epoch = identityEpoch.current;
     api("/api/me")
       .then(({ user, dataset }) => {
+        if (identityEpoch.current !== epoch) return;
         setUser(user);
         setDataset(dataset);
       })
-      .catch(() => setUser(null));
+      .catch(() => {
+        if (identityEpoch.current !== epoch) return;
+        setUser(null);
+      });
   }, []);
 
   useEffect(() => {
@@ -223,21 +264,33 @@ export default function App() {
   }, [turns]);
 
   const signIn = async (u) => {
+    // Clear first, then adopt the new identity: a transcript belongs to the
+    // session that produced it and must not survive into the next one.
+    const epoch = newIdentity();
     setUser(u);
     const { dataset } = await api("/api/me");
+    if (identityEpoch.current !== epoch) return;
     setDataset(dataset);
   };
 
   const signOut = async () => {
-    await api("/api/logout", { method: "POST" });
+    newIdentity();
     setUser(null);
-    setTurns([]);
-    setConversationId(null);
+    setDataset(null);
+    await api("/api/logout", { method: "POST" });
   };
 
   const ask = async (text) => {
     const q = (text ?? question).trim();
     if (!q || busy) return;
+    // Captured now, checked before every write below. `stale()` is the only
+    // thing standing between a slow answer and the wrong person's screen.
+    const epoch = identityEpoch.current;
+    const stale = () => identityEpoch.current !== epoch;
+
+    const controller = new AbortController();
+    inFlight.current = controller;
+
     setQuestion("");
     setBusy(true);
     setTurns((t) => [
@@ -247,6 +300,7 @@ export default function App() {
     ]);
 
     const stage = setTimeout(() => {
+      if (stale()) return;
       setTurns((t) => {
         const copy = [...t];
         const last = copy[copy.length - 1];
@@ -258,12 +312,14 @@ export default function App() {
     try {
       const res = await api("/api/ask", {
         method: "POST",
+        signal: controller.signal,
         body: JSON.stringify({
           question: q,
           conversation_id: conversationId,
           include_sql: showSql,
         }),
       });
+      if (stale()) return;
       setConversationId(res.conversation_id);
       setTurns((t) => [
         ...t.slice(0, -1),
@@ -277,13 +333,18 @@ export default function App() {
         },
       ]);
     } catch (err) {
+      // An abort is this component cancelling its own request, not a failure
+      // worth showing -- and after an identity change there is no transcript
+      // it would belong to anyway.
+      if (stale() || err.name === "AbortError") return;
       setTurns((t) => [
         ...t.slice(0, -1),
         { role: "assistant", status: "error", text: err.message },
       ]);
     } finally {
       clearTimeout(stage);
-      setBusy(false);
+      if (inFlight.current === controller) inFlight.current = null;
+      if (!stale()) setBusy(false);
     }
   };
 

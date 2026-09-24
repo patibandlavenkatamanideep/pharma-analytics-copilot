@@ -105,12 +105,29 @@ is the only coherent target for evaluating access control
 
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
-python3 -m pytest tests -q                   # 148 tests
+python3 scripts/build_authtest_db.py         # disposable database for the auth tests
+python3 -m pytest tests -q                   # 180 tests
 python3 -m pytest tests/security -q          # the release gate
+
+cd web && npm test                           # 4 browser tests (identity isolation)
 ```
 
 Expected values in the integration tests come from SQL written by hand in the
 test files, never from the compiler under test.
+
+Three databases, kept apart on purpose:
+
+| Database | Contains | Written by tests |
+|---|---|---|
+| `pharma_analytics` | the working 2M-row dataset | never |
+| `pharma_analytics_fixture` | the hand-calculated coherent market | never |
+| `pharma_analytics_authtest` | a seed-sized copy, disposable | yes |
+
+The security tests change a user's role, territory and pricing permission to
+simulate a permission change, so they run only against the disposable database
+and refuse to start if it is pointed at the working one. The identities they
+use are created and deleted by the tests; no evaluator credential is read or
+rotated.
 
 ---
 
@@ -135,7 +152,7 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 
 ## Status
 
-Verified on the full dataset: ingestion, the authorization boundary (63 tests),
+Verified on the full dataset: ingestion, the authorization boundary (95 tests),
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
