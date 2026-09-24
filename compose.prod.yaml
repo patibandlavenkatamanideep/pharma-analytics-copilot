@@ -1,0 +1,35 @@
+# Production overlay: adds Caddy in front for automatic HTTPS.
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d
+#
+# Caddy requests a real Let's Encrypt certificate for PAC_PUBLIC_HOST on first
+# start and renews it unattended. The app no longer publishes a host port --
+# only Caddy is reachable from outside, and it speaks to the app over the
+# private compose network.
+
+services:
+  app:
+    # The base file already binds the app to 127.0.0.1 only, so nothing needs
+    # overriding here: Caddy reaches it over the compose network.
+    environment:
+      PAC_COOKIE_SECURE: "true"     # served over HTTPS, so the cookie is Secure
+      PAC_ENVIRONMENT: cloud
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on: [app]
+    ports:
+      - "80:80"      # required for the Let's Encrypt HTTP-01 challenge
+      - "443:443"
+    environment:
+      PAC_PUBLIC_HOST: ${PAC_PUBLIC_HOST:?set PAC_PUBLIC_HOST, e.g. 1-2-3-4.sslip.io}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates survive a restart
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

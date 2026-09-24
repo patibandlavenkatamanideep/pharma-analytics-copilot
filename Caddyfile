@@ -1,0 +1,24 @@
+# Automatic HTTPS. Caddy obtains and renews the certificate itself; there is no
+# certbot, no cron job and no manual renewal.
+{$PAC_PUBLIC_HOST} {
+	encode gzip
+
+	# The app serves both the API and the built UI from one origin, so the
+	# session cookie needs no CORS exemption.
+	reverse_proxy app:8000
+
+	header {
+		# The app is the only thing served here and it has no frames or
+		# third-party embeds, so these can be strict.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

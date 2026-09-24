@@ -42,7 +42,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
     ports:
-      - "8000:8000"
+      # Loopback only. In production Caddy reaches the app over the private
+      # compose network, so this exists purely for debugging on the host and
+      # is never exposed to the internet.
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
 
 volumes:
