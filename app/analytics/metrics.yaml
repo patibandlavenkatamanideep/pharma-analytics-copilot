@@ -1,0 +1,194 @@
+# Versioned metric registry.
+#
+# This file is the single server-owned source of metric arithmetic. The language
+# model may SELECT a key from it; it may never supply a formula, a table name, a
+# join or a SQL fragment. Every entry anchors to the supplied business document
+# that defines it, so a reviewer can trace any number back to the specification.
+#
+# `sql` fragments are templates over a fixed set of pre-aggregated component
+# names owned by the compiler -- they are not user- or model-reachable strings.
+
+version: "1.0.0"
+
+# --- shared component expressions -------------------------------------------
+components:
+  equivalents:
+    # A2: pack_units * unit_conversion_factor. The documented milligram
+    # alternative is deliberately absent -- it disagrees on 602,211 generated
+    # rows because the generator sets total_mg = packs * mg_equivalent.
+    expr: "s.pack_units * p.unit_conversion_factor"
+    null_policy: "NULL factor yields NULL, never 0 or 1"
+  pack_units:
+    expr: "s.pack_units"
+  wac_amount:
+    # A8: already a per-transaction dollar amount; never multiplied by volume.
+    expr: "s.wac"
+
+metrics:
+
+  paid_pack_units:
+    label: "paid pack units"
+    unit: "packs"
+    anchor: "docs/metric_definitions.md#paid-demand"
+    sources: ["distributor"]
+    company_only: true
+    aggregate: "SUM"
+    component: pack_units
+    requires_wac: false
+    description: >
+      Purchased volume in packs. Distributor source only; hub dispense (free
+      drug) and market data are excluded by default.
+
+  paid_equivalents:
+    label: "paid equivalents"
+    unit: "equivalents"
+    anchor: "docs/metric_definitions.md#equivalents"
+    sources: ["distributor"]
+    company_only: true
+    aggregate: "SUM"
+    component: equivalents
+    requires_wac: false
+    description: >
+      Purchased volume normalized across package sizes by unit_conversion_factor.
+
+  pap_volume:
+    label: "patient assistance (free drug) volume"
+    unit: "packs"
+    anchor: "docs/data_source_guide.md#hub_dispense"
+    sources: ["hub_dispense"]
+    company_only: true
+    aggregate: "SUM"
+    component: pack_units
+    requires_wac: false
+    description: >
+      Free drug dispensed through the patient assistance hub. Never counted as
+      paid demand or revenue.
+
+  total_volume_incl_free:
+    label: "total volume including free drug"
+    unit: "packs"
+    anchor: "docs/data_source_guide.md#hub_dispense"
+    sources: ["distributor", "hub_dispense"]
+    company_only: true
+    aggregate: "SUM"
+    component: pack_units
+    requires_wac: false
+    description: >
+      Paid plus free company volume. Market data is never added in.
+
+  market_equivalents:
+    label: "total market equivalents"
+    unit: "equivalents"
+    anchor: "docs/data_source_guide.md#market_data"
+    sources: ["market_data"]
+    company_only: false     # the denominator is ALL market_data rows
+    aggregate: "SUM"
+    component: equivalents
+    requires_wac: false
+    description: >
+      Third-party reported market volume for the relevant market. Includes
+      competitors and, where present, company brand.
+
+  wac_revenue:
+    label: "gross revenue (WAC)"
+    unit: "USD"
+    anchor: "docs/metric_definitions.md#gross-revenue-wac"
+    sources: ["distributor"]
+    company_only: true
+    aggregate: "SUM"
+    component: wac_amount
+    requires_wac: true      # Exec AND can_view_wac = 1
+    description: >
+      List-price revenue. Not net of rebates or discounts; no such fields exist.
+
+  brand_market_share:
+    label: "market share"
+    unit: "ratio"
+    anchor: "docs/metric_definitions.md#market-share"
+    kind: "ratio"
+    numerator: paid_equivalents
+    denominator: market_equivalents
+    # A3: the denominator is scoped to the market subcategory of the products in
+    # the numerator, never to the company drug name and never to brand_flag = 1.
+    denominator_scope: "market_subcategory"
+    zero_denominator: "null"
+    requires_wac: false
+    quality_checks: ["denominator_completeness", "ratio_above_one"]
+    description: >
+      Company distributor equivalents divided by total market equivalents in the
+      same market subcategory, with identical population and period filters.
+
+  pap_proportion:
+    label: "PAP share of total volume"
+    unit: "ratio"
+    anchor: "docs/data_source_guide.md#hub_dispense"
+    kind: "ratio"
+    numerator: pap_volume
+    denominator: total_volume_incl_free
+    zero_denominator: "null"
+    requires_wac: false
+    description: >
+      Hub volume as a proportion of paid plus free company volume.
+
+  volume_growth:
+    label: "volume growth"
+    unit: "ratio"
+    anchor: "docs/account_analytics.md#account-performance--ranking"
+    kind: "period_change"
+    change: "relative"       # (current - prior) / prior
+    base_metric: paid_pack_units
+    zero_prior: "new_activity"
+    requires_wac: false
+    description: >
+      Percent change between the requested window and its comparison window.
+      A zero prior period is reported as new activity, not as infinite growth.
+
+  share_trend_pp:
+    label: "market share trend"
+    unit: "percentage points"
+    anchor: "docs/metric_definitions.md#r3m-vs-r6m-trend"
+    kind: "period_change"
+    change: "absolute"       # current_share - prior_share, in points
+    base_metric: brand_market_share
+    requires_wac: false
+    description: >
+      Change in market share between two windows, expressed in percentage
+      points. Distinct from percent growth.
+
+  weighted_share_trend:
+    label: "volume-weighted share trend"
+    unit: "proposed composite"
+    anchor: "docs/metric_definitions.md#r3m-vs-r6m-trend"
+    kind: "period_change"
+    change: "weighted"
+    base_metric: brand_market_share
+    # A12: the source does not say whether "Volume" is company or market volume.
+    weight_metric: market_equivalents
+    proposed: true
+    requires_wac: false
+    description: >
+      (current share - prior share) * (current volume + prior volume). The
+      supplied definition does not state which volume is meant; total market
+      equivalents is a PROPOSED interpretation and answers say so.
+
+  account_count:
+    label: "number of accounts"
+    unit: "accounts"
+    anchor: "docs/account_analytics.md#organization-hierarchy"
+    kind: "count_distinct"
+    count_entity: "account"
+    requires_wac: false
+    description: >
+      Distinct top-level accounts. The counted entity is always stated, and
+      hierarchy levels are never summed as if all rows were facilities.
+
+  facility_count:
+    label: "number of facilities"
+    unit: "facilities"
+    anchor: "docs/account_analytics.md#organization-hierarchy"
+    kind: "count_distinct"
+    count_entity: "facility"
+    requires_wac: false
+    description: >
+      Distinct facility organizations. "Active facilities" additionally filters
+      org_status = 'Active'; historical volume may include inactive accounts.
