@@ -101,9 +101,9 @@ evidence), **remaining**, **blocked**.
 | R05 | `_compile_ratio()` strips the product population from every denominator, so PAP proportion is wrong | 3 | **fixed** | `test_coherent_fixture.py` — PAP is 20/130, market share still 0.40; `test_registry_contract.py` (7) | `4c005ba` |
 | R06 | Declared grain not enforced (duplicate groups); display limits applied before comparison ranking; label used as identity | 3 | **fixed** | `test_comparison_grain.py` (8) · `test_declared_grain.py` (8) | `4c005ba` |
 | R07 | Unconditional "competitor-only" market warning; invalid conversion factors yield partial sums presented as totals | 3 | **fixed** | `test_quality_warnings.py` (7; all fail before) | `4c005ba` |
-| R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | **fixed** | `app/analytics/intent.py`; `test_intent_fidelity.py` (25) | _phase 4_ |
-| R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | _phase 4_ |
-| R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | pending | | |
+| R08 | Unresolved entities silently broaden the query; percentage/threshold/generic-share intents silently substituted | 4 | **fixed** | `app/analytics/intent.py`; `test_intent_fidelity.py` (25) | `9312ee5` |
+| R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | `9312ee5` |
+| R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | **fixed** | `test_snapshot_publication.py` (5; all fail before) | _phase 5_ |
 | R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | pending | | |
 | R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | pending | `docs/DEMO.md` narration says pricing is "refused" for a RAM; the pipeline answers with a labelled volume substitute (status `answered`) | |
 | R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
@@ -146,6 +146,10 @@ result proves** — which is deliberately narrower than "it passed".
 | 22 | 6 concurrent `record_turn` on one conversation | offline | disposable | 6 of 6 kept | Was: `ON CONFLICT (conversation_id, seq) DO NOTHING` discarded the loser silently — the user saw an answer and the conversation had no record of the question. |
 | 23 | `pytest tests -q` | offline | working + disposable | **277 passed** | After phase 4. |
 | 24 | `python3 scripts/run_evals.py` | offline | `full-182fd9082327` | **38/38** | See the note below: this is not the old 38/38. |
+| 25 | three consecutive `load("seed")` | offline | disposable | 3 distinct dataset ids | **Any** reload previously died on `users_pkey`: the seed file inserts users, business tables are truncated on reload and `users` deliberately is not. The system could not be reloaded at all. |
+| 26 | injected failure in `_validate` during a load | offline | disposable | previous snapshot still published, tables non-empty | A failed load leaves the last good answer serving rather than a half-loaded one, and does not supersede it. |
+| 27 | manifest vs live rows after a reload | offline | disposable | ids, counts and anchor agree | Rows and manifest now commit together. Before, the new rows were briefly live under the previous snapshot's reporting anchor — so "this quarter" was resolved against the wrong calendar. |
+| 28 | `pytest tests -q` | offline | working + disposable | **282 passed** | After phase 5. |
 
 ---
 

@@ -134,7 +134,10 @@ class Pipeline:
             return result
 
         # --- 3-4. plan ------------------------------------------------------
-        vocab = vocabulary_for(principal)
+        # The dataset is already resolved for this request; passing it keeps
+        # the vocabulary cache keyed to the snapshot being queried without a
+        # second lookup.
+        vocab = vocabulary_for(principal, dataset["dataset_id"])
         from app.llm.planner import PlanningContext
 
         context = PlanningContext(

@@ -119,14 +119,35 @@ def _load_full(cur: Any, report: LoadReport) -> None:
         report.row_counts[table] = _copy_csv(cur, table, cols, path)
 
 
+def _users_statement(text: str) -> tuple[int, int]:
+    """Where the seed file's INSERT INTO users starts and ends."""
+    start = text.index("INSERT INTO users")
+    return start, text.index(";", start) + 1
+
+
+def _seed_without_users(text: str) -> str:
+    """The seed file minus its users INSERT.
+
+    The comment here used to say users were handled by the bootstrap so both
+    load modes share one identity path -- and then executed the whole file
+    anyway, users included. On a fresh database that is invisible. On a
+    RELOAD it is fatal: business tables are truncated, `users` deliberately is
+    not (credentials in app_auth are keyed to it), and the second load dies on
+    users_pkey before touching anything. The system could not be reloaded at
+    all.
+
+    The supplied seed file is not modified; the statement is skipped at load
+    time, so identity really does have one path.
+    """
+    start, end = _users_statement(text)
+    return text[:start] + text[end:]
+
+
 def _load_seed(cur: Any, report: LoadReport) -> None:
     if not SEED_SQL.exists():
         raise LoadError(f"missing {SEED_SQL}")
     report.source_hashes[SEED_SQL.name] = file_sha256(SEED_SQL)
-    statements = SEED_SQL.read_text()
-    # The seed file also inserts users; those are handled by the users
-    # bootstrap so both load modes share one identity path.
-    cur.execute(statements)
+    cur.execute(_seed_without_users(SEED_SQL.read_text()))
     for table in BUSINESS_TABLES:
         cur.execute(sql.SQL("SELECT count(*) AS n FROM {}").format(sql.Identifier(table)))
         report.row_counts[table] = cur.fetchone()["n"]
@@ -145,10 +166,8 @@ def _bootstrap_users(cur: Any, report: LoadReport) -> None:
         return
 
     text = SEED_SQL.read_text()
-    marker = "INSERT INTO users"
-    idx = text.index(marker)
-    end = text.index(";", idx) + 1
-    cur.execute(text[idx:end])
+    start, end = _users_statement(text)
+    cur.execute(text[start:end])
     report.row_counts["users"] = _count(cur, "users")
 
 
@@ -434,6 +453,35 @@ def load(mode: str) -> LoadReport:
             cur.execute("ANALYZE sales")
             cur.execute("ANALYZE organizations")
             _validate(cur, report)
+
+            # Publish IN THE SAME TRANSACTION as the rows.
+            #
+            # These used to be two transactions, and between them the new rows
+            # were live under the old manifest. That manifest carries the
+            # reporting anchor, so "this quarter" was resolved against the
+            # previous snapshot's calendar while querying the new data -- and
+            # dataset_id, row counts and coverage all described a snapshot
+            # that no longer existed. A crash in the window left the rows
+            # loaded and nothing published at all.
+            #
+            # Superseding the previous snapshot here too means there is never
+            # a moment with two published datasets, or none.
+            cur.execute(
+                "UPDATE app_meta.dataset_manifest SET load_state = 'superseded' "
+                "WHERE load_state = 'published'"
+            )
+            cur.execute(
+                "UPDATE app_meta.dataset_manifest SET load_state = 'published', "
+                "published_at = now(), source_hashes = %s::jsonb, "
+                "row_counts = %s::jsonb, reporting_anchor = %s::jsonb, "
+                "source_coverage = %s::jsonb, warnings = %s::jsonb "
+                "WHERE dataset_id = %s",
+                (
+                    _json(report.source_hashes), _json(report.row_counts),
+                    _json(report.reporting_anchor), _json(report.source_coverage),
+                    _json(report.warnings), dataset_id,
+                ),
+            )
     except Exception as exc:
         with owner_transaction() as cur:
             cur.execute(
@@ -443,24 +491,12 @@ def load(mode: str) -> LoadReport:
             )
         raise
 
-    # Publish only after validation passed, and supersede the previous snapshot
-    # in the same transaction so there is never more than one published dataset.
-    with owner_transaction() as cur:
-        cur.execute(
-            "UPDATE app_meta.dataset_manifest SET load_state = 'superseded' "
-            "WHERE load_state = 'published'"
-        )
-        cur.execute(
-            "UPDATE app_meta.dataset_manifest SET load_state = 'published', "
-            "published_at = now(), source_hashes = %s::jsonb, row_counts = %s::jsonb, "
-            "reporting_anchor = %s::jsonb, source_coverage = %s::jsonb, warnings = %s::jsonb "
-            "WHERE dataset_id = %s",
-            (
-                _json(report.source_hashes), _json(report.row_counts),
-                _json(report.reporting_anchor), _json(report.source_coverage),
-                _json(report.warnings), dataset_id,
-            ),
-        )
+    # The in-process vocabulary cache describes the snapshot that was live when
+    # it was filled. Dropping it here keeps THIS process honest; other
+    # processes are covered by the cache being keyed on dataset_id.
+    from app.analytics.entities import clear_caches
+
+    clear_caches()
     return report
 
 

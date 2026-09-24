@@ -49,9 +49,36 @@ class Candidate:
     detail: str
 
 
-@lru_cache(maxsize=1)
-def _product_vocabulary() -> tuple[list[str], list[str], list[str]]:
-    """Products are unrestricted reference data, so this is cached globally."""
+def _current_dataset_id() -> str:
+    """The published snapshot's id, read fresh.
+
+    Read over the AUTH connection: the analytics roles deliberately have no
+    USAGE on app_meta, and giving them some to satisfy a cache lookup would
+    widen the boundary for the sake of a convenience.
+
+    Callers that already know the id should pass it instead of paying for this.
+    """
+    from app.db import auth_transaction
+
+    with auth_transaction() as cur:
+        cur.execute(
+            "SELECT dataset_id FROM app_meta.dataset_manifest "
+            "WHERE load_state = 'published' ORDER BY published_at DESC LIMIT 1"
+        )
+        row = cur.fetchone()
+    return row["dataset_id"] if row else "none"
+
+
+@lru_cache(maxsize=4)
+def _product_vocabulary(dataset_id: str) -> tuple[list[str], list[str], list[str]]:
+    """Products are unrestricted reference data, so this is cached globally.
+
+    Keyed on dataset_id. Cached on nothing, it kept returning the previous
+    snapshot's drug names after a reload: a product that had just been added
+    was reported as not existing, and one that had been removed was accepted
+    and then matched no rows. Clearing the cache in the loader only fixes the
+    process that ran the load.
+    """
     with analytics_transaction(
         scope_kind="global", scope_value=None, wac_authorized=False
     ) as cur:
@@ -72,8 +99,8 @@ def _product_vocabulary() -> tuple[list[str], list[str], list[str]]:
     return company + competitors, subs, cats
 
 
-def vocabulary_for(principal: Principal) -> Vocabulary:
-    products, subs, cats = _product_vocabulary()
+def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocabulary:
+    products, subs, cats = _product_vocabulary(dataset_id or _current_dataset_id())
 
     # zip_territory is unrestricted reference data, but the planner is still
     # only offered the geography the principal can act on: suggesting a
