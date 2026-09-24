@@ -175,17 +175,49 @@ def _plan_tool_schema() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 class BedrockPlanner:
-    def __init__(self, settings: Settings | None = None) -> None:
-        from anthropic import AnthropicBedrockMantle
+    """Bedrock adapter.
 
+    Bedrock exposes Claude through two different endpoints and the model id
+    decides which one serves it:
+
+      * `AnthropicBedrockMantle` -- the Messages-API endpoint, which serves the
+        newer unprefixed ids such as `anthropic.claude-opus-5`.
+      * `AnthropicBedrock` -- the legacy bedrock-runtime InvokeModel path, which
+        serves dated releases reached through a cross-region inference profile,
+        e.g. `us.anthropic.claude-opus-4-5-20251101-v1:0`.
+
+    Sending a dated id to Mantle returns a bare 404 "model does not exist",
+    which reads like a permissions problem and is not one. The client is
+    therefore chosen from the shape of the id rather than configured separately,
+    so a model change cannot silently pick the wrong endpoint.
+    """
+
+    def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self.model_id = self.settings.bedrock_model_id
-        self._client = AnthropicBedrockMantle(
+        self.last_usage: dict[str, int] = {}
+
+        # A cross-region inference profile ("us." / "eu." / "global.") or a
+        # dated, versioned id belongs to the legacy endpoint.
+        legacy = (
+            self.model_id.startswith(("us.", "eu.", "apac.", "global."))
+            or ":" in self.model_id
+        )
+        if legacy:
+            from anthropic import AnthropicBedrock as Client
+        else:
+            from anthropic import AnthropicBedrockMantle as Client
+        self._legacy_endpoint = legacy
+
+        self._client = Client(
             aws_region=self.settings.bedrock_region,
             timeout=self.settings.llm_timeout_s,
             max_retries=2,
         )
-        self.last_usage: dict[str, int] = {}
+        log.info(
+            "bedrock planner: model=%s endpoint=%s",
+            self.model_id, "invoke-model" if legacy else "mantle",
+        )
 
     def plan(self, question: str, context: PlanningContext) -> AnalyticalPlan:
         system = build_system_prompt(context)
@@ -220,15 +252,21 @@ class BedrockPlanner:
     def _attempt(
         self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any]
     ) -> tuple[AnalyticalPlan | None, str]:
-        response = self._client.messages.create(
-            model=self.model_id,
-            max_tokens=self.settings.llm_max_tokens,
-            system=system,
-            messages=messages,
-            tools=[tool],
-            tool_choice={"type": "tool", "name": "emit_plan"},
-            output_config={"effort": self.settings.llm_effort},
-        )
+        request: dict[str, Any] = {
+            "model": self.model_id,
+            "max_tokens": self.settings.llm_max_tokens,
+            "system": system,
+            "messages": messages,
+            "tools": [tool],
+            "tool_choice": {"type": "tool", "name": "emit_plan"},
+        }
+        # Effort is a Messages-API field. The legacy InvokeModel endpoint
+        # rejects unknown top-level fields, so it is only sent where it is
+        # understood. Plan extraction is a constrained task either way.
+        if not self._legacy_endpoint:
+            request["output_config"] = {"effort": self.settings.llm_effort}
+
+        response = self._client.messages.create(**request)
         usage = getattr(response, "usage", None)
         if usage:
             self.last_usage = {
