@@ -15,7 +15,12 @@ FROM python:3.13-slim AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    # Python puts the SCRIPT's directory on sys.path, not the working
+    # directory, so `python scripts/load_data.py` could not import `app`.
+    # uvicorn happened to work because it inserts the CWD itself, which hid
+    # this until the first real deployment ran a script.
+    PYTHONPATH=/app
 
 WORKDIR /app
 

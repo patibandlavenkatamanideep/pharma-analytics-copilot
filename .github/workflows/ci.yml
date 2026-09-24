@@ -170,6 +170,16 @@ jobs:
             python scripts/bootstrap_db.py --drop --no-env
           echo "bootstrapped from inside the image"
 
+      # bootstrap_db.py imports only psycopg, so it passed even when the app
+      # package was unimportable inside the image. Assert a script that does
+      # import it actually runs.
+      - name: Scripts inside the image can import the app package
+        run: |
+          docker run --rm --network host \
+            -e PAC_DB_HOST=127.0.0.1 \
+            pharma-analytics-copilot:ci \
+            python -c "import app.data.loader, app.pipeline, app.api.main; print('app package importable')"
+
       - name: Start the container against the database
         env:
           PAC_DB_OWNER_PASSWORD: ci-owner-pw
