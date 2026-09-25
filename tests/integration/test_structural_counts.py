@@ -43,9 +43,18 @@ def oracle(sql, *, scope_kind="global", scope_value=None):
         return list(cur.fetchone().values())[0]
 
 
-def test_the_structural_count_is_every_organization_in_scope(anchor):
+def test_the_structural_count_counts_facilities_not_every_organization(anchor):
+    """org_hierarchy.md defines a facility as org_type = 'Facility'.
+
+    organizations holds all three levels -- 37,500 facilities, 2,000 parents
+    and 500 grandparents -- so counting every row reported 40,000 facilities,
+    2,500 of which are not facilities. The sales-derived count never hit this
+    because sales.org_id is always a facility.
+    """
     value, _ = run("facility_count_all", anchor)
-    assert value == oracle("SELECT count(DISTINCT org_id) FROM organizations")
+    assert value == oracle(
+        "SELECT count(DISTINCT org_id) FROM organizations WHERE org_type = 'Facility'")
+    assert value < oracle("SELECT count(DISTINCT org_id) FROM organizations")
 
 
 def test_the_sales_derived_count_is_strictly_smaller(anchor):
@@ -77,7 +86,7 @@ def test_a_structural_count_is_still_bounded_by_row_level_security(anchor):
         f"a territory count of {scoped} against {everything} company-wide"
     )
     assert scoped == oracle(
-        "SELECT count(DISTINCT org_id) FROM organizations",
+        "SELECT count(DISTINCT org_id) FROM organizations WHERE org_type = 'Facility'",
         scope_kind="territory", scope_value=territory)
 
 

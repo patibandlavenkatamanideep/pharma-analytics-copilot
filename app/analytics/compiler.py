@@ -250,6 +250,16 @@ class Compiler:
                 "COALESCE(o.grandparent_org_id, o.org_id)" if entity == "account" else "o.org_id"
             )
             value_expr = f"count(DISTINCT {target})"
+            if kind == "count_structural" and entity == "facility":
+                # org_hierarchy.md defines a facility as org_type = 'Facility'.
+                # organizations holds all three levels -- 37,500 facilities,
+                # 2,000 parents, 500 grandparents -- so counting every row
+                # reported 40,000 facilities, 2,500 of which are not
+                # facilities. The sales-derived count never hit this because
+                # sales.org_id is always a facility.
+                extra_structural = "o.org_type = 'Facility'"
+            else:
+                extra_structural = None
         else:
             value_expr = f"{spec['aggregate']}({self._component_sql(spec, needs)})"
         select_parts.append(f"{value_expr} AS value")
@@ -270,6 +280,9 @@ class Compiler:
         biz_clauses, biz_params = self._business_filters(filters, needs, org_side=org_side)
         where += biz_clauses
         params += biz_params
+
+        if kind == "count_structural" and extra_structural:
+            where.append(extra_structural)
 
         if extra_clauses:
             where += extra_clauses
