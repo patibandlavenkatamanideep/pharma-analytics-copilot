@@ -8,7 +8,7 @@
 # `sql` fragments are templates over a fixed set of pre-aggregated component
 # names owned by the compiler -- they are not user- or model-reachable strings.
 
-version: "1.2.0"
+version: "1.3.0"
 
 # --- shared component expressions -------------------------------------------
 components:
@@ -150,6 +150,26 @@ metrics:
       "generic share", "biosimilar share" or "competitor share" of a market.
       Generic vs branded-competitor is a DERIVED classification, because
       brand_flag = 0 covers both; answers say so.
+
+  share_340b:
+    label: "340B share of volume"
+    unit: "ratio"
+    anchor: "docs/account_analytics.md#340b-program"
+    kind: "ratio"
+    numerator: paid_pack_units
+    denominator: paid_pack_units
+    # Same metric on both sides. What separates them is the 340B filter: the
+    # numerator keeps whatever the question asked for, the denominator resets
+    # it to "include" so the whole is the unfiltered population. Every OTHER
+    # filter is kept on both sides, so "what share of our Zenovax volume is
+    # 340B" divides by Zenovax volume, not by everything.
+    denominator_population: "ignores_340b"
+    zero_denominator: "null"
+    requires_wac: false
+    description: >
+      Volume from 340B accounts as a proportion of total volume over the same
+      population and period. Use for "what percentage of our volume comes from
+      340B accounts". Set filters.is_340b to "only" for the numerator.
 
   pap_proportion:
     label: "PAP share of total volume"

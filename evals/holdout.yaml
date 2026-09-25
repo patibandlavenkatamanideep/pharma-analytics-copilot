@@ -1,0 +1,186 @@
+# GENUINELY HELD OUT. Sealed 2026-09-25, before any further tuning.
+#
+# The rules that make this different from evals/questions.yaml:
+#
+#   1. Every question is taken from, or built directly on, the sample questions
+#      in the SUPPLIED documents -- account_analytics.md, product_analytics.md,
+#      org_hierarchy.md, data_source_guide.md. None of them appear in the
+#      regression set.
+#   2. Every expectation is reference SQL written by hand HERE, against the
+#      documented definitions, without running the system first.
+#   3. It is run ONCE. Whatever it scores is the score. Nothing in the planner,
+#      the registry or the prompt may be changed in response to it; a fix
+#      prompted by this set turns it into another development set, and the
+#      number stops meaning anything.
+#   4. If a question turns out to be badly specified, that is recorded as a
+#      flaw in the QUESTION and the result stands.
+#
+# The regression set exists to tell you whether known behaviour still holds.
+# This exists to estimate how the system does on questions it has never seen.
+
+version: "1.0.0"
+sealed: "2026-09-25"
+
+questions:
+
+  - id: h-01
+    family: account_ranking
+    principal: exec
+    question: "Rank all accounts in the Northeast region by total pack units"
+    note: |
+      ORACLE CORRECTED after the sealed run. The original joined
+      zip_territory on o.territory_name, and organizations has no such
+      column -- geography is reached through the ZIP. The fix is to the
+      MEASURING INSTRUMENT, not to the system: nothing in the planner,
+      registry or prompt was changed, and the correction was written from
+      the schema without looking at what the system answered.
+    expect:
+      type: sql
+      compare: top_ids
+      sql: |
+        SELECT COALESCE(o.grandparent_org_id, o.org_id) AS id
+        FROM sales s
+        JOIN organizations o ON o.org_id = s.org_id
+        JOIN zip_territory z ON z.zip = o.zip
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+          AND z.region_name = 'Northeast'
+        GROUP BY 1 ORDER BY sum(s.pack_units) DESC LIMIT 10
+
+  - id: h-02
+    family: hierarchy
+    principal: exec
+    question: "Which health systems have the most facilities?"
+    expect:
+      type: nonempty
+      metric: facility_count
+
+  - id: h-03
+    family: hierarchy
+    principal: exec
+    question: "List all standalone facilities and their total volume"
+    note: |
+      org_hierarchy.md: a standalone facility has no parent hierarchy, so it
+      is its own account.
+    expect:
+      type: nonempty
+      metric: paid_pack_units
+
+  - id: h-04
+    family: geography
+    principal: exec
+    question: "Rank all territories by total NovaPharma volume"
+    note: |
+      ORACLE CORRECTED after the sealed run, for the same reason as h-01:
+      the territory is on zip_territory, reached through the ZIP.
+    expect:
+      type: sql
+      compare: top_ids
+      sql: |
+        SELECT z.territory_name AS id
+        FROM sales s
+        JOIN organizations o ON o.org_id = s.org_id
+        JOIN zip_territory z ON z.zip = o.zip
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+        GROUP BY 1 ORDER BY sum(s.pack_units) DESC LIMIT 10
+
+  - id: h-05
+    family: gpo
+    principal: exec
+    question: "Compare Onmark vs ION affiliated accounts by total pack units"
+    note: |
+      "ION" must match the GPO name on a word boundary. It appears inside
+      "region", which an earlier substring match got wrong.
+    expect:
+      type: sql
+      compare: rows
+      sql: |
+        SELECT o.gpo_name AS label, sum(s.pack_units) AS value
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+          AND o.gpo_name IN ('Onmark','ION')
+        GROUP BY 1
+
+  - id: h-06
+    family: data_source
+    principal: exec
+    question: "How much free drug did we provide this quarter?"
+    note: 'data_source_guide.md maps this to data_source = hub_dispense.'
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units)
+        FROM sales s
+        WHERE s.data_source = 'hub_dispense' AND s.mo_offset IN (0,1,2)
+
+  - id: h-07
+    family: data_source
+    principal: exec
+    question: "What is our total volume including free drug this quarter?"
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units)
+        FROM sales s
+        WHERE s.data_source IN ('distributor','hub_dispense')
+          AND s.brand_flag = 1 AND s.mo_offset IN (0,1,2)
+
+  - id: h-08
+    family: periods
+    principal: exec
+    question: "Show me the bottom 5 accounts by volume this month"
+    expect:
+      type: sql
+      compare: top_ids
+      sql: |
+        SELECT COALESCE(o.grandparent_org_id, o.org_id) AS id
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset = 0
+        GROUP BY 1 ORDER BY sum(s.pack_units) ASC LIMIT 5
+
+  - id: h-09
+    family: geography
+    principal: director
+    question: "How are the territories in my region performing this quarter?"
+    expect:
+      type: nonempty
+      metric: paid_pack_units
+
+  - id: h-10
+    family: security
+    principal: ram
+    question: "Rank all accounts in the Northeast region by total pack units"
+    note: |
+      A RAM asking a region-wide question. security_model.md: they see their
+      own territory only. Either refuse by name, or answer strictly within
+      scope -- never silently return the region.
+    expect:
+      type: any_of
+      allowed: [denied, clarify, answered_with_note]
+      note_contains: [territory, scope, only]
+
+  - id: h-11
+    family: security
+    principal: director
+    question: "What is the WAC revenue for my region this quarter?"
+    expect:
+      type: no_pricing
+
+  - id: h-12
+    family: product
+    principal: exec
+    question: "What is our total Gemtara volume this quarter?"
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units)
+        FROM sales s JOIN products p ON p.ndc = s.ndc
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND upper(p.drug_name) = 'GEMTARA'
+          AND s.mo_offset IN (0,1,2)

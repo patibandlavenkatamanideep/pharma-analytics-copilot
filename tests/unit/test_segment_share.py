@@ -105,3 +105,51 @@ def test_the_denominator_drops_the_segment_filter_and_the_numerator_keeps_it():
     assert "classification" not in denominator, (
         "the denominator kept the segment filter, so the share is always 100%"
     )
+
+
+# ---------------------------------------------------------------------------
+# 340B share of volume
+# ---------------------------------------------------------------------------
+
+def test_the_340b_share_metric_exists_and_ignores_340b_in_its_denominator():
+    """"What percentage of volume comes from 340B accounts" is a ratio.
+
+    It was answered with 59,419 packs -- a count, for a question asking for a
+    percentage -- because no metric expressed "a filtered subset over the
+    unfiltered whole".
+    """
+    spec = get_registry().get("share_340b")
+    assert spec["kind"] == "ratio"
+    assert spec["numerator"] == spec["denominator"] == "paid_pack_units"
+    assert spec["denominator_population"] == "ignores_340b"
+
+
+def test_a_340b_percentage_question_picks_the_ratio_not_a_count():
+    plan = planned("What percentage of our volume comes from 340B accounts this quarter?")
+    assert plan.metric == MetricKey.share_340b
+    assert plan.filters.is_340b.value == "only"
+
+
+def test_excluding_340b_is_still_a_plain_volume_question():
+    """A bare exclusion is not a proportion, and must not become one."""
+    plan = planned("Show me volume excluding 340B accounts this quarter")
+    assert plan.metric == MetricKey.paid_pack_units
+    assert plan.filters.is_340b.value == "exclude"
+
+
+def test_the_denominator_lifts_only_the_340b_condition():
+    """Every other filter stays on both sides, so "what share of our Zenovax
+    volume is 340B" divides by Zenovax volume, not by everything."""
+    from app.analytics.compiler import Compiler
+
+    plan = AnalyticalPlan.model_validate({
+        "metric": "share_340b",
+        "filters": {"is_340b": "only", "product_names": ["ZENOVAX"]},
+        "time": {"kind": "named", "named": "r3m"},
+    })
+    sql = Compiler().compile(plan, anchor=ANCHOR).sql
+    numerator = sql[: sql.index("den AS")]
+    denominator = sql[sql.index("den AS"):]
+    assert "is_340b" in numerator, "the numerator lost the 340B condition"
+    assert "is_340b" not in denominator, "the denominator kept it, so the share is 100%"
+    assert "drug_name" in denominator, "the denominator dropped the product filter too"

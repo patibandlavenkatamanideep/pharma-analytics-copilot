@@ -461,7 +461,14 @@ class Compiler:
         # into "Zenovax free volume as a share of everything we sold" --
         # 20/175 rather than 20/130. Same units, same shape, quietly wrong.
         population = spec["denominator_population"]
-        if population == "surrounding_market":
+        if population == "ignores_340b":
+            # The whole, for a "what share of volume is 340B" question: the
+            # same population and period with the 340B condition lifted.
+            # Every other filter stays, so the share is of the thing asked
+            # about rather than of everything the company sold.
+            den_filters = plan.filters.model_copy(
+                update={"is_340b": TriState.include})
+        elif population == "surrounding_market":
             den_filters = plan.filters.model_copy(
                 update={"product_names": [], "ndcs": [], "strengths": [],
                         "classifications": []}

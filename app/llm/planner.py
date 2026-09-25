@@ -495,6 +495,12 @@ class OfflinePlanner:
         return any(re.search(pattern, q) for pattern, _ in self.WINDOWS)
 
     def _metric(self, q: str, context: PlanningContext) -> MetricKey:
+        # A proportion question about 340B is a ratio, not a count. Answering
+        # "what percentage of our volume comes from 340B accounts" with 59,419
+        # packs is a different question.
+        if re.search(r"\b340b\b", q) and re.search(
+                r"percent|proportion|\bshare\b|fraction|% of|how much of", q):
+            return MetricKey.share_340b
         if re.search(r"market share|share of market|\bshare\b", q):
             if re.search(
                 r"trend|chang\w+|grew|grown|gain\w*|lost|losing|los\w*|"

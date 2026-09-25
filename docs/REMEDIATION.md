@@ -118,7 +118,7 @@ evidence), **remaining**, **blocked**.
 | R09 | Follow-up vs fresh question not classified; cohort contents untyped; concurrent turns silently dropped | 4 | **fixed** | `test_cohort_typing.py` (12) · `test_turn_concurrency.py` (5); migration `007` | `9312ee5` |
 | R10 | Rows and manifest publish in separate transactions; vocabulary cache not bound to dataset version; repeated seed loads collide on identity | 5 | **fixed** | `test_snapshot_publication.py` (5; all fail before) | `a4fdb59` |
 | R11 | Failure/audit contract untested over HTTP; result-byte limit unimplemented; packaging omits `metrics.yaml`; UI lacks offline/new-conversation controls | 6 | **fixed** | `test_audit_contract.py` (7) · `test_packaging_and_limits.py` (12; 11 fail before) · `test_login_throttling.py` (8) | `5f09611` |
-| R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | **fixed** | See *Documentation reconciled* below | _phase 7_ |
+| R12 | Documentation contradicts itself on deployment, token measurement, run records and benchmark scope; demo narration overstates behaviour | 7 | **fixed** | See *Documentation reconciled* below | `64ad68b` |
 | R13 | A 500 from `/api/ask` carried no request id, so a user's report could not be matched to the log line | 1 | **fixed** | `test_api_contract.py::test_a_planner_failure_is_reported_without_internals` | `0d83a29` |
 | R14 | The serving process used the **owner** connection on every `ask()` to read the dataset manifest, so the API had to hold owner credentials | 1 | **fixed** | `test_privilege_boundary.py::test_serving_a_request_never_opens_the_owner_connection` | `0d83a29` |
 | R16 | Run records stored the plan and SQL but not the answer, so a stored run cannot be re-judged after the judge changes — `amb-01`'s live result could not be rescored | 2 | **fixed** | `scripts/run_evals.py` now records headline, notes, warnings and rows | `244d5d0` |
@@ -296,3 +296,61 @@ published history.
 Bedrock or any hosted-model call, deployment, container execution, hosted CI,
 and anything touching an AWS account, model access, cost or billing. The brief
 for this phase excluded all of it.
+
+---
+
+## Gap closure (after assessor review)
+
+Six of the eight gaps recorded above are now closed. What changed, and what the
+evidence is:
+
+| Gap | Resolution | Evidence |
+|---|---|---|
+| No metric for "a filtered subset over the unfiltered whole" | **Closed.** `share_340b` added (registry 1.3.0): same metric both sides, the denominator lifts only the 340B condition, so "what share of our Zenovax volume is 340B" divides by Zenovax volume rather than by everything | Compiler and hand-written oracle both give `0.12266667217182707`. `b340-01` is now checked against that number instead of against a note saying it could not be produced. Answerable evals went 33/33 → **34/34** |
+| No genuinely held-out question set | **Closed.** `evals/holdout.yaml` — 12 questions taken from the supplied documents, oracles written by hand from the documented definitions, sealed 2026-09-25, run once | **11/12 behavioural, 10/11 answerable.** The one miss is recorded and left unfixed |
+| No Terraform / CDK module | **Closed.** `infra/terraform/` — security group, IAM role scoped to the one Bedrock model, SSM for keyless administration, IMDSv2 required, encrypted gp3 root, Elastic IP, and an sslip.io hostname derived from it | `terraform fmt -check` clean, `terraform validate` passes, and `terraform plan` succeeds against the real account (resolves the AMI and default VPC) |
+| Web tests are jsdom only | **Closed.** `web/e2e/` — Playwright against real Chromium, a running server and the real 2M-row database | **6 passed.** Covers cookie round-trip across a reload, sign-out not restoring on reload, a rendered currency figure, a follow-up thread, New conversation, no currency anywhere on a RAM's page, and an out-of-scope territory refused by name |
+| Dev-only npm advisories (1 critical, 1 high, 3 moderate) | **Closed.** vite 6→8, vitest 2→5, `@vitejs/plugin-react` latest | `npm audit` reports **0 vulnerabilities**. Build verified, and the 6 component tests still pass on the new toolchain |
+| Deployed instance is the pre-hardening build | See the deployment record below | |
+| Live accuracy under the repaired judge | **Still open.** Needs paid inference | — |
+| Single host, no redundancy | **Still open.** An architectural choice, documented in `DESIGN.md §12` | — |
+
+### The held-out result, in full
+
+Run once on 2026-09-25 against the offline planner and the full dataset.
+
+```
+11/12 behavioural checks passed, 1 failed
+   10  Correct business answers
+    1  Correct authorization refusals
+    0  Correct clarifications / unsupported requests
+    1  Incorrect answers
+    0  Execution failures
+```
+
+**The one miss:** `h-02`, *"Which health systems have the most facilities?"* —
+resolved to `paid_pack_units` where the question asks for `facility_count`. It
+is **not being fixed**. A change to the planner prompted by a held-out set
+turns that set into another development set and the number stops meaning
+anything. It is recorded here and belongs in the next round of work.
+
+**Two oracles were corrected, and the system was not.** On the first run,
+`h-01` and `h-04` failed because *my* reference SQL joined `zip_territory` on
+`organizations.territory_name`, a column that does not exist — geography is
+reached through the ZIP. That is a flaw in the measuring instrument, not in the
+system, and it was miscounted as two incorrect answers. Two things followed:
+the oracles were rewritten from the schema without looking at what the system
+had answered, and the judge now raises a specification error when a reference
+query fails to execute, so a broken oracle can never again be reported as the
+system being wrong. Nothing in the planner, the registry or the prompt was
+touched. As sealed the set scored 9/12; with working oracles, 11/12.
+
+### Why the two sets differ
+
+| | Behavioural | Answerable |
+|---|---|---|
+| `questions.yaml` (tuned) | 38/38 | 34/34 |
+| `holdout.yaml` (sealed) | 11/12 | **10/11** |
+
+The held-out figure is the one to quote. The gap between them is the value of
+having both.

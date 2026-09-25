@@ -41,20 +41,45 @@ QUESTIONS = ROOT / "evals" / "questions.yaml"
 RUNS = ROOT / "evals" / "runs"
 
 
+class SpecificationError(ValueError):
+    """The expectation itself is unusable, so the question cannot be scored.
+
+    Raised rather than returned as a failure: a question that can never pass
+    and a question that is written wrong are different problems, and only one
+    of them is the system's fault.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Reference answers -- computed independently of the system under test
 # ---------------------------------------------------------------------------
 
 def reference(sql: str, principal) -> Any:
+    """Run the hand-written oracle. A broken oracle is not a system failure.
+
+    If the reference query itself does not execute, the question cannot be
+    scored and the fault is in the question file. Reporting that as an
+    incorrect answer blames the wrong component -- which happened on the first
+    held-out run, where two oracles referenced a column that does not exist
+    and were counted against the system.
+    """
     from app.db import analytics_transaction
 
-    with analytics_transaction(
-        scope_kind=principal.scope_kind,
-        scope_value=principal.scope_value,
-        wac_authorized=principal.wac_authorized,
-    ) as cur:
-        cur.execute(sql)
-        return cur.fetchall()
+    try:
+        with analytics_transaction(
+            scope_kind=principal.scope_kind,
+            scope_value=principal.scope_value,
+            wac_authorized=principal.wac_authorized,
+        ) as cur:
+            cur.execute(sql)
+            return cur.fetchall()
+    except SpecificationError:
+        raise
+    except Exception as exc:
+        raise SpecificationError(
+            f"the reference SQL does not execute: {type(exc).__name__}: "
+            f"{str(exc).splitlines()[0]}"
+        ) from None
 
 
 def close(a: Any, b: Any, tolerance: float) -> bool:
@@ -73,15 +98,6 @@ def close(a: Any, b: Any, tolerance: float) -> bool:
 # ---------------------------------------------------------------------------
 # Judgements
 # ---------------------------------------------------------------------------
-
-class SpecificationError(ValueError):
-    """The expectation itself is unusable, so the question cannot be scored.
-
-    Raised rather than returned as a failure: a question that can never pass
-    and a question that is written wrong are different problems, and only one
-    of them is the system's fault.
-    """
-
 
 def _text_of(answer) -> str:
     """Everything in an answer a person would actually read."""
@@ -333,6 +349,10 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", choices=("offline", "bedrock"), default="offline")
+    ap.add_argument(
+        "--questions", default=str(QUESTIONS),
+        help="question file (default the regression set; evals/holdout.yaml is "
+             "the sealed held-out set, which is run ONCE)")
     ap.add_argument("--tolerance", type=float, default=1e-9)
     ap.add_argument("--family", help="run only one family")
     ap.add_argument("--id", dest="only", help="run only one question id")
@@ -353,7 +373,8 @@ def main() -> int:
     from app.llm.planner import build_planner
     from app.pipeline import Pipeline
 
-    spec = yaml.safe_load(QUESTIONS.read_text())
+    questions_path = pathlib.Path(args.questions)
+    spec = yaml.safe_load(questions_path.read_text())
     questions = spec["questions"]
     if args.family:
         questions = [q for q in questions if q.get("family") == args.family]
@@ -484,7 +505,8 @@ def main() -> int:
         },
         "results": results,
     }
-    path = RUNS / f"{stamp}-{args.provider}.json"
+    label = questions_path.stem
+    path = RUNS / f"{stamp}-{args.provider}-{label}.json"
     path.write_text(json.dumps(record, indent=2, default=str))
 
     counts = {key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES}

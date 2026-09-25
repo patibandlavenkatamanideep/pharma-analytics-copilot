@@ -12,7 +12,8 @@ import yaml
 REGISTRY_PATH = pathlib.Path(__file__).with_name("metrics.yaml")
 
 
-DENOMINATOR_POPULATIONS = frozenset({"surrounding_market", "same_population"})
+DENOMINATOR_POPULATIONS = frozenset(
+    {"surrounding_market", "same_population", "ignores_340b"})
 
 
 class RegistryError(ValueError):

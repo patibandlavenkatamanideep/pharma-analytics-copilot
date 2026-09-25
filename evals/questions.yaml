@@ -237,24 +237,22 @@ questions:
     principal: exec
     question: "What percentage of our volume comes from 340B accounts this quarter?"
     note: |
-      The plan language has no metric for "a filtered subset over the
-      unfiltered whole", so this proportion cannot be computed. The correct
-      answer for the current dataset is 12.27%, from:
+      A proportion question. It was answered with 59,419 packs -- a count, for
+      a question asking for a percentage -- because no metric expressed "a
+      filtered subset over the unfiltered whole". share_340b does, so this is
+      now checked against the number rather than against a note saying the
+      number could not be produced.
 
+      The reference below is written by hand and never touches the compiler.
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
         SELECT sum(CASE WHEN o.is_340b = 1 THEN s.pack_units ELSE 0 END)::numeric
-               / NULLIF(sum(s.pack_units), 0)
+               / NULLIF(sum(s.pack_units), 0) AS share
         FROM sales s JOIN organizations o ON o.org_id = s.org_id
         WHERE s.data_source = 'distributor' AND s.brand_flag = 1
           AND s.mo_offset IN (0,1,2)
-
-      Adding that metric is outstanding work (R08 in docs/REMEDIATION.md).
-      Until it exists the contract is: say so. Answering in packs without
-      saying so -- which is what happened, 59,419 packs for a question asking
-      for a percentage -- is the failure this case exists to catch.
-    expect:
-      type: any_of
-      allowed: [clarify, denied, answered_with_note]
-      note_contains: [proportion, percentage, cannot express]
 
   - id: b340-02
     family: three_forty_b

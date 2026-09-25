@@ -28,6 +28,7 @@ class MetricKey(StrEnum):
     wac_revenue = "wac_revenue"
     brand_market_share = "brand_market_share"
     market_segment_share = "market_segment_share"
+    share_340b = "share_340b"
     pap_proportion = "pap_proportion"
     volume_growth = "volume_growth"
     share_trend_pp = "share_trend_pp"

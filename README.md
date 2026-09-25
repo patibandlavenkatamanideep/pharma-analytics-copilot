@@ -112,7 +112,16 @@ python3 -m pytest tests -q                   # 309 tests
 python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
 cd web && npm test                           # 6 jsdom component tests
+cd web && npm run test:e2e                   # 6 real-browser tests (Playwright)
+
+python3 scripts/run_evals.py                              # regression set
+python3 scripts/run_evals.py --questions evals/holdout.yaml   # held-out set
 ```
+
+`npm run test:e2e` drives real Chromium against a running server and the real
+database, so it checks what jsdom cannot: that the cookie round-trips, that
+the table renders, that a refusal reaches the screen. It needs the app running
+and `PAC_E2E_EMAIL` / `PAC_E2E_PASSWORD` (and the RAM pair) set.
 
 The web tests are **Vitest component tests in jsdom**, not tests in a real
 browser: they render the React component and stub `fetch`. They exercise the
@@ -201,10 +210,19 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| No metric expresses "a filtered subset over the unfiltered whole" | "What percentage of volume comes from 340B accounts?" is answered with a count **and a note saying the proportion cannot be computed**, not with 12.27%. Counted as an unsupported request, not as an answer |
 | Live accuracy unmeasured under the repaired judge | Needs paid inference; the previous 37/38 is withdrawn, not restated |
-| The deployed instance is the **pre-hardening** build | It still has the authorization defect fixed in `0d83a29`. Not redeployed in this phase |
-| Dev-only npm advisories (1 critical, 1 high, 3 moderate) | `npm audit --omit=dev` is clean, so nothing ships in `dist/`; clearing them needs a vite 6→8 toolchain migration |
+| One held-out miss, deliberately not fixed | "Which health systems have the most facilities?" resolves to `paid_pack_units` instead of `facility_count`. Fixing it would turn the held-out set into another development set |
 | Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
 
 This is not called production-ready while those remain.
+
+### Accuracy, on two different sets
+
+| Set | Behavioural | Answerable | What it measures |
+|---|---|---|---|
+| `evals/questions.yaml` | 38/38 | **34/34** | Regression. The system was tuned against it, so this is a ceiling, not an estimate |
+| `evals/holdout.yaml` | 11/12 | **10/11** | Sealed 2026-09-25, written from the supplied documents, run once. This is the estimate |
+
+The held-out set is the number to quote. Its one miss is recorded and left
+unfixed on purpose — a fix prompted by a held-out set turns it into a
+development set and the number stops meaning anything.
