@@ -311,7 +311,7 @@ evidence is:
 | No Terraform / CDK module | **Closed.** `infra/terraform/` — security group, IAM role scoped to the one Bedrock model, SSM for keyless administration, IMDSv2 required, encrypted gp3 root, Elastic IP, and an sslip.io hostname derived from it | `terraform fmt -check` clean, `terraform validate` passes, and `terraform plan` succeeds against the real account (resolves the AMI and default VPC) |
 | Web tests are jsdom only | **Closed.** `web/e2e/` — Playwright against real Chromium, a running server and the real 2M-row database | **6 passed.** Covers cookie round-trip across a reload, sign-out not restoring on reload, a rendered currency figure, a follow-up thread, New conversation, no currency anywhere on a RAM's page, and an out-of-scope territory refused by name |
 | Dev-only npm advisories (1 critical, 1 high, 3 moderate) | **Closed.** vite 6→8, vitest 2→5, `@vitejs/plugin-react` latest | `npm audit` reports **0 vulnerabilities**. Build verified, and the 6 component tests still pass on the new toolchain |
-| Deployed instance is the pre-hardening build | See the deployment record below | |
+| Deployed instance is the pre-hardening build | **Closed.** Redeployed 2026-09-25 with `7aae7cf`; data preserved, migrations 006–008 applied in place | Smoke test all pass; 6 Playwright tests pass against the live URL; acceptance checks below |
 | Live accuracy under the repaired judge | **Still open.** Needs paid inference | — |
 | Single host, no redundancy | **Still open.** An architectural choice, documented in `DESIGN.md §12` | — |
 
@@ -354,3 +354,60 @@ touched. As sealed the set scored 9/12; with working oracles, 11/12.
 
 The held-out figure is the one to quote. The gap between them is the value of
 having both.
+
+---
+
+## Deployment record — 2026-09-25
+
+The hardened build is live at <https://44-217-117-172.sslip.io>.
+
+| | |
+|---|---|
+| Commit deployed | `7aae7cf` |
+| Method | `rsync` of the source (excluding `.env`, credentials, `node_modules`, generated CSVs), then `docker compose up -d --build app` |
+| Data | **Preserved.** Dataset `full-1092a61b48cf`, 2,000,000 rows. The database volume was never touched |
+| Schema | Migrations 006, 007 and 008 applied in place through `psql`, before the new code started. All three are additive, so the old code was unaffected during the window |
+| Rollback | `~/app.bak` on the host is the previous tree; the previous image is still in the local Docker cache |
+
+### Verified against the live URL after deploying
+
+```
+history re-authorized by current scope: True
+turn writes serialised:                 True
+login throttling present:               True
+database boundary check:                intact
+new conversation columns:               4 of 4
+login_attempts table:                   True
+
+infra/smoke.sh                          ALL PASS
+Playwright, real Chromium               6 passed
+```
+
+| Check | Result |
+|---|---|
+| 340B proportion | `12.27%` |
+| Generic share | `70.06%` |
+| Unknown product | `clarify` — *"FLOOBERTAX" is not a product in this dataset* |
+| Exec revenue | `$250,766,926.42` |
+| RAM revenue | `35,689 packs`, no currency anywhere in the response |
+| RAM, out-of-scope territory | `denied` — refused by name |
+
+### Two defects the deployment found
+
+The deployed instance plans with Claude Opus on Bedrock; the local suite uses
+the deterministic planner. The first acceptance run against the live URL
+returned **`340b share of volume: 100.00%`** and answered the unknown-product
+question with *"Paid pack units: unavailable"*. Both were real defects in code
+that 322 passing tests called correct:
+
+- `share_340b` relied on the planner setting `is_340b="only"` for its
+  numerator. The offline planner does; the model left it at `"include"`, so
+  numerator and denominator were the same population. A metric now defines
+  **both** of its sides.
+- The intent check skipped any token the plan already carried. A filter value
+  the planner **invented** is not evidence the entity exists, so a hallucinated
+  `FLOOBERTAX` passed. Candidates are now checked against the vocabulary only.
+
+Fixed in `7aae7cf`, redeployed, re-verified. This is the argument for deployed
+acceptance tests in one paragraph: neither defect was reachable through the
+deterministic planner.

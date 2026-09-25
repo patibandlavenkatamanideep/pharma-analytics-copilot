@@ -186,11 +186,13 @@ with the app, PostgreSQL and Caddy under Docker Compose, real Let's Encrypt
 HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on Bedrock.
 `infra/smoke.sh` passed against it end to end on 2026-09-24.
 
-That deployment has **not been contacted since**: the hardening work recorded
-in [REMEDIATION.md](docs/REMEDIATION.md) was done entirely offline, and none of
-the fixes below have been deployed. Current availability is therefore
-unverified rather than disproved, and the running instance is the pre-hardening
-build.
+**Redeployed 2026-09-25 with the hardened build** (commit `7aae7cf`). The
+database and its 2,000,000 rows were preserved; migrations 006–008 were applied
+in place. Verified against the live URL afterwards: `infra/smoke.sh` all pass,
+6 Playwright tests pass in real Chromium, and the acceptance checks return
+12.27% for the 340B proportion, 70.06% for generic share, a clarification for
+an unknown product, `$250,766,926.42` for an Exec and no currency anywhere for
+a RAM.
 
 Live natural-language accuracy was measured at **37/38** on 2026-09-24 against
 Claude Opus 4.5 on Bedrock. **That figure is withdrawn pending re-measurement.**
