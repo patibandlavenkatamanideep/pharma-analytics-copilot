@@ -163,3 +163,30 @@ def test_a_plain_ranking_is_not_mistaken_for_a_threshold():
 ])
 def test_ordinary_questions_raise_no_gaps(question):
     assert kinds(question, plan_for()) == set(), question
+
+
+def test_a_product_the_planner_invented_is_still_unresolved():
+    """A confident filter value is not evidence the entity exists.
+
+    Found on the deployed instance. The live model put FLOOBERTAX in
+    product_names; the check skipped any token the plan already carried, so
+    the hallucination passed and the user got "Paid pack units: unavailable"
+    instead of being asked what they meant.
+    """
+    gaps = find_gaps("What is the volume for FLOOBERTAX this quarter?",
+                     plan_for(product_names=["FLOOBERTAX"]), VOCAB)
+    assert "unresolved_product" in {g.kind for g in gaps}
+    assert blocking(gaps)
+
+
+def test_a_territory_the_planner_invented_is_still_unresolved():
+    gaps = find_gaps("Show me volume in the Atlantia territory",
+                     plan_for(territories=["Atlantia"]), VOCAB)
+    assert "unresolved_place" in {g.kind for g in gaps}
+    assert blocking(gaps)
+
+
+def test_a_real_product_carried_in_the_plan_is_still_not_flagged():
+    """The fix must not start flagging entities that do exist."""
+    assert kinds("What is the volume for ZENOVAX this quarter?",
+                 plan_for(product_names=["ZENOVAX"])) == set()

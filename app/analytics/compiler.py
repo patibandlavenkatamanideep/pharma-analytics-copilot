@@ -461,11 +461,18 @@ class Compiler:
         # into "Zenovax free volume as a share of everything we sold" --
         # 20/175 rather than 20/130. Same units, same shape, quietly wrong.
         population = spec["denominator_population"]
+        num_filters = plan.filters
         if population == "ignores_340b":
-            # The whole, for a "what share of volume is 340B" question: the
-            # same population and period with the 340B condition lifted.
-            # Every other filter stays, so the share is of the thing asked
-            # about rather than of everything the company sold.
+            # The metric defines BOTH sides. The numerator is the 340B subset
+            # and the denominator is the same population with the condition
+            # lifted -- neither is left to whatever the planner happened to
+            # set. Relying on the planner for the numerator meant a model that
+            # chose share_340b with is_340b="include" produced a numerator
+            # identical to its denominator and reported 100%: a confident,
+            # meaningless answer. The offline planner set it correctly, so
+            # only the live model exposed this.
+            num_filters = plan.filters.model_copy(
+                update={"is_340b": TriState.only})
             den_filters = plan.filters.model_copy(
                 update={"is_340b": TriState.include})
         elif population == "surrounding_market":
@@ -477,7 +484,7 @@ class Compiler:
             den_filters = plan.filters
 
         num_sql, num_params, num_needs = self._leaf_select(
-            num_key, plan.filters, window, dims=requested, join_dims=num_join_dims
+            num_key, num_filters, window, dims=requested, join_dims=num_join_dims
         )
         den_sql, den_params, den_needs = self._leaf_select(
             den_key, den_filters, window,

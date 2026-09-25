@@ -153,3 +153,28 @@ def test_the_denominator_lifts_only_the_340b_condition():
     assert "is_340b" in numerator, "the numerator lost the 340B condition"
     assert "is_340b" not in denominator, "the denominator kept it, so the share is 100%"
     assert "drug_name" in denominator, "the denominator dropped the product filter too"
+
+
+def test_share_340b_is_correct_even_when_the_planner_sets_no_340b_filter():
+    """The metric defines both sides; it does not trust the planner for either.
+
+    Found on the deployed instance. The live model chose share_340b and left
+    is_340b at "include", so the numerator was identical to the denominator
+    and the answer was a confident 100%. The offline planner sets "only", so
+    only a real model exposed it.
+    """
+    from app.analytics.compiler import Compiler
+
+    for requested in ("include", "only"):
+        plan = AnalyticalPlan.model_validate({
+            "metric": "share_340b",
+            "filters": {"is_340b": requested},
+            "time": {"kind": "named", "named": "r3m"},
+        })
+        sql = Compiler().compile(plan, anchor=ANCHOR).sql
+        numerator = sql[: sql.index("den AS")]
+        denominator = sql[sql.index("den AS"):]
+        assert "is_340b" in numerator, f"numerator lost the 340B condition ({requested})"
+        assert "is_340b" not in denominator, (
+            f"denominator kept the 340B condition ({requested}); the share is 100%"
+        )

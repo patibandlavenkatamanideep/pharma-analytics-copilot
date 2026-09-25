@@ -91,16 +91,6 @@ def _normalise(values) -> set[str]:
     return {str(v).strip().upper() for v in values if str(v).strip()}
 
 
-def _plan_filter_values(plan: "AnalyticalPlan") -> set[str]:
-    f = plan.filters
-    out: set[str] = set()
-    for field_name in ("product_names", "ndcs", "market_categories",
-                       "market_subcategories", "gpo_names", "org_archetypes",
-                       "territories", "regions", "states", "classifications"):
-        out |= _normalise(getattr(f, field_name, []) or [])
-    return out
-
-
 def _closest(term: str, options, limit: int = 3) -> list[str]:
     """Near matches, by whole string and by word.
 
@@ -135,7 +125,6 @@ def find_gaps(
 ) -> list[IntentGap]:
     """Everything the question asked for that the plan does not deliver."""
     gaps: list[IntentGap] = []
-    applied = _plan_filter_values(plan)
 
     known_products = _normalise(vocabulary.products)
     known_places = _normalise(vocabulary.all_territories) | _normalise(vocabulary.all_regions)
@@ -148,7 +137,9 @@ def find_gaps(
     # --- a named place that is not a place ---------------------------------
     for match in _TERRITORY_SLOT.finditer(question):
         name, kind = match.group(1).strip(), match.group(2).lower()
-        if name.upper() in everything_known or name.upper() in applied:
+        # Deliberately NOT skipped because the plan carries it: a filter value
+        # the planner invented is not evidence that the place exists.
+        if name.upper() in everything_known:
             continue
         is_region = kind.startswith("region")
         pool = vocabulary.all_regions if is_region else vocabulary.all_territories
@@ -163,7 +154,12 @@ def find_gaps(
     # --- a named product that is not a product -----------------------------
     for token in _ALLCAPS.findall(question):
         upper = token.upper()
-        if upper in KNOWN_ACRONYMS or upper in everything_known or upper in applied:
+        # Checked against the VOCABULARY, never against the plan. A model that
+        # confidently puts FLOOBERTAX in product_names has not made FLOOBERTAX
+        # real -- and skipping tokens the plan already carried meant exactly
+        # that hallucination passed, and the answer came back "unavailable"
+        # instead of asking what was meant.
+        if upper in KNOWN_ACRONYMS or upper in everything_known:
             continue
         if upper.isdigit():
             continue
