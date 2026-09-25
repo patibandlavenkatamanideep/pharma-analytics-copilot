@@ -8,7 +8,6 @@ checkout can run the unit suite before loading 2M rows.
 from __future__ import annotations
 
 import pathlib
-import secrets
 
 import pytest
 
@@ -54,12 +53,22 @@ def anchor() -> dict:
 
 @pytest.fixture(scope="session")
 def test_users() -> dict:
-    """Provision throwaway credentials for one user of each role.
+    """One usable user per role, from the supplied users table.
 
-    Passwords are generated per run and never written to disk, so the suite
-    does not depend on evaluator_logins.json existing.
+    NO CREDENTIAL IS CREATED OR ROTATED HERE.
+
+    This fixture used to mint a password per role and call set_credential()
+    against whatever database was active -- which, for a plain `pytest tests`,
+    is the WORKING one. Every run silently rotated the real evaluator logins,
+    so credentials that had been issued to a reviewer stopped working and
+    nothing said why. The same defect was fixed in make_demo.py, run_evals.py
+    and benchmark.py and was missed here.
+
+    Tests that need a principal do not need a password: principal_for_user_id()
+    builds one from the users table directly. Tests that genuinely need to sign
+    in over HTTP create their own disposable identities against a disposable
+    database -- see tests/security/conftest.py.
     """
-    from app.auth.identity import set_credential
     from app.db import owner_transaction
 
     with owner_transaction() as cur:
@@ -82,23 +91,17 @@ def test_users() -> dict:
                      u.user_id
             """
         )
-        rows = cur.fetchall()
-
-    out = {}
-    for row in rows:
-        password = secrets.token_urlsafe(16)
-        set_credential(row["user_id"], password)
-        out[row["role"]] = {**dict(row), "password": password}
-    return out
+        return {row["role"]: dict(row) for row in cur.fetchall()}
 
 
 @pytest.fixture(scope="session")
 def principals(test_users):
-    from app.auth.identity import authenticate
+    """Built from the users table, so no password is involved."""
+    from app.auth.policy import principal_for_user_id
 
     return {
-        role: authenticate(item["email"], item["password"])[1]
-        for role, item in test_users.items()
+        role: principal_for_user_id(row["user_id"])
+        for role, row in test_users.items()
     }
 
 
