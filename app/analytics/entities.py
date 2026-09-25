@@ -28,6 +28,11 @@ class Vocabulary:
     products: list[str] = field(default_factory=list)
     subcategories: list[str] = field(default_factory=list)
     categories: list[str] = field(default_factory=list)
+    # Product therapeutic areas -- Oncology, Urology. Absent from the
+    # vocabulary, neither planner was ever told these existed, so "our
+    # oncology portfolio" resolved to no filter at all and returned every
+    # product's volume under an oncology heading.
+    specialties: list[str] = field(default_factory=list)
     gpos: list[str] = field(default_factory=list)
     archetypes: list[str] = field(default_factory=list)
     territories: list[str] = field(default_factory=list)
@@ -70,7 +75,7 @@ def _current_dataset_id() -> str:
 
 
 @lru_cache(maxsize=4)
-def _product_vocabulary(dataset_id: str) -> tuple[list[str], list[str], list[str]]:
+def _product_vocabulary(dataset_id: str) -> tuple[list[str], list[str], list[str], list[str]]:
     """Products are unrestricted reference data, so this is cached globally.
 
     Keyed on dataset_id. Cached on nothing, it kept returning the previous
@@ -96,11 +101,17 @@ def _product_vocabulary(dataset_id: str) -> tuple[list[str], list[str], list[str
             "WHERE market_category IS NOT NULL ORDER BY 1"
         )
         cats = [r["market_category"] for r in cur.fetchall()]
-    return company + competitors, subs, cats
+        cur.execute(
+            "SELECT DISTINCT specialty FROM products "
+            "WHERE specialty IS NOT NULL ORDER BY 1"
+        )
+        specialties = [r["specialty"] for r in cur.fetchall()]
+    return company + competitors, subs, cats, specialties
 
 
 def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocabulary:
-    products, subs, cats = _product_vocabulary(dataset_id or _current_dataset_id())
+    products, subs, cats, specialties = _product_vocabulary(
+        dataset_id or _current_dataset_id())
 
     # zip_territory is unrestricted reference data, but the planner is still
     # only offered the geography the principal can act on: suggesting a
@@ -155,6 +166,7 @@ def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocab
 
     return Vocabulary(
         products=products, subcategories=subs, categories=cats,
+        specialties=specialties,
         gpos=gpos, archetypes=archetypes, territories=territories, regions=regions,
         all_territories=all_territories, all_regions=all_regions,
     )

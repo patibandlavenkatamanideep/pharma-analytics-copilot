@@ -207,6 +207,23 @@ def find_gaps(
             ),
         ))
 
+    # --- a named therapeutic area the plan did not honour ------------------
+    named_specialties = {
+        v for v in (vocabulary.specialties or [])
+        if re.search(rf"\b{re.escape(v)}\b", question, re.I)
+    }
+    planned_specialties = _normalise(plan.filters.specialties or [])
+    dropped = {v for v in named_specialties if v.upper() not in planned_specialties}
+    if dropped:
+        gaps.append(IntentGap(
+            kind="unhonoured_specialty",
+            detail=(
+                f"This asks about {', '.join(sorted(dropped))} products, but the "
+                f"figure is not restricted to them."
+            ),
+            suggestion="",
+        ))
+
     # --- a threshold asked for, no threshold expressible -------------------
     if _THRESHOLD_ASKED.search(question):
         gaps.append(IntentGap(
@@ -226,7 +243,12 @@ def blocking(gaps: list[IntentGap]) -> list[IntentGap]:
 
     A named entity that does not exist is blocking: dropping the filter answers
     a broader question, and the number returned looks like an answer to the
-    narrow one. A missing proportion or threshold is disclosed instead, because
-    the number returned is still true -- it is just not the whole question.
+    narrow one. A dropped therapeutic area is blocking for the same reason --
+    "our oncology portfolio" answered with every product is a wrong number, not
+    an incomplete one. A missing proportion or threshold is disclosed instead,
+    because the number returned is still true; it is just not the whole
+    question.
     """
-    return [g for g in gaps if g.kind in ("unresolved_place", "unresolved_product")]
+    return [g for g in gaps
+            if g.kind in ("unresolved_place", "unresolved_product",
+                          "unhonoured_specialty")]

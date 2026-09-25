@@ -35,6 +35,7 @@ class MetricKey(StrEnum):
     weighted_share_trend = "weighted_share_trend"
     account_count = "account_count"
     facility_count = "facility_count"
+    facility_count_all = "facility_count_all"
 
 
 class Dimension(StrEnum):

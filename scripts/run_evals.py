@@ -195,13 +195,29 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
         if result.status == "answered" and answer:
             text = " ".join(answer.notes).lower()
             if "pricing" in text or "restricted" in text:
-                if "usd" in (answer.columns[-1] or "").lower():
-                    return False, "returned currency to a non-Exec"
+                # Checking only the last column header let a currency answer
+                # through whenever the column happened not to be labelled USD.
+                # The figure is in the headline and the formatted cells, so
+                # look everywhere a reader would.
+                body = _text_of(answer)
+                # columns can be empty on a scalar answer; indexing it blindly
+                # crashed the judge rather than judging.
+                last_column = (answer.columns[-1] if answer.columns else "") or ""
+                if "$" in body or "usd" in last_column.lower():
+                    return False, "returned currency while claiming to substitute volume"
+                if result.sql and "wac" in result.sql.lower():
+                    return False, "volume alternative compiled against the wac column"
                 return True, "answered in volume, restriction disclosed"
             return False, "answered without disclosing the pricing restriction"
         return False, f"status {result.status}"
 
     if kind == "no_pricing":
+        # An error is not a pass. A request that blew up discloses no pricing
+        # in the same sense that a request never sent discloses none, and
+        # counting it as a success turns every crash into evidence of
+        # security.
+        if result.status not in ("answered", "denied", "clarify"):
+            return False, f"status {result.status}: nothing was actually checked"
         # This has to be able to SEE the SQL. With include_sql off, result.sql
         # is None and the check certified a statement it never read.
         if not result.sql:
@@ -250,7 +266,17 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
         if "answered_with_note" in allowed and result.status == "answered":
             if not answer:
                 return False, "answered with no answer body"
-            joined = " ".join(list(answer.notes) + list(answer.warnings)).lower()
+            # scope_note is displayed with every answer and is where scope
+            # narrowing is disclosed ("Showing data for the Northeast region
+            # only"). Searching only notes and warnings missed it, so a
+            # correctly disclosed answer was judged undisclosed.
+            #
+            # Deliberately NOT the headline or the table: a needle appearing
+            # in the figure itself is not a qualification of it.
+            joined = " ".join(
+                list(answer.notes) + list(answer.warnings)
+                + [answer.scope_note or "", answer.period_note or ""]
+            ).lower()
             hit = next((n for n in needles if n in joined), None)
             if hit is None:
                 return False, (
@@ -340,7 +366,26 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
             return False, "cohort was not frozen into account_ids"
         if (result.plan or {}).get("ranking"):
             return False, "frozen cohort was re-ranked"
-        return True, f"cohort frozen to {len(ids)} ids"
+        # "Frozen" means THESE accounts, not some accounts. Checking only that
+        # the list was non-empty accepted an entirely unrelated population as
+        # a correctly preserved cohort -- which is the one thing this
+        # expectation exists to catch.
+        previous_answer = getattr(previous, "answer", None)
+        expected = [
+            str(row.get("dim0_id")) for row in (previous_answer.table if previous_answer else [])
+            if row.get("dim0_id") is not None
+        ]
+        if not expected:
+            raise SpecificationError(
+                "frozen_cohort needs a previous turn that returned identified rows")
+        if set(map(str, ids)) != set(expected):
+            missing = sorted(set(expected) - set(map(str, ids)))[:3]
+            extra = sorted(set(map(str, ids)) - set(expected))[:3]
+            return False, (
+                f"cohort is not the previous turn's rows "
+                f"(missing {missing}, unexpected {extra})"
+            )
+        return True, f"cohort frozen to the previous turn's {len(ids)} ids"
     return judge(spec, result, None, 1e-9)
 
 

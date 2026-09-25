@@ -289,3 +289,93 @@ def test_an_unknown_expectation_type_raises():
     """Silently returning False turns a typo into a question that never passes."""
     with pytest.raises(ValueError, match="unknown expectation"):
         verdict({"type": "nonsense"}, FakeResult())
+
+
+# ---------------------------------------------------------------------------
+# Three more ways the judge could not fail
+# ---------------------------------------------------------------------------
+
+def test_a_currency_answer_is_not_a_volume_alternative():
+    """It checked only whether the last column was labelled USD.
+
+    A priced answer whose column header happened to say something else passed
+    as "answered in volume, restriction disclosed" -- certifying the exact
+    leak the expectation exists to catch.
+    """
+    result = FakeResult(
+        answer=FakeAnswer(
+            headline="Gross revenue: $250,766,926.42",
+            columns=["account", "value"],
+            table=[{"value_formatted": "$250,766,926.42"}],
+            notes=["Pricing is restricted at your access level."],
+            row_count=1,
+        )
+    )
+    ok, reason = verdict({"type": "volume_alternative"}, result)
+    assert not ok, f"currency accepted as a volume substitute: {reason}"
+
+
+def test_a_volume_alternative_compiled_against_wac_is_refused():
+    result = FakeResult(
+        answer=FakeAnswer(headline="Paid pack units: 12 packs",
+                          notes=["Pricing is restricted at your access level."],
+                          row_count=1),
+        sql="SELECT sum(s.wac) FROM sales s",
+    )
+    ok, reason = verdict({"type": "volume_alternative"}, result)
+    assert not ok, reason
+
+
+def test_a_genuine_volume_alternative_still_passes():
+    result = FakeResult(
+        answer=FakeAnswer(headline="Paid pack units: 388 packs",
+                          columns=["value"],
+                          table=[{"value_formatted": "388 packs"}],
+                          notes=["Pricing is restricted at your access level, so this "
+                                 "shows sales volume in packs rather than revenue."],
+                          row_count=1),
+        sql="SELECT sum(s.pack_units) FROM sales s",
+    )
+    ok, reason = verdict({"type": "volume_alternative"}, result)
+    assert ok, reason
+
+
+def test_an_execution_error_is_not_a_passing_no_pricing_case():
+    """A crash discloses no pricing the way a request never sent discloses
+    none. Counting it as a success turns every failure into evidence of
+    security."""
+    result = FakeResult(status="error", answer=None,
+                        sql="SELECT sum(s.pack_units) FROM sales s")
+    ok, reason = verdict({"type": "no_pricing"}, result)
+    assert not ok, f"an execution error passed as no_pricing: {reason}"
+
+
+def test_an_unrelated_cohort_is_not_a_frozen_cohort():
+    """"Frozen" means THESE accounts, not some accounts.
+
+    Checking only that the list was non-empty accepted an entirely different
+    population as a correctly preserved cohort.
+    """
+    previous = FakeResult(answer=FakeAnswer(
+        table=[{"dim0_id": "ORG-1"}, {"dim0_id": "ORG-2"}, {"dim0_id": "ORG-3"}],
+        row_count=3))
+    result = FakeResult(plan={"filters": {"account_ids": ["ORG-9", "ORG-8", "ORG-7"]}})
+    ok, reason = runner.judge_turn({"type": "frozen_cohort"}, result, previous)
+    assert not ok, f"an unrelated cohort passed as frozen: {reason}"
+
+
+def test_the_actual_previous_cohort_is_a_frozen_cohort():
+    previous = FakeResult(answer=FakeAnswer(
+        table=[{"dim0_id": "ORG-1"}, {"dim0_id": "ORG-2"}], row_count=2))
+    result = FakeResult(plan={"filters": {"account_ids": ["ORG-2", "ORG-1"]}})
+    ok, reason = runner.judge_turn({"type": "frozen_cohort"}, result, previous)
+    assert ok, reason
+
+
+def test_a_partially_carried_cohort_is_refused():
+    previous = FakeResult(answer=FakeAnswer(
+        table=[{"dim0_id": "ORG-1"}, {"dim0_id": "ORG-2"}, {"dim0_id": "ORG-3"}],
+        row_count=3))
+    result = FakeResult(plan={"filters": {"account_ids": ["ORG-1", "ORG-2"]}})
+    ok, reason = runner.judge_turn({"type": "frozen_cohort"}, result, previous)
+    assert not ok, reason

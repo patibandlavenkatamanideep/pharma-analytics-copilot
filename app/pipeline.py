@@ -148,6 +148,7 @@ class Pipeline:
             known_products=vocab.products,
             known_subcategories=vocab.subcategories,
             known_categories=vocab.categories,
+            known_specialties=vocab.specialties,
             known_gpos=vocab.gpos,
             known_archetypes=vocab.archetypes,
             known_territories=vocab.territories,

@@ -8,7 +8,7 @@
 # `sql` fragments are templates over a fixed set of pre-aggregated component
 # names owned by the compiler -- they are not user- or model-reachable strings.
 
-version: "1.3.0"
+version: "1.4.0"
 
 # --- shared component expressions -------------------------------------------
 components:
@@ -228,6 +228,25 @@ metrics:
       supplied definition does not state which volume is meant; total market
       equivalents is a PROPOSED interpretation and answers say so.
 
+  facility_count_all:
+    label: "number of facilities on record"
+    unit: "facilities"
+    anchor: "docs/org_hierarchy.md"
+    # STRUCTURAL: counted from the organization hierarchy, not from sales.
+    # facility_count answers "how many facilities did we sell to", which
+    # silently excludes every facility that happened not to transact in the
+    # window. For "how many facilities does this health system have" that is
+    # the wrong number, and nothing said so.
+    kind: "count_structural"
+    count_entity: "facility"
+    requires_wac: false
+    description: >
+      Distinct facilities in the organization hierarchy, independent of
+      whether they have sales. Scope is still enforced by row-level security,
+      so a RAM counts only facilities in their territory. Use for "how many
+      facilities does each health system have" and "list all standalone
+      facilities"; use facility_count for "how many facilities did we sell to".
+
   account_count:
     label: "number of accounts"
     unit: "accounts"
@@ -253,5 +272,7 @@ metrics:
     company_only: true
     requires_wac: false
     description: >
-      Distinct facility organizations. "Active facilities" additionally filters
+      Distinct facility organizations THAT HAVE PAID SALES in the window.
+      Use facility_count_all for a structural count of facilities on record,
+      whether or not they transacted. "Active facilities" additionally filters
       org_status = 'Active'; historical volume may include inactive accounts.

@@ -243,7 +243,7 @@ class Compiler:
             group_parts.append(ds.id_expr)
 
         kind = spec.get("kind")
-        if kind == "count_distinct":
+        if kind in ("count_distinct", "count_structural"):
             needs.add("o")
             entity = spec["count_entity"]
             target = (
@@ -259,8 +259,13 @@ class Compiler:
         where += src_clauses
         params += src_params
 
-        where.append(window.sql)
-        params += window.params
+        # A structural count is a property of the hierarchy, not of a period:
+        # a facility does not stop existing because it had no sales last
+        # quarter. The window clause also references the sales table, which
+        # this query does not read.
+        if kind != "count_structural":
+            where.append(window.sql)
+            params += window.params
 
         biz_clauses, biz_params = self._business_filters(filters, needs, org_side=org_side)
         where += biz_clauses
@@ -270,11 +275,25 @@ class Compiler:
             where += extra_clauses
             params += extra_params or []
 
-        sql = (
-            f"SELECT {', '.join(select_parts)}\n"
-            f"FROM sales s\n{{joins}}\n"
-            f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
-        )
+        # A structural count is about the hierarchy, not about transactions,
+        # so it reads organizations directly. Row-level security still applies
+        # -- organizations carries the same policy as sales -- so scope is
+        # enforced exactly as it is everywhere else.
+        if kind == "count_structural":
+            # organizations is the FROM table here, so it must not also be
+            # joined in.
+            needs.discard("o")
+            sql = (
+                f"SELECT {', '.join(select_parts)}\n"
+                f"FROM organizations o\n{{joins}}\n"
+                f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
+            )
+        else:
+            sql = (
+                f"SELECT {', '.join(select_parts)}\n"
+                f"FROM sales s\n{{joins}}\n"
+                f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
+            )
         if group_parts:
             sql += f"GROUP BY {', '.join(group_parts)}\n"
         return sql, params, needs
@@ -314,6 +333,13 @@ class Compiler:
 
         query.notes = notes + query.notes
         query.window_label = window.label
+        if spec.get("kind") == "count_structural":
+            # Otherwise the answer carries a reporting window it did not use.
+            query.window_label = "all periods (a structural count)"
+            query.notes.append(
+                "This counts facilities on record in the organization hierarchy, "
+                "whether or not they had sales in any period."
+            )
         if spec.get("proposed"):
             query.notes.append(
                 f"{spec['label']} uses a proposed interpretation: the supplied definition "
@@ -567,6 +593,30 @@ class Compiler:
     ) -> CompiledQuery:
         if plan.comparison is None:
             raise CompileError(f"{plan.metric} requires a comparison window")
+
+        # A period grain inside a two-window comparison cannot be joined.
+        # The current side is labelled 2026-Q3 and the prior side 2026-Q2, so
+        # the FULL JOIN matches nothing: every row comes back with one side
+        # null and a null growth figure. It looks like "no growth data" rather
+        # than like a question the system cannot express.
+        #
+        # Aligning by position instead would be a guess about what the user
+        # meant. What they almost certainly want -- a growth figure for each
+        # period against its own prior -- is a different query shape, not this
+        # one. So it is refused by name, with the two things that do work.
+        period_dims = [d for d in plan.dimensions
+                       if d in (Dimension.period_mo, Dimension.period_qtr,
+                                Dimension.period_wk)]
+        if period_dims:
+            grain = period_dims[0].value.replace("period_", "")
+            raise CompileError(
+                f"A {grain}-by-{grain} breakdown cannot also be a two-window "
+                f"comparison: each side would be labelled with a different "
+                f"{grain}, so nothing lines up. Ask for the trend "
+                f"(\"volume by {grain}\") to see the series, or drop the "
+                f"{grain} breakdown to see one growth figure for the window."
+            )
+
         prior = resolve(plan.comparison, anchor)
         base_key = spec["base_metric"]
         base_spec = self.registry.get(base_key)

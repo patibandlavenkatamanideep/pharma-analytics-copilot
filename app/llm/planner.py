@@ -64,6 +64,7 @@ class PlanningContext:
     known_products: list[str] = field(default_factory=list)
     known_subcategories: list[str] = field(default_factory=list)
     known_categories: list[str] = field(default_factory=list)
+    known_specialties: list[str] = field(default_factory=list)
     known_gpos: list[str] = field(default_factory=list)
     known_archetypes: list[str] = field(default_factory=list)
     known_territories: list[str] = field(default_factory=list)
@@ -152,6 +153,13 @@ def build_system_prompt(context: PlanningContext) -> str:
         parts += [f"Market subcategories: {', '.join(context.known_subcategories)}"]
     if context.known_categories:
         parts += [f"Market categories: {', '.join(context.known_categories)}"]
+    if context.known_specialties:
+        parts += [
+            f"Product therapeutic areas (filters.specialties): "
+            f"{', '.join(context.known_specialties)}. "
+            f"'our oncology portfolio' or 'urology products' means this filter, "
+            f"NOT a market category and NOT the whole catalogue."
+        ]
     if context.known_gpos:
         parts += [f"GPOs: {', '.join(context.known_gpos)}"]
     if context.known_archetypes:
@@ -536,6 +544,15 @@ class OfflinePlanner:
         # The facility form is checked first: "which health systems have the
         # most facilities" names both entities, and the one being COUNTED is
         # the one the superlative governs.
+        # Structural first: "all facilities", "facilities we have", "on
+        # record" are about the hierarchy, not about who transacted. The
+        # sales-derived count silently excluded 14,439 of 40,000 facilities.
+        if re.search(
+            r"\ball facilit\w+|\btotal facilit\w+|facilit\w+ on record|"
+            r"facilit\w+ (?:do|does) (?:we|they|it) have|"
+            r"how many facilit\w+ (?:do|does) (?:we|they)\b", q
+        ):
+            return MetricKey.facility_count_all
         if re.search(
             r"how many[^?]*\bfacilit\w+|facility count|"
             r"number of (?:distinct |active )?facilit\w+|"
@@ -659,6 +676,11 @@ class OfflinePlanner:
             update["market_subcategories"] = subs
         if cats := mentioned(context.known_categories):
             update["market_categories"] = cats
+        # "our oncology portfolio" is a filter on products.specialty. Without
+        # this the phrase resolved to nothing and the answer was every
+        # product's volume, presented as the oncology figure.
+        if specs := mentioned(context.known_specialties):
+            update["specialties"] = specs
         if gpos := mentioned(context.known_gpos):
             update["gpo_names"] = gpos
         if archetypes := mentioned(context.known_archetypes):
