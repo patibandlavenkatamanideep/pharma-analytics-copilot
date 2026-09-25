@@ -364,6 +364,10 @@ class OfflinePlanner:
         (r"\bby (?:market )?subcategor\w*", Dimension.market_subcategory),
         (r"\bby (?:data )?source\b", Dimension.data_source),
         (r"\bby facilit\w*", Dimension.facility),
+        # "340B vs non-340B" is a comparison of the two groups.
+        (r"\bby 340b\b|\b340b\s+(?:versus|vs\.?|compared? (?:to|with))\s+non-?340b|"
+         r"\bnon-?340b\s+(?:versus|vs\.?)\s+340b|"
+         r"340b volume compare", Dimension.is_340b),
         # Deliberately NOT a bare \baccounts?\b: "excluding 340B accounts" is a
         # filter qualifier, not a request to break the answer down by account.
         (r"\bby account\b|\bper account\b|\beach account\b|\bby health system\b|"
@@ -440,10 +444,22 @@ class OfflinePlanner:
                 f"{pricing_note} {interpretation}" if interpretation else pricing_note
             )
 
+        # A rolling average needs more periods than it averages, or the whole
+        # series is leading edge: a 3-month average over a 3-month window has
+        # two incomplete points out of three. Widen only when the question did
+        # not name a window itself.
+        rolling = self._rolling(q, dimensions)
+        if rolling is not None and not self._names_window(q):
+            from app.analytics.plan import NamedWindow, TimeWindow
+
+            wide = NamedWindow.last_6_months if rolling.periods <= 3 else NamedWindow.ytd
+            window = TimeWindow(kind="named", named=wide)
+
         return AnalyticalPlan(
             metric=metric, dimensions=dimensions, filters=filters,
             time=window, comparison=comparison, ranking=ranking,
             threshold=self._threshold(q, metric, dimensions),
+            rolling=rolling,
             interpretation=interpretation,
         )
 
@@ -589,6 +605,18 @@ class OfflinePlanner:
 
     def _dimensions(self, q: str, metric: MetricKey) -> list[Dimension]:
         dims: list[Dimension] = []
+        # A rolling average is over time, so it implies a period grain even
+        # when the question does not say "by month".
+        if re.search(r"\b(?:rolling|moving|trailing)\b.{0,20}\baverage\b|"
+                     r"\brolling\s+\d+", q, re.I) and not re.search(
+                r"\bby (?:month|quarter|week)\b", q):
+            if re.search(r"quarter", q):
+                dims.append(Dimension.period_qtr)
+            elif re.search(r"week", q):
+                dims.append(Dimension.period_wk)
+            else:
+                dims.append(Dimension.period_mo)
+
         # A trend request with no explicit grain still wants a series.
         if re.search(r"\btrend\b|\bover the last\b|\bover the past\b", q) and not re.search(
             r"\bby (?:month|quarter|week)\b|\bmonthly\b|\bquarterly\b|\bweekly\b", q
@@ -691,7 +719,22 @@ class OfflinePlanner:
         if regions := mentioned(context.all_regions or context.known_regions):
             update["regions"] = regions
 
-        if re.search(r"exclude 340b|non-?340b|excluding 340b|without 340b", q):
+        # "How does 340B volume compare to non-340B volume?" names both sides,
+        # so it is a BREAKDOWN by 340B status, not an exclusion. Reading
+        # "non-340B" as a filter answered half the question with one number
+        # and dropped the comparison entirely.
+        # Both groups must be named AND a comparison asked for. "Rank non-340B
+        # hospital accounts" names one group and is a filter; requiring only
+        # the word "non-340B" turned it into an unfiltered breakdown.
+        mentions_bare_340b = bool(re.search(r"(?<!non-)(?<!non )\b340b\b", q))
+        mentions_non_340b = bool(re.search(r"non-?\s?340b", q))
+        asks_to_compare = bool(re.search(
+            r"\bcompare[ds]?\b|\bversus\b|\bvs\.?\b|compared with|"
+            r"\bhow does\b.*\bcompare", q))
+        compares_both = mentions_bare_340b and mentions_non_340b and asks_to_compare
+        if compares_both:
+            pass          # the dimension carries it; no filter is applied
+        elif re.search(r"exclude 340b|non-?340b|excluding 340b|without 340b", q):
             update["is_340b"] = TriState.exclude
         elif re.search(r"\b340b\b", q):
             update["is_340b"] = TriState.only
@@ -725,6 +768,24 @@ class OfflinePlanner:
                 update[target] = list(context.previous_cohort)
 
         return filters.model_copy(update=update) if update else filters
+
+    def _rolling(self, q: str, dimensions: list[Dimension]):
+        """"rolling 3-month average" is an average of the last three points."""
+        from app.analytics.plan import Rolling
+
+        if not any(d in (Dimension.period_mo, Dimension.period_qtr,
+                         Dimension.period_wk) for d in dimensions):
+            return None
+        match = re.search(
+            r"\b(?:rolling|moving|trailing)\s+(\d+)[- ]?(?:month|week|quarter|period)?|"
+            r"\b(\d+)[- ](?:month|week|quarter)\s+(?:rolling|moving|trailing)?\s*average",
+            q, re.I)
+        if not match:
+            if re.search(r"\brolling average\b|\bmoving average\b", q, re.I):
+                return Rolling(periods=3)      # the common default
+            return None
+        periods = int(match.group(1) or match.group(2))
+        return Rolling(periods=periods) if 2 <= periods <= 24 else None
 
     def _threshold(self, q: str, metric: MetricKey, dimensions: list[Dimension]):
         """"declined more than 20%" is a filter, not a ranking.

@@ -75,6 +75,10 @@ def compiled(**plan_bits):
     return Compiler(max_rows=50).compile(plan, anchor=ANCHOR)
 
 
+def planned_dims(question):
+    return planned(question)
+
+
 def test_the_threshold_is_a_bind_parameter_not_interpolated():
     q = compiled(metric="paid_pack_units",
                  threshold={"direction": "above", "value": 500})
@@ -114,3 +118,73 @@ def test_every_query_shape_accepts_a_threshold(metric, extra):
 def test_no_threshold_leaves_the_query_unwrapped():
     q = compiled(metric="paid_pack_units")
     assert "AS filtered" not in q.sql
+
+
+# ---------------------------------------------------------------------------
+# Rolling averages
+# ---------------------------------------------------------------------------
+
+def test_a_rolling_average_is_read_from_the_question():
+    plan = planned("Show me the rolling 3-month average volume for Zenovax")
+    assert plan.rolling is not None and plan.rolling.periods == 3
+
+
+def test_a_moving_average_implies_a_period_grain():
+    """It is an average over time, so it needs a series even when the question
+    does not say "by month"."""
+    from app.analytics.plan import Dimension
+
+    plan = planned("What is the 6-month moving average of our volume?")
+    assert plan.rolling.periods == 6
+    assert Dimension.period_mo in plan.dimensions
+
+
+def test_the_window_is_widened_so_the_average_has_something_to_average():
+    """A 3-month average over a 3-month window is two-thirds leading edge."""
+    plan = planned("Show me the rolling 3-month average volume for Zenovax")
+    assert plan.time.named.value != "r3m"
+
+
+def test_an_explicit_window_is_respected():
+    plan = planned("Show me the rolling 3-month average volume year to date")
+    assert plan.time.named.value == "ytd"
+
+
+def test_a_plain_trend_is_not_a_rolling_average():
+    assert planned(
+        "Show me the monthly volume trend over the last six months").rolling is None
+
+
+def test_a_rolling_average_needs_exactly_one_period_dimension():
+    with pytest.raises(ValueError, match="exactly one period dimension"):
+        AnalyticalPlan.model_validate({
+            "metric": "paid_pack_units", "dimensions": ["account"],
+            "rolling": {"periods": 3},
+            "time": {"kind": "named", "named": "last_6_months"}})
+
+
+def test_a_rolling_average_cannot_also_be_a_two_window_comparison():
+    with pytest.raises(ValueError, match="cannot be combined"):
+        AnalyticalPlan.model_validate({
+            "metric": "volume_growth", "dimensions": ["period_mo"],
+            "rolling": {"periods": 3},
+            "time": {"kind": "named", "named": "r3m"},
+            "comparison": {"kind": "named", "named": "r6m_prior"}})
+
+
+def test_the_compiled_window_averages_the_right_number_of_periods():
+    q = compiled(metric="paid_pack_units", dimensions=["period_mo"],
+                 rolling={"periods": 3},
+                 time={"kind": "named", "named": "last_6_months"})
+    assert "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW" in q.sql
+    assert "ORDER BY dim0_id" in q.sql
+    # The un-averaged point is kept beside the average.
+    assert "point_value" in q.columns
+
+
+def test_a_rolling_average_partitions_by_the_other_dimension():
+    """Averaging across products would mix unrelated series together."""
+    q = compiled(metric="paid_pack_units", dimensions=["product", "period_mo"],
+                 rolling={"periods": 3},
+                 time={"kind": "named", "named": "last_6_months"})
+    assert "PARTITION BY dim0_id" in q.sql

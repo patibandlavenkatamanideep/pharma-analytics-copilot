@@ -179,6 +179,20 @@ class Threshold(BaseModel):
     value: float
 
 
+class Rolling(BaseModel):
+    """A trailing average over a period series.
+
+    "Rolling 3-month average volume" is an average of the last three points at
+    each point, not a total for three months. It needs exactly one period
+    dimension, because a rolling average is over time and nothing else; the
+    window is applied after the metric is aggregated, so it averages the
+    metric rather than the rows.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    periods: Annotated[int, Field(ge=2, le=24)]
+
+
 class AnalyticalPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -189,6 +203,7 @@ class AnalyticalPlan(BaseModel):
     comparison: TimeWindow | None = None
     ranking: Ranking | None = None
     threshold: Threshold | None = None
+    rolling: Rolling | None = None
 
     # Set when the question cannot be answered as asked. The pipeline returns
     # this text instead of guessing.
@@ -209,6 +224,18 @@ class AnalyticalPlan(BaseModel):
             raise ValueError(f"metric {self.metric} requires a comparison window")
         if self.ranking and not self.dimensions:
             raise ValueError("ranking requires at least one dimension to rank")
+        if self.rolling is not None:
+            periods = [d for d in self.dimensions
+                       if d in (Dimension.period_mo, Dimension.period_qtr,
+                                Dimension.period_wk)]
+            if len(periods) != 1:
+                raise ValueError(
+                    "a rolling average needs exactly one period dimension to "
+                    "roll over")
+            if self.comparison is not None:
+                raise ValueError(
+                    "a rolling average and a two-window comparison cannot be "
+                    "combined")
         if self.threshold and not self.dimensions:
             raise ValueError(
                 "a threshold requires at least one dimension: filtering a single "

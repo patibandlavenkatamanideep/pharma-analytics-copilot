@@ -41,7 +41,15 @@ class Settings(BaseSettings):
     # planner so that every non-LLM layer stays testable without credentials.
     llm_provider: Literal["bedrock", "offline"] = "offline"
     bedrock_region: str = "us-east-1"
-    bedrock_model_id: str = "anthropic.claude-opus-5"
+    # The model the deployment actually runs, and the one the recorded
+    # evaluation numbers were measured on. The previous default named a model
+    # that is not enabled on this account, so an operator who set
+    # PAC_LLM_PROVIDER=bedrock without also setting the model id got a 403
+    # naming a model they had never asked for.
+    #
+    # Dated Anthropic models are invoked through a cross-region inference
+    # profile, hence the "us." prefix.
+    bedrock_model_id: str = "us.anthropic.claude-opus-4-5-20251101-v1:0"
     llm_effort: Literal["low", "medium", "high", "xhigh", "max"] = "low"
     llm_max_tokens: int = 4_096
     llm_timeout_s: float = 30.0

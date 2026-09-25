@@ -333,6 +333,13 @@ class Compiler:
 
         query.notes = notes + query.notes
         query.window_label = window.label
+        if plan.rolling is not None:
+            query.notes.append(
+                f"Each figure is the average of that period and the "
+                f"{plan.rolling.periods - 1} before it. The first "
+                f"{plan.rolling.periods - 1} rows average fewer periods, "
+                f"because there is nothing earlier to include."
+            )
         if spec.get("kind") == "count_structural":
             # Otherwise the answer carries a reporting window it did not use.
             query.window_label = "all periods (a structural count)"
@@ -361,6 +368,33 @@ class Compiler:
         Order matters: filter first, then rank and cap. A display cap applied
         before the filter would rank the wrong population.
         """
+        # The rolling average wraps first, so a threshold filters the
+        # AVERAGED value -- "months where the rolling average fell below X"
+        # is about the average, not about the raw point.
+        if plan.rolling is not None:
+            period_index = next(
+                i for i, d in enumerate(plan.dimensions)
+                if d in (Dimension.period_mo, Dimension.period_qtr,
+                         Dimension.period_wk)
+            )
+            order_col = f"dim{period_index}_id"
+            partition = [
+                f"dim{i}_id" for i in range(len(plan.dimensions))
+                if i != period_index
+            ]
+            over = (
+                (f"PARTITION BY {', '.join(partition)} " if partition else "")
+                + f"ORDER BY {order_col} "
+                f"ROWS BETWEEN {plan.rolling.periods - 1} PRECEDING AND CURRENT ROW"
+            )
+            carried = ", ".join(
+                f"dim{i}_id, dim{i}_label" for i in range(len(plan.dimensions)))
+            sql = (
+                f"SELECT {carried}, {value_col} AS point_value,\n"
+                f"       AVG({value_col}) OVER ({over}) AS {value_col}\n"
+                f"FROM (\n{sql}) AS series\n"
+            )
+
         if plan.threshold is not None:
             operator = ">" if plan.threshold.direction == "above" else "<"
             sql = (
@@ -394,6 +428,10 @@ class Compiler:
         cols: list[str] = []
         for i, dim in enumerate(plan.dimensions):
             cols += [f"dim{i}_id", f"dim{i}_label"]
+        if plan.rolling is not None:
+            # The un-averaged point is kept beside the average: a rolling
+            # figure is hard to sanity-check without the series it came from.
+            cols += ["point_value"]
         cols += extra or ["value"]
         return cols
 

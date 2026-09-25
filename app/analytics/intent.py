@@ -237,8 +237,9 @@ def find_gaps(
         ))
 
     # --- a rolling average, which the plan cannot express ------------------
-    if re.search(r"\brolling\b|\bmoving average\b|\btrailing average\b|"
-                 r"\b\d+[- ](?:month|week|quarter) average\b", question, re.I):
+    if plan.rolling is None and re.search(
+            r"\brolling\b|\bmoving average\b|\btrailing average\b|"
+            r"\b\d+[- ](?:month|week|quarter) average\b", question, re.I):
         gaps.append(IntentGap(
             kind="unsupported_rolling_average",
             detail=(
