@@ -253,6 +253,10 @@ pass/fail with a reason, latency and token usage.
 Measured, not projected. Three runs, each the full set, each recorded in
 `evals/runs/`:
 
+> **Superseded.** These were re-measured on 2026-09-25 under the repaired
+> judge — see *Live results under the repaired judge* below. The paragraph
+> that follows is kept as the record of why they were withdrawn.
+>
 > **These scores are withdrawn pending re-measurement.** They were produced by
 > the judge as it stood on 2026-09-24, which has since been shown to accept
 > semantic false positives: `b340-01` passed on any non-empty result although
@@ -463,3 +467,48 @@ Stated explicitly so nothing is implied by omission.
 When the model gate clears, the live suite will report exact counts and the
 specific misses — not a rounded percentage, and not a figure adjusted by
 dropping inconvenient questions.
+
+
+---
+
+## Live results under the repaired judge — 2026-09-25
+
+The withdrawn 37/38 is replaced. Measured against
+`us.anthropic.claude-opus-4-5-20251101-v1:0` on Bedrock, with the repaired
+judge, on commit `e9a7e75`.
+
+| Set | Behavioural | Answers | Refusals | Unsupported | Incorrect | Failures |
+|---|---:|---:|---:|---:|---:|---:|
+| `questions.yaml` (regression, tuned) | **37/38** | 33 | 3 | 1 | 1 | 0 |
+| `holdout.yaml` (spent) | **11/12** | 10 | 1 | 0 | 1 | 0 |
+| `holdout2.yaml` (spent) | **11/12** | 10 | 0 | 1 | 1 | 0 |
+
+Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens,
+**$3.82** at Opus 4.5 list pricing.
+
+### The three misses, named
+
+- **`acc-02`** — *"Show me my five biggest accounts by volume right now"*. The
+  model reads "right now" as the current month and says so in its
+  interpretation; the reference SQL assumes R3M. The phrase is genuinely
+  ambiguous and the model disclosed its reading, so this is a flaw in the
+  question. It has been a known miss since the first live run and is left
+  standing rather than rewritten.
+- **`h-02` / `k-12`** — *"Which health systems have the most facilities?"* and
+  *"How many active facilities does each health system have?"*. The model
+  chooses `facility_count_all`, the structural count added on 2026-09-25;
+  both oracles expect `facility_count`, the sales-derived metric that was the
+  only one available when they were written. **The model is arguably right**:
+  a health system's facilities do not depend on whether they transacted last
+  quarter. The expectations are not being rewritten to agree — they are
+  recorded here as questions whose correct answer changed when the metric was
+  split.
+
+### What these numbers are
+
+The offline planner is a keyword matcher and is what the test suite uses;
+these are the live model, which is what the deployment runs. None of the three
+sets is held out with respect to the live model in a strict sense: the prompt
+and the metric registry were changed during development, and both reach it.
+`holdout2` is the closest thing to an unbiased estimate and scored **8/12 on
+its first offline run** before the fixes it prompted.

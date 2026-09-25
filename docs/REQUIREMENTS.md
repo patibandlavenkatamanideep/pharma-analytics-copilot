@@ -1,7 +1,7 @@
 # Requirement matrix
 
 What the assignment asked for, what the code does, the evidence, and what is
-still missing. Written against commit `014e9d7`.
+still missing. Written against commit `e9a7e75`.
 
 Evidence commands assume a loaded database; see [README](../README.md#tests).
 
@@ -12,7 +12,7 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | Requirement | Implemented behavior | Test / evidence | Remaining limitation |
 |---|---|---|---|
 | **1. Chat interface** | React 18 chat served from the same origin as the API. Multi-turn follow-ups patch a typed plan; two-stage loading states; a **New conversation** control; no SQL, schema or configuration exposed | `web/src/__tests__/` 6 jsdom tests; `web/e2e/` 6 Playwright tests in real Chromium, passing against the deployed URL | No streaming responses; no saved-conversation sidebar |
-| **2. NL-to-SQL engine** | The model fills a typed `AnalyticalPlan`; the server compiles parameterised SQL, validates it against an AST allowlist, and executes it read-only with a statement timeout. Aggregations, rankings, thresholds, ratios, period comparisons, multi-table joins | `tests/unit/` 175, `tests/integration/` 58; `scripts/run_evals.py` 38/38 | Rolling averages are not expressible (disclosed, not silently substituted) |
+| **2. NL-to-SQL engine** | The model fills a typed `AnalyticalPlan`; the server compiles parameterised SQL, validates it against an AST allowlist, and executes it read-only with a statement timeout. Aggregations, rankings, thresholds, rolling averages, ratios, period comparisons, multi-table joins | 377 tests; `scripts/run_evals.py` 38/38 offline, 37/38 live | A per-period growth series is not expressible; the combination is refused by name |
 | **3. Domain knowledge** | A versioned registry (`app/analytics/metrics.yaml`, v1.4.0) with 14 anchors into the supplied documents, injected into **every** planning request rather than retrieved | `tests/unit/test_registry_contract.py`; `tests/integration/test_coherent_fixture.py` computes each expected value by hand | Anchors are not automatically checked against the documents |
 | **4. Security & access control** | PostgreSQL RLS for rows, column grants for `sales.wac`, separate login roles per privilege level. Scope and pricing re-read from `users` on every request | `tests/security/` **115 passing**, run under `--release-gate` so a skip fails the build | Single-tenant; no audit UI |
 | **5. Cloud deployment** | AWS EC2, Docker Compose (app + PostgreSQL + Caddy), real Let's Encrypt HTTPS via `sslip.io`, Claude Opus 4.5 on Bedrock, 2,000,000 rows | `infra/smoke.sh` all pass; Playwright suite green against the live URL; `infra/terraform/` validates and plans | Single host, no redundancy; deployed latency under concurrency unmeasured |
@@ -51,7 +51,7 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | 340B share | `share_340b` — the metric defines both sides, so it is correct whatever the planner sets | `test_segment_share.py`; eval `b340-01` = 0.122667 | — |
 | Therapeutic areas | `products.specialty` is in the vocabulary; a named area the plan drops **blocks** | `test_specialty_and_periods.py` — oncology 368,411, not 484,394 | — |
 | Unknown entities | Blocked with the token named and near matches offered; a planner-invented filter value is not treated as evidence the entity exists | `test_intent_fidelity.py` — 28 tests | — |
-| Rolling averages | **Not implemented.** Disclosed as a total, not an average | `test_intent_fidelity.py` | Needs a windowed aggregate in the plan language |
+| Rolling averages | `Rolling` in the typed plan; a window function over the aggregated series, with the un-averaged point kept beside it | `test_thresholds.py`; hand check 22,523.00 = (22,314 + 28,362 + 16,893)/3 | Trailing only; no centred or weighted average |
 | Declared grain | A duplicated group fails the request rather than rendering a misleading table | `test_declared_grain.py` | — |
 | Zero denominators / nulls / empty | Null rather than zero or an error; impossible ratios reported with both components | `test_coherent_fixture.py` | — |
 
@@ -69,4 +69,4 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | Expected and actual saved | Every run writes plan, SQL, answer, expected vs actual, latency, tokens | `evals/runs/` | — |
 | Categories separated | Business answers / authorization refusals / unsupported / incorrect / failures | `scripts/run_evals.py` | — |
 | No tuned set called held out | Three sets, each labelled | `evals/questions.yaml`, `holdout.yaml` (spent), `holdout2.yaml` | — |
-| Stale accuracy withdrawn | The live 37/38 is withdrawn, not restated | `README.md`, `docs/EVALUATION.md` | Live accuracy under the repaired judge is unmeasured (~$0.33) |
+| Stale accuracy withdrawn and replaced | Re-measured live under the repaired judge: 37/38, 11/12, 11/12 | `evals/runs/*bedrock*`, `docs/EVALUATION.md` | No set is strictly held out with respect to the live model |

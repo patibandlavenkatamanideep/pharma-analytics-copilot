@@ -195,16 +195,23 @@ in place. Verified against the live URL afterwards: `infra/smoke.sh` all pass,
 an unknown product, `$250,766,926.42` for an Exec and no currency anywhere for
 a RAM.
 
-Live natural-language accuracy was measured at **37/38** on 2026-09-24 against
-Claude Opus 4.5 on Bedrock. **That figure is withdrawn pending re-measurement.**
-The judge that produced it has since been shown to accept semantic false
-positives, and two of the 38 cases passed under rules now known to be vacuous —
-one accepted any non-empty result for a question asking for a percentage, the
-other accepted a boilerplate note as a qualifying one. The stored run record is
-kept as dated historical evidence and the repaired judge is in place, but the
-live set has not been re-run (that needs paid inference), so no accuracy number
-is claimed here ([EVALUATION.md](docs/EVALUATION.md),
-[REMEDIATION.md](docs/REMEDIATION.md)).
+**Live accuracy, re-measured 2026-09-25 under the repaired judge**, against
+Claude Opus 4.5 on Bedrock:
+
+| Set | Behavioural | Answers | Refusals | Unsupported | Incorrect |
+|---|---:|---:|---:|---:|---:|
+| `questions.yaml` (tuned) | **37/38** | 33 | 3 | 1 | 1 |
+| `holdout.yaml` (spent) | **11/12** | 10 | 1 | 0 | 1 |
+| `holdout2.yaml` (spent) | **11/12** | 10 | 0 | 1 | 1 |
+
+Three misses, all named in [EVALUATION.md](docs/EVALUATION.md): one ambiguous
+question of ours ("right now"), and two where the model picks the *structural*
+facility count and the oracle expects the sales-derived one — the model is
+arguably right, and the expectations were not rewritten to agree.
+
+The earlier 37/38 from 2026-09-24 was withdrawn because the judge that produced
+it accepted semantic false positives; this replaces it rather than restating
+it.
 
 ### Known open gaps
 
@@ -235,7 +242,6 @@ was spent. It now scores 10/12; the remaining two are a keyword-planner
 limitation the live model does not share, and a question of mine that was
 ambiguous.
 
-**The honest figure is 8/12 as first measured.** Everything after that is
-regression coverage. All of it is the offline keyword planner; the deployed
-system plans with Claude Opus, and a scored live run (~$0.33) has not been
-done.
+**The honest offline figure is 8/12 as first measured.** Everything after that
+is regression coverage. The live model scores 11/12 on the same set — see the
+live table above.
