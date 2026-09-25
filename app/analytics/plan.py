@@ -160,6 +160,25 @@ class Ranking(BaseModel):
     limit: Annotated[int, Field(ge=1, le=MAX_LIMIT)] = 10
 
 
+class Threshold(BaseModel):
+    """Keep only rows whose metric value passes a bound.
+
+    "Which accounts declined more than 20%" is a threshold, not a ranking, and
+    answering it with an unfiltered ranking answers a different question. The
+    comparison is always against the plan's OWN metric value -- like Ranking,
+    a separate threshold metric would be a disclosure channel, since filtering
+    by revenue leaks revenue even when the column is hidden.
+
+    The value is interpreted in the metric's own units: a ratio metric takes
+    -0.2 for "declined more than 20%", a volume metric takes 500 for "more
+    than 500 packs".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    direction: Literal["above", "below"]
+    value: float
+
+
 class AnalyticalPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -169,6 +188,7 @@ class AnalyticalPlan(BaseModel):
     time: TimeWindow
     comparison: TimeWindow | None = None
     ranking: Ranking | None = None
+    threshold: Threshold | None = None
 
     # Set when the question cannot be answered as asked. The pipeline returns
     # this text instead of guessing.
@@ -189,6 +209,10 @@ class AnalyticalPlan(BaseModel):
             raise ValueError(f"metric {self.metric} requires a comparison window")
         if self.ranking and not self.dimensions:
             raise ValueError("ranking requires at least one dimension to rank")
+        if self.threshold and not self.dimensions:
+            raise ValueError(
+                "a threshold requires at least one dimension: filtering a single "
+                "total either returns it or returns nothing")
         # The dimension list IS the declared grain. A repeated dimension does
         # not refine it -- it produces two identical columns and invites the
         # reader to believe the rows are broken down more finely than they are.

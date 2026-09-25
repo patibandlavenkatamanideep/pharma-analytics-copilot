@@ -443,6 +443,7 @@ class OfflinePlanner:
         return AnalyticalPlan(
             metric=metric, dimensions=dimensions, filters=filters,
             time=window, comparison=comparison, ranking=ranking,
+            threshold=self._threshold(q, metric, dimensions),
             interpretation=interpretation,
         )
 
@@ -724,6 +725,44 @@ class OfflinePlanner:
                 update[target] = list(context.previous_cohort)
 
         return filters.model_copy(update=update) if update else filters
+
+    def _threshold(self, q: str, metric: MetricKey, dimensions: list[Dimension]):
+        """"declined more than 20%" is a filter, not a ranking.
+
+        Answering it with an unfiltered ranking answers a different question:
+        the threshold IS what was asked. Expressed against the plan's own
+        metric, in that metric's units -- a ratio takes -0.2, a volume takes
+        500.
+        """
+        from app.analytics.plan import Threshold
+
+        if not dimensions:
+            return None
+
+        match = re.search(
+            r"\b(more than|greater than|over|above|at least|higher than|"
+            r"less than|fewer than|under|below|lower than)\s+"
+            r"(\d+(?:\.\d+)?)\s*(%|percent)?", q, re.I,
+        )
+        if not match:
+            return None
+        word, number, percent = match.group(1).lower(), float(match.group(2)), match.group(3)
+
+        below_words = ("less than", "fewer than", "under", "below", "lower than")
+        direction = "below" if word in below_words else "above"
+
+        if percent:
+            number /= 100.0
+            # "declined more than 20%" is a fall past -20%, not a rise past 20%.
+            if re.search(r"declin\w+|drop\w+|fell|falling|fall\w*|lost|losing|"
+                         r"down|decreas\w+|shrank|shrink\w*", q, re.I):
+                return Threshold(direction="below", value=-number)
+        elif metric in (MetricKey.brand_market_share, MetricKey.pap_proportion,
+                        MetricKey.share_340b, MetricKey.market_segment_share):
+            # A bare number against a ratio metric is a percentage.
+            number /= 100.0
+
+        return Threshold(direction=direction, value=number)
 
     def _ranking(self, q: str, dimensions: list[Dimension]):
         from app.analytics.plan import Ranking

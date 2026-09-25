@@ -225,13 +225,29 @@ def find_gaps(
         ))
 
     # --- a threshold asked for, no threshold expressible -------------------
-    if _THRESHOLD_ASKED.search(question):
+    if _THRESHOLD_ASKED.search(question) and plan.threshold is None:
         gaps.append(IntentGap(
             kind="unsupported_threshold",
-            detail="This asks for a threshold, which the plan cannot express.",
+            detail="This asks for a threshold that could not be read from the question.",
             suggestion=(
-                "The result is not filtered by that condition. Ranking "
-                "(\"top 10 by volume\") is supported and is usually close."
+                "The result is not filtered by that condition. Stating it as a "
+                "number (\"more than 500 packs\", \"declined more than 20%\") "
+                "is understood."
+            ),
+        ))
+
+    # --- a rolling average, which the plan cannot express ------------------
+    if re.search(r"\brolling\b|\bmoving average\b|\btrailing average\b|"
+                 r"\b\d+[- ](?:month|week|quarter) average\b", question, re.I):
+        gaps.append(IntentGap(
+            kind="unsupported_rolling_average",
+            detail=(
+                "A rolling average is not something the plan can express, so the "
+                "figure below is a total for the window, not an average of it."
+            ),
+            suggestion=(
+                "Asking for the series (\"volume by month\") gives the points a "
+                "rolling average would be computed from."
             ),
         ))
 

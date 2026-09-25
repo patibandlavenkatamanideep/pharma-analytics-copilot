@@ -348,6 +348,28 @@ class Compiler:
             )
         return query
 
+    def _finish(self, sql: str, plan: AnalyticalPlan, params: list[Any],
+                value_col: str = "value") -> tuple[str, list[Any]]:
+        """Apply the threshold, then order and limit.
+
+        The threshold wraps the whole body rather than becoming a HAVING
+        clause, because the value is computed differently in each shape -- an
+        aggregate for a simple metric, an outer expression for a ratio or a
+        comparison. Wrapping works for all three and keeps the predicate in
+        one place.
+
+        Order matters: filter first, then rank and cap. A display cap applied
+        before the filter would rank the wrong population.
+        """
+        if plan.threshold is not None:
+            operator = ">" if plan.threshold.direction == "above" else "<"
+            sql = (
+                f"SELECT * FROM (\n{sql}) AS filtered\n"
+                f"WHERE {value_col} IS NOT NULL AND {value_col} {operator} %s\n"
+            )
+            params = params + [plan.threshold.value]
+        return sql + self._order_and_limit(plan, value_col), params
+
     def _order_and_limit(self, plan: AnalyticalPlan, value_col: str = "value") -> str:
         out = ""
         if plan.ranking:
@@ -381,7 +403,8 @@ class Compiler:
         body, params, needs = self._leaf_select(
             plan.metric.value, plan.filters, window, dims=list(plan.dimensions)
         )
-        sql = body.format(joins=self._render_joins(needs)) + self._order_and_limit(plan)
+        sql, params = self._finish(
+            body.format(joins=self._render_joins(needs)), plan, params)
         return CompiledQuery(
             sql=sql, params=params, columns=self._columns(plan),
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
@@ -565,8 +588,9 @@ class Compiler:
                 "       n.value / NULLIF(d.value, 0) AS value\n"
                 "FROM num n CROSS JOIN den d\n"
             )
+        ratio_params = num_params + den_params + join_params
         if apply_limit:
-            sql += self._order_and_limit(plan)
+            sql, ratio_params = self._finish(sql, plan, ratio_params)
 
         notes: list[str] = []
         if bridged:
@@ -577,7 +601,7 @@ class Compiler:
 
         return CompiledQuery(
             sql=sql,
-            params=num_params + den_params + join_params,
+            params=ratio_params,
             columns=self._columns(plan, extra=["numerator", "denominator", "value"]),
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
             notes=notes,
@@ -670,7 +694,8 @@ class Compiler:
                 f"SELECT c.value AS current_value, p.value AS prior_value, {value} AS value\n"
                 "FROM cur c CROSS JOIN pri p\n"
             )
-        sql += self._order_and_limit(plan)
+        sql, change_params = self._finish(
+            sql, plan, cur_params + pri_params + join_params)
 
         notes = []
         if change == "relative":
@@ -683,7 +708,7 @@ class Compiler:
 
         return CompiledQuery(
             sql=sql,
-            params=cur_params + pri_params + join_params,
+            params=change_params,
             columns=self._columns(plan, extra=["current_value", "prior_value", "value"]),
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
             comparison_label=prior.label, notes=notes,
