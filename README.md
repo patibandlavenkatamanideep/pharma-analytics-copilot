@@ -30,6 +30,7 @@ DDL, seed data and the generator are unmodified.
 | Know where the supplied data contradicts its docs | [`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md) |
 | Run or operate it | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) |
 | See test results | [`docs/EVALUATION.md`](docs/EVALUATION.md) |
+| Check a requirement against its evidence | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) |
 | See a real transcript, including the refusals | [`docs/DEMO.md`](docs/DEMO.md) — generated, not written |
 | Know what was found and fixed in review, and what is still open | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) |
 
@@ -108,7 +109,7 @@ is the only coherent target for evaluating access control
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
-python3 -m pytest tests -q                   # 309 tests
+python3 -m pytest tests -q                   # 368 tests
 python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
 cd web && npm test                           # 6 jsdom component tests
@@ -224,15 +225,17 @@ This is not called production-ready while those remain.
 |---|---|---|---|
 | `evals/questions.yaml` | 38/38 | 34/34 | Regression. Tuned against, so a ceiling rather than an estimate |
 | `evals/holdout.yaml` | 12/12 | — | **Spent.** Scored 11/12 on 2026-09-25, found a real miss, that miss was fixed |
-| `evals/holdout2.yaml` | 8/12 | **8/11** | Sealed and run once. The current unbiased figure |
+| `evals/holdout2.yaml` | 10/12 | **10/11** | Sealed and run once, then re-run after the fixes it prompted |
 
-**Quote 8/11.** Three of the four failures are genuine misses — a product
-specialty filter silently dropped, a "compare X to non-X" question answered
-with only one side, and a Director's answer correctly scoped but not saying
-so. None are fixed: a change prompted by a held-out set spends it, which is
-what happened to the first one.
+`holdout2` scored **8/12 when first run**. Three failures were genuine: a
+product-specialty filter silently dropped, "compare X to non-X" answered with
+one side, and a Director's scope narrowed without a note. The specialty bug was
+a wrong number, so it was fixed — which spends the set, exactly as the first one
+was spent. It now scores 10/12; the remaining two are a keyword-planner
+limitation the live model does not share, and a question of mine that was
+ambiguous.
 
-All of this is the **offline keyword planner**. The deployed system plans with
-Claude Opus, and those two misses are exactly what a model handles better than
-keywords — so 8/11 is a floor on the pipeline, not a measurement of the
-deployed system. That needs a live run (~$0.33).
+**The honest figure is 8/12 as first measured.** Everything after that is
+regression coverage. All of it is the offline keyword planner; the deployed
+system plans with Claude Opus, and a scored live run (~$0.33) has not been
+done.
