@@ -224,7 +224,7 @@ than leaving a permanent caveat that says nothing.
 
 ### Done in this phase — all offline, all local, no AWS or hosted CI
 
-Seven commits from `6c6d632`, one per phase, each with its own verification:
+Nine commits from `6c6d632`, each with its own verification:
 
 | Commit | Phase |
 |---|---|
@@ -235,10 +235,12 @@ Seven commits from `6c6d632`, one per phase, each with its own verification:
 | `9312ee5` | intent coverage; typed cohorts; concurrent turns |
 | `a4fdb59` | atomic snapshot publication; repeatable reloads |
 | `5f09611` | packaging, result-size limit, login throttling, audit contract |
+| `64ad68b` | documentation reconciled; handoff |
+| `bf371f4` | generic share computed; eval outcomes reported by category; UI evidence from a clean checkout |
 
-Tests went from **148** to **309**. **52** of the new ones were run against
-the unfixed code and observed to fail, which is the only claim worth making
-about a regression test:
+Tests went from **148** to **318**, plus 6 jsdom component tests. **58** of the
+new ones were run against the unfixed code and observed to fail, which is the
+only claim worth making about a regression test:
 
 | Suite | Failed before the fix |
 |---|---:|
@@ -250,6 +252,7 @@ about a regression test:
 | `test_quality_warnings.py` | 7 of 7 |
 | `test_snapshot_publication.py` | 5 of 5 |
 | `test_packaging_and_limits.py` | 11 of 12 |
+| `identity-isolation.test.jsx` (jsdom) | 6 of 6 |
 
 The rest are regression guards for behaviour that was already correct, or
 cover code that did not exist to fail against (`test_declared_grain.py`,
@@ -257,24 +260,36 @@ cover code that did not exist to fail against (`test_declared_grain.py`,
 `test_audit_contract.py`, `test_login_throttling.py`, `test_release_gate.py`).
 Those are not counted above.
 
+### Getting the source reviewed
+
+The commits are **local**: the brief for this phase said to make local commits
+per phase and not to dispatch hosted CI, so nothing was pushed. `origin/main`
+is still at `6c6d632`. Two artefacts are produced for review without pushing:
+
+| File | What it is |
+|---|---|
+| `pharma-analytics-copilot-hardened.zip` | `git archive` of the final tree — 148 files, no `node_modules`, no `.env`, no `evaluator_logins.json`, no generated CSVs |
+| `pharma-analytics-copilot-history.bundle` | the full 52-commit history; `git clone <bundle> <dir>` reproduces the repository |
+
+Pushing to `origin` is a separate decision, and the `Co-Authored-By` trailers
+should be settled first: removing them afterwards means a force-push over
+published history.
+
 ### Next, in the order I would do it
 
-1. **Re-measure live accuracy** under the repaired judge. This is the one
-   thing that needs paid inference, and until it is done there is no current
-   accuracy number. Expect it to be lower than 37/38.
-2. **Deploy the hardened build.** The running instance is pre-hardening. Until
-   it is redeployed, the deployed system still has the authorization defect
-   fixed in `0d83a29`.
+1. **Deploy the hardened build.** The running instance is pre-hardening, so the
+   deployed system still has the authorization defect fixed in `0d83a29`. This
+   is the only item that is a release blocker.
+2. **Re-measure live accuracy** under the repaired judge, reported by the five
+   categories rather than as one number. Needs paid inference.
 3. **Add a proportion metric** ("a filtered subset over the unfiltered whole").
-   The oracle and the expected value are already in `evals/questions.yaml`
-   under `b340-01`.
-4. **Teach the offline planner the classification filter**, so "generic share"
-   is answered rather than disclosed as unanswered. The live model already
-   does this.
-5. **Write a genuinely held-out set** — against the supplied documentation,
+   The oracle and the expected value are in `evals/questions.yaml` under
+   `b340-01`. This is the last known capability gap.
+4. **Write a genuinely held-out set** — against the supplied documentation,
    sealed before any further tuning, run once.
-6. **Make the browser suite repeatable**, on a checkout outside `~/Desktop`.
-7. **Clear the dev-only npm advisories** via vite 6→8 and vitest 2→5.
+5. **Add real-browser tests.** The current web tests are jsdom component tests;
+   they do not exercise rendering, CSS or actual browser behaviour.
+6. **Clear the dev-only npm advisories** via vite 6→8 and vitest 2→5.
 
 ### Not attempted, and why
 
