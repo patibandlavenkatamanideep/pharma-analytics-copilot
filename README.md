@@ -220,11 +220,19 @@ This is not called production-ready while those remain.
 
 ### Accuracy, on two different sets
 
-| Set | Behavioural | Answerable | What it measures |
+| Set | Behavioural | Well-specified | What it measures |
 |---|---|---|---|
-| `evals/questions.yaml` | 38/38 | **34/34** | Regression. The system was tuned against it, so this is a ceiling, not an estimate |
-| `evals/holdout.yaml` | 11/12 | **10/11** | Sealed 2026-09-25, written from the supplied documents, run once. This is the estimate |
+| `evals/questions.yaml` | 38/38 | 34/34 | Regression. Tuned against, so a ceiling rather than an estimate |
+| `evals/holdout.yaml` | 12/12 | — | **Spent.** Scored 11/12 on 2026-09-25, found a real miss, that miss was fixed |
+| `evals/holdout2.yaml` | 8/12 | **8/11** | Sealed and run once. The current unbiased figure |
 
-The held-out set is the number to quote. Its one miss is recorded and left
-unfixed on purpose — a fix prompted by a held-out set turns it into a
-development set and the number stops meaning anything.
+**Quote 8/11.** Three of the four failures are genuine misses — a product
+specialty filter silently dropped, a "compare X to non-X" question answered
+with only one side, and a Director's answer correctly scoped but not saying
+so. None are fixed: a change prompted by a held-out set spends it, which is
+what happened to the first one.
+
+All of this is the **offline keyword planner**. The deployed system plans with
+Claude Opus, and those two misses are exactly what a model handles better than
+keywords — so 8/11 is a floor on the pipeline, not a measurement of the
+deployed system. That needs a live run (~$0.33).

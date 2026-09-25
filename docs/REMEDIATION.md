@@ -411,3 +411,58 @@ that 322 passing tests called correct:
 Fixed in `7aae7cf`, redeployed, re-verified. This is the argument for deployed
 acceptance tests in one paragraph: neither defect was reachable through the
 deterministic planner.
+
+---
+
+## Held-out set 2 — run once, 2026-09-25
+
+`evals/holdout.yaml` is **spent**. It found a real miss (facility counting),
+that miss was fixed in `2b39899`, and a set you have learned from is no longer
+held out. Its 11/12 stands as the record of 2026-09-25 before the fix; it now
+scores 12/12 and that number means nothing.
+
+`evals/holdout2.yaml` replaced it: 12 questions from supplied sample questions
+used by neither previous set, oracles written by hand from the schema and the
+documented definitions, **sealed at `2b39899` before being run**, run once
+against the offline planner.
+
+```
+ 8/12 behavioural checks passed, 4 failed
+     8  Correct business answers
+     0  Correct authorization refusals
+     0  Correct clarifications / unsupported requests
+     4  Incorrect answers
+     0  Execution failures
+```
+
+**8 of 11 well-specified questions.** The four failures, classified:
+
+| # | Question | Verdict |
+|---|---|---|
+| `k-06` | "How is our oncology portfolio performing overall in pack units?" | **System miss, and the serious one.** The specialty filter was not applied at all: `specialties: []`, returning the all-products total of 484,394 where oncology is 368,411. A confidently wrong number, 31% too high |
+| `k-03` | "How does 340B volume compare to non-340B volume?" | **System miss.** "non-340B" set `is_340b: exclude` and the *comparison* was lost: it returned one number, 424,975, answering only half the question. It should group by 340B status |
+| `k-10` | Director: "Compare account counts across all territories" | **Disclosure miss, not a leak.** Scoping is correct — 2 territories, the Director's region only. But nothing says "all territories" was narrowed to their region, so the answer reads as company-wide |
+| `k-07` | "Is Zenovax volume growing or declining month over month?" | **Flaw in the question.** It resolved to `volume_growth`; the oracle wanted a monthly series. "Is it growing or declining" legitimately reads either way. Recorded against the question, per rule 4 |
+
+None of these are being fixed. `k-06` and `k-03` are the same family as R08 —
+intent not fully honoured — and belong in the next round of work.
+
+### What this number is, and is not
+
+It was run against the **offline keyword planner**, which is what every test
+uses. The deployed system plans with Claude Opus on Bedrock, and the two
+failures that matter here — applying a product-specialty filter, and reading
+"compare X to non-X" as a grouping — are exactly the kind of thing a language
+model does well and a keyword matcher does badly.
+
+So **8/11 is a floor on the pipeline, not an estimate of the deployed
+system.** Measuring that needs a live run: 12 questions at the measured
+~4,669 input / ~160 output tokens each is roughly **\$0.33** at Opus 4.5 list
+pricing. Until that is run, no accuracy figure for the deployed system is
+claimed.
+
+| Set | Behavioural | Well-specified | Status |
+|---|---|---|---|
+| `questions.yaml` | 38/38 | 34/34 | Tuned. A ceiling, not an estimate |
+| `holdout.yaml` | 12/12 | — | **Spent.** Scored 11/12 before the fix it prompted |
+| `holdout2.yaml` | 8/12 | **8/11** | Current unbiased figure, offline planner |
