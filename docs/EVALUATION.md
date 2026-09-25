@@ -483,6 +483,11 @@ judge, on commit `e9a7e75`.
 | `holdout.yaml` (spent) | **11/12** | 10 | 1 | 0 | 1 | 0 |
 | `holdout2.yaml` (spent) | **11/12** | 10 | 0 | 1 | 1 | 0 |
 
+Re-run on the final commit `7e91f9f` after the facility-count fix:
+**37/38, 11/12, 10/12.** The regression and first held-out sets are unchanged;
+`holdout2` lost one to a **statement timeout**, not a wrong answer — see
+below.
+
 Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens,
 **$3.82** at Opus 4.5 list pricing.
 
@@ -503,6 +508,24 @@ Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens,
   quarter. The expectations are not being rewritten to agree — they are
   recorded here as questions whose correct answer changed when the metric was
   split.
+
+### `k-11`: a timeout, correctly refused
+
+*"Rank all our branded products by total pack units this year"* as a RAM.
+`ytd` grouped by product over 2,000,000 rows exceeded the 5-second statement
+budget; the request took 8.6 s end to end and returned *"That question took
+too long to answer. Narrowing it — a shorter time period, a specific product,
+or fewer groupings — will usually work."*
+
+It passed on the previous live run, so the query sits on the boundary rather
+than over it. Two things are worth noting: the system degraded the way it is
+meant to, with a message that names what would help; and the **repaired judge
+refused to score it as a pass**. Before the repair, `no_pricing` accepted an
+execution error as a successful no-pricing case — this is that fix earning
+its place on a real run.
+
+The underlying limit is real and unfixed: the widest shape on the slowest
+scope is close to the statement timeout on this instance.
 
 ### What these numbers are
 
