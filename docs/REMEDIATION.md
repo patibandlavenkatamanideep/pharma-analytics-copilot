@@ -35,23 +35,36 @@ backdated.
 
 ### Defects reproduced against this exact HEAD, before any edit
 
-### About the offline set reaching 38/38 again
+### What 38/38 does and does not mean
 
-It is not the 38/38 the old judge reported, and it does not mean the gaps are
-closed:
+A single number conflates four different outcomes, so the runner no longer
+reports one. The current offline breakdown:
 
-- `amb-01` passes because the answer now **discloses** that it is not
-  restricted to generics. The offline planner still does not apply the
-  classification filter; the live model did.
-- `b340-01` passes because the answer now **says the proportion cannot be
-  expressed**. The metric still does not exist. Its expectation was changed
-  from "compute 12.27%" to "compute it or say you cannot", which the system
-  now satisfies honestly; the true value and the reference SQL are kept in the
-  question file so whoever adds the metric has the oracle.
+| | |
+|---|---:|
+| Correct business answers | **33** |
+| Correct authorization refusals | **3** |
+| Correct clarifications / unsupported requests | **2** |
+| Incorrect answers | 0 |
+| Execution failures | 0 |
 
-Both remain open as **feature gaps** rather than judge failures. A count that
-says "this is not the percentage you asked for" is a correct response to an
-unsupported question; it is not the answer.
+**33/33 of the questions this system claims to be able to compute are
+computed correctly.** The other five checks are right behaviour, not
+capability: refusing an out-of-scope territory and declining an inexpressible
+proportion both pass, and neither is evidence that a figure was calculated.
+This must not be read as 100% question-answering accuracy.
+
+`amb-01` is now a real answer rather than a disclosure. Generic share **is**
+computable from the supplied data — generic market volume over total market
+volume — so a metric was added (`market_segment_share`, registry 1.2.0) and
+the expectation is a number from hand-written reference SQL, matching at
+0.700629225451866. Answers disclose that generic-vs-branded-competitor is
+derived, because `brand_flag = 0` covers both.
+
+`b340-01` is still an unsupported request, counted as such. No metric expresses
+"a filtered subset over the unfiltered whole" for 340B; the system says so
+rather than answering in packs silently. The true value (12.27%) and its
+reference SQL stay in the question file for whoever adds it.
 
 ### Scores restated under the repaired judge
 
@@ -128,8 +141,8 @@ result proves** — which is deliberately narrower than "it passed".
 | 5 | `pytest tests/security/test_session_lifecycle.py` | offline | disposable | 6 passed / **5 fail** pre-fix | Disabling kills issued sessions; `resolve()` itself refuses a disabled credential; rotation revokes; a non-default cookie name is honoured by login, resolution and logout, and the default name is not accepted in its place. |
 | 6 | `pytest tests/security/test_privilege_boundary.py` | offline | disposable + throwaway `pactest_*` roles | 6 passed / **4 fail** pre-fix | The startup check follows the configured roles, resolves BYPASSRLS reached through membership, and treats a missing role as a problem. Also: the API opens no owner connection. |
 | 7 | `pytest tests/security/test_api_contract.py` | offline | disposable | 12 passed | SQL and plan are withheld unless asked for; a RAM's SQL cannot name `wac`; denied/clarify/error each carry a request id and no internals. |
-| 8 | `npx vitest run` (`web/`) | jsdom, no network | stubbed fetch | 4 passed (122 ms of test time, 240 s of collection) | A response issued to one identity cannot reach the next one's screen, and signing in clears the transcript and conversation id. |
-| 8b | same, against the pre-fix component | jsdom | stubbed fetch | **not obtained** | Four attempts stalled in vitest's collection phase with every process at 0% CPU — the same macOS filesystem stall already diagnosed for a Python venv under `~/Desktop`. Clearing the vite cache, moving it off `~/Desktop` and forcing a single fork did not help; only the first vitest invocation after install ever completed. So R03's fix is evidenced by the passing tests and by the code, not by a measured before/after. Reproducible on a checkout outside `~/Desktop`. |
+| 8 | `npx vitest run` (`web/`) | **jsdom component tests**, not a real browser | stubbed fetch | 4 passed (122 ms of test time, 240 s of collection) | A response issued to one identity cannot reach the next one's screen, and signing in clears the transcript and conversation id. |
+| 8b | same, against the pre-fix component | jsdom | stubbed fetch | **obtained on a second attempt — see rows 35–37** | Four attempts from the `~/Desktop` checkout stalled; the work was redone from a fresh clone outside it. |
 | 9 | `npm run build` | — | — | built in 15.25 s | The production bundle still builds after the test tooling was added. |
 | 10 | `pytest tests/unit/test_eval_judge.py` | offline | fakes only | 18 passed / **12 fail** against the pre-repair judge | The judge now rejects: a boilerplate note standing in for a qualifying one; a packs answer to a percentage question; `warning` with no needle; an empty oracle matching an empty answer; groups the oracle never produced; `no_pricing` judged without ever seeing the SQL; currency in the headline; a typo'd expectation type. |
 | 11 | `python3 scripts/run_evals.py` (offline) | offline | `full-182fd9082327` | **36/38**, 2 failed | Under the repaired judge, on the same dataset that previously reported 38/38. The two failures are `b340-01` and `amb-01` — the cases the old rules were hiding. |
@@ -156,6 +169,11 @@ result proves** — which is deliberately narrower than "it passed".
 | 32 | `pytest tests/security/test_audit_contract.py` | offline | disposable | 7 passed | Answered, denied and clarified requests all leave a row; it carries hashes, counts, timings and identity, and never the question, the SQL, the headline or a currency amount. |
 | 33 | `npx vitest run` after the UI change | jsdom | stubbed fetch | **not obtained** | Same stall as ledger row 8b. `npm run build` succeeds; the New-conversation control and its test are committed unverified-this-run, and the limitation is listed in the README's open gaps. |
 | 34 | `pytest tests -q` | offline | working + disposable | **309 passed** | After phase 6. Release gate 115 passed. |
+| 35 | `npx vitest run` ×3 from `~/pac-uitest` (a fresh `git clone`, **outside `~/Desktop`**) | jsdom | stubbed fetch | 6 passed each, **479–769 ms per run** | The stall was the filesystem, not the tests. Collection: **59–108 ms** here against **239,780 ms** on `~/Desktop`. That is no longer a hypothesis. |
+| 36 | same fresh checkout, `App.jsx` from `6c6d632` | jsdom | stubbed fetch | **6 failed** | The before/after that could not be obtained earlier. |
+| 37 | isolated probe of the mechanism | jsdom | stubbed fetch | pre-fix: still on the login screen after a successful sign-in. Fixed: signed in | The race is worse than first described. `/api/me` issued while signed out rejects **after** `setUser(user)`, and its unguarded `.catch(() => setUser(null))` throws the user back to the login screen. That is why all six failed, and it now has its own named test. |
+| 38 | hand SQL vs compiler, generic share | offline | `full-182fd9082327` | 0.700629225451866 both sides | `market_segment_share` computes the figure `amb-01` asks for. Its expectation is now a number from an independent oracle, not a note. |
+| 39 | `python3 scripts/run_evals.py` | offline | `full-182fd9082327` | 38/38, **33 answers / 3 refusals / 2 unsupported / 0 wrong / 0 failures** | The runner now reports these separately. "38/38" alone conflated question-answering with correctly declining. |
 
 ---
 

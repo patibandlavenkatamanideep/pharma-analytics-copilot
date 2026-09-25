@@ -92,6 +92,40 @@ def _text_of(answer) -> str:
     return " ".join(str(p) for p in parts if p)
 
 
+# What a passing check actually demonstrates. Reported separately because
+# "38/38 passed" conflates four different things, and only the first is
+# question-answering capability: correctly REFUSING an unsupported request is
+# right behaviour and is not evidence that the system can compute it.
+CATEGORIES = {
+    "answer": "Correct business answers",
+    "refusal": "Correct authorization refusals",
+    "unsupported": "Correct clarifications / unsupported requests",
+    "wrong": "Incorrect answers",
+    "failure": "Execution failures",
+}
+
+
+def categorise(spec: dict, result, ok: bool) -> str:
+    """Bucket one outcome. Failures split by whether the system broke."""
+    if not ok:
+        return "failure" if result.status == "error" else "wrong"
+    if result.status == "denied":
+        return "refusal"
+    if result.status == "clarify":
+        return "unsupported"
+    if result.status == "error":
+        return "failure"
+    # Answered, and accepted. If the expectation would also have accepted a
+    # clarification or a refusal, this was an unsupported request handled
+    # gracefully -- not a demonstration that the metric can be computed.
+    if spec.get("type") == "any_of" and (
+            {"clarify", "denied"} & set(spec.get("allowed", []))):
+        return "unsupported"
+    if spec.get("type") == "volume_alternative":
+        return "refusal"
+    return "answer"
+
+
 def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
     kind = spec["type"]
     answer = result.answer
@@ -403,6 +437,7 @@ def main() -> int:
                 "status": result.status,
                 "passed": ok,
                 "reason": reason,
+                "category": categorise(turn["expect"], result, ok),
                 "plan": result.plan,
                 "sql": result.sql,
                 # The ANSWER is recorded too, not just the plan. Without it a
@@ -444,13 +479,29 @@ def main() -> int:
         "metric_version": get_registry().version,
         "policy_version": "1.0.0",
         "total": total, "passed": passed, "failed": failed,
+        "by_category": {
+            key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES
+        },
         "results": results,
     }
     path = RUNS / f"{stamp}-{args.provider}.json"
     path.write_text(json.dumps(record, indent=2, default=str))
 
-    print(f"\n  {passed}/{total} passed" + (f", {failed} failed" if failed else ""))
-    print(f"  written to {path.relative_to(ROOT)}")
+    counts = {key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES}
+
+    print(f"\n  {passed}/{total} behavioural checks passed"
+          + (f", {failed} failed" if failed else ""))
+    print("\n  What those checks demonstrate, separately:")
+    for key, label in CATEGORIES.items():
+        print(f"    {counts[key]:>3}  {label}")
+    answerable = counts["answer"] + counts["wrong"] + counts["failure"]
+    if answerable:
+        print(f"\n  Question-answering: {counts['answer']}/{answerable} of the questions"
+              " this system claims to be able to compute.")
+    print(f"\n  {counts['unsupported']} check(s) passed by correctly declining or"
+          " clarifying. That is right behaviour,\n  and it is NOT evidence that"
+          " the requested figure can be computed.")
+    print(f"\n  written to {path.relative_to(ROOT)}")
     if args.provider == "offline":
         print(
             "\n  NOTE: the offline planner is a deterministic keyword matcher.\n"

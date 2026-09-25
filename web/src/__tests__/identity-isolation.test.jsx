@@ -103,6 +103,18 @@ describe("identity isolation in the UI", () => {
   });
   afterEach(cleanup);
 
+  it("a signed-out /api/me landing late does not wipe the new session", async () => {
+    // The most severe form of the race, and the one that made every other
+    // test in this file fail before the fix: mounting issues /api/me while
+    // signed out, the user signs in, and THEN that request rejects. Its
+    // unguarded .catch(() => setUser(null)) threw the user straight back to
+    // the login screen after a successful sign-in.
+    render(<App />);
+    await signIn("exec@example.com");
+    expect(document.querySelector('input[type="password"]')).toBeNull();
+    expect(screen.getByPlaceholderText(/ask/i)).toBeTruthy();
+  });
+
   it("does not deliver a pending answer to the next user who signs in", async () => {
     render(<App />);
     await signIn("exec@example.com");

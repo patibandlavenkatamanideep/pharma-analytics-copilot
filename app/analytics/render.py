@@ -99,6 +99,18 @@ def check_quality(
                 "denominator may not be the total market it is documented to be."
             )
 
+    if "derived_classification" in query.quality_checks:
+        # brand_flag = 0 covers branded competitors AND generics, so "generic"
+        # is not a column in the supplied data -- it is inferred from the drug
+        # name by app/data/classification.py. The number is only interpretable
+        # if the reader knows that.
+        warnings.append(
+            "Generic and branded-competitor are DERIVED here: the supplied data "
+            "marks only brand_flag = 0, which covers both. The split comes from "
+            "the product classification rules in docs/market_classification.md, "
+            "not from the source."
+        )
+
     if "conversion_factor_coverage" in query.quality_checks:
         # Equivalents are pack_units * unit_conversion_factor. A missing or
         # non-positive factor makes that product's term NULL, and SUM skips

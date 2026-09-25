@@ -111,8 +111,17 @@ python3 scripts/build_authtest_db.py         # disposable database for the auth 
 python3 -m pytest tests -q                   # 309 tests
 python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
-cd web && npm test                           # 4 browser tests (identity isolation)
+cd web && npm test                           # 6 jsdom component tests
 ```
+
+The web tests are **Vitest component tests in jsdom**, not tests in a real
+browser: they render the React component and stub `fetch`. They exercise the
+identity-isolation logic, not rendering, CSS or actual browser behaviour.
+
+Run them from a checkout **outside `~/Desktop`**. Under `~/Desktop` macOS
+stalls the `node_modules` reads: collection takes 239,780 ms and later
+invocations hang at 0% CPU, against 59–108 ms from anywhere else. Same
+pathology that made a Python venv there take 82 s to `import psycopg`.
 
 Expected values in the integration tests come from SQL written by hand in the
 test files, never from the compiler under test.
@@ -192,10 +201,9 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| No metric expresses "a filtered subset over the unfiltered whole" | "What percentage of volume comes from 340B accounts?" is answered with a count **and a note saying the proportion cannot be computed**, not with 12.27% |
-| The offline planner does not apply a product classification filter | "Generic share" is answered as company brand share **with the substitution disclosed**. The live model does apply it |
-| The browser suite is not repeatable on this machine | `npx vitest run` completes only on its first invocation under `~/Desktop`; the tests pass, but they are not a reliable gate here |
+| No metric expresses "a filtered subset over the unfiltered whole" | "What percentage of volume comes from 340B accounts?" is answered with a count **and a note saying the proportion cannot be computed**, not with 12.27%. Counted as an unsupported request, not as an answer |
 | Live accuracy unmeasured under the repaired judge | Needs paid inference; the previous 37/38 is withdrawn, not restated |
+| The deployed instance is the **pre-hardening** build | It still has the authorization defect fixed in `0d83a29`. Not redeployed in this phase |
 | Dev-only npm advisories (1 critical, 1 high, 3 moderate) | `npm audit --omit=dev` is clean, so nothing ships in `dist/`; clearing them needs a vite 6→8 toolchain migration |
 | Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
 

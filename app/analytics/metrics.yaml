@@ -8,7 +8,7 @@
 # `sql` fragments are templates over a fixed set of pre-aggregated component
 # names owned by the compiler -- they are not user- or model-reachable strings.
 
-version: "1.1.0"
+version: "1.2.0"
 
 # --- shared component expressions -------------------------------------------
 components:
@@ -127,6 +127,29 @@ metrics:
     description: >
       Company distributor equivalents divided by total market equivalents in the
       same market subcategory, with identical population and period filters.
+
+  market_segment_share:
+    label: "market segment share"
+    unit: "ratio"
+    anchor: "docs/market_classification.md"
+    kind: "ratio"
+    numerator: market_equivalents
+    denominator: market_equivalents
+    # Numerator and denominator are the SAME source. What separates them is the
+    # segment filter: the numerator keeps it, the denominator drops it, so this
+    # answers "what share of this market is <segment>". With
+    # classifications: [generic] it is generic share; with
+    # [branded_competitor] it is branded-competitor share.
+    denominator_scope: "market_subcategory"
+    denominator_population: "surrounding_market"
+    zero_denominator: "null"
+    requires_wac: false
+    quality_checks: ["conversion_factor_coverage", "derived_classification"]
+    description: >
+      Share of reported market volume held by the filtered segment. Use for
+      "generic share", "biosimilar share" or "competitor share" of a market.
+      Generic vs branded-competitor is a DERIVED classification, because
+      brand_flag = 0 covers both; answers say so.
 
   pap_proportion:
     label: "PAP share of total volume"

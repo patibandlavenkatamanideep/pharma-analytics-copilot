@@ -425,15 +425,25 @@ questions:
     question: "What is the generic share in the Platinum Compounds market?"
     note: |
       brand_flag = 0 includes branded competitors, so this needs the derived
-      classification and must disclose that it is derived -- or decline. What it
-      must not do is silently report all competitor volume as generic.
+      classification and must disclose that it is derived. What it must not do
+      is report company BRAND share, which is what it used to do -- 71.79%,
+      close to the opposite of the question.
+
+      Now checked against a number, not a note. The reference below is written
+      by hand and never touches the compiler.
     expect:
-      type: any_of
-      allowed: [clarify, denied, answered_with_note]
-      # A note only counts if it addresses THIS question. Without these
-      # needles the case passed on company brand share of 71.79%, qualified
-      # by nothing but the boilerplate incomplete-period note.
-      note_contains: [generic, derived, classification, non-brand]
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units * p.unit_conversion_factor)
+                 FILTER (WHERE c.classification = 'generic')
+               / NULLIF(sum(s.pack_units * p.unit_conversion_factor), 0) AS share
+        FROM sales s
+        JOIN products p ON p.ndc = s.ndc
+        JOIN app_ref.product_classification c ON c.ndc = s.ndc
+        WHERE s.data_source = 'market_data'
+          AND p.market_category = 'Platinum Compounds'
+          AND s.mo_offset IN (0,1,2)
 
   - id: amb-02
     family: ambiguity

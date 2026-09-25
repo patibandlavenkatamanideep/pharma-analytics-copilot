@@ -501,6 +501,12 @@ class OfflinePlanner:
                 r"declin\w+|movement|improv\w+|versus the prior|vs the prior", q
             ):
                 return MetricKey.share_trend_pp
+            # "generic share" / "biosimilar share" is a share OF THE MARKET
+            # held by a segment, not our share of it. Answering those with
+            # brand_market_share returns the company's own share -- close to
+            # the opposite of what was asked.
+            if re.search(r"\bgeneric|\bbiosimilar|\bcompetitor", q, re.I):
+                return MetricKey.market_segment_share
             return MetricKey.brand_market_share
         # Checked BEFORE the bare free-drug branch: "total volume including free
         # drug" contains "free drug" and would otherwise be read as PAP volume.
@@ -640,6 +646,18 @@ class OfflinePlanner:
             update["active_only"] = True
         if re.search(r"standalone", q):
             update["standalone_only"] = True
+
+        # The segment the share is OF. Without this the numerator and the
+        # denominator are the same population and every answer is 100%.
+        segments = [
+            value for word, value in (
+                (r"\bgenerics?\b", "generic"),
+                (r"\bbiosimilars?\b", "biosimilar"),
+                (r"\bbranded competitors?\b|\bcompetitors?\b", "branded_competitor"),
+            ) if re.search(word, q, re.I)
+        ]
+        if segments and not filters.classifications:
+            update["classifications"] = segments
 
         # "those accounts" freezes the previous cohort rather than re-ranking.
         #
