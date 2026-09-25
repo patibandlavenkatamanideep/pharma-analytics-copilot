@@ -360,6 +360,9 @@ class OfflinePlanner:
         # filter qualifier, not a request to break the answer down by account.
         (r"\bby account\b|\bper account\b|\beach account\b|\bby health system\b|"
          r"\bwhich accounts\b|\bwhich health systems\b|"
+         # "does each health system have" is a request for a breakdown just as
+         # much as "by health system" is.
+         r"\b(?:each|every|per)\s+health\s+systems?\b|"
          r"\b(?:top|bottom|rank|ranked|list|biggest|largest|smallest)\b[^.?]*"
          r"\b(accounts?|health systems?)\b", Dimension.account),
     ]
@@ -524,15 +527,29 @@ class OfflinePlanner:
             return MetricKey.pap_volume
         if re.search(r"market size|total market|market volume", q):
             return MetricKey.market_equivalents
+        # Counting questions are not always phrased as "how many". The supplied
+        # documents ask "Which health systems have the most facilities?", which
+        # matched neither pattern and fell through to volume -- a ranking of
+        # health systems by PACK UNITS, presented as an answer about facility
+        # counts.
+        #
+        # The facility form is checked first: "which health systems have the
+        # most facilities" names both entities, and the one being COUNTED is
+        # the one the superlative governs.
         if re.search(
-            r"how many[^?]*\b(accounts|health systems|systems|idns)\b|"
-            r"account count|number of (?:distinct )?accounts|count of accounts", q
-        ):
-            return MetricKey.account_count
-        if re.search(
-            r"how many[^?]*\bfacilit\w+|facility count|number of (?:distinct )?facilit\w+", q
+            r"how many[^?]*\bfacilit\w+|facility count|"
+            r"number of (?:distinct |active )?facilit\w+|"
+            r"(?:most|fewest|highest number of|largest number of|"
+            r"greatest number of)\s+(?:\w+\s+){0,2}facilit\w+", q
         ):
             return MetricKey.facility_count
+        if re.search(
+            r"how many[^?]*\b(accounts|health systems|systems|idns)\b|"
+            r"account count|number of (?:distinct )?accounts|count of accounts|"
+            r"(?:most|fewest|highest number of|largest number of)\s+"
+            r"(?:\w+\s+){0,2}(?:accounts|health systems|idns)\b", q
+        ):
+            return MetricKey.account_count
         # "trend" alongside a period grain means a time series (volume plotted
         # per month), not a single growth figure. Only treat it as growth when
         # no period dimension was asked for.
@@ -567,8 +584,15 @@ class OfflinePlanner:
                 dims.append(dim)
             if len(dims) >= 2:
                 break
-        if metric in (MetricKey.account_count, MetricKey.facility_count):
-            dims = [d for d in dims if d not in (Dimension.account, Dimension.facility)]
+        # A count must not be grouped by the thing it counts -- "accounts per
+        # account" is not a question. Grouping by the OTHER entity is exactly
+        # the question, though: "which health systems have the most facilities"
+        # counts facilities per account. Stripping both left that question with
+        # no breakdown at all, so it returned one company-wide number.
+        if metric is MetricKey.account_count:
+            dims = [d for d in dims if d is not Dimension.account]
+        elif metric is MetricKey.facility_count:
+            dims = [d for d in dims if d is not Dimension.facility]
         return dims[:2]
 
     def _implied_dimensions(self, q: str, dims, filters):

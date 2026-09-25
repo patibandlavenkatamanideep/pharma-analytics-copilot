@@ -1,0 +1,183 @@
+# GENUINELY HELD OUT, set 2. Sealed 2026-09-25.
+#
+# Why a second set: evals/holdout.yaml is SPENT. It found a real miss
+# (h-02, facility counting), that miss was fixed, and a set you have learned
+# from is no longer held out. Its number stands as a record of what the system
+# scored on 2026-09-25 before the fix; it cannot be re-run for a fresh estimate.
+#
+# Same rules as before, and they are what make the number mean anything:
+#
+#   1. Every question comes from the sample questions in the SUPPLIED
+#      documents, and appears in neither questions.yaml nor holdout.yaml.
+#   2. Every oracle is reference SQL written by hand HERE, from the schema and
+#      the documented definitions, BEFORE running the system once.
+#   3. Run ONCE. Nothing in the planner, registry or prompt may change in
+#      response. A fix prompted by this set spends it, exactly as the first
+#      one was spent, and then a third set is needed.
+#   4. A badly specified question is recorded as a flaw in the QUESTION.
+#
+# Schema notes checked before writing, because getting these wrong is how the
+# first set produced two broken oracles:
+#   - territory and region live on zip_territory, joined organizations.zip = zip
+#   - organizations has org_archetype, specialty, gpo_name, is_340b, zip
+#   - products has specialty (Oncology, Urology), market_category, brand_flag
+#   - paid demand is data_source='distributor' AND brand_flag=1
+#   - this quarter is mo_offset IN (0,1,2)
+
+version: "2.0.0"
+sealed: "2026-09-25"
+
+questions:
+
+  - id: k-01
+    family: archetype
+    principal: exec
+    question: "Compare hospital vs clinic accounts by total volume"
+    expect:
+      type: sql
+      compare: rows
+      sql: |
+        SELECT o.org_archetype AS label, sum(s.pack_units) AS value
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+          AND o.org_archetype IN ('Hospital','Clinic')
+        GROUP BY 1
+
+  - id: k-02
+    family: hierarchy
+    principal: exec
+    question: "How many specialty pharmacy accounts do we sell to?"
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT count(DISTINCT COALESCE(o.grandparent_org_id, o.org_id))
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+          AND o.org_archetype = 'Specialty Pharmacy'
+
+  - id: k-03
+    family: three_forty_b
+    principal: exec
+    question: "How does 340B volume compare to non-340B volume?"
+    expect:
+      type: sql
+      compare: rows
+      sql: |
+        SELECT CASE WHEN COALESCE(o.is_340b,0) = 1 THEN '1' ELSE '0' END AS label,
+               sum(s.pack_units) AS value
+        FROM sales s JOIN organizations o ON o.org_id = s.org_id
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND s.mo_offset IN (0,1,2)
+        GROUP BY 1
+
+  - id: k-04
+    family: geography
+    principal: exec
+    question: "Compare account counts across all territories"
+    expect:
+      type: nonempty
+      metric: account_count
+
+  - id: k-05
+    family: data_source
+    principal: exec
+    question: "How much hub dispense volume do we have for Zenovax?"
+    note: 'data_source_guide.md: hub_dispense is the free-drug channel.'
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units)
+        FROM sales s JOIN products p ON p.ndc = s.ndc
+        WHERE s.data_source = 'hub_dispense'
+          AND upper(p.drug_name) = 'ZENOVAX'
+          AND s.mo_offset IN (0,1,2)
+
+  - id: k-06
+    family: product
+    principal: exec
+    question: "How is our oncology portfolio performing overall in pack units?"
+    note: 'products.specialty = Oncology; paid demand only.'
+    expect:
+      type: sql
+      compare: scalar
+      sql: |
+        SELECT sum(s.pack_units)
+        FROM sales s JOIN products p ON p.ndc = s.ndc
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND p.specialty = 'Oncology'
+          AND s.mo_offset IN (0,1,2)
+
+  - id: k-07
+    family: periods
+    principal: exec
+    question: "Is Zenovax volume growing or declining month over month?"
+    note: 'A series, not a single growth figure -- a period grain is requested.'
+    expect:
+      type: plan
+      plan:
+        metric: paid_pack_units
+        dimensions: [period_mo]
+
+  - id: k-08
+    family: geography
+    principal: exec
+    question: "Show me Zenovax volume by territory"
+    expect:
+      type: sql
+      compare: rows
+      sql: |
+        SELECT z.territory_name AS label, sum(s.pack_units) AS value
+        FROM sales s
+        JOIN organizations o ON o.org_id = s.org_id
+        JOIN products p ON p.ndc = s.ndc
+        JOIN zip_territory z ON z.zip = o.zip
+        WHERE s.data_source = 'distributor' AND s.brand_flag = 1
+          AND upper(p.drug_name) = 'ZENOVAX'
+          AND s.mo_offset IN (0,1,2)
+        GROUP BY 1
+
+  - id: k-09
+    family: market_share
+    principal: exec
+    question: "Compare our market share across all market categories"
+    expect:
+      type: nonempty
+      metric: brand_market_share
+
+  - id: k-10
+    family: security
+    principal: director
+    question: "Compare account counts across all territories"
+    note: |
+      security_model.md: a Director sees every territory in THEIR region and
+      no other. Answering company-wide would be a leak; the answer must be
+      scoped, refused, or scoped with the limit stated.
+    expect:
+      type: any_of
+      allowed: [denied, clarify, answered_with_note]
+      note_contains: [region, scope, territor]
+
+  - id: k-11
+    family: security
+    principal: ram
+    question: "Rank all our branded products by total pack units this year"
+    note: 'Allowed, but only within their territory. No pricing either way.'
+    expect:
+      type: no_pricing
+
+  - id: k-12
+    family: hierarchy
+    principal: exec
+    question: "How many active facilities does each health system have?"
+    note: |
+      org_hierarchy.md: "active" filters org_status = 'Active'. The count is
+      of facilities, broken down by health system.
+    expect:
+      type: plan
+      plan:
+        metric: facility_count
+        dimensions: [account]
