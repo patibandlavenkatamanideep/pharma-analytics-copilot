@@ -58,6 +58,10 @@ class PipelineResult:
     sql: str | None = None           # returned only when explicitly requested
     timings: dict[str, int] = field(default_factory=dict)
     request_id: str = ""
+    #: What THIS request's planning cost and which planner produced it.
+    #: Carried on the result rather than read back off the planner instance,
+    #: which under concurrency belonged to whichever call finished last.
+    planning: dict[str, Any] | None = None
 
 
 class Pipeline:
@@ -127,10 +131,16 @@ class Pipeline:
             "policy_version": POLICY_VERSION,
         }
 
+        # Filled once planning completes; finish() attaches it to whatever
+        # result is returned, including the failure paths.
+        _planning_summary: dict[str, Any] = {}
+
         def finish(result: PipelineResult, status: str, **extra: Any) -> PipelineResult:
             timings["total_ms"] = int((time.perf_counter() - started) * 1000)
             result.timings = timings
             result.request_id = request_id
+            if result.planning is None:
+                result.planning = _planning_summary.get("value")
             audit.update(status=status, total_ms=timings["total_ms"], **extra)
             self._write_audit(audit)
             return result
@@ -198,7 +208,8 @@ class Pipeline:
 
         t0 = time.perf_counter()
         try:
-            plan = self.planner.plan(question, context)
+            planning = self.planner.plan(question, context)
+            plan = planning.plan
         except PlannerError as exc:
             log.warning("planner failed: %s", exc)
             return finish(
@@ -215,11 +226,32 @@ class Pipeline:
         timings["plan_ms"] = int((time.perf_counter() - t0) * 1000)
         audit["plan_hash"] = plan.fingerprint()
 
-        usage = getattr(self.planner, "last_usage", None) or {}
-        if usage:
-            audit["input_tokens"] = usage.get("input_tokens")
-            audit["output_tokens"] = usage.get("output_tokens")
-        audit["model_id"] = getattr(self.planner, "model_id", "offline")
+        # Request-local, from THIS call. Previously read off the planner
+        # instance, which one concurrent request could overwrite for another.
+        usage = planning.usage.as_dict()
+        # Written whether or not usage is known, so the audit distinguishes
+        # "no tokens reported" from "this field was never populated".
+        audit["input_tokens"] = usage.get("input_tokens")
+        audit["output_tokens"] = usage.get("output_tokens")
+        audit["usage_known"] = usage.get("known")
+        audit["model_id"] = planning.model_id or planning.provider
+        audit["prompt_version"] = planning.prompt_version
+        audit["planner_attempts"] = len(planning.attempts)
+        audit["planner_repaired"] = planning.repaired
+        planning_summary = {
+            "provider": planning.provider,
+            "model_id": planning.model_id,
+            "prompt_version": planning.prompt_version,
+            "planner_contract_version": planning.planner_contract_version,
+            "attempts": [
+                {"ordinal": a.ordinal, "kind": a.kind, "outcome": a.outcome,
+                 "usage": a.usage.as_dict(), "error": a.error}
+                for a in planning.attempts
+            ],
+            "usage": usage,
+            "repaired": planning.repaired,
+        }
+        _planning_summary["value"] = planning_summary
 
         # --- 4b. intent fidelity ---------------------------------------------
         # Does the plan answer the question that was asked? A plan can be

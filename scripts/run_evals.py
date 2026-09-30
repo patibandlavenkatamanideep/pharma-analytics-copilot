@@ -490,7 +490,9 @@ def main() -> int:
             mark = "\033[32mPASS\033[0m" if ok else "\033[31mFAIL\033[0m"
             print(f"  {mark}  {label:<10} {turn['question'][:62]:<62} {reason[:60]}")
 
-            usage = getattr(planner, "last_usage", None) or {}
+            # From the result of THIS request, not from planner state.
+            planning = result.planning or {}
+            usage = planning.get("usage") or {}
             results.append({
                 "id": label,
                 "family": item.get("family"),
@@ -528,6 +530,10 @@ def main() -> int:
                 "timings": result.timings,
                 "input_tokens": usage.get("input_tokens"),
                 "output_tokens": usage.get("output_tokens"),
+                "usage_known": usage.get("known"),
+                "provider": planning.get("provider"),
+                "planner_attempts": len(planning.get("attempts") or []),
+                "planner_repaired": planning.get("repaired"),
             })
             previous = result
 

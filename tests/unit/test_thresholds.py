@@ -22,7 +22,7 @@ ANCHOR = {"min_mo": 0, "max_mo": 23, "min_wk": 0, "max_wk": 103,
 def planned(question):
     return OfflinePlanner().plan(question, PlanningContext(
         role="exec", scope_description="all", wac_authorized=True,
-        reporting_anchor=ANCHOR, known_products=["ZENOVAX"]))
+        reporting_anchor=ANCHOR, known_products=["ZENOVAX"])).plan
 
 
 # ---------------------------------------------------------------------------

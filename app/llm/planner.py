@@ -19,7 +19,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import ValidationError
 
@@ -97,8 +97,82 @@ class PlanningContext:
     continuity: Any | None = None
 
 
+@dataclass(frozen=True)
+class TokenUsage:
+    """Tokens for one provider call.
+
+    `known` distinguishes "the provider told us nothing" from "it used
+    nothing". Reporting an unknown as zero understates spend and makes a
+    failed call look free, which is the opposite of what an operator needs.
+    """
+
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+    @property
+    def known(self) -> bool:
+        return self.input_tokens is not None or self.output_tokens is not None
+
+    def __add__(self, other: "TokenUsage") -> "TokenUsage":
+        if not self.known:
+            return other
+        if not other.known:
+            return self
+        return TokenUsage(
+            input_tokens=(self.input_tokens or 0) + (other.input_tokens or 0),
+            output_tokens=(self.output_tokens or 0) + (other.output_tokens or 0),
+        )
+
+    def as_dict(self) -> dict[str, int | None]:
+        return {"input_tokens": self.input_tokens,
+                "output_tokens": self.output_tokens,
+                "known": self.known}
+
+
+@dataclass(frozen=True)
+class PlanningAttempt:
+    """One call to the provider, whatever happened to it."""
+
+    ordinal: int
+    kind: Literal["initial", "repair"]
+    outcome: Literal["plan", "invalid_plan", "no_tool_call", "transport_error"]
+    usage: TokenUsage = field(default_factory=TokenUsage)
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class PlanningResult:
+    """Everything one planning request produced. Request-local and immutable.
+
+    This replaces `BedrockPlanner.last_usage`, which was instance state
+    written by whichever call finished most recently and read by the pipeline
+    afterwards. One planner is created per process, so under concurrency two
+    requests could read each other's usage; and a repair overwrote the first
+    attempt's usage, so the tokens that were actually spent went unreported.
+    """
+
+    plan: AnalyticalPlan
+    provider: str
+    model_id: str | None
+    prompt_version: str
+    planner_contract_version: str
+    attempts: tuple[PlanningAttempt, ...] = ()
+
+    @property
+    def usage(self) -> TokenUsage:
+        """Cumulative across EVERY attempt, including ones that failed."""
+        total = TokenUsage()
+        for attempt in self.attempts:
+            total = total + attempt.usage
+        return total
+
+    @property
+    def repaired(self) -> bool:
+        return any(a.kind == "repair" for a in self.attempts)
+
+
 class Planner(Protocol):
-    def plan(self, question: str, context: PlanningContext) -> AnalyticalPlan: ...
+    def plan(self, question: str, context: PlanningContext) -> PlanningResult: ...
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +341,6 @@ class BedrockPlanner:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self.model_id = self.settings.bedrock_model_id
-        self.last_usage: dict[str, int] = {}
 
         # A cross-region inference profile ("us." / "eu." / "global.") or a
         # dated, versioned id belongs to the legacy endpoint.
@@ -291,7 +364,7 @@ class BedrockPlanner:
             self.model_id, "invoke-model" if legacy else "mantle",
         )
 
-    def plan(self, question: str, context: PlanningContext) -> AnalyticalPlan:
+    def plan(self, question: str, context: PlanningContext) -> PlanningResult:
         system = build_system_prompt(context)
         tool = {
             "name": "emit_plan",
@@ -299,13 +372,15 @@ class BedrockPlanner:
             "input_schema": _plan_tool_schema(),
         }
         messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
+        attempts: list[PlanningAttempt] = []
 
-        raw, err = self._attempt(system, messages, tool)
-        if raw is not None:
-            return raw
+        plan, err, attempt = self._attempt(system, messages, tool, 1, "initial")
+        attempts.append(attempt)
+        if plan is not None:
+            return self._result(plan, attempts)
 
-        # One bounded repair. The model is told exactly what failed validation;
-        # it does not get to widen the schema, only to satisfy it.
+        # One bounded repair. The model is told exactly what failed
+        # validation; it does not get to widen the schema, only to satisfy it.
         messages += [
             {"role": "assistant", "content": "I produced an invalid plan."},
             {
@@ -316,14 +391,37 @@ class BedrockPlanner:
                 ),
             },
         ]
-        raw, err2 = self._attempt(system, messages, tool)
-        if raw is not None:
-            return raw
-        raise PlannerError(f"planner produced an invalid plan twice: {err2}")
+        plan, err2, attempt = self._attempt(system, messages, tool, 2, "repair")
+        attempts.append(attempt)
+        if plan is not None:
+            # The first attempt's tokens were spent and are kept. Overwriting
+            # them -- which the old last_usage did -- under-reported every
+            # repaired request.
+            return self._result(plan, attempts)
+
+        spent = TokenUsage()
+        for a in attempts:
+            spent = spent + a.usage
+        raise PlannerError(
+            f"planner produced an invalid plan twice: {err2} "
+            f"(tokens spent: {spent.as_dict()})"
+        )
+
+    def _result(self, plan: AnalyticalPlan,
+                attempts: list[PlanningAttempt]) -> PlanningResult:
+        return PlanningResult(
+            plan=plan,
+            provider="bedrock",
+            model_id=self.model_id,
+            prompt_version=PROMPT_VERSION,
+            planner_contract_version=PLANNER_CONTRACT_VERSION,
+            attempts=tuple(attempts),
+        )
 
     def _attempt(
-        self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any]
-    ) -> tuple[AnalyticalPlan | None, str]:
+        self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
+        ordinal: int, kind: str,
+    ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         request: dict[str, Any] = {
             "model": self.model_id,
             "max_tokens": self.settings.llm_max_tokens,
@@ -338,20 +436,36 @@ class BedrockPlanner:
         if not self._legacy_endpoint:
             request["output_config"] = {"effort": self.settings.llm_effort}
 
-        response = self._client.messages.create(**request)
-        usage = getattr(response, "usage", None)
-        if usage:
-            self.last_usage = {
-                "input_tokens": usage.input_tokens,
-                "output_tokens": usage.output_tokens,
-            }
+        def record(outcome: str, usage: TokenUsage, error: str | None) -> PlanningAttempt:
+            return PlanningAttempt(ordinal=ordinal, kind=kind, outcome=outcome,
+                                   usage=usage, error=error)
+
+        try:
+            response = self._client.messages.create(**request)
+        except Exception as exc:
+            # A transport failure spent an unknown number of tokens: the
+            # request may have reached the provider. Recorded as unknown,
+            # never as zero.
+            message = f"{type(exc).__name__}: {exc}"
+            return None, message, record("transport_error", TokenUsage(), message)
+
+        raw = getattr(response, "usage", None)
+        usage = TokenUsage(
+            input_tokens=getattr(raw, "input_tokens", None),
+            output_tokens=getattr(raw, "output_tokens", None),
+        ) if raw is not None else TokenUsage()
+
         for block in response.content:
             if getattr(block, "type", None) == "tool_use" and block.name == "emit_plan":
                 try:
-                    return AnalyticalPlan.model_validate(block.input), ""
+                    plan = AnalyticalPlan.model_validate(block.input)
                 except ValidationError as exc:
-                    return None, _short_validation_error(exc)
-        return None, "the model did not call emit_plan"
+                    err = _short_validation_error(exc)
+                    return None, err, record("invalid_plan", usage, err)
+                return plan, "", record("plan", usage, None)
+
+        err = "the model did not call emit_plan"
+        return None, err, record("no_tool_call", usage, err)
 
 
 def _short_validation_error(exc: ValidationError) -> str:
@@ -430,7 +544,7 @@ class OfflinePlanner:
         re.IGNORECASE,
     )
 
-    def plan(self, question: str, context: PlanningContext) -> AnalyticalPlan:
+    def plan(self, question: str, context: PlanningContext) -> PlanningResult:
         q = question.lower().strip()
         prev = context.previous_plan or {}
 
@@ -496,12 +610,24 @@ class OfflinePlanner:
             wide = NamedWindow.last_6_months if rolling.periods <= 3 else NamedWindow.ytd
             window = TimeWindow(kind="named", named=wide)
 
-        return AnalyticalPlan(
+        plan = AnalyticalPlan(
             metric=metric, dimensions=dimensions, filters=filters,
             time=window, comparison=comparison, ranking=ranking,
             threshold=self._threshold(q, metric, dimensions),
             rolling=rolling,
             interpretation=interpretation,
+        )
+        # The same contract as the live adapter, so the pipeline and the
+        # evaluator have one shape to consume. Usage is unknown rather than
+        # zero: no provider was called, so "zero tokens" would be a
+        # measurement nobody took.
+        return PlanningResult(
+            plan=plan,
+            provider="offline",
+            model_id=None,
+            prompt_version=PROMPT_VERSION,
+            planner_contract_version=PLANNER_CONTRACT_VERSION,
+            attempts=(PlanningAttempt(ordinal=1, kind="initial", outcome="plan"),),
         )
 
     # -- pieces --------------------------------------------------------------

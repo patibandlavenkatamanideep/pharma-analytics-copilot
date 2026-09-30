@@ -114,7 +114,7 @@ Three categories, deliberately separated.
 | ID | Risk | Location |
 |---|---|---|
 | **R1** | Classification derives generic/biosimilar from **synthetic name suffixes** (`" GENERIC"`, `" BIOSIMILAR"`) and defaults every other non-company product to `branded_competitor`. On original data this silently manufactures a classification. Unknowns cannot currently stay unknown. | `app/data/classification.py` |
-| **R2** | Shared mutable planner usage. `BedrockPlanner.last_usage` is instance state written per call and read later by `Pipeline`; one `Pipeline`/planner is created per process lifespan. Concurrent requests can read each other's usage, and plan repair overwrites first-attempt usage. | `app/llm/planner.py:229,303`, `app/pipeline.py:182`, `scripts/run_evals.py:493` |
+| **R2** ✅ | *Fixed in Phase 1C.* Shared mutable planner usage. `BedrockPlanner.last_usage` is instance state written per call and read later by `Pipeline`; one `Pipeline`/planner is created per process lifespan. Concurrent requests can read each other's usage, and plan repair overwrites first-attempt usage. | `app/llm/planner.py:229,303`, `app/pipeline.py:182`, `scripts/run_evals.py:493` |
 | **R3** | No request-wide snapshot pin. The manifest, the vocabulary and the result rows are read in **separate transactions**; the vocabulary cache is keyed by `dataset_id` but reads current tables. A refresh between stages can label B's rows with A's calendar. Distinct from the already-fixed atomic publication. | `app/pipeline.py`, `app/analytics/entities.py` |
 | **R4** | No original-data onboarding path. `load_data.py` accepts `seed`/`full` only, reads fixed generated paths, requires exact CSV headers, and loads while holding `TRUNCATE` locks. | `app/data/loader.py` |
 | **R5** | Turn concurrency is protected at insertion, not across read→plan→answer. The advisory lock is taken inside `record_turn`, after planning. Two continuations can plan against the same stale parent. | `app/conversation/state.py` |
@@ -143,7 +143,7 @@ observability, real-data onboarding contracts, and layered evaluation.
 | Phase | Purpose | State |
 |---|---|---|
 | **0** | Baseline, inventory, evidence schema, reproduced defects | **complete** |
-| **1** | Repair D1–D3, R2, R8; reconcile docs | **1A, 1B done**; 1C/1D next |
+| **1** | Repair D1–D3, R2, R8; reconcile docs | **1A, 1B, 1C done**; 1D next |
 | **2** | Original-data contracts, staging, versioned crosswalk | planned |
 | **3** | Request-wide snapshot consistency (R3) | planned |
 | **4** | Bounded runtime harness (R5, R6, R7) | planned |
@@ -171,7 +171,7 @@ deferred. Neither is a pass.
 | A3 | Evidence records carry SHA, versions, dataset, mode, limits | 0 | **passed** | `evidence/schema.json` |
 | A4 | Strict gate rejects setup skips, call skips, empty and narrowed selections | 1 | **passed** | `p1b-strict-gate.json` |
 | A5 | Live adapter prompt carries typed cohorts and explicit turn classification | 1 | **passed** | `p1a-continuity.json` |
-| A6 | Planner returns an immutable per-call result; usage survives repair | 1 | not run | |
+| A6 | Planner returns an immutable per-call result; usage survives repair | 1 | **passed** | `p1c-planning-result.json` |
 | A7 | DSN tolerates reserved characters | 1 | not run | |
 | A8 | Real-data mode loads configured paths with a readiness report | 2 | not run | |
 | A9 | Unknown classification stays unknown and disables only affected metrics | 2 | not run | |
@@ -248,6 +248,38 @@ transport** that records the real request, so the prompt and tool payload are
 inspected rather than reimplemented. They also assert the plan schema exposes
 no `sql`, `table`, `role`, `scope` or `credential` field, and that a tool call
 under any other name is refused.
+
+---
+
+## Phase 1C — request-local planning results (complete)
+
+`BedrockPlanner.last_usage` was instance state on a planner created once per
+process lifespan, written by whichever call finished most recently and read
+by the pipeline afterwards. Two consequences:
+
+- **Concurrency.** Two requests in flight meant both reported the usage of
+  whichever finished last.
+- **Repair.** A repaired request overwrote the first attempt's usage, so the
+  tokens it actually spent went unreported.
+
+`PlanningResult` is now frozen and returned per call, carrying the plan, the
+provider and model identity, the prompt and planner-contract versions, and a
+record of **every** attempt with its own outcome and usage.
+
+`TokenUsage.known` separates *"the provider reported nothing"* from *"it cost
+nothing"*. A transport failure records **unknown** usage, not zero — the
+request may have reached the provider and been billed. The offline planner
+reports unknown for the same reason: no provider was called, so zero would be
+a measurement nobody took.
+
+The pipeline reads usage from the result of *this* request, attaches a
+planning summary to `PipelineResult`, and writes `usage_known`,
+`prompt_version`, `planner_attempts` and `planner_repaired` to the audit row.
+The evaluator reads the same summary instead of planner state.
+
+Verified: interleaved requests of 10 / 9,000 / 20 input tokens report exactly
+those; a repair reports **220**, not 120; a failed repair names the 210
+tokens it spent; partial usage is preserved; the result rejects mutation.
 
 ---
 

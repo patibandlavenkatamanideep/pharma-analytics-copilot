@@ -26,7 +26,7 @@ def plan_follow_up(dimension, cohort, question="Show me those same ones by month
         known_products=["ZENOVAX", "GEMTARA"],
         previous_cohort=list(cohort), previous_cohort_dimension=dimension,
     )
-    return OfflinePlanner().plan(question, context)
+    return OfflinePlanner().plan(question, context).plan
 
 
 def test_a_product_cohort_is_not_applied_as_account_ids():

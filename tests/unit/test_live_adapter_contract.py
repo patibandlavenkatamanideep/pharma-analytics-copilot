@@ -282,14 +282,28 @@ def test_the_legacy_endpoint_is_not_sent_an_effort_field():
 # Response parsing
 # ---------------------------------------------------------------------------
 
-def test_a_valid_tool_call_becomes_a_plan():
+def test_a_valid_tool_call_becomes_a_planning_result():
     planner = make_planner([FakeResponse([valid_plan_block()], FakeUsage(1, 2))])
-    plan = planner.plan("q", context_with("q"))
-    assert isinstance(plan, AnalyticalPlan)
-    assert plan.metric.value == "paid_pack_units"
+    result = planner.plan("q", context_with("q"))
+
+    assert isinstance(result.plan, AnalyticalPlan)
+    assert result.plan.metric.value == "paid_pack_units"
+    # Identity travels with the result, so evidence can say which planner
+    # and which prompt produced it.
+    assert result.provider == "bedrock"
+    assert result.model_id == "us.anthropic.fake-model-v1:0"
+    assert result.prompt_version
+    assert result.usage.input_tokens == 1 and result.usage.output_tokens == 2
+    assert result.usage.known
+    assert not result.repaired
 
 
-def test_a_malformed_first_response_is_repaired_once():
+def test_a_repair_keeps_the_first_attempts_tokens():
+    """The tokens the failed attempt spent were still spent.
+
+    last_usage was overwritten by whichever call finished last, so every
+    repaired request under-reported its cost by the whole first attempt.
+    """
     bad = FakeBlock(type="tool_use", name="emit_plan",
                     input={"metric": "not_a_real_metric",
                            "time": {"kind": "named", "named": "r3m"}})
@@ -297,9 +311,15 @@ def test_a_malformed_first_response_is_repaired_once():
         FakeResponse([bad], FakeUsage(100, 20)),
         FakeResponse([valid_plan_block()], FakeUsage(120, 25)),
     ])
-    plan = planner.plan("q", context_with("q"))
-    assert plan.metric.value == "paid_pack_units"
-    assert len(planner._client.messages.requests) == 2, "expected one repair attempt"
+    result = planner.plan("q", context_with("q"))
+
+    assert result.plan.metric.value == "paid_pack_units"
+    assert len(planner._client.messages.requests) == 2, "expected one repair"
+    assert result.repaired
+    assert [a.outcome for a in result.attempts] == ["invalid_plan", "plan"]
+    # 100 + 120, not 120.
+    assert result.usage.input_tokens == 220
+    assert result.usage.output_tokens == 45
 
 
 def test_repair_is_bounded_to_one_attempt():
@@ -343,3 +363,106 @@ def test_a_tool_call_under_another_name_is_not_accepted():
 
     with pytest.raises(PlannerError):
         planner.plan("q", context_with("q"))
+
+
+# ---------------------------------------------------------------------------
+# Usage accounting is request-local
+# ---------------------------------------------------------------------------
+
+def test_interleaved_requests_do_not_read_each_others_usage():
+    """The defect this contract exists to remove.
+
+    last_usage was instance state on a planner created once per process.
+    Two requests in flight meant whichever finished last set the usage that
+    both of them reported.
+    """
+    planner = make_planner([
+        FakeResponse([valid_plan_block()], FakeUsage(10, 1)),
+        FakeResponse([valid_plan_block()], FakeUsage(9000, 900)),
+        FakeResponse([valid_plan_block()], FakeUsage(20, 2)),
+    ])
+    first = planner.plan("cheap one", context_with("cheap one"))
+    second = planner.plan("expensive one", context_with("expensive one"))
+    third = planner.plan("another cheap one", context_with("another cheap one"))
+
+    assert first.usage.input_tokens == 10
+    assert second.usage.input_tokens == 9000
+    assert third.usage.input_tokens == 20
+    # The results are immutable, so an earlier one cannot be rewritten by a
+    # later call.
+    assert first.usage.input_tokens == 10
+
+
+def test_a_response_with_no_usage_is_unknown_not_zero():
+    """"The provider told us nothing" and "it cost nothing" are different
+    facts, and only one of them is safe to report."""
+    planner = make_planner([FakeResponse([valid_plan_block()], usage=None)])
+    result = planner.plan("q", context_with("q"))
+
+    assert not result.usage.known
+    assert result.usage.input_tokens is None
+    assert result.usage.as_dict()["known"] is False
+
+
+def test_a_transport_failure_records_unknown_usage_not_zero():
+    """A request that failed in transit may still have reached the provider
+    and been billed."""
+    planner = make_planner([
+        ConnectionError("reset by peer"),
+        FakeResponse([valid_plan_block()], FakeUsage(50, 5)),
+    ])
+    result = planner.plan("q", context_with("q"))
+
+    assert [a.outcome for a in result.attempts] == ["transport_error", "plan"]
+    assert result.attempts[0].usage.known is False
+    assert "reset by peer" in (result.attempts[0].error or "")
+    # The known part is still reported.
+    assert result.usage.input_tokens == 50
+
+
+def test_a_failed_repair_reports_the_tokens_it_spent():
+    bad = FakeBlock(type="tool_use", name="emit_plan",
+                    input={"metric": "nope", "time": {"kind": "named", "named": "r3m"}})
+    planner = make_planner([
+        FakeResponse([bad], FakeUsage(100, 10)),
+        FakeResponse([bad], FakeUsage(110, 11)),
+    ])
+    from app.llm.planner import PlannerError
+
+    with pytest.raises(PlannerError) as exc:
+        planner.plan("q", context_with("q"))
+    # 210 tokens were spent and the operator should be able to see that.
+    assert "210" in str(exc.value)
+
+
+def test_partial_usage_is_preserved_rather_than_discarded():
+    """A provider that reports input but not output still reported something."""
+    from app.llm.planner import TokenUsage
+
+    partial = TokenUsage(input_tokens=42, output_tokens=None)
+    assert partial.known
+    assert (partial + TokenUsage()).input_tokens == 42
+    assert (TokenUsage() + partial).input_tokens == 42
+    combined = partial + TokenUsage(input_tokens=8, output_tokens=3)
+    assert combined.input_tokens == 50 and combined.output_tokens == 3
+
+
+def test_the_offline_planner_reports_the_same_contract():
+    """One shape for the pipeline and the evaluator to consume."""
+    from app.llm.planner import OfflinePlanner, PlanningResult
+
+    result = OfflinePlanner().plan("What are our total pack units?",
+                                   context_with("What are our total pack units?"))
+    assert isinstance(result, PlanningResult)
+    assert result.provider == "offline"
+    assert result.model_id is None
+    # No provider was called, so zero tokens would be a measurement nobody
+    # took.
+    assert not result.usage.known
+
+
+def test_a_planning_result_cannot_be_mutated_after_the_fact():
+    planner = make_planner([FakeResponse([valid_plan_block()], FakeUsage(1, 1))])
+    result = planner.plan("q", context_with("q"))
+    with pytest.raises(Exception):
+        result.provider = "something else"      # type: ignore[misc]

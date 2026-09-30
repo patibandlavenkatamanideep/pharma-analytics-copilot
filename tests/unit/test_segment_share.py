@@ -31,7 +31,7 @@ def planned(question: str):
         wac_authorized=True, reporting_anchor=ANCHOR,
         known_products=["ZENOVAX"], known_categories=["Platinum Compounds"],
     )
-    return OfflinePlanner().plan(question, context)
+    return OfflinePlanner().plan(question, context).plan
 
 
 # ---------------------------------------------------------------------------
