@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/evidence/schema.json",
+  "title": "Evidence record",
+  "description": "One verification run. Every claim in docs/PRODUCTION_UPGRADE.md must point at a record conforming to this schema. Unknown values are explicit nulls, never invented strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["evidence_schema_version", "recorded_at", "application", "environment", "command", "outcome"],
+  "properties": {
+    "evidence_schema_version": { "const": "1.0.0" },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "claim": {
+      "type": ["string", "null"],
+      "description": "The sentence this run is evidence for. Null for an exploratory run."
+    },
+
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha", "branch", "worktree_clean"],
+      "properties": {
+        "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "branch": { "type": "string" },
+        "worktree_clean": { "type": "boolean" },
+        "dirty_paths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "versions": {
+      "type": "object",
+      "description": "Contract versions in force. null means the contract is not yet versioned in code — an explicit gap, not an omission.",
+      "additionalProperties": false,
+      "properties": {
+        "metric_registry": { "type": ["string", "null"] },
+        "metric_registry_digest": { "type": ["string", "null"] },
+        "policy": { "type": ["string", "null"] },
+        "schema_contract": { "type": ["string", "null"] },
+        "mapping": { "type": ["string", "null"] },
+        "classification_rules": { "type": ["string", "null"] },
+        "prompt": { "type": ["string", "null"] },
+        "planner": { "type": ["string", "null"] },
+        "graph": { "type": ["string", "null"] },
+        "suite": { "type": ["string", "null"] },
+        "oracle": { "type": ["string", "null"] }
+      }
+    },
+
+    "dataset": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": { "type": ["string", "null"] },
+        "load_mode": { "type": ["string", "null"], "enum": ["seed", "full", "fixture", "real", null] },
+        "fingerprint": {
+          "type": ["string", "null"],
+          "description": "Content hash of the published data, independent of generated database ids."
+        },
+        "row_counts": { "type": ["object", "null"] },
+        "reporting_anchor": { "type": ["object", "null"] },
+        "database": {
+          "type": ["string", "null"],
+          "description": "Logical database NAME only. Never a DSN, host, user or password."
+        }
+      }
+    },
+
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_mode"],
+      "properties": {
+        "provider_mode": {
+          "enum": ["offline", "fake", "bedrock"],
+          "description": "offline = deterministic keyword planner. fake = scripted transport, no network. bedrock = paid inference."
+        },
+        "provider_model_id": { "type": ["string", "null"] },
+        "python": { "type": ["string", "null"] },
+        "postgresql": { "type": ["string", "null"] },
+        "os": { "type": ["string", "null"] },
+        "cpu_count": { "type": ["integer", "null"] },
+        "container": { "type": ["boolean", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv"],
+      "properties": {
+        "argv": { "type": "array", "items": { "type": "string" } },
+        "cwd_relative": { "type": ["string", "null"] },
+        "env_overrides": {
+          "type": ["object", "null"],
+          "description": "Non-secret overrides only. Credential-bearing names are recorded as the name with the value redacted."
+        },
+        "seed": { "type": ["integer", "null"] },
+        "duration_s": { "type": ["number", "null"] }
+      }
+    },
+
+    "outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "enum": ["passed", "failed", "blocked", "not_run", "not_applicable"],
+          "description": "blocked = a prerequisite was unavailable. not_run = deliberately deferred. Neither is a pass."
+        },
+        "exit_code": { "type": ["integer", "null"] },
+        "counts": {
+          "type": ["object", "null"],
+          "additionalProperties": { "type": "integer" },
+          "description": "Counts BY OUTCOME, e.g. passed/failed/skipped/errors, or answer/refusal/unsupported/wrong/failure."
+        },
+        "blocked_reason": { "type": ["string", "null"] },
+        "summary": { "type": ["string", "null"] }
+      }
+    },
+
+    "artifacts": {
+      "type": "array",
+      "description": "Where the detail lives. Restricted artifacts are referenced, never inlined.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sensitivity"],
+        "properties": {
+          "path": { "type": "string" },
+          "sensitivity": { "enum": ["public", "restricted"] },
+          "sha256": { "type": ["string", "null"] },
+          "description": { "type": ["string", "null"] }
+        }
+      }
+    },
+
+    "limits": {
+      "type": ["array", "null"],
+      "description": "What this run does NOT establish. Required for any run whose scope is narrower than the claim might suggest.",
+      "items": { "type": "string" }
+    }
+  }
+}

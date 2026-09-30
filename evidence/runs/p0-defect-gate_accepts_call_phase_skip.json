@@ -1,0 +1,61 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T02:04:06+00:00",
+  "claim": "Reproduced at baseline: gate_accepts_call_phase_skip",
+  "application": {
+    "sha": "c8aab5bdcd70a512cb0fa9a3a687f474d3b3eb29",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/",
+      "scripts/record_evidence.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": null,
+    "planner": null,
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "evidence/probes/gate_accepts_call_phase_skip.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.19
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "skipped": 1
+    },
+    "blocked_reason": null,
+    "summary": "DEFECT PRESENT: the gate passed a run in which nothing was verified."
+  },
+  "artifacts": [],
+  "limits": [
+    "Probe exits 0 while the defect is present; it is not a test."
+  ]
+}

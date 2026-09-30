@@ -1,0 +1,59 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T02:04:07+00:00",
+  "claim": "Reproduced at baseline: live_prompt_mistypes_cohort",
+  "application": {
+    "sha": "c8aab5bdcd70a512cb0fa9a3a687f474d3b3eb29",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/",
+      "scripts/record_evidence.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": null,
+    "planner": null,
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "evidence/probes/live_prompt_mistypes_cohort.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.1
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "DEFECT PRESENT"
+  },
+  "artifacts": [],
+  "limits": [
+    "Probe exits 0 while the defect is present; it is not a test."
+  ]
+}
