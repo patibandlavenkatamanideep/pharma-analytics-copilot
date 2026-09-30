@@ -29,8 +29,8 @@ whether an answer is arithmetically right.
 | **Integration** | `pytest tests/integration -q` | 58 | ✅ pass | `p1d-suite-integration.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 115` | 115 | ✅ pass | `p1d-suite-security.json` |
 | **Total (pytest)** | `pytest tests -q` | **517** | ✅ pass | `p1d-suite-total.json` |
-| **Browser — component** | `cd web && npm test` | 6 | ⚠️ see below | — |
-| **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a running server | — |
+| **Browser — component** | `cd web && npm test` | 6 | ✅ pass | `p1d-suite-browser-component.json` |
+| **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
 Unit and integration counts are what pytest collects, not what anyone
@@ -81,24 +81,36 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-Both suites are real and both pass; neither runs from this checkout on this
-machine, for reasons that have nothing to do with the code.
+**Component tests (6, vitest + jsdom).** These pass here, in about 400 ms.
 
-**Component tests (6, vitest + jsdom).** The vitest worker never responds
-under `~/Desktop/Projects/pharma-analytics-copilot/web`. Both the `forks`
-and `threads` pools time out after 60 s having collected nothing. The same
-tree, copied elsewhere on the same machine with the same `node_modules`,
-runs in under a second. The cause is the path, not the suite — most likely
-macOS file-access mediation on `~/Desktop` — and the honest status is
-therefore *passes, but not from here*.
+They had not run from this checkout for weeks, and the recorded reason was
+wrong. The symptom: the vitest worker starts, never responds, and the run
+ends after 60 s having collected nothing — under both the `forks` and the
+`threads` pool. The recorded explanation was that macOS stalls reads under
+`~/Desktop`, which every observation appeared to support, because every
+fresh checkout used to test the theory worked.
+
+A fresh checkout also has a fresh cache. Isolating the variables:
+
+| Where | Result |
+|---|---|
+| A plain Node worker under the repository path | replies in **11 ms** |
+| The tree copied to `/private/tmp` | **6 passed, 503 ms** |
+| The tree copied to `~/Desktop`, outside this repository, `node_modules` symlinked back into it | **6 passed, 578 ms** |
+| The repository itself, after `rm -rf web/node_modules/.vite` | **6 passed, 509 ms**, then 456 / 376 / 375 ms |
+
+So it was never the path and never the filesystem: a stale entry in
+`web/node_modules/.vite` hung the worker. `npm test` now clears that
+directory before running. The suite takes under half a second, which does
+not need a cache.
 
 **End-to-end tests (6, Playwright + Chromium).** These need the application
-served. They last passed against the deployed instance on 2026-09-25. They
-are not part of the offline gate and are not claimed as passing on this
-revision.
+served and credentials in the environment. They last passed against the
+deployed instance on 2026-09-25. They are not part of the offline gate and
+are not claimed as passing on this revision.
 
-Neither browser suite is counted in the 517. Adding them would imply they
-run in the same command, and they do not.
+Neither browser suite is counted in the 517: they do not run in the same
+command, and a single number that mixed them would imply they do.
 
 ---
 

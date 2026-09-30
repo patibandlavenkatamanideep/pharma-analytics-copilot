@@ -107,6 +107,7 @@ Three categories, deliberately separated.
 |---|---|---|---|
 | **D1** ✅ | *Fixed in Phase 1B.* The release gate accepted a skip raised from a test body. `tests/release_gate.py` converts a skip to a failure only when `report.when == "setup"`. A `pytest.skip()` inside a test body skips at **call** phase, so `--release-gate --min-tests 1` exits **0** for a run that verified nothing. | `evidence/probes/gate_accepts_call_phase_skip.py` | `p0-defect-gate_accepts_call_phase_skip.json` |
 | **D2** ✅ | *Fixed in Phase 1A.* The live prompt mistyped cohorts and mislabelled turns. `build_system_prompt` emits *"The previous answer was about these **account ids**: ZENOVAX, GEMTARA"* for a **product** cohort, and *"This is a FOLLOW-UP"* whenever any previous plan exists. The typed-cohort work landed in `OfflinePlanner` and the pipeline but never reached the only text the live model sees. | `evidence/probes/live_prompt_mistypes_cohort.py` | `p0-defect-live_prompt_mistypes_cohort.json` |
+| **D5** ✅ | *Found and fixed in Phase 1D.* The 6 jsdom component tests could not be run from this checkout: the vitest worker started, never responded, and the run ended after 60 s having collected nothing. Recorded since the remediation phase as environmental — macOS stalling reads under `~/Desktop` — on evidence that never separated the path from the build cache. The cause was a stale `web/node_modules/.vite` entry. | see *The browser suites* below | `p1d-suite-browser-component.json` |
 | **D4** ✅ | *Found and fixed in Phase 1D.* The evidence recorder truncated the first changed-file path. `_git()` strips its output before the caller splits it into lines; `git status --porcelain` starts each line with a two-character status field whose first character is a space for an unstaged change, so `app/config.py` was recorded as `pp/config.py`. Five records written in Phases 1A–1C carry it; they are listed under *Phase 1D* below and were left as written rather than re-recorded against a SHA they did not measure. | `tests/unit/test_evidence_record_accuracy.py` | `p1d-record-accuracy.json` |
 | **D3** ✅ | *Fixed in Phase 1B.* CI did not run the strict gate. `.github/workflows/ci.yml:77` is `python -m pytest tests/security -q` with no `--release-gate` and no `--min-tests`. Confirmed by reading the workflow. | — | inspection |
 
@@ -189,6 +190,7 @@ deferred. Neither is a pass.
 | A20 | A synthetic secret cannot reach an evidence record or a CI log | 1 | **passed** | `p1d-evidence-redaction.json` |
 | A21 | Evidence records state the changed-file list accurately | 1 | **passed** | `p1d-record-accuracy.json` |
 | A22 | No document states a test count that is not currently true | 1 | **passed** | `p1d-suite-total.json` |
+| A23 | The browser component suite runs repeatably from this checkout | 1 | **passed** | `p1d-suite-browser-component.json` |
 
 ---
 
@@ -433,22 +435,48 @@ exist.
 | Model evaluation — regression | 38/38 offline | `p1d-eval-questions.json` |
 | Model evaluation — held-out 1 | 12/12 offline | `p1d-eval-holdout.json` |
 | Model evaluation — held-out 2 | 11/12 offline | `p1d-eval-holdout2.json` |
-| Browser — component | 6 tests, **not runnable from this path** | see below |
+| Browser — component | 6 passed, ×3 | `p1d-suite-browser-component.json` |
 | Browser — end to end | 6 tests, needs a served application | — |
 
-### The browser suites, honestly
+### The browser suites (D5)
 
-The vitest worker never responds under
-`~/Desktop/Projects/pharma-analytics-copilot/web`. Both the `forks` and
-`threads` pools time out after 60 s having collected nothing — reproduced
-twice on this revision. The cause is the path rather than the suite; the
-most likely explanation is macOS file-access mediation on `~/Desktop`, and
-the same tree elsewhere on the same machine has run in under a second. The
-status recorded is *passes, but not from here*, which is weaker than
-"passes" and is the most that can be claimed today.
+The component suite had not run from this checkout for weeks, and the
+recorded reason was wrong. `docs/REMEDIATION.md` row 35 concluded *"the
+stall was the filesystem, not the tests ... that is no longer a
+hypothesis"*, on the strength of three runs from a fresh clone outside
+`~/Desktop`. I repeated that reasoning at the start of this phase and
+wrote the same conclusion into this document.
 
-Playwright needs the application served and is not part of the offline
-gate. Last passed against the deployed instance on 2026-09-25.
+A fresh checkout also has a fresh cache, so every observation supporting
+the filesystem theory supported the cache theory equally well. Nobody had
+separated the two variables. Separating them:
+
+| Where | Result |
+|---|---|
+| A plain Node worker under the repository path | replies in **11 ms** |
+| The tree copied to `/private/tmp` | **6 passed, 503 ms** |
+| The tree copied to `~/Desktop` but **outside this repository**, `node_modules` symlinked back into it | **6 passed, 578 ms** |
+| The repository itself, after `rm -rf web/node_modules/.vite` | **6 passed, 509 ms**, then 456 / 376 / 375 ms |
+
+The third row is the one that settles it: same filesystem, same folder
+tree, same `node_modules` — and it passes. A stale entry in
+`web/node_modules/.vite` was hanging the worker, which then timed out
+after 60 s having collected nothing, under both the `forks` and the
+`threads` pool.
+
+`npm test` now clears that directory first. The suite takes under half a
+second, which does not need a cache. The misdiagnosis is corrected in
+`README.md`, `web/vitest.config.js` and — as a dated correction rather
+than a rewrite — in `docs/REMEDIATION.md`.
+
+Worth naming as a general failure: the evidence was consistent with the
+conclusion, and the conclusion was still wrong, because the experiment
+that would have discriminated between two explanations was never run. An
+environmental diagnosis is a comfortable place to stop.
+
+Playwright needs the application served and credentials in the
+environment. It is not part of the offline gate and last passed against
+the deployed instance on 2026-09-25.
 
 ---
 

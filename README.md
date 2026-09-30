@@ -132,10 +132,18 @@ The web tests are **Vitest component tests in jsdom**, not tests in a real
 browser: they render the React component and stub `fetch`. They exercise the
 identity-isolation logic, not rendering, CSS or actual browser behaviour.
 
-Run them from a checkout **outside `~/Desktop`**. Under `~/Desktop` macOS
-stalls the `node_modules` reads: collection takes 239,780 ms and later
-invocations hang at 0% CPU, against 59–108 ms from anywhere else. Same
-pathology that made a Python venv there take 82 s to `import psycopg`.
+They run here in about 400 ms. If a run ends after 60 s reporting *"Failed
+to start ... worker"* and no tests, the Vite cache has gone stale:
+
+```bash
+rm -rf web/node_modules/.vite
+```
+
+`npm test` now does that first, so this should not recur. It was
+misdiagnosed for some time as macOS stalling reads under `~/Desktop`; every
+fresh checkout used to test that theory also had a fresh cache, which made
+the wrong explanation look confirmed. A plain Node worker starts under this
+path in 11 ms.
 
 Expected values in the integration tests come from SQL written by hand in the
 test files, never from the compiler under test.

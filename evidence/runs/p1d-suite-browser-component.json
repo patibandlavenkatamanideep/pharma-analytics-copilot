@@ -1,0 +1,66 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T03:15:19+00:00",
+  "claim": "The 6 jsdom component tests pass from this checkout, three consecutive runs, once the stale Vite cache is cleared. The recorded cause -- macOS stalling reads under ~/Desktop -- was wrong.",
+  "application": {
+    "sha": "927774aa52e590180d07ebeb7a0d94e852147237",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "README.md",
+      "docs/REMEDIATION.md",
+      "docs/TEST_INVENTORY.md",
+      "web/package.json",
+      "web/vitest.config.js"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/sh",
+      "-c",
+      "cd web && npm test 2>&1"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.88
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 6
+    },
+    "blocked_reason": null,
+    "summary": "   Duration  506ms (environment 55%, tests 24%, import 14%, transform 6%, worker 1%)"
+  },
+  "artifacts": [],
+  "limits": [
+    "jsdom, not a real browser: fetch is stubbed and rendering, CSS and real browser behaviour are not exercised.",
+    "Says nothing about the Playwright suite, which needs a served application."
+  ]
+}

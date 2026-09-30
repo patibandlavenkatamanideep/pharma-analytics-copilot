@@ -198,6 +198,17 @@ This is environmental (`~/Desktop`), not a property of the tests, and it means
 the browser suite cannot currently be relied on as a repeatable gate here. It
 is listed for the next phase rather than papered over.
 
+> **Correction, 2026-09-30.** The observation above is accurate; the
+> explanation is not. The cause was a stale `web/node_modules/.vite` cache
+> entry, not `~/Desktop`. The evidence that pointed at the filesystem — every
+> fresh checkout elsewhere worked — held equally well for the cache, because
+> a fresh checkout has a fresh cache. Isolated by running the same tree from
+> three locations: `/private/tmp` passed, a directory **on `~/Desktop` but
+> outside this repository** also passed, and the repository itself passed
+> once the cache was removed. A plain Node worker starts under the repository
+> path in 11 ms. The suite now runs here in under half a second, three times
+> consecutively. See [TEST_INVENTORY.md](TEST_INVENTORY.md).
+
 The existing deployment record and `evals/runs/reference-bedrock-full.json`
 (37/38) are **preserved as dated historical evidence**. The reviewer did not
 contact the deployment, and neither does this phase; current availability is
