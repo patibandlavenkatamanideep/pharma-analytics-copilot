@@ -46,6 +46,34 @@ class UnsupportedCombination(CompileError):
         super().__init__(" ".join(self.reasons))
 
 
+@dataclass(frozen=True)
+class CohortBinding:
+    """A previous answer's population, frozen into this query by the SERVER.
+
+    The planner cannot express it: the typed plan's account filter holds at
+    most 200 ids, and a 500-account answer followed by "those same accounts"
+    must mean all 500. The ids come from the conversation's stored cohort,
+    read under the caller's current access -- never from the model -- and are
+    applied through exactly the expression the typed filter for that grain
+    uses, so membership means the same thing it always did.
+    """
+    dimension: str
+    ids: tuple[str, ...]
+
+
+#: The typed filter a cohort of each grain stands in for, and its expression.
+_COHORT_EXPRESSION: dict[str, tuple[str, tuple[str, ...], bool]] = {
+    # grain: (expression, joins needed, organisation-side)
+    "account": ("COALESCE(o.grandparent_org_id, o.org_id)", ("o",), True),
+    "facility": ("o.org_id", ("o",), True),
+    "gpo": ("o.gpo_name", ("o",), True),
+    "archetype": ("o.org_archetype", ("o",), True),
+    "territory": ("z.territory_name", ("o", "z"), True),
+    "region": ("z.region_name", ("o", "z"), True),
+    "product": ("upper(p.drug_name)", ("p",), False),
+}
+
+
 # --- identifier allowlists ---------------------------------------------------
 # key -> (id expression, label expression, tables required)
 
@@ -332,6 +360,22 @@ class Compiler:
                 needs.add("o")
                 clauses.append("o.grandparent_org_id IS NULL AND o.parent_org_id IS NULL")
 
+        # A frozen cohort, applied where its grain's typed filter would be:
+        # organisation-side grains only on the organisation side, exactly as
+        # account_ids is, so a ratio's widened denominator stays widened.
+        if self._cohort is not None:
+            expr, need, org = _COHORT_EXPRESSION[self._cohort.dimension]
+            if org_side or not org:
+                ids = ([i.upper() for i in self._cohort.ids]
+                       if self._cohort.dimension == "product" else list(self._cohort.ids))
+                if ids:
+                    add_in(expr, ids, need)
+                else:
+                    # add_in skips an empty list -- right for an optional
+                    # filter, wrong here: "those" over an empty answer is
+                    # nobody, not everybody.
+                    clauses.append("FALSE")
+
         return clauses, params
 
     def _source_filters(self, spec: dict[str, Any], needs: set[str]) -> tuple[list[str], list[Any]]:
@@ -478,7 +522,29 @@ class Compiler:
 
     # -- public entry point --------------------------------------------------
 
+    #: Set only on a per-call copy made by compile(); never on a shared
+    #: instance, which serves concurrent requests.
+    _cohort: CohortBinding | None = None
+
     def compile(
+        self,
+        plan: AnalyticalPlan,
+        *,
+        anchor: dict[str, Any],
+        cohort: CohortBinding | None = None,
+    ) -> CompiledQuery:
+        if cohort is not None:
+            if cohort.dimension not in _COHORT_EXPRESSION:
+                raise CompileError(f"no filter for a cohort of {cohort.dimension}")
+            # A copy for this call: the binding is request state, and one
+            # Compiler serves every request in the process.
+            import copy
+            bound = copy.copy(self)
+            bound._cohort = cohort
+            return bound._compile(plan, anchor=anchor)
+        return self._compile(plan, anchor=anchor)
+
+    def _compile(
         self,
         plan: AnalyticalPlan,
         *,

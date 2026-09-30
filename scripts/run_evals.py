@@ -390,9 +390,16 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
         return (ranking.get("limit") == spec["limit"],
                 f"limit {ranking.get('limit')}, expected {spec['limit']}")
     if kind == "frozen_cohort":
-        ids = ((result.plan or {}).get("filters") or {}).get("account_ids") or []
+        # The population actually APPLIED. Since 30 September the server binds
+        # the stored cohort to the query itself (the plan's account filter
+        # holds only 200 ids), so the plan no longer carries it -- and what
+        # matters was always what the query ran against, not what the plan
+        # said. Falls back to the plan's filter for runs recorded earlier.
+        applied = getattr(result, "applied_cohort", None)
+        ids = list(applied[1]) if applied else (
+            ((result.plan or {}).get("filters") or {}).get("account_ids") or [])
         if not ids:
-            return False, "cohort was not frozen into account_ids"
+            return False, "no cohort was applied to the follow-up"
         if (result.plan or {}).get("ranking"):
             return False, "frozen cohort was re-ranked"
         # "Frozen" means THESE accounts, not some accounts. Checking only that

@@ -26,10 +26,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.analytics.compiler import Compiler, CompileError, UnsupportedCombination
+from app.analytics.compiler import (
+    CohortBinding, Compiler, CompileError, UnsupportedCombination)
 from app.analytics.entities import vocabulary_for
 from app.analytics.intent import blocking, find_gaps, resolve_mentions
-from app.analytics.mentions import entity_index
+from app.analytics.mentions import entity_index, normalise
 from app.conversation.continuity import Cohort, summarise_cohort
 from app.conversation.continuity import resolve as resolve_continuity
 from app.analytics.periods import PeriodError
@@ -38,7 +39,10 @@ from app.analytics.render import Answer, GrainError, render
 from app.analytics.validator import SqlValidationError, validate
 from app.auth.policy import AuthorizationError, Principal, authorize, scope_note
 from app.config import get_settings
-from app.conversation.state import ConversationState, open_conversation, record_turn
+from app.conversation import runs
+from app.conversation.clarify import choice_from_reply
+from app.conversation.state import (
+    Finalised, StagedTurn, finalise, open_conversation)
 from app.db import ScopeBindingError, analytics_transaction, auth_transaction
 from app.llm.planner import Planner, PlannerError
 
@@ -85,6 +89,64 @@ class PipelineResult:
     #: several accounts -- the options, as {id, label, detail}. The user picks
     #: one instead of guessing at a spelling that would disambiguate.
     choices: list[dict[str, str]] = field(default_factory=list)
+    #: Whether this turn is part of the conversation now:
+    #:   saved      -- committed, with its run outcome, atomically
+    #:   not_saved  -- nothing to record (a failure before any outcome)
+    #:   failed     -- an outcome existed and could not be recorded
+    #:   conflict   -- the conversation moved on; this was not recorded
+    #: Returned to the client, so the interface never implies a turn was
+    #: saved when it was not.
+    persistence: str = "not_saved"
+    run_id: str = ""
+    #: The response body, built once here so the copy stored for replay is
+    #: exactly what the client received.
+    payload: dict[str, Any] | None = None
+    #: The population the server froze into this answer, if any: (dimension,
+    #: ids). Kept on the result for evaluation and audit; not sent to the
+    #: client, which already has the previous answer's rows.
+    applied_cohort: tuple[str, tuple[str, ...]] | None = None
+
+
+def to_payload(result: PipelineResult, include_sql: bool) -> dict[str, Any]:
+    """The client-facing body. Also what is stored for idempotent replay."""
+    payload: dict[str, Any] = {
+        "status": result.status,
+        "conversation_id": result.conversation_id,
+        "message": result.message,
+        "request_id": result.request_id,
+        "run_id": result.run_id,
+        "persistence": result.persistence,
+    }
+    if result.alternative:
+        payload["alternative"] = result.alternative
+    if result.choices:
+        # Options the caller can already see: they came from the caller's own
+        # scoped index, so listing them discloses nothing new.
+        payload["choices"] = result.choices
+    if include_sql:
+        # The typed plan is returned alongside the SQL, under the same explicit
+        # request. It is strictly less sensitive than the SQL -- it names a
+        # metric key, dimensions and filter values, and by construction cannot
+        # contain a role, a scope, a table or a column -- and it is the thing
+        # actually worth inspecting, because it is what the model produced and
+        # what everything downstream was compiled from.
+        payload["plan"] = result.plan
+    if result.sql:
+        payload["sql"] = result.sql
+    if result.answer:
+        a = result.answer
+        payload["answer"] = {
+            "headline": a.headline,
+            "columns": a.columns,
+            "rows": a.table,
+            "scope_note": a.scope_note,
+            "period_note": a.period_note,
+            "warnings": a.warnings,
+            "notes": a.notes,
+            "row_count": a.row_count,
+            "truncated": a.truncated,
+        }
+    return payload
 
 
 class Pipeline:
@@ -125,12 +187,27 @@ class Pipeline:
         *,
         conversation_id: str | None = None,
         include_sql: bool = False,
+        idempotency_key: str | None = None,
     ) -> PipelineResult:
         request_id = uuid.uuid4().hex[:16]
         started = time.perf_counter()
         timings: dict[str, int] = {}
         dataset = self.current_dataset()
         anchor = dataset["reporting_anchor"]
+        request_hash = runs.payload_hash(question, conversation_id, include_sql)
+
+        # A retried request is recognised BEFORE a conversation is opened:
+        # the first turn of a new conversation arrives with no conversation
+        # id, and opening one first would start a second conversation for
+        # the same request. The key is scoped to the user; the conversation
+        # is part of the request hash.
+        if idempotency_key:
+            prior = runs.find(principal, idempotency_key)
+            if prior is not None:
+                if prior["payload_hash"] != request_hash:
+                    raise runs.IdempotencyConflict(
+                        "That request key was already used for a different question.")
+                conversation_id = prior["conversation_id"]
 
         # Continuation is bound to the dataset and the semantic contracts, not
         # only to who is asking: a refresh or a contract bump makes a carried
@@ -141,6 +218,38 @@ class Pipeline:
             metric_version=get_registry().version,
             policy_version=POLICY_VERSION,
         )
+
+        # One live run per conversation, and one committed outcome per key.
+        # Raises RunBusy / IdempotencyConflict / ReplayUnavailable, which the
+        # API maps to 409 or 403.
+        run = runs.acquire(
+            principal, state.conversation_id,
+            revision=state.revision, request_hash=request_hash,
+            idempotency_key=idempotency_key,
+            lease_seconds=self.settings.run_lease_seconds,
+            retention_seconds=self.settings.idempotency_retention_seconds,
+        )
+        if run.replay is not None:
+            replayed = dict(run.replay)
+            return PipelineResult(
+                status=replayed.get("status", "answered"),
+                conversation_id=replayed.get("conversation_id", state.conversation_id),
+                message=replayed.get("message", ""),
+                request_id=replayed.get("request_id", ""),
+                payload={**replayed, "replayed": True},
+                persistence="saved", run_id=run.run_id,
+            )
+
+        # What this request will commit. Every exit path stages at most one
+        # turn; finish() writes it -- and the run's outcome, the cohort, the
+        # clarification and the revision -- in ONE transaction.
+        staged: dict[str, StagedTurn] = {}
+
+        def stage(plan: dict[str, Any] | None, answer_text: str, status: str,
+                  **extra: Any) -> None:
+            staged["turn"] = StagedTurn(
+                question=question, plan=plan, answer_text=answer_text,
+                status=status, resolves_clarification=resolving, **extra)
 
         audit: dict[str, Any] = {
             "request_id": request_id,
@@ -162,8 +271,45 @@ class Pipeline:
             timings["total_ms"] = int((time.perf_counter() - started) * 1000)
             result.timings = timings
             result.request_id = request_id
+            result.run_id = run.run_id
             if result.planning is None:
                 result.planning = _planning_summary.get("value")
+
+            turn = staged.get("turn")
+            if turn is None:
+                # Nothing to record -- a failure before an outcome existed.
+                # The run is closed so its key can be retried.
+                result.persistence = "not_saved"
+                result.payload = to_payload(result, include_sql)
+                runs.fail(run, None)
+            else:
+                result.persistence = "saved"
+                result.payload = to_payload(result, include_sql)
+                try:
+                    done = finalise(principal, state, run, turn, result.payload)
+                except Exception:
+                    # Stated, not swallowed: the answer is returned, and the
+                    # response says it was not saved, so nothing implies the
+                    # next turn can build on it.
+                    log.exception("failed to commit turn for run %s", run.run_id)
+                    runs.fail(run, None)
+                    done = Finalised(persisted=False, reason="error")
+                if done.conflict:
+                    # The conversation moved while this was being answered: a
+                    # lease expired and another turn committed. The answer was
+                    # planned against state that is no longer current, so it
+                    # is withheld rather than shown as a continuation.
+                    status = "conflict"
+                    result = PipelineResult(
+                        status="conflict", conversation_id=state.conversation_id,
+                        message=("This conversation moved on while that was being "
+                                 "answered. Ask again to continue from the latest turn."),
+                        request_id=request_id, run_id=run.run_id,
+                        timings=timings, persistence="conflict")
+                    result.payload = to_payload(result, include_sql)
+                elif not done.persisted:
+                    result.persistence = "failed"
+                    result.payload = to_payload(result, include_sql)
             audit.update(status=status, total_ms=timings["total_ms"], **extra)
             self._write_audit(audit)
             return result
@@ -173,7 +319,36 @@ class Pipeline:
         # the vocabulary cache keyed to the snapshot being queried without a
         # second lookup.
         vocab = vocabulary_for(principal, dataset["dataset_id"])
+        index = entity_index(principal, dataset["dataset_id"], vocab)
         from app.llm.planner import PlanningContext
+
+        # --- 2b. a reply to a pending clarification ----------------------------
+        # "Riverside Clinic is the name of 2 accounts -- which one?" followed by
+        # "the second one". The choices were stored as shown; the reply is read
+        # against them, and the ORIGINAL question is re-run with the choice
+        # bound. The choice is re-checked against the caller's CURRENT index:
+        # access can change between a question and its answer, and a stored
+        # option is not a grant.
+        effective_question = question
+        chosen: dict[str, str] = {}
+        resolving: str | None = None
+        pending = state.pending_clarification
+        if pending is not None:
+            picked = choice_from_reply(question, pending.choices)
+            if picked is not None:
+                option = pending.choices[picked]
+                if option["id"] not in index.account_ids:
+                    message = ("That option is no longer available to you. "
+                               "Ask the question again to see current options.")
+                    stage(None, message, "clarify")
+                    return finish(
+                        PipelineResult(status="clarify",
+                                       conversation_id=state.conversation_id,
+                                       message=message),
+                        "clarify", denial_reason="clarification_choice_unavailable")
+                effective_question = pending.question
+                chosen = {normalise(pending.slot_text or ""): option["id"]}
+                resolving = pending.clarification_id
 
         # One decision about what this turn is, shared by every planner.
         # Previously the offline planner and the live prompt each decided
@@ -188,7 +363,7 @@ class Pipeline:
                 total_available=state.previous_cohort_total,
             )
         continuity = resolve_continuity(
-            question,
+            effective_question,
             previous_plan=state.previous_plan,
             cohort=cohort_obj,
         )
@@ -196,8 +371,7 @@ class Pipeline:
 
         if continuity.clarification:
             # An ambiguous reference is asked about, not guessed at.
-            self._record(principal, state, question, None, [],
-                         continuity.clarification, "clarify")
+            stage(None, continuity.clarification, "clarify")
             return finish(
                 PipelineResult(
                     status="clarify", conversation_id=state.conversation_id,
@@ -212,15 +386,21 @@ class Pipeline:
         # asked about without spending a model call; and the ids of accounts
         # the question names -- those ids and no others -- go to the planner,
         # which never sees the account catalog.
-        index = entity_index(principal, dataset["dataset_id"], vocab)
-        mentions, unresolved = resolve_mentions(question, vocab, index)
+        mentions, unresolved = resolve_mentions(effective_question, vocab, index,
+                                                resolved=chosen)
         if unresolved:
             audit["intent_gaps"] = [g.kind for g in unresolved]
             audit["blocking_gaps"] = [g.kind for g in unresolved]
             message = " ".join(g.message() for g in unresolved)
-            choices = [{"id": c[0], "label": c[1], "detail": c[2]}
-                       for g in unresolved for c in g.choices]
-            self._record(principal, state, question, None, [], message, "clarify")
+            # One question at a time: the first ambiguous name is stored with
+            # the choices exactly as shown, so "the second one" means what the
+            # user saw second. A later ambiguity is asked about on the re-run.
+            asking = next((g for g in unresolved if g.choices), None)
+            choices = ([{"id": c[0], "label": c[1], "detail": c[2]} for c in asking.choices]
+                       if asking else [])
+            stage(None, message, "clarify", clarification=(
+                {"kind": asking.kind, "question": effective_question,
+                 "slot_text": asking.subject, "choices": choices} if asking else None))
             return finish(
                 PipelineResult(
                     status="clarify", conversation_id=state.conversation_id,
@@ -260,7 +440,7 @@ class Pipeline:
 
         t0 = time.perf_counter()
         try:
-            planning = self.planner.plan(question, context)
+            planning = self.planner.plan(effective_question, context)
             plan = planning.plan
         except PlannerError as exc:
             log.warning("planner failed: %s", exc)
@@ -312,7 +492,7 @@ class Pipeline:
         # rendering are all correct. Checked here rather than inside a planner
         # so it holds for every planner, including a model that drops a filter
         # it could not resolve.
-        gaps = find_gaps(question, plan, vocab, index)
+        gaps = find_gaps(effective_question, plan, vocab, index, resolved=chosen)
         blockers = blocking(gaps)
         audit["intent_gaps"] = [g.kind for g in gaps]
         audit["blocking_gaps"] = [g.kind for g in blockers]
@@ -321,8 +501,7 @@ class Pipeline:
             # unresolvable product filter and the reply is the whole company's
             # volume presented as that product's.
             message = " ".join(g.message() for g in blockers)
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], message, "clarify")
+            stage(plan.model_dump(mode="json"), message, "clarify")
             return finish(
                 PipelineResult(
                     status="clarify", conversation_id=state.conversation_id,
@@ -336,7 +515,7 @@ class Pipeline:
 
         # --- 5. clarify -----------------------------------------------------
         if plan.clarification:
-            self._record(principal, state, question, None, [], plan.clarification, "clarify")
+            stage(None, plan.clarification, "clarify")
             return finish(
                 PipelineResult(
                     status="clarify", conversation_id=state.conversation_id,
@@ -349,8 +528,7 @@ class Pipeline:
         try:
             authorize(plan, principal)
         except AuthorizationError as exc:
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], str(exc), "denied")
+            stage(plan.model_dump(mode="json"), str(exc), "denied")
             return finish(
                 PipelineResult(
                     status="denied", conversation_id=state.conversation_id,
@@ -361,8 +539,21 @@ class Pipeline:
             )
 
         # --- 7. compile -----------------------------------------------------
+        # A frozen cohort is applied by the server, whole. The typed plan's
+        # filter holds 200 ids; a 500-account answer followed by "those same
+        # accounts" means all 500. Deterministic, after planning: whether the
+        # model copied ids into its plan or not, the population is the stored
+        # one, and any ids it did copy are replaced rather than intersected.
+        binding = None
+        if continuity.carries_cohort and continuity.cohort is not None:
+            binding = CohortBinding(dimension=continuity.cohort.dimension,
+                                    ids=tuple(continuity.cohort.ids))
+            field_name = continuity.cohort.filter_field
+            if field_name and getattr(plan.filters, field_name, None):
+                plan = plan.model_copy(update={
+                    "filters": plan.filters.model_copy(update={field_name: []})})
         try:
-            query = self.compiler.compile(plan, anchor=anchor)
+            query = self.compiler.compile(plan, anchor=anchor, cohort=binding)
         except UnsupportedCombination as exc:
             # Nothing is broken: the question combines things that have no
             # defined meaning together. Reporting that as an error told the
@@ -460,8 +651,7 @@ class Pipeline:
             # the user's question -- but showing a wrong table is worse than
             # showing none, so it fails closed and is logged with the plan.
             log.error("grain violation for request %s: %s", request_id, exc)
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], "internal consistency check failed", "error")
+            stage(plan.model_dump(mode="json"), "internal consistency check failed", "error")
             return finish(
                 PipelineResult(
                     status="error", conversation_id=state.conversation_id,
@@ -486,27 +676,25 @@ class Pipeline:
             answer.notes.insert(0, disclosure)
 
         # --- 11. persist ----------------------------------------------------
-        # One rule, in continuity.py, for all three limits that can cut a
-        # cohort down: the ranking limit, the response cap and the storage
-        # cap. Computing it here from `rows` alone got two of them wrong --
-        # it counted the renderer's discarded probe row, and it could not
-        # see truncation at all when max_result_rows was below the storage
-        # cap.
+        # One rule, in continuity.py, for what a later "those" may refer to:
+        # the whole, distinct population shown -- bounded by the response cap
+        # and by nothing else. Committed by finish(), atomically with the turn.
         summary = summarise_cohort(
             rows,
             dimension=plan.dimensions[0].value if plan.dimensions else None,
             max_rows=self.settings.max_result_rows,
         )
-        self._record(
-            principal, state, question, plan.model_dump(mode="json"),
-            list(summary.ids) if summary else [], answer.headline, "answered",
+        stage(
+            plan.model_dump(mode="json"), answer.headline, "answered",
             cohort_dimension=summary.dimension if summary else None,
+            cohort_ids=list(summary.ids) if summary else [],
             cohort_complete=summary.complete if summary else True,
             cohort_total=summary.total_available if summary else None,
         )
 
         return finish(
             PipelineResult(
+                applied_cohort=(binding.dimension, binding.ids) if binding else None,
                 status="answered", conversation_id=state.conversation_id,
                 message=answer.headline, answer=answer,
                 interpretation=plan.interpretation,
@@ -519,22 +707,6 @@ class Pipeline:
         )
 
     # -- helpers -------------------------------------------------------------
-
-    def _record(
-        self, principal: Principal, state: ConversationState, question: str,
-        plan: dict[str, Any] | None, cohort: list[str], answer_text: str, status: str,
-        cohort_dimension: str | None = None,
-        cohort_complete: bool = True, cohort_total: int | None = None,
-    ) -> None:
-        try:
-            record_turn(
-                principal, state, question=question, plan=plan,
-                cohort=cohort, answer_text=answer_text, status=status,
-                cohort_dimension=cohort_dimension,
-                cohort_complete=cohort_complete, cohort_total=cohort_total,
-            )
-        except Exception:                       # never fail a request on bookkeeping
-            log.warning("failed to persist conversation turn", exc_info=True)
 
     def _write_audit(self, audit: dict[str, Any]) -> None:
         """Hashes, counts, codes and timings only -- never WAC values, result

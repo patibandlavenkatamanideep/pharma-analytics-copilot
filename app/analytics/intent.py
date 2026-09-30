@@ -95,6 +95,9 @@ class IntentGap:
     #: For an ambiguous name: the candidates, as (entity_id, label, detail),
     #: so the user chooses between real options rather than retyping.
     choices: tuple[tuple[str, str, str], ...] = ()
+    #: The phrase the gap is about, as the user typed it -- stored with a
+    #: pending clarification so a reply can be matched back to it.
+    subject: str = ""
 
     def message(self) -> str:
         return f"{self.detail} {self.suggestion}".strip()
@@ -136,6 +139,7 @@ def find_gaps(
     plan: "AnalyticalPlan",
     vocabulary: "Vocabulary",
     index: "EntityIndex | None" = None,
+    resolved: dict[str, str] | None = None,
 ) -> list[IntentGap]:
     """Everything the question asked for that the plan does not deliver.
 
@@ -148,7 +152,7 @@ def find_gaps(
     gaps: list[IntentGap] = []
     if index is None:
         index = index_from(vocabulary.products, None, _other_vocabulary(vocabulary))
-    gaps += fidelity_gaps(question, plan, index, vocabulary)
+    gaps += fidelity_gaps(question, plan, index, vocabulary, resolved)
 
     known_products = _normalise(vocabulary.products)
     known_places = _normalise(vocabulary.all_territories) | _normalise(vocabulary.all_regions)
@@ -288,6 +292,7 @@ def fidelity_gaps(
     plan: "AnalyticalPlan",
     index: "EntityIndex",
     vocabulary: "Vocabulary",
+    resolved: dict[str, str] | None = None,
 ) -> list[IntentGap]:
     """Did every named product and account survive into the plan -- and does
     everything the plan filters on exist?
@@ -295,7 +300,7 @@ def fidelity_gaps(
     Checked against the INDEX, never against the plan's own values: a model
     that puts FLOOBERTAX in product_names has not made it real.
     """
-    from app.analytics.mentions import find_mentions, normalise
+    from app.analytics.mentions import apply_choices, find_mentions, normalise
     from app.analytics.plan import Dimension
 
     gaps: list[IntentGap] = []
@@ -304,7 +309,7 @@ def fidelity_gaps(
     by_product = Dimension.product in plan.dimensions
     by_account = Dimension.account in plan.dimensions
 
-    for m in find_mentions(question, index):
+    for m in apply_choices(find_mentions(question, index), resolved):
         if m.kind == "unknown_product":
             near = _closest(m.text.upper(), vocabulary.products)
             gaps.append(IntentGap(
@@ -327,6 +332,7 @@ def fidelity_gaps(
                             f"accounts."),
                     suggestion="Which one did you mean?",
                     choices=tuple((c.entity_id, c.label, c.detail) for c in m.candidates),
+                    subject=m.text,
                 ))
         elif m.reference_only:
             continue
@@ -367,7 +373,8 @@ PRE_PLAN_KINDS = frozenset({"unresolved_product", "unresolved_account",
                             "ambiguous_account"})
 
 
-def resolve_mentions(question: str, vocabulary: "Vocabulary", index: "EntityIndex"):
+def resolve_mentions(question: str, vocabulary: "Vocabulary", index: "EntityIndex",
+                     resolved: dict[str, str] | None = None):
     """The named entities, and the gaps that no plan could close.
 
     Returns (mentions, gaps). Called on the request path before planning, so
@@ -378,12 +385,14 @@ def resolve_mentions(question: str, vocabulary: "Vocabulary", index: "EntityInde
     from app.analytics.mentions import find_mentions
     from app.analytics.plan import AnalyticalPlan
 
-    mentions = find_mentions(question, index)
+    from app.analytics.mentions import apply_choices
+
+    mentions = apply_choices(find_mentions(question, index), resolved)
     # A plan-free check: an empty plan filters nothing, so only the
     # question-side kinds can fire, and they are the ones kept.
     empty = AnalyticalPlan.model_validate(
         {"metric": "paid_pack_units", "time": {"kind": "named", "named": "all_time"}})
-    gaps = [g for g in fidelity_gaps(question, empty, index, vocabulary)
+    gaps = [g for g in fidelity_gaps(question, empty, index, vocabulary, resolved)
             if g.kind in PRE_PLAN_KINDS]
     return mentions, gaps
 

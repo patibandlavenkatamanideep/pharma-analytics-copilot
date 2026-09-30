@@ -31,11 +31,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.conversation.continuity import (
-    COHORT_STORAGE_CAP,
-    Cohort,
-    summarise_cohort,
-)
+from app.conversation.continuity import Cohort, summarise_cohort
 
 
 def rows(n: int, *, start: int = 0) -> list[dict]:
@@ -88,41 +84,43 @@ def test_a_truncated_total_is_not_reported_as_an_exact_figure():
 
 
 # ---------------------------------------------------------------------------
-# The storage cap
+# No storage cap (review finding 4)
 # ---------------------------------------------------------------------------
+#
+# These tests used to assert a 200-id STORAGE cap: more than 200 members
+# meant "not complete", and the describe() text said "200 of 350". That was
+# honest about the limitation but did not remove it -- "those same accounts"
+# after a 500-account answer could only ever ask for clarification. Members
+# are now stored whole and bound to the query by the server, so these
+# expectations changed with the requirement, not to accommodate a defect.
 
-def test_more_ids_than_the_storage_cap_is_not_complete():
-    summary = summarise_cohort(
-        rows(COHORT_STORAGE_CAP + 1), dimension="account", max_rows=5000)
+def test_a_five_hundred_account_answer_keeps_all_five_hundred():
+    summary = summarise_cohort(rows(500), dimension="account", max_rows=5000)
 
-    assert summary.complete is False
-    assert len(summary.ids) == COHORT_STORAGE_CAP
-
-
-def test_exactly_the_storage_cap_is_complete():
-    summary = summarise_cohort(
-        rows(COHORT_STORAGE_CAP), dimension="account", max_rows=5000)
-
+    assert len(summary.ids) == 500
     assert summary.complete is True
-    assert summary.total_available == COHORT_STORAGE_CAP
+    assert summary.total_available == 500
+    assert summary.describe() == "500 accounts"
 
 
-def test_the_stored_total_is_exact_when_nothing_was_truncated():
-    """Within the response cap the query counted every group, so the total
-    is a measurement and can be stated."""
-    summary = summarise_cohort(rows(350), dimension="account", max_rows=5000)
+def test_repeated_period_rows_are_one_member_each():
+    """A breakdown by account AND month repeats each account per month.
+    Those repeats are not new members."""
+    repeated = [{"dim0_id": f"ACC{a:05d}", "dim1_id": month}
+                for a in range(3) for month in ("2026-07", "2026-08")]
 
-    assert summary.total_available == 350
-    assert summary.describe() == "200 of 350 accounts (truncated)"
+    summary = summarise_cohort(repeated, dimension="account", max_rows=5000)
+
+    assert summary.ids == ("ACC00000", "ACC00001", "ACC00002")
+    assert summary.total_available == 3
 
 
-def test_both_caps_at_once_still_reports_the_weaker_claim():
-    """Truncated by the response cap AND over the storage cap. The total is
-    unknown, so it must not be stated."""
+def test_a_truncated_response_is_still_incomplete_with_an_unknown_total():
     summary = summarise_cohort(rows(301), dimension="account", max_rows=300)
 
     assert summary.complete is False
     assert summary.total_available is None
+    assert len(summary.ids) == 300
 
 
 # ---------------------------------------------------------------------------
@@ -139,12 +137,9 @@ def test_a_top_n_result_is_a_complete_cohort():
     assert summary.describe() == "5 accounts"
 
 
-def test_a_top_n_larger_than_the_storage_cap_is_not_complete():
-    """"Top 500" is still more than a turn can keep."""
+def test_a_top_n_of_five_hundred_is_complete_too():
     summary = summarise_cohort(rows(500), dimension="account", max_rows=5000)
-
-    assert summary.complete is False
-    assert len(summary.ids) == COHORT_STORAGE_CAP
+    assert summary.complete is True and len(summary.ids) == 500
 
 
 # ---------------------------------------------------------------------------

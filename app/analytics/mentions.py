@@ -232,7 +232,11 @@ def index_from(
         known.add(code.lower())
     return EntityIndex(
         products={normalise(p): p for p in products if p},
-        accounts={k: tuple(v) for k, v in by_label.items()},
+        # Candidates in a fixed order. They are shown to the user and stored,
+        # and "the second one" must mean the same account every time; the
+        # database returns grouped rows in no particular order.
+        accounts={k: tuple(sorted(v, key=lambda r: (r.detail, r.entity_id)))
+                  for k, v in by_label.items()},
         known_words=frozenset(known),
         has_accounts=has_accounts,
     )
@@ -316,6 +320,28 @@ def find_mentions(question: str, index: EntityIndex) -> list[Mention]:
             taken.update(range(start, end))
 
     return sorted(found, key=lambda x: x.start)
+
+
+def apply_choices(mentions: list[Mention], resolved: dict[str, str] | None) -> list[Mention]:
+    """Resolve an ambiguous mention with the option the user chose.
+
+    `resolved` maps a normalised phrase to the chosen entity id. The choice is
+    applied only if that id is STILL a candidate for the phrase in the
+    caller's current index -- a stored option is not a grant, and access can
+    change between a question and its answer.
+    """
+    if not resolved:
+        return mentions
+    out = []
+    for m in mentions:
+        pick = resolved.get(normalise(m.text))
+        if m.ambiguous and pick in m.ids:
+            m = Mention(kind=m.kind, text=m.text, start=m.start, end=m.end,
+                        ids=(pick,), candidates=tuple(c for c in m.candidates
+                                                      if c.entity_id == pick),
+                        reference_only=m.reference_only)
+        out.append(m)
+    return out
 
 
 # ---------------------------------------------------------------------------

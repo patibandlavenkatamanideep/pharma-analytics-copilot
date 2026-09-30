@@ -121,18 +121,30 @@ def context_with(question: str, **kw) -> PlanningContext:
 # The prompt carries typed cohorts
 # ---------------------------------------------------------------------------
 
+def cohort_paragraph(prompt: str) -> str:
+    return next(line for line in prompt.split("\n") if "previous answer's" in line)
+
+
 def test_a_product_cohort_is_not_described_as_account_ids():
-    """The reproduced defect. The prompt said "account ids" for every grain."""
+    """The reproduced defect. The prompt said "account ids" for every grain.
+
+    Since 30 September the ids are not sent at all: the server binds the
+    stored population to the query, whole, and the model is told only what
+    it is and that it is frozen. The typing guarantee is unchanged -- and
+    tested against the binding itself in test_cohort_typing.py.
+    """
     cohort = Cohort(dimension="product", ids=("ZENOVAX", "GEMTARA"))
     prompt = build_system_prompt(context_with(
         "Show me those same ones by month",
         previous_plan={"metric": "paid_pack_units", "dimensions": ["product"]},
         cohort=cohort))
+    paragraph = cohort_paragraph(prompt)
 
-    assert "account ids: ZENOVAX" not in prompt
-    assert "product values: ZENOVAX, GEMTARA" in prompt
-    assert "filters.product_names" in prompt
-    assert "filters.account_ids" not in prompt
+    assert "account ids" not in prompt
+    assert "2 products" in paragraph
+    assert "do NOT add product_names" in paragraph
+    assert "ZENOVAX" not in paragraph, "ids are the server's to apply, not the model's"
+    assert "account_ids" not in paragraph
 
 
 def test_a_facility_cohort_names_the_facility_filter():
@@ -141,8 +153,9 @@ def test_a_facility_cohort_names_the_facility_filter():
         "Break those down by month",
         previous_plan={"metric": "paid_pack_units", "dimensions": ["facility"]},
         cohort=cohort))
-    assert "filters.facility_ids" in prompt
-    assert "filters.account_ids" not in prompt
+    paragraph = cohort_paragraph(prompt)
+    assert "2 facilities" in paragraph and "facility_ids" in paragraph
+    assert "account_ids" not in paragraph
 
 
 def test_an_account_cohort_still_names_account_ids():
@@ -152,7 +165,9 @@ def test_an_account_cohort_still_names_account_ids():
         "Show me those same accounts by month",
         previous_plan={"metric": "paid_pack_units", "dimensions": ["account"]},
         cohort=cohort))
-    assert "filters.account_ids" in prompt
+    paragraph = cohort_paragraph(prompt)
+    assert "2 accounts" in paragraph and "account_ids" in paragraph
+    assert "GP1" not in paragraph
 
 
 def test_a_period_cohort_is_not_offered_as_a_population():

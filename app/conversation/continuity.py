@@ -41,11 +41,9 @@ from typing import Any
 
 #: Bumped when the meaning of continuity changes, so an evidence record can
 #: say which rules produced a plan.
-CONTINUITY_VERSION = "1.1.0"
-
-#: How many entity ids a single turn keeps. A conversation row is not a
-#: result set; this is a bound on the conversation table, not on the answer.
-COHORT_STORAGE_CAP = 200
+#: 2.0.0: cohorts are kept whole (no 200-id cap) and distinct, and only an
+#: explicit reference freezes one.
+CONTINUITY_VERSION = "2.0.0"
 
 #: The plan filter each cohort grain belongs in. A grain absent from this map
 #: has no population to carry -- a period is the obvious case: "those same
@@ -129,32 +127,28 @@ def summarise_cohort(
     source_turn: int | None = None,
     dataset_id: str | None = None,
 ) -> Cohort | None:
-    """Turn a result set into the cohort a later turn may refer back to.
+    """Turn a result set into the population a later turn may refer back to.
 
-    Three different limits can cut a cohort down, and conflating them is
-    how a slice comes to be presented as a whole:
+    Two limits can cut a population down, and they are not the same thing:
 
-    * the **ranking limit** -- "top 5" returns five rows, and those five
-      *are* the population the question asked about, so the cohort is
-      complete;
+    * the **ranking limit** -- "top 5" returns five rows, and those five ARE
+      the population asked about, so the cohort is complete;
     * the **response cap** (``max_rows``) -- the compiler asks for one row
-      more than the cap so truncation can be detected, and rows past the
-      cap are never shown to anyone;
-    * the **storage cap** (:data:`COHORT_STORAGE_CAP`) -- how many ids a
-      turn keeps.
+      more than the cap so truncation can be detected, and rows past the cap
+      are never shown to anyone. A truncated answer is a slice.
 
-    Completeness used to be derived from the storage cap alone. With the
-    default configuration the two caps mask the difference, because 5,000
-    is larger than 200 and any response truncation therefore also exceeded
-    the storage cap. ``max_result_rows`` is configuration: at any value
-    below 200, a truncated answer was recorded as a complete cohort.
+    There used to be a third: a 200-id storage cap. A 500-account answer
+    kept 200, and "those same accounts" silently became a smaller
+    population. Members are now stored whole, in their own table, and
+    applied to the query by the server rather than through the plan's
+    200-id filter -- so the only bound is the response itself.
 
-    When the response itself was truncated the number of matching entities
-    is a floor rather than a count -- the query stopped looking -- so
-    ``total_available`` is left unknown rather than stated.
+    Members are DISTINCT, in first-seen order. A breakdown by account and
+    month repeats each account once per month; counting the repeats made
+    six "members" out of three accounts.
 
-    Returns ``None`` when the result has no dimension at all: a single
-    total is not a population.
+    Returns ``None`` when the result has no dimension: a single total is
+    not a population.
     """
     if dimension is None:
         return None
@@ -162,19 +156,21 @@ def summarise_cohort(
     truncated = len(rows) > max_rows
     shown = rows[:max_rows]
 
-    ids = tuple(
+    ids = tuple(dict.fromkeys(
         str(row["dim0_id"]) for row in shown
-        # A NULL group key is a real row -- it occupies the cap -- but it
-        # is not an entity anyone can refer back to.
+        # A NULL group key is a real row -- it occupies the cap -- but it is
+        # not an entity anyone can refer back to.
         if row.get("dim0_id") is not None
-    )
+    ))
 
     return Cohort(
         dimension=dimension,
-        ids=ids[:COHORT_STORAGE_CAP],
+        ids=ids,
         source_turn=source_turn,
         dataset_id=dataset_id,
-        complete=not truncated and len(ids) <= COHORT_STORAGE_CAP,
+        complete=not truncated,
+        # When the response was truncated the query stopped counting: the
+        # number of matching entities is a floor, so it is left unknown.
         total_available=None if truncated else len(ids),
     )
 
@@ -198,11 +194,19 @@ class Continuity:
         return self.kind in (TurnKind.FOLLOW_UP, TurnKind.CORRECTION,
                              TurnKind.CLARIFICATION_ANSWER)
 
+    #: True when the question refers back explicitly -- "those", "the same
+    #: ones". Only then is the previous population FROZEN. "What about last
+    #: quarter?" modifies the previous request and re-ranks in the new
+    #: window; freezing there would answer about last quarter's top ten
+    #: using this quarter's ten.
+    refers_back: bool = False
+
     @property
     def carries_cohort(self) -> bool:
-        """A cohort is frozen only on an explicit reference to it."""
+        """Frozen only on an explicit reference, and only if complete."""
         return (
             self.kind is TurnKind.FOLLOW_UP
+            and self.refers_back
             and self.cohort is not None
             and self.cohort.is_population
             and self.cohort.complete
@@ -326,8 +330,9 @@ def resolve(
         TurnKind.FOLLOW_UP, TurnKind.CORRECTION,
         TurnKind.CLARIFICATION_ANSWER) else None
 
+    refers_back = bool(_REFERS_BACK.search(question or ""))
     carried_cohort: Cohort | None = None
-    if kind is TurnKind.FOLLOW_UP and cohort is not None:
+    if kind is TurnKind.FOLLOW_UP and refers_back and cohort is not None:
         if not cohort.is_population:
             # A period is not a population. Nothing to carry, nothing to say.
             pass
@@ -342,7 +347,8 @@ def resolve(
             )
             return Continuity(kind=kind, previous_plan=carried_plan,
                               cohort=None, clarification=clarification,
-                              reasons=reasons + ("cohort was truncated",))
+                              reasons=reasons + ("cohort was truncated",),
+                              refers_back=True)
         else:
             carried_cohort = cohort
             disclosures.append(
@@ -357,7 +363,8 @@ def resolve(
 
     return Continuity(
         kind=kind, previous_plan=carried_plan, cohort=carried_cohort,
-        clarification=None, disclosures=tuple(disclosures), reasons=reasons)
+        clarification=None, disclosures=tuple(disclosures), reasons=reasons,
+        refers_back=refers_back)
 
 
 def _describe_inherited(plan: dict[str, Any]) -> str:

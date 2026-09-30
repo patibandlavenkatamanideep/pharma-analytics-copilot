@@ -42,6 +42,14 @@ class Settings(BaseSettings):
     # -- so it is configuration, and a different client sets their own.
     # Comma-separated in the environment: PAC_COMPANY_NAMES="NovaPharma,Nova".
     company_names: str = "NovaPharma"
+
+    # --- runs -------------------------------------------------------------------
+    # How long one request may hold a conversation before another may take
+    # it over. Longer than the slowest legitimate request, or a slow answer
+    # loses its lease mid-flight and is refused at commit as a conflict.
+    run_lease_seconds: int = 120
+    # How long a client idempotency key keeps its meaning.
+    idempotency_retention_seconds: int = 86_400
     max_result_bytes: int = 4_000_000
 
     # --- LLM ----------------------------------------------------------------

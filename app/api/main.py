@@ -15,7 +15,7 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -30,7 +30,8 @@ from app.conversation.state import (
 )
 from app.db import close_pools, verify_runtime_role_safety
 from app.llm.planner import build_planner
-from app.pipeline import Pipeline
+from app.conversation import runs
+from app.pipeline import Pipeline, to_payload
 
 log = logging.getLogger(__name__)
 
@@ -189,15 +190,35 @@ class AskRequest(BaseModel):
 
 
 @app.post("/api/ask")
-def ask(body: AskRequest, user: CurrentUser) -> dict[str, Any]:
+def ask(
+    body: AskRequest,
+    user: CurrentUser,
+    idempotency_key: Annotated[
+        str | None,
+        Header(alias="Idempotency-Key", max_length=128, pattern=r"^[A-Za-z0-9_\-:.]{8,128}$"),
+    ] = None,
+) -> dict[str, Any]:
     try:
         result = pipeline().ask(
             user, body.question,
             conversation_id=body.conversation_id,
             include_sql=body.include_sql,
+            idempotency_key=idempotency_key,
         )
     except ConversationAccessError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from None
+    except runs.RunBusy as exc:
+        # Defined overlap behaviour: one live request per conversation. The
+        # client retries; with the same key it gets this request's outcome.
+        raise HTTPException(status_code=409, detail={
+            "code": "same_request_running" if exc.same_request else "conversation_busy",
+            "message": str(exc)}) from None
+    except runs.IdempotencyConflict as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "idempotency_key_reused", "message": str(exc)}) from None
+    except runs.ReplayUnavailable as exc:
+        raise HTTPException(status_code=403, detail={
+            "code": "access_changed", "message": str(exc)}) from None
     except Exception:
         # An unhandled failure still has to be investigable. Without an id in
         # the response there is nothing to connect the user's report to the
@@ -214,42 +235,19 @@ def ask(body: AskRequest, user: CurrentUser) -> dict[str, Any]:
             },
         ) from None
 
-    payload: dict[str, Any] = {
-        "status": result.status,
-        "conversation_id": result.conversation_id,
-        "message": result.message,
-        "request_id": result.request_id,
-    }
-    if result.alternative:
-        payload["alternative"] = result.alternative
-    if result.choices:
-        # Options the caller can already see: they came from the caller's own
-        # scoped index, so listing them discloses nothing new.
-        payload["choices"] = result.choices
-    if body.include_sql:
-        # The typed plan is returned alongside the SQL, under the same explicit
-        # request. It is strictly less sensitive than the SQL -- it names a
-        # metric key, dimensions and filter values, and by construction cannot
-        # contain a role, a scope, a table or a column -- and it is the thing
-        # actually worth inspecting, because it is what the model produced and
-        # what everything downstream was compiled from.
-        payload["plan"] = result.plan
-    if result.sql:
-        payload["sql"] = result.sql
-    if result.answer:
-        a = result.answer
-        payload["answer"] = {
-            "headline": a.headline,
-            "columns": a.columns,
-            "rows": a.table,
-            "scope_note": a.scope_note,
-            "period_note": a.period_note,
-            "warnings": a.warnings,
-            "notes": a.notes,
-            "row_count": a.row_count,
-            "truncated": a.truncated,
-        }
-    return payload
+    # Built once, by the pipeline, so the copy stored for idempotent replay
+    # is exactly this body.
+    return result.payload or to_payload(result, body.include_sql)
+
+
+@app.get("/api/runs/{run_id}")
+def run_state(run_id: str, user: CurrentUser) -> dict[str, Any]:
+    """A request's status, for its owner under their current access. Anyone
+    else gets the same 404 as for a run that does not exist."""
+    found = runs.run_status(user, run_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="That request does not exist.")
+    return found
 
 
 @app.get("/api/conversations")

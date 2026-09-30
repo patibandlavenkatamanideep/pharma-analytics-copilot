@@ -311,15 +311,15 @@ def build_system_prompt(context: PlanningContext) -> str:
 
     if cont is not None and cont.carries_cohort and cont.cohort is not None:
         cohort = cont.cohort
-        # Typed. The previous version said "account ids" for every grain, so
-        # a cohort of products was presented to the model as organization ids.
+        # The ids are NOT listed. The server applies the stored population
+        # itself -- all of it, which the plan's 200-id filter could not hold
+        # -- so the model only needs to know that it is frozen. Typed, still:
+        # the previous version called every cohort "account ids".
         parts += [
-            f"The previous answer was about these {cohort.dimension} values: "
-            f"{', '.join(cohort.ids)}. If the user says 'those' or 'the same "
-            f"ones', put exactly these into filters.{cohort.filter_field} and "
-            f"drop the ranking, so the cohort is frozen rather than re-ranked. "
-            f"They are {cohort.dimension} values -- do not put them in any "
-            f"other filter.",
+            f"The user is referring to the previous answer's "
+            f"{cohort.describe()}. The server restricts this answer to exactly "
+            f"that population, so do NOT add {cohort.filter_field} for them. "
+            f"Drop the ranking: the cohort is frozen, not re-ranked.",
         ]
 
     return "\n".join(parts)
@@ -688,8 +688,10 @@ class OfflinePlanner:
             from app.analytics.plan import Ranking
             ranking = Ranking.model_validate(prev["ranking"])
 
-        # A frozen cohort is never re-ranked.
-        if re.search(r"\bthose\b|\bthese\b|\bsame\b", q) and context.previous_cohort:
+        # A frozen cohort is never re-ranked. Decided by the continuity layer,
+        # the same decision the live prompt receives.
+        cont = context.continuity
+        if cont is not None and cont.carries_cohort:
             ranking = None
 
         # Keep a comparison the previous plan had, if the metric still needs one.
@@ -949,10 +951,8 @@ class OfflinePlanner:
         # cohort of products became a list of organization ids and matched
         # nothing -- a follow-up that looked like it worked and returned an
         # empty or wrong population.
-        if re.search(r"\bthose\b|\bthese\b|\bsame\b", q) and context.previous_cohort:
-            target = COHORT_FILTER_FIELD.get(context.previous_cohort_dimension or "")
-            if target:
-                update[target] = list(context.previous_cohort)
+        # The cohort itself is applied by the server (CohortBinding), whole.
+        # Copying it into this filter capped it at the filter's 200 ids.
 
         return filters.model_copy(update=update) if update else filters
 
