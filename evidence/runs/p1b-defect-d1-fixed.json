@@ -1,0 +1,63 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T02:10:30+00:00",
+  "claim": "D1 is fixed: the gate now rejects a call-phase skip",
+  "application": {
+    "sha": "32cc0c63967290aafe5e218cb5772918fc04370d",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "github/workflows/ci.yml",
+      "tests/release_gate.py",
+      "evidence/runs/p1b-strict-gate.json",
+      "tests/unit/test_release_gate_strict.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": null,
+    "planner": null,
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "evidence/probes/gate_accepts_call_phase_skip.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.14
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "FIXED: the gate rejected the call-phase skip."
+  },
+  "artifacts": [],
+  "limits": [
+    "Probe exits 1 once fixed; the inverted exit code is asserted by tests/unit/test_release_gate_strict.py."
+  ]
+}

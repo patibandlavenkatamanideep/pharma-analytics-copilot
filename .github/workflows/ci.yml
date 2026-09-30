@@ -63,6 +63,13 @@ jobs:
       - name: Build the coherent-market fixture database
         run: python scripts/build_fixture_db.py
 
+      # tests/security mutates roles, territories and pricing permission, so
+      # it runs only against a disposable database. Without this step those
+      # tests SKIPPED in CI and the job still went green -- which is exactly
+      # what the strict gate below now refuses to allow.
+      - name: Build the disposable authorization-test database
+        run: python scripts/build_authtest_db.py
+
       - name: Verify the security boundary is intact
         run: |
           python - <<'PY'
@@ -73,14 +80,31 @@ jobs:
           print("boundary intact")
           PY
 
-      - name: Security suite (release gate)
-        run: python -m pytest tests/security -q
+      # --release-gate turns any skip, collection error or unapproved xfail
+      # into a failure, and refuses a session in which nothing passed. Plain
+      # `pytest tests/security -q` exits 0 when every test skips for a
+      # missing database, which is a green tick for a run that checked
+      # nothing.
+      #
+      # PAC_SECURITY_MIN_TESTS is a SECONDARY guard against a narrowed
+      # selection. It is maintained deliberately: raise it when security
+      # tests are added. It is not the definition of the requirement --
+      # collected tests that skip still fail the gate.
+      - name: Security suite (release gate, strict)
+        env:
+          PAC_SECURITY_MIN_TESTS: "115"
+        run: |
+          python -m pytest tests/security -q \
+            --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
 
       - name: Full test suite
         run: python -m pytest tests -q
 
       - name: Held-out question set (offline planner, no spend)
         run: python scripts/run_evals.py
+
+      - name: The release gate itself must reject unverified runs
+        run: python -m pytest tests/unit/test_release_gate_strict.py tests/unit/test_release_gate.py -q
 
       - name: Upload evaluation record
         if: always()

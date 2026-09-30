@@ -104,9 +104,9 @@ Three categories, deliberately separated.
 
 | ID | Defect | Probe | Evidence |
 |---|---|---|---|
-| **D1** | The release gate accepts a skip raised from a test body. `tests/release_gate.py` converts a skip to a failure only when `report.when == "setup"`. A `pytest.skip()` inside a test body skips at **call** phase, so `--release-gate --min-tests 1` exits **0** for a run that verified nothing. | `evidence/probes/gate_accepts_call_phase_skip.py` | `p0-defect-gate_accepts_call_phase_skip.json` |
+| **D1** ✅ | *Fixed in Phase 1B.* The release gate accepted a skip raised from a test body. `tests/release_gate.py` converts a skip to a failure only when `report.when == "setup"`. A `pytest.skip()` inside a test body skips at **call** phase, so `--release-gate --min-tests 1` exits **0** for a run that verified nothing. | `evidence/probes/gate_accepts_call_phase_skip.py` | `p0-defect-gate_accepts_call_phase_skip.json` |
 | **D2** | The live prompt mistypes cohorts and mislabels turns. `build_system_prompt` emits *"The previous answer was about these **account ids**: ZENOVAX, GEMTARA"* for a **product** cohort, and *"This is a FOLLOW-UP"* whenever any previous plan exists. The typed-cohort work landed in `OfflinePlanner` and the pipeline but never reached the only text the live model sees. | `evidence/probes/live_prompt_mistypes_cohort.py` | `p0-defect-live_prompt_mistypes_cohort.json` |
-| **D3** | CI does not run the strict gate. `.github/workflows/ci.yml:77` is `python -m pytest tests/security -q` with no `--release-gate` and no `--min-tests`. Confirmed by reading the workflow. | — | inspection |
+| **D3** ✅ | *Fixed in Phase 1B.* CI did not run the strict gate. `.github/workflows/ci.yml:77` is `python -m pytest tests/security -q` with no `--release-gate` and no `--min-tests`. Confirmed by reading the workflow. | — | inspection |
 
 ### Source-level risks — the mechanism is in the code; production manifestation not reproduced here
 
@@ -142,7 +142,7 @@ observability, real-data onboarding contracts, and layered evaluation.
 | Phase | Purpose | State |
 |---|---|---|
 | **0** | Baseline, inventory, evidence schema, reproduced defects | **complete** |
-| **1** | Repair D1–D3, R2, R8; reconcile docs | next |
+| **1** | Repair D1–D3, R2, R8; reconcile docs | **1B done**, 1A/1C/1D next |
 | **2** | Original-data contracts, staging, versioned crosswalk | planned |
 | **3** | Request-wide snapshot consistency (R3) | planned |
 | **4** | Bounded runtime harness (R5, R6, R7) | planned |
@@ -168,7 +168,7 @@ deferred. Neither is a pass.
 | A1 | Reviewer can reproduce the baseline | 0 | **passed** | `p0-baseline-suite.json` |
 | A2 | Every known gap recorded without conflicting claims | 0 | **passed** | this document |
 | A3 | Evidence records carry SHA, versions, dataset, mode, limits | 0 | **passed** | `evidence/schema.json` |
-| A4 | Strict gate rejects setup skips, call skips, empty and narrowed selections | 1 | not run | |
+| A4 | Strict gate rejects setup skips, call skips, empty and narrowed selections | 1 | **passed** | `p1b-strict-gate.json` |
 | A5 | Live adapter prompt carries typed cohorts and explicit turn classification | 1 | not run | |
 | A6 | Planner returns an immutable per-call result; usage survives repair | 1 | not run | |
 | A7 | DSN tolerates reserved characters | 1 | not run | |
@@ -184,6 +184,32 @@ deferred. Neither is a pass.
 | A17 | Restore and rollback exercised locally | 8 | not run | |
 | A18 | Model quality on original data | — | **blocked** | no authorized dataset; no paid inference |
 | A19 | Deployed parity re-verified | — | **blocked** | deployment changes out of scope |
+
+---
+
+## Phase 1B — the release gate (complete)
+
+The gate now rules on **outcomes**, not phases:
+
+| Rejected | Why it used to pass |
+|---|---|
+| Skip in **any** phase | Only `when == "setup"` was checked, so `pytest.skip()` in a test body slipped through |
+| Module-level skip | Produces no items at all; `--min-tests` saw a smaller collection, not a violation |
+| Collection error | Same — a module that fails to import shrank the collection silently |
+| Unapproved xfail / xpass | A known-failing security test is a known-failing security requirement |
+| Narrowed selection (`-k`) | The hook ran before pytest's own deselection, so it counted items about to be filtered out |
+| A session where nothing passed | Zero of zero exited 0 |
+
+`--allow-xfail` exists, is off by default, and has to be asked for.
+
+**CI also never built `pharma_analytics_authtest`**, which `tests/security`
+requires. Those tests have therefore been *skipping* in CI while the job went
+green. The strict gate would now fail that job, so the workflow builds the
+database and passes `--release-gate --min-tests 115`.
+
+Verified: 134 passed under the strict gate (115 security + 19 gate tests);
+`tests/unit/test_release_gate_strict.py` proves non-zero exit for each row
+above, in a subprocess, because the thing under test is an exit code.
 
 ---
 
