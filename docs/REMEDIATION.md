@@ -2,6 +2,11 @@
 
 Offline hardening phase. Starting commit **`6c6d632`** (93 files, 43 commits).
 
+> **A dated log, not a current count.** Every number below describes a run
+> that happened, at the revision named beside it, and is kept at its
+> original value on purpose. For the suites as they stand now, see
+> [TEST_INVENTORY.md](TEST_INVENTORY.md).
+
 **No AWS, Bedrock, hosted model, hosted CI, deployment or billing action is
 performed in this phase.** All verification is local, with
 `PAC_LLM_PROVIDER=offline`, AWS credentials unset and

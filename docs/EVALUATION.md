@@ -3,6 +3,13 @@
 Actual results from an actual run. Where something has not been measured, this
 document says so rather than leaving an impression.
 
+> **This page is a dated snapshot, not a current count.** The numbers below
+> were measured when the section was written and are kept at their original
+> values on purpose, so that a later reading of the same run is not confused
+> with a new one. For what the suites contain *now*, and what each one does
+> and does not establish, see
+> [TEST_INVENTORY.md](TEST_INVENTORY.md).
+
 ```
 $ python3 -m pytest tests -q
 148 passed in 24.96s

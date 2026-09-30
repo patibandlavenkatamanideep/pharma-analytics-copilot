@@ -188,6 +188,7 @@ deferred. Neither is a pass.
 | A19 | Deployed parity re-verified | — | **blocked** | deployment changes out of scope |
 | A20 | A synthetic secret cannot reach an evidence record or a CI log | 1 | **passed** | `p1d-evidence-redaction.json` |
 | A21 | Evidence records state the changed-file list accurately | 1 | **passed** | `p1d-record-accuracy.json` |
+| A22 | No document states a test count that is not currently true | 1 | **passed** | `p1d-suite-total.json` |
 
 ---
 
@@ -375,6 +376,79 @@ re-recorded because the fix landed before they were final.
 
 The parser now reads `--porcelain -z`, which also survives paths containing
 spaces and does not misread a rename's origin field as a second entry.
+
+### Documentation reconciled against measurement (A22)
+
+Four documents disagreed about the size of the suite:
+
+| Document | Stated | Actual |
+|---|---:|---:|
+| `README.md` | 368 | 517 |
+| `DESIGN.md` | 148 | 517 |
+| `docs/REQUIREMENTS.md` | 377 | 517 |
+| `docs/EVALUATION.md` | 148 | 517 |
+
+`docs/REQUIREMENTS.md` also credited `test_thresholds.py` with 17 tests; it
+has 26. `DESIGN.md`'s four-layer table was stale in every row, and described
+`evals/questions.yaml` as *held out* when it is the set the system was
+developed against.
+
+Nobody had lied. Each number was correct on the day it was typed, and there
+was nothing to notice when it stopped being correct. That is the failure
+mode worth fixing, not the individual numbers.
+
+`docs/TEST_INVENTORY.md` is now the one measured source: counts per layer,
+the command that produces each, the evidence record behind it, **what each
+layer does not establish**, the three evaluation suites with their differing
+standing, the state of both browser suites, and CI's history of accepting
+skips. Every present-tense document points at it instead of restating a
+number.
+
+`tests/unit/test_documented_counts.py` (14 tests) holds it closed. It
+collects the suite once and then requires:
+
+- each inventory row to equal what pytest collects;
+- the stated total to equal the sum of its parts;
+- the inventory's security count to equal CI's `--min-tests` floor, so the
+  document and the gate cannot drift apart;
+- every count claim in `README.md`, `DESIGN.md` and `docs/REQUIREMENTS.md`
+  to be either a per-file claim verified against that file, or a number some
+  suite currently produces;
+- each of those documents to point at the inventory;
+- `docs/REMEDIATION.md` and `docs/EVALUATION.md` — dated logs whose numbers
+  are deliberately **not** restated — to say so in their own text.
+
+Verified by reverting `README.md` to its old 368 and the inventory's unit row
+to 330: the guard names both, with the line number and the counts that do
+exist.
+
+### Separated results
+
+| Layer | Result | Record |
+|---|---|---|
+| Unit | 344 passed | `p1d-suite-unit.json` |
+| Integration | 58 passed | `p1d-suite-integration.json` |
+| Security (strict gate) | 115 passed | `p1d-suite-security.json` |
+| Total | 517 passed | `p1d-suite-total.json` |
+| Model evaluation — regression | 38/38 offline | `p1d-eval-questions.json` |
+| Model evaluation — held-out 1 | 12/12 offline | `p1d-eval-holdout.json` |
+| Model evaluation — held-out 2 | 11/12 offline | `p1d-eval-holdout2.json` |
+| Browser — component | 6 tests, **not runnable from this path** | see below |
+| Browser — end to end | 6 tests, needs a served application | — |
+
+### The browser suites, honestly
+
+The vitest worker never responds under
+`~/Desktop/Projects/pharma-analytics-copilot/web`. Both the `forks` and
+`threads` pools time out after 60 s having collected nothing — reproduced
+twice on this revision. The cause is the path rather than the suite; the
+most likely explanation is macOS file-access mediation on `~/Desktop`, and
+the same tree elsewhere on the same machine has run in under a second. The
+status recorded is *passes, but not from here*, which is weaker than
+"passes" and is the most that can be claimed today.
+
+Playwright needs the application served and is not part of the offline
+gate. Last passed against the deployed instance on 2026-09-25.
 
 ---
 

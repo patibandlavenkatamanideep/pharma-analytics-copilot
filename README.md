@@ -106,10 +106,14 @@ is the only coherent target for evaluating access control
 
 ## Tests
 
+Counts, what each layer establishes and what it does not, and the state of
+the browser and model-evaluation suites are in
+[docs/TEST_INVENTORY.md](docs/TEST_INVENTORY.md) — measured, not typed.
+
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
-python3 -m pytest tests -q                   # 368 tests
+python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
 python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
 
 cd web && npm test                           # 6 jsdom component tests
