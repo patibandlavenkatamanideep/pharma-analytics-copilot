@@ -30,18 +30,108 @@ from typing import Any
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEMA_VERSION = "1.0.0"
 
-# Any environment variable whose name matches is recorded as present, never by
-# value. Checked against the NAME, so a new secret does not need a code change
-# to be protected.
+# ---------------------------------------------------------------------------
+# Redaction
+# ---------------------------------------------------------------------------
+#
+# Two mechanisms, because they fail in different directions.
+#
+# 1. An ALLOWLIST for environment overrides. The first version matched names
+#    against a pattern of secret-sounding words, which is a denylist wearing
+#    different clothes: PAC_EVALUATOR_LOGIN, BEDROCK_BEARER, PGPASSFILE and
+#    AWS_SESSION_* all describe credentials and none of them match. A
+#    denylist is only as good as the last name somebody thought of, and the
+#    cost of being wrong is a credential committed to the repository. So the
+#    default is now redaction, and a variable's VALUE is recorded only if it
+#    appears below.
+#
+# 2. A VALUE scan for everything else. Most of a record is not a name/value
+#    pair -- it is a summary line, an exception message, a command argument --
+#    and none of that can be allowlisted. Credential-SHAPED text is stripped
+#    from every string in the record, at any depth.
+
+#: Environment overrides whose values describe WHAT was run, never WHERE or
+#: AS WHOM. Anything absent from this set is recorded as present-but-redacted,
+#: which is the fact the reader needs -- that the run was configured -- without
+#: the value.
+ENV_VALUE_ALLOWLIST = frozenset({
+    "CI",
+    "PAC_LLM_PROVIDER",
+    "PAC_DB_NAME",
+    "PAC_DB_PORT",
+    "PAC_EVAL_SUITE",
+    "PAC_EVAL_LIMIT",
+    "PAC_SECURITY_MIN_TESTS",
+    "PAC_STRICT_SECURITY",
+    "AWS_REGION",
+    "AWS_DEFAULT_REGION",
+    "AWS_EC2_METADATA_DISABLED",
+    "PYTHONHASHSEED",
+    "PYTHONDONTWRITEBYTECODE",
+    "TZ",
+})
+
+#: Keys whose values are removed wherever they appear in the record, at any
+#: depth -- not only in the environment block. Kept as a second line of
+#: defence for structures that are not the environment: a nested attempt
+#: record, a parsed config, an artifact description.
 SECRET_NAME = re.compile(
-    r"PASSWORD|SECRET|TOKEN|KEY|CREDENTIAL|DSN|CONN|AUTH", re.I)
+    r"PASSWORD|SECRET|TOKEN|KEY|CREDENTIAL|DSN|CONN|AUTH|COOKIE|SESSION|"
+    r"PASSFILE|LOGIN|BEARER", re.I)
+
+#: Credential-shaped VALUES. A password reaches a record as a value too --
+#: inside a connection string in an exception message, in a summary line, in
+#: a command argument. Matched against every string anywhere in the record.
+SECRET_VALUE_PATTERNS = (
+    # libpq keyword/value form, as make_conninfo emits it. The value may be
+    # single-quoted and may contain escaped quotes.
+    re.compile(r"password\s*=\s*(?:'(?:[^'\\]|\\.)*'|\S+)", re.I),
+    # A URL connection string carrying a password, for any driver.
+    re.compile(r"\b[a-z][a-z0-9+.\-]*://[^\s:/@]+:[^\s@]+@", re.I),
+    # AWS-shaped credentials.
+    re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+    re.compile(r"aws_secret_access_key\s*[=:]\s*\S+", re.I),
+    re.compile(r"\baws_session_token\s*[=:]\s*\S+", re.I),
+    # Bearer tokens, API keys and session cookies.
+    re.compile(r"\bBearer\s+[A-Za-z0-9._\-]{16,}", re.I),
+    re.compile(r"\bsk-ant-[A-Za-z0-9._\-]{8,}"),
+    re.compile(r"\bpac_session\s*=\s*\S+", re.I),
+)
+
+REDACTED = "<redacted>"
+#: Distinct from REDACTED so a reader can tell "this was set, value withheld"
+#: from "this string contained something credential-shaped".
+WITHHELD = "<set, value withheld>"
 
 
 def _redact_env(overrides: dict[str, str]) -> dict[str, str]:
+    """Allowlist: record the value only for names known to be safe."""
     return {
-        k: ("<redacted>" if SECRET_NAME.search(k) else v)
+        k: (_scrub(v) if k in ENV_VALUE_ALLOWLIST else WITHHELD)
         for k, v in overrides.items()
     }
+
+
+def _scrub(value: Any) -> Any:
+    """Recursively remove credential-shaped values, at any depth.
+
+    Applied to the whole record before it is written, so a secret cannot
+    reach disk through a field nobody thought to redact -- a captured
+    exception, a summary line, a nested mapping.
+    """
+    if isinstance(value, str):
+        for pattern in SECRET_VALUE_PATTERNS:
+            value = pattern.sub(REDACTED, value)
+        return value
+    if isinstance(value, dict):
+        return {
+            k: (REDACTED if isinstance(k, str) and SECRET_NAME.search(k)
+                else _scrub(v))
+            for k, v in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_scrub(v) for v in value]
+    return value
 
 
 def _git(*args: str) -> str | None:
@@ -53,9 +143,39 @@ def _git(*args: str) -> str | None:
         return None
 
 
+def _dirty_paths() -> list[str]:
+    """Paths git reports as changed.
+
+    Parsed from ``--porcelain -z`` rather than from ``_git()``, which strips
+    the output: the first entry's two-character status field starts with a
+    space for an unstaged change, so stripping ate it and every first path
+    was recorded one character short -- ``pp/config.py``. A record that
+    misstates which files were dirty is exactly the kind of quiet
+    inaccuracy this directory exists to prevent. ``-z`` also survives paths
+    containing spaces, which the line-split form quoted and mangled.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "-z"],
+            cwd=ROOT, capture_output=True, text=True, timeout=20).stdout
+    except Exception:
+        return []
+    paths: list[str] = []
+    entries = iter(out.split("\0"))
+    for entry in entries:
+        if not entry:
+            continue
+        status, path = entry[:2], entry[3:]
+        if "R" in status or "C" in status:
+            # A rename entry is followed by its origin path as a separate
+            # NUL-terminated field; consume it so it is not read as a status.
+            next(entries, None)
+        paths.append(path)
+    return sorted(paths)
+
+
 def _application() -> dict[str, Any]:
-    dirty = _git("status", "--porcelain") or ""
-    paths = [line[3:] for line in dirty.splitlines() if line.strip()]
+    paths = _dirty_paths()
     return {
         "sha": _git("rev-parse", "HEAD"),
         "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
@@ -181,7 +301,9 @@ def main() -> int:
         duration = round(time.monotonic() - started, 2)
         exit_code = proc.returncode
         stdout = (proc.stdout or "") + (proc.stderr or "")
-        sys.stdout.write(stdout[-4000:])
+        # Scrubbed on the way to the terminal as well: a CI log is as
+        # durable as a committed file, and often more widely readable.
+        sys.stdout.write(_scrub(stdout[-4000:]))
 
     if args.status:
         status = args.status
@@ -231,6 +353,11 @@ def main() -> int:
         "artifacts": [],
         "limits": args.limit or None,
     }
+
+    # Scrubbed as a whole, after assembly: the summary line and any captured
+    # error come from a child process and are not under this script's
+    # control.
+    record = _scrub(record)
 
     out = ROOT / args.out
     out.parent.mkdir(parents=True, exist_ok=True)

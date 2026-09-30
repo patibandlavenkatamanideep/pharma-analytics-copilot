@@ -66,14 +66,35 @@ class Settings(BaseSettings):
     environment: Literal["local", "cloud"] = "local"
 
     def dsn(self, role: Literal["owner", "auth", "exec", "scoped"]) -> str:
+        """A connection string for one runtime role.
+
+        Built with psycopg's own ``make_conninfo`` rather than by
+        interpolating into a URL. A generated password containing ``@``,
+        ``:``, ``/``, ``?`` or ``#`` broke the URL form: ``@`` split the
+        authority so the host became part of the password, and the client
+        then tried to reach a host that did not exist -- or, worse,
+        one that did.
+
+        make_conninfo emits the keyword/value form and quotes each value, so
+        no character in a credential can change the meaning of the string.
+        """
+        from psycopg.conninfo import make_conninfo
+
         user, password = {
             "owner": (self.db_owner_user, self.db_owner_password),
             "auth": (self.db_auth_user, self.db_auth_password),
             "exec": (self.db_exec_user, self.db_exec_password),
             "scoped": (self.db_scoped_user, self.db_scoped_password),
         }[role]
-        auth = f"{user}:{password}@" if password else f"{user}@"
-        return f"postgresql://{auth}{self.db_host}:{self.db_port}/{self.db_name}"
+        return make_conninfo(
+            host=self.db_host,
+            port=self.db_port,
+            dbname=self.db_name,
+            user=user,
+            # Omitted entirely when empty, so peer/trust authentication still
+            # works rather than being sent an empty password.
+            **({"password": password} if password else {}),
+        )
 
 
 @lru_cache
