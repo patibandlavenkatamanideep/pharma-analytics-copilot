@@ -30,6 +30,16 @@ from app.config import Settings, get_settings
 log = logging.getLogger(__name__)
 
 
+#: The instruction text sent to a live model. Bumped whenever that text
+#: changes meaning, so an evidence record can say which prompt produced a
+#: plan. Recorded as null before this existed.
+PROMPT_VERSION = "2.0.0"
+
+#: The planner<->pipeline contract: what a planner returns and what the
+#: pipeline may rely on.
+PLANNER_CONTRACT_VERSION = "2.0.0"
+
+
 class PlannerError(RuntimeError):
     """The question could not be turned into a plan."""
 
@@ -76,6 +86,15 @@ class PlanningContext:
     previous_plan: dict[str, Any] | None = None
     previous_cohort: list[str] = field(default_factory=list)
     previous_cohort_dimension: str | None = None
+    # Whether the stored cohort is the whole previous population. The
+    # pipeline keeps at most 200 ids; a truncated cohort must not be frozen
+    # as though it were the complete result.
+    previous_cohort_complete: bool = True
+    previous_cohort_total: int | None = None
+    #: Resolved by app.conversation.continuity and shared by BOTH planners.
+    #: Present so the prompt and the offline planner cannot disagree about
+    #: what this turn is -- which is exactly what they used to do.
+    continuity: Any | None = None
 
 
 class Planner(Protocol):
@@ -169,11 +188,17 @@ def build_system_prompt(context: PlanningContext) -> str:
     if context.known_regions:
         parts += [f"Regions you may reference: {', '.join(context.known_regions)}"]
 
-    if context.previous_plan:
+    cont = context.continuity
+    if cont is not None and cont.carries_previous_plan and cont.previous_plan:
+        label = {
+            "follow_up": "This is a FOLLOW-UP to the previous question.",
+            "correction": "This CORRECTS the previous question. Replace what "
+                          "the user is correcting; keep the rest.",
+            "clarification_answer": "This ANSWERS a clarification you asked. "
+                                    "Apply it to the previous request.",
+        }[cont.kind.value]
+        parts += ["", label, json.dumps(cont.previous_plan, indent=2, default=str)]
         parts += [
-            "",
-            "This is a FOLLOW-UP. The previous plan was:",
-            json.dumps(context.previous_plan, indent=2, default=str),
             "Carry forward everything the user did not change -- the metric, the "
             "dimensions, the filters, the time window AND THE RANKING. 'Break that "
             "down by X' adds a dimension and keeps the rest. 'Compare to last year' "
@@ -183,14 +208,30 @@ def build_system_prompt(context: PlanningContext) -> str:
             "only when the user asks for a frozen cohort ('those accounts') or asks "
             "to stop ranking.",
         ]
-        if context.previous_cohort:
-            parts += [
-                f"The previous answer was about these account ids: "
-                f"{', '.join(context.previous_cohort)}. If the user says 'those "
-                "accounts' or 'the same accounts', put exactly these ids in "
-                "filters.account_ids and drop the ranking, so the cohort is frozen "
-                "rather than re-ranked.",
-            ]
+    elif cont is not None and cont.kind.value == "fresh_question" and context.previous_plan:
+        # Said explicitly. A model shown a previous plan with no instruction
+        # will reuse it, which is how a self-contained question inherited a
+        # population nobody asked for.
+        parts += [
+            "",
+            "This is a FRESH QUESTION. There is an earlier answer in this "
+            "conversation, but this question stands on its own: do NOT carry "
+            "over its filters, its ranking or its population. Start from the "
+            "question as asked.",
+        ]
+
+    if cont is not None and cont.carries_cohort and cont.cohort is not None:
+        cohort = cont.cohort
+        # Typed. The previous version said "account ids" for every grain, so
+        # a cohort of products was presented to the model as organization ids.
+        parts += [
+            f"The previous answer was about these {cohort.dimension} values: "
+            f"{', '.join(cohort.ids)}. If the user says 'those' or 'the same "
+            f"ones', put exactly these into filters.{cohort.filter_field} and "
+            f"drop the ranking, so the cohort is frozen rather than re-ranked. "
+            f"They are {cohort.dimension} values -- do not put them in any "
+            f"other filter.",
+        ]
 
     return "\n".join(parts)
 

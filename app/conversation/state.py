@@ -51,6 +51,10 @@ class ConversationState:
     # list of strings, and was being reapplied as account ids whatever it
     # actually held.
     previous_cohort_dimension: str | None = None
+    #: False when the stored cohort was truncated at the cap. A turn recorded
+    #: before this was tracked reports False: unknown is not complete.
+    previous_cohort_complete: bool = True
+    previous_cohort_total: int | None = None
     next_seq: int = 1
     reset_reason: str | None = None
 
@@ -131,7 +135,8 @@ def open_conversation(
                 return ConversationState(conversation_id=new_id, reset_reason=incompatible)
 
             cur.execute(
-                "SELECT plan, resolved_cohort, cohort_dimension, seq FROM app_conv.turns "
+                "SELECT plan, resolved_cohort, cohort_dimension, cohort_complete, "
+                "       cohort_total, seq FROM app_conv.turns "
                 "WHERE conversation_id = %s AND status = 'answered' "
                 "ORDER BY seq DESC LIMIT 1",
                 (conversation_id,),
@@ -149,6 +154,12 @@ def open_conversation(
                 previous_plan=last["plan"] if last else None,
                 previous_cohort=list(last["resolved_cohort"] or []) if last else [],
                 previous_cohort_dimension=last["cohort_dimension"] if last else None,
+                # NULL means the turn predates the column. Treated as
+                # incomplete, because unknown completeness is not completeness.
+                previous_cohort_complete=(
+                    bool(last["cohort_complete"]) if last and last["cohort_complete"] is not None
+                    else not bool(last and last["resolved_cohort"])),
+                previous_cohort_total=last["cohort_total"] if last else None,
                 next_seq=next_seq,
             )
 
@@ -173,6 +184,8 @@ def record_turn(
     answer_text: str,
     status: str,
     cohort_dimension: str | None = None,
+    cohort_complete: bool = True,
+    cohort_total: int | None = None,
 ) -> None:
     with auth_transaction() as cur:
         # Serialise writers on this conversation for the rest of the
@@ -210,13 +223,15 @@ def record_turn(
             """
             INSERT INTO app_conv.turns
                 (conversation_id, seq, question, plan, resolved_cohort,
-                 cohort_dimension, answer_text, status)
-            VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s)
+                 cohort_dimension, cohort_complete, cohort_total,
+                 answer_text, status)
+            VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s)
             """,
             (
                 state.conversation_id, seq, question[:2000],
                 json.dumps(plan, default=str) if plan else None,
                 json.dumps(cohort), cohort_dimension,
+                cohort_complete, cohort_total,
                 answer_text[:8000], status,
             ),
         )

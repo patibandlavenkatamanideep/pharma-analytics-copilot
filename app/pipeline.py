@@ -29,6 +29,8 @@ from typing import Any
 from app.analytics.compiler import Compiler, CompileError
 from app.analytics.entities import vocabulary_for
 from app.analytics.intent import blocking, find_gaps
+from app.conversation.continuity import Cohort
+from app.conversation.continuity import resolve as resolve_continuity
 from app.analytics.periods import PeriodError
 from app.analytics.registry import get_registry
 from app.analytics.render import Answer, GrainError, render
@@ -140,6 +142,37 @@ class Pipeline:
         vocab = vocabulary_for(principal, dataset["dataset_id"])
         from app.llm.planner import PlanningContext
 
+        # One decision about what this turn is, shared by every planner.
+        # Previously the offline planner and the live prompt each decided
+        # separately, and disagreed.
+        cohort_obj = None
+        if state.previous_cohort:
+            cohort_obj = Cohort(
+                dimension=state.previous_cohort_dimension or "",
+                ids=tuple(state.previous_cohort),
+                dataset_id=dataset["dataset_id"],
+                complete=state.previous_cohort_complete,
+                total_available=state.previous_cohort_total,
+            )
+        continuity = resolve_continuity(
+            question,
+            previous_plan=state.previous_plan,
+            cohort=cohort_obj,
+        )
+        audit["turn_kind"] = continuity.kind.value
+
+        if continuity.clarification:
+            # An ambiguous reference is asked about, not guessed at.
+            self._record(principal, state, question, None, [],
+                         continuity.clarification, "clarify")
+            return finish(
+                PipelineResult(
+                    status="clarify", conversation_id=state.conversation_id,
+                    message=continuity.clarification,
+                ),
+                "clarify", denial_reason=f"ambiguous:{continuity.kind.value}",
+            )
+
         context = PlanningContext(
             role=principal.role,
             scope_description=principal.scope_description,
@@ -158,6 +191,9 @@ class Pipeline:
             previous_plan=state.previous_plan,
             previous_cohort=state.previous_cohort,
             previous_cohort_dimension=state.previous_cohort_dimension,
+            previous_cohort_complete=state.previous_cohort_complete,
+            previous_cohort_total=state.previous_cohort_total,
+            continuity=continuity,
         )
 
         t0 = time.perf_counter()
@@ -342,16 +378,28 @@ class Pipeline:
         # question. Said first, because it changes how the figure reads.
         for disclosure in reversed(disclosures):
             answer.notes.insert(0, disclosure)
+        # An inherited filter is never applied silently.
+        for disclosure in reversed(continuity.disclosures):
+            answer.notes.insert(0, disclosure)
 
         # --- 11. persist ----------------------------------------------------
-        cohort = [
-            str(r["dim0_id"]) for r in rows[:200]
+        COHORT_CAP = 200
+        identified = [
+            str(r["dim0_id"]) for r in rows
             if r.get("dim0_id") is not None
         ] if plan.dimensions else []
+        cohort = identified[:COHORT_CAP]
+        # Whether this is the whole population. A cohort cut off at the cap
+        # is not "the previous result", and freezing it later would answer
+        # about a subset while looking like the whole.
+        cohort_complete = len(identified) <= COHORT_CAP
+        cohort_total = len(identified)
         self._record(
             principal, state, question, plan.model_dump(mode="json"),
             cohort, answer.headline, "answered",
             cohort_dimension=plan.dimensions[0].value if plan.dimensions else None,
+            cohort_complete=cohort_complete,
+            cohort_total=cohort_total,
         )
 
         return finish(
@@ -373,12 +421,14 @@ class Pipeline:
         self, principal: Principal, state: ConversationState, question: str,
         plan: dict[str, Any] | None, cohort: list[str], answer_text: str, status: str,
         cohort_dimension: str | None = None,
+        cohort_complete: bool = True, cohort_total: int | None = None,
     ) -> None:
         try:
             record_turn(
                 principal, state, question=question, plan=plan,
                 cohort=cohort, answer_text=answer_text, status=status,
                 cohort_dimension=cohort_dimension,
+                cohort_complete=cohort_complete, cohort_total=cohort_total,
             )
         except Exception:                       # never fail a request on bookkeeping
             log.warning("failed to persist conversation turn", exc_info=True)

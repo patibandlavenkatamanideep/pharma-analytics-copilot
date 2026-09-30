@@ -41,12 +41,13 @@ anything unmeasured says so.
 | Schema contract | `1.0.0` |
 | Mapping | `1.0.0` |
 | Classification rules | `1.0.0` |
-| **Prompt** | **unversioned** |
-| **Planner contract** | **unversioned** |
+| Prompt | `2.0.0` (was unversioned) |
+| Planner contract | `2.0.0` (was unversioned) |
 | **Graph** | **does not exist** |
 
-The last three are recorded as explicit nulls in every evidence record rather
-than omitted, so the gap stays visible until it is closed.
+Prompt and planner contract were unversioned at baseline and are now `2.0.0`.
+The graph does not exist yet and stays an explicit null in every evidence
+record until it does.
 
 ### Baseline reproduction
 
@@ -105,7 +106,7 @@ Three categories, deliberately separated.
 | ID | Defect | Probe | Evidence |
 |---|---|---|---|
 | **D1** ✅ | *Fixed in Phase 1B.* The release gate accepted a skip raised from a test body. `tests/release_gate.py` converts a skip to a failure only when `report.when == "setup"`. A `pytest.skip()` inside a test body skips at **call** phase, so `--release-gate --min-tests 1` exits **0** for a run that verified nothing. | `evidence/probes/gate_accepts_call_phase_skip.py` | `p0-defect-gate_accepts_call_phase_skip.json` |
-| **D2** | The live prompt mistypes cohorts and mislabels turns. `build_system_prompt` emits *"The previous answer was about these **account ids**: ZENOVAX, GEMTARA"* for a **product** cohort, and *"This is a FOLLOW-UP"* whenever any previous plan exists. The typed-cohort work landed in `OfflinePlanner` and the pipeline but never reached the only text the live model sees. | `evidence/probes/live_prompt_mistypes_cohort.py` | `p0-defect-live_prompt_mistypes_cohort.json` |
+| **D2** ✅ | *Fixed in Phase 1A.* The live prompt mistyped cohorts and mislabelled turns. `build_system_prompt` emits *"The previous answer was about these **account ids**: ZENOVAX, GEMTARA"* for a **product** cohort, and *"This is a FOLLOW-UP"* whenever any previous plan exists. The typed-cohort work landed in `OfflinePlanner` and the pipeline but never reached the only text the live model sees. | `evidence/probes/live_prompt_mistypes_cohort.py` | `p0-defect-live_prompt_mistypes_cohort.json` |
 | **D3** ✅ | *Fixed in Phase 1B.* CI did not run the strict gate. `.github/workflows/ci.yml:77` is `python -m pytest tests/security -q` with no `--release-gate` and no `--min-tests`. Confirmed by reading the workflow. | — | inspection |
 
 ### Source-level risks — the mechanism is in the code; production manifestation not reproduced here
@@ -142,7 +143,7 @@ observability, real-data onboarding contracts, and layered evaluation.
 | Phase | Purpose | State |
 |---|---|---|
 | **0** | Baseline, inventory, evidence schema, reproduced defects | **complete** |
-| **1** | Repair D1–D3, R2, R8; reconcile docs | **1B done**, 1A/1C/1D next |
+| **1** | Repair D1–D3, R2, R8; reconcile docs | **1A, 1B done**; 1C/1D next |
 | **2** | Original-data contracts, staging, versioned crosswalk | planned |
 | **3** | Request-wide snapshot consistency (R3) | planned |
 | **4** | Bounded runtime harness (R5, R6, R7) | planned |
@@ -169,7 +170,7 @@ deferred. Neither is a pass.
 | A2 | Every known gap recorded without conflicting claims | 0 | **passed** | this document |
 | A3 | Evidence records carry SHA, versions, dataset, mode, limits | 0 | **passed** | `evidence/schema.json` |
 | A4 | Strict gate rejects setup skips, call skips, empty and narrowed selections | 1 | **passed** | `p1b-strict-gate.json` |
-| A5 | Live adapter prompt carries typed cohorts and explicit turn classification | 1 | not run | |
+| A5 | Live adapter prompt carries typed cohorts and explicit turn classification | 1 | **passed** | `p1a-continuity.json` |
 | A6 | Planner returns an immutable per-call result; usage survives repair | 1 | not run | |
 | A7 | DSN tolerates reserved characters | 1 | not run | |
 | A8 | Real-data mode loads configured paths with a readiness report | 2 | not run | |
@@ -210,6 +211,43 @@ database and passes `--release-gate --min-tests 115`.
 Verified: 134 passed under the strict gate (115 security + 19 gate tests);
 `tests/unit/test_release_gate_strict.py` proves non-zero exit for each row
 above, in a subprocess, because the thing under test is an exit code.
+
+---
+
+## Phase 1A — shared conversation semantics (complete)
+
+The same question was answered twice, in two places, with two different
+answers. `OfflinePlanner` had typed cohorts; the prompt — the only text a live
+model sees — had none, and no test exercised the prompt.
+
+`app/conversation/continuity.py` now resolves continuity once,
+provider-independently, and both planners consume the result.
+
+| Behaviour | Before | Now |
+|---|---|---|
+| Turn classification | any previous plan ⇒ `"This is a FOLLOW-UP"` | `fresh_question`, `follow_up`, `correction`, `clarification_answer`, `ambiguous_continuation`, each said explicitly |
+| Cohort typing | every grain ⇒ `"account ids"` | typed; the prompt names the matching filter and says the values belong in no other |
+| Period cohorts | offered as a population | not a population; nothing is carried |
+| Untyped legacy cohort | applied as account ids | not guessed at |
+| Truncated cohort | 200 of N frozen as "the previous result" | completeness travels with the cohort; a truncated one is disclosed and clarified, never frozen |
+| Fresh question after `exclude 340B` | inherited the filter | told explicitly not to; verified `is_340b` returns to `include` |
+| Ambiguous `"those"` | silently broadened or retained | asks |
+| Inherited filters | silent | disclosed in the answer |
+
+Migration `009` adds `cohort_complete` and `cohort_total`. A turn recorded
+before the column reports **incomplete**, because unknown completeness is not
+completeness.
+
+Verified end to end on the full dataset: after `exclude 340B`, a fresh
+revenue question returns `is_340b = include`; a bare `"those?"` clarifies; a
+carried cohort discloses *"Still looking at the 3 accounts from your previous
+question."*
+
+`tests/unit/test_live_adapter_contract.py` — 20 tests against a **fake
+transport** that records the real request, so the prompt and tool payload are
+inspected rather than reimplemented. They also assert the plan schema exposes
+no `sql`, `table`, `role`, `scope` or `credential` field, and that a tool call
+under any other name is refused.
 
 ---
 
