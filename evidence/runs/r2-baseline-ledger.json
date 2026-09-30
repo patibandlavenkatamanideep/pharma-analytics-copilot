@@ -1,0 +1,82 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T16:25:30+00:00",
+  "claim": "Baseline for the 30 September review on this branch: 16 findings reproduce, 3 are already fixed (F1a gate, F3 live prompt, F7a usage), 1 is an unprobed source-level risk (F6).",
+  "application": {
+    "sha": "85bac76c3b281f9d29a114774030e098a6bcd133",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/probes/review_2026_09_30.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "evidence/probes/review_2026_09_30.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.46
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 16,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "REPRODUCED=16  FIXED=3  OPEN=1  ERROR=0"
+  },
+  "artifacts": [],
+  "limits": [
+    "Exit code is the number of REPRODUCED findings, so 'failed' is the expected baseline status.",
+    "F4c/F4d/F7b are schema-presence checks: they detect that no storage exists, not that behaviour is wrong once it does.",
+    "F6 is not probed; its status is OPEN, not FIXED."
+  ]
+}
