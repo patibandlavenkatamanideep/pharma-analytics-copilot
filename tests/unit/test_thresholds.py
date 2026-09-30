@@ -33,22 +33,27 @@ def test_a_percentage_decline_is_a_negative_ratio_bound():
     """"declined more than 20%" is a fall past -20%, not a rise past 20%."""
     t = planned("Which accounts have declined more than 20% in volume vs prior quarter?").threshold
     assert t is not None
-    assert t.direction == "below" and t.value == pytest.approx(-0.20)
+    assert t.op == "lt" and t.value == pytest.approx(-0.20)
 
 
 def test_a_volume_threshold_keeps_the_metric_units():
     t = planned("Which accounts bought more than 500 packs this quarter?").threshold
-    assert t.direction == "above" and t.value == pytest.approx(500)
+    assert t.op == "gt" and t.value == pytest.approx(500)
 
 
-@pytest.mark.parametrize("phrase,direction", [
-    ("more than 100 packs", "above"), ("at least 100 packs", "above"),
-    ("over 100 packs", "above"), ("fewer than 100 packs", "below"),
-    ("less than 100 packs", "below"), ("under 100 packs", "below"),
+@pytest.mark.parametrize("phrase,op", [
+    ("more than 100 packs", "gt"),
+    # This row used to expect "above" -- a strict comparison -- for "at
+    # least". It encoded the defect: an account at exactly 100 vanished.
+    ("at least 100 packs", "gte"),
+    ("over 100 packs", "gt"), ("fewer than 100 packs", "lt"),
+    ("less than 100 packs", "lt"), ("under 100 packs", "lt"),
+    ("at most 100 packs", "lte"), ("no more than 100 packs", "lte"),
+    ("100 or more packs", "gte"), ("100 or fewer packs", "lte"),
 ])
-def test_both_directions_are_read(phrase, direction):
+def test_both_directions_are_read(phrase, op):
     t = planned(f"Which accounts bought {phrase} this quarter?").threshold
-    assert t is not None and t.direction == direction
+    assert t is not None and t.op == op
 
 
 def test_a_question_with_no_threshold_gets_none():
@@ -60,7 +65,7 @@ def test_a_threshold_without_a_breakdown_is_rejected():
     with pytest.raises(ValueError, match="requires at least one dimension"):
         AnalyticalPlan.model_validate({
             "metric": "paid_pack_units", "dimensions": [],
-            "threshold": {"direction": "above", "value": 500},
+            "threshold": {"op": "gt", "value": 500},
             "time": {"kind": "named", "named": "r3m"}})
 
 
@@ -81,7 +86,7 @@ def planned_dims(question):
 
 def test_the_threshold_is_a_bind_parameter_not_interpolated():
     q = compiled(metric="paid_pack_units",
-                 threshold={"direction": "above", "value": 500})
+                 threshold={"op": "gt", "value": 500})
     assert "500" not in q.sql
     assert 500.0 in q.params
 
@@ -89,7 +94,7 @@ def test_the_threshold_is_a_bind_parameter_not_interpolated():
 def test_the_filter_runs_before_the_ranking():
     """A cap applied first would rank the wrong population."""
     q = compiled(metric="paid_pack_units",
-                 threshold={"direction": "above", "value": 500},
+                 threshold={"op": "gt", "value": 500},
                  ranking={"direction": "bottom", "limit": 5})
     where_at = q.sql.rindex("WHERE value")
     limit_at = q.sql.rindex("LIMIT")
@@ -99,7 +104,7 @@ def test_the_filter_runs_before_the_ranking():
 def test_nulls_are_excluded_rather_than_compared():
     """A null growth figure is not "below -20%"; it is unknown."""
     q = compiled(metric="paid_pack_units",
-                 threshold={"direction": "below", "value": 10})
+                 threshold={"op": "lt", "value": 10})
     assert "IS NOT NULL" in q.sql
 
 
@@ -111,7 +116,7 @@ def test_nulls_are_excluded_rather_than_compared():
 def test_every_query_shape_accepts_a_threshold(metric, extra):
     """Simple aggregate, ratio and period comparison each compute the value
     differently; the threshold wraps all three the same way."""
-    q = compiled(metric=metric, threshold={"direction": "above", "value": 1}, **extra)
+    q = compiled(metric=metric, threshold={"op": "gt", "value": 1}, **extra)
     assert "AS filtered" in q.sql
 
 

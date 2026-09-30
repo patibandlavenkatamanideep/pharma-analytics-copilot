@@ -46,7 +46,7 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | Facility counts | `facility_count` = facilities **with sales**; `facility_count_all` = structural, read from the hierarchy, still under RLS | `test_structural_counts.py` — 37,500 structural (`org_type = 'Facility'`) vs 25,561 with sales; RAM scoped | "Which health systems have the most facilities" still uses the sales-derived count |
 | Period comparisons | A period grain inside a two-window comparison is **refused by name** with the two shapes that do work, rather than returning silent nulls | `test_specialty_and_periods.py` | Per-period growth series is not implemented |
 | Limits after calculation | Thresholds and comparisons run before ranking and the row cap; comparison inputs are uncapped | `test_thresholds.py`, `test_comparison_grain.py` | — |
-| Threshold questions | `Threshold` in the typed plan, compared against the plan's own metric in its own units | `test_thresholds.py` — 26 tests; oracle-verified | Only one threshold per query |
+| Threshold questions | `Threshold` in the typed plan, compared against the plan's own metric in its own units | `test_thresholds.py` — 30 tests; oracle-verified | Only one threshold per query |
 | Generic market share | `market_segment_share` — segment over surrounding market, with the derived classification disclosed | `test_segment_share.py`; eval `amb-01` = 0.700629 | — |
 | 340B share | `share_340b` — the metric defines both sides, so it is correct whatever the planner sets | `test_segment_share.py`; eval `b340-01` = 0.122667 | — |
 | Therapeutic areas | `products.specialty` is in the vocabulary; a named area the plan drops **blocks** | `test_specialty_and_periods.py` — oncology 368,411, not 484,394 | — |

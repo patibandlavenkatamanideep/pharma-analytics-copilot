@@ -38,8 +38,17 @@ KNOWN_ACRONYMS = frozenset({
     "TRX", "NRX", "COGS", "ASP", "AMP", "IV", "PO", "MG", "ML", "OK", "FAQ",
 })
 
-# The metrics that are genuinely proportions.
-RATIO_METRICS = frozenset({"brand_market_share", "pap_proportion", "share_trend_pp"})
+#: Units that answer "what percentage". Read from the metric REGISTRY, not
+#: from a list of metric names kept here. The list this replaced named three
+#: metrics and went stale: share_340b, market_segment_share and
+#: volume_growth are all proportions, and a correct answer from any of them
+#: carried a note saying "The figure below is a count, not a percentage".
+PROPORTION_UNITS = frozenset({"ratio", "percentage points"})
+
+
+def _is_proportion(metric_key: str) -> bool:
+    from app.analytics.registry import get_registry
+    return get_registry().get(metric_key).get("unit") in PROPORTION_UNITS
 
 _PROPORTION_ASKED = re.compile(
     r"\bwhat (?:percent|percentage)\b|\bwhat (?:share|proportion|fraction)\b"
@@ -171,7 +180,7 @@ def find_gaps(
         ))
 
     # --- a proportion asked for, a count returned --------------------------
-    if _PROPORTION_ASKED.search(question) and plan.metric.value not in RATIO_METRICS:
+    if _PROPORTION_ASKED.search(question) and not _is_proportion(plan.metric.value):
         gaps.append(IntentGap(
             kind="unsupported_proportion",
             detail=(
@@ -224,17 +233,8 @@ def find_gaps(
             suggestion="",
         ))
 
-    # --- a threshold asked for, no threshold expressible -------------------
-    if _THRESHOLD_ASKED.search(question) and plan.threshold is None:
-        gaps.append(IntentGap(
-            kind="unsupported_threshold",
-            detail="This asks for a threshold that could not be read from the question.",
-            suggestion=(
-                "The result is not filtered by that condition. Stating it as a "
-                "number (\"more than 500 packs\", \"declined more than 20%\") "
-                "is understood."
-            ),
-        ))
+    # --- a threshold: asked for, and did it survive intact? ----------------
+    gaps += _threshold_gaps(question, plan)
 
     # --- a rolling average, which the plan cannot express ------------------
     if plan.rolling is None and re.search(
@@ -255,6 +255,101 @@ def find_gaps(
     return gaps
 
 
+def _threshold_gaps(question: str, plan: "AnalyticalPlan") -> list[IntentGap]:
+    """Did the bound the question states reach the plan unchanged?
+
+    Three ways it can fail, with different consequences:
+
+    * **direction** -- "more than" planned as "less than". The answer is about
+      the complementary population. Blocking.
+    * **value** -- "more than 20%" planned against a share as 20 rather than
+      0.2 returns nothing, and planned as 0.02 returns nearly everything.
+      Blocking.
+    * **boundary** -- "at least 100" planned as "more than 100". Only the rows
+      exactly AT the bound differ, and those are the ones a reader checks.
+      Disclosed, not blocked: the rest of the answer is right, and the note
+      says precisely which rows are missing.
+
+    Read with app.analytics.thresholds, the table the planners use, so the
+    guard and the planner cannot disagree about what a phrase means.
+    """
+    from app.analytics.registry import get_registry
+    from app.analytics.thresholds import (
+        PHRASE_FOR, expected_value, read_threshold, same_direction)
+
+    read = read_threshold(question)
+    if read is None:
+        if _THRESHOLD_ASKED.search(question) and plan.threshold is None:
+            return [IntentGap(
+                kind="unsupported_threshold",
+                detail="This asks for a threshold that could not be read from the question.",
+                suggestion=(
+                    "The result is not filtered by that condition. Stating it as a "
+                    "number (\"more than 500 packs\", \"declined more than 20%\") "
+                    "is understood."
+                ),
+            )]
+        return []
+
+    if read.needs_range:
+        return [IntentGap(
+            kind="unsupported_threshold",
+            detail=(
+                f'"{read.phrase}" alongside a decline describes a range -- a fall, '
+                f"but a small one -- which one threshold cannot express."
+            ),
+            suggestion=(
+                "The result is not filtered by it. Asking for the decliners and "
+                "the size of each decline shows the same thing."
+            ),
+        )]
+
+    if plan.threshold is None:
+        return [IntentGap(
+            kind="unsupported_threshold",
+            detail=f'The result is not filtered to "{read.phrase}".',
+            suggestion=(
+                "A threshold needs a breakdown to filter -- by account, product "
+                "or territory, for example."
+            ),
+        )]
+
+    gaps: list[IntentGap] = []
+    unit = get_registry().get(plan.metric.value).get("unit", "")
+    if not same_direction(read.op, plan.threshold.op):
+        gaps.append(IntentGap(
+            kind="threshold_direction_mismatch",
+            detail=(
+                f'The question asks for "{read.phrase}", but the plan filters '
+                f"for values {PHRASE_FOR[plan.threshold.op]} "
+                f"{plan.threshold.value:g} -- the opposite side of the bound."
+            ),
+        ))
+    want = expected_value(read, unit)
+    if want is None or abs(plan.threshold.value - want) > 1e-9 * max(1.0, abs(want)):
+        gaps.append(IntentGap(
+            kind="threshold_value_mismatch",
+            detail=(
+                f'The question sets the bound at "{read.phrase}"'
+                + (f", which is {want:g} in {unit}" if want is not None
+                   else f", which cannot be expressed in {unit}")
+                + f"; the plan used {plan.threshold.value:g}."
+            ),
+        ))
+    if not gaps and read.op != plan.threshold.op:
+        included = plan.threshold.op.endswith("e")
+        gaps.append(IntentGap(
+            kind="threshold_boundary",
+            detail=(
+                f'Read "{read.phrase}" as {PHRASE_FOR[plan.threshold.op]} '
+                f"{plan.threshold.value:g}: a value of exactly "
+                f"{plan.threshold.value:g} is "
+                + ("included." if included else "not included.")
+            ),
+        ))
+    return gaps
+
+
 def blocking(gaps: list[IntentGap]) -> list[IntentGap]:
     """Gaps that make an answer misleading rather than merely incomplete.
 
@@ -268,4 +363,6 @@ def blocking(gaps: list[IntentGap]) -> list[IntentGap]:
     """
     return [g for g in gaps
             if g.kind in ("unresolved_place", "unresolved_product",
-                          "unhonoured_specialty")]
+                          "unhonoured_specialty",
+                          "threshold_direction_mismatch",
+                          "threshold_value_mismatch")]

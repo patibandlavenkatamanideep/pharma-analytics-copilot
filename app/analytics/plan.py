@@ -12,7 +12,7 @@ the principal may run it, and the compiler decides what SQL it becomes.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Any, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -175,8 +175,32 @@ class Threshold(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
-    direction: Literal["above", "below"]
+    #: gt/gte/lt/lte. "At least 100" is gte and includes 100; "more than 100"
+    #: is gt and does not. The field used to be direction: above|below, and
+    #: both compiled to a strict comparison -- so an account that bought
+    #: exactly 100 vanished from an answer that asked for it.
+    op: Literal["gt", "gte", "lt", "lte"]
     value: float
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_direction(cls, data: Any) -> Any:
+        """Read plans stored before the operator existed.
+
+        A conversation's previous plan is loaded and patched by the next turn.
+        Plans written before 30 September 2026 say `direction: above|below`,
+        which always compiled to a strict comparison -- so they are read with
+        exactly that meaning. A follow-up must not quietly move the boundary of
+        the answer it follows.
+        """
+        if isinstance(data, dict) and "direction" in data and "op" not in data:
+            data = dict(data)
+            legacy = {"above": "gt", "below": "lt"}
+            direction = data.pop("direction")
+            if direction not in legacy:
+                raise ValueError(f"unknown legacy threshold direction {direction!r}")
+            data["op"] = legacy[direction]
+        return data
 
 
 class Rolling(BaseModel):

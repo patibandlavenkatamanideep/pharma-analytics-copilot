@@ -1,0 +1,101 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T16:38:30+00:00",
+  "claim": "Threshold operators are explicit (gt/gte/lt/lte): 'at least 51 packs' returns all 7 accounts at exactly 51 (949 total) where the previous code returned none of them (942). Proportion metrics are recognised from their registry unit.",
+  "application": {
+    "sha": "8e72694148d61d2885b80d7b9fe6e5ed6fca3507",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "app/analytics/compiler.py",
+      "app/analytics/intent.py",
+      "app/analytics/plan.py",
+      "app/analytics/thresholds.py",
+      "app/llm/planner.py",
+      "docs/REQUIREMENTS.md",
+      "docs/TEST_INVENTORY.md",
+      "tests/integration/test_threshold_boundaries.py",
+      "tests/unit/test_proportion_units.py",
+      "tests/unit/test_threshold_semantics.py",
+      "tests/unit/test_thresholds.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_thresholds.py",
+      "tests/unit/test_threshold_semantics.py",
+      "tests/unit/test_proportion_units.py",
+      "tests/integration/test_threshold_boundaries.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.55
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 105
+    },
+    "blocked_reason": null,
+    "summary": "105 passed in 0.34s"
+  },
+  "artifacts": [],
+  "limits": [
+    "The live model's operator choice is not measured: only the prompt text is tested. The intent guard is the backstop for a model that picks the wrong operator.",
+    "A bare number against a share is read as a percentage (20 -> 0.2), preserving the previous convention; 'share above 0.3' reads as 0.003."
+  ]
+}

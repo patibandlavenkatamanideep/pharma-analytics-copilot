@@ -23,6 +23,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import ValidationError
 
+from app.analytics.thresholds import prompt_guidance
 from app.analytics.plan import AnalyticalPlan, Dimension, MetricKey
 from app.analytics.registry import get_registry
 from app.config import Settings, get_settings
@@ -206,6 +207,8 @@ def build_system_prompt(context: PlanningContext) -> str:
         "  last_month     = offset 1;  current_month = offset 0;  r30d = last 4 weeks",
         "For an explicit calendar quarter or year use kind='period_labels' with labels",
         "like '2026-Q2'. Use kind='date_range' ONLY when the user gives explicit dates.",
+        "",
+        prompt_guidance(),
         "",
         "RULES THAT MUST NOT BE BROKEN:",
         "- 'sales', 'volume' and 'demand' mean PAID demand: the distributor source,",
@@ -960,37 +963,31 @@ class OfflinePlanner:
         Answering it with an unfiltered ranking answers a different question:
         the threshold IS what was asked. Expressed against the plan's own
         metric, in that metric's units -- a ratio takes -0.2, a volume takes
-        500.
+        500. The phrase is read by app.analytics.thresholds, the same table
+        the live prompt is generated from and the intent guard checks against.
         """
         from app.analytics.plan import Threshold
+        from app.analytics.thresholds import read_threshold
 
         if not dimensions:
             return None
-
-        match = re.search(
-            r"\b(more than|greater than|over|above|at least|higher than|"
-            r"less than|fewer than|under|below|lower than)\s+"
-            r"(\d+(?:\.\d+)?)\s*(%|percent)?", q, re.I,
-        )
-        if not match:
+        read = read_threshold(q)
+        if read is None or read.needs_range:
+            # "declined less than 20%" needs two bounds. Returning none lets
+            # the intent guard say so, rather than approximating a range with
+            # one bound that would include every account that grew.
             return None
-        word, number, percent = match.group(1).lower(), float(match.group(2)), match.group(3)
 
-        below_words = ("less than", "fewer than", "under", "below", "lower than")
-        direction = "below" if word in below_words else "above"
+        from app.analytics.registry import get_registry
+        from app.analytics.thresholds import expected_value
 
-        if percent:
-            number /= 100.0
-            # "declined more than 20%" is a fall past -20%, not a rise past 20%.
-            if re.search(r"declin\w+|drop\w+|fell|falling|fall\w*|lost|losing|"
-                         r"down|decreas\w+|shrank|shrink\w*", q, re.I):
-                return Threshold(direction="below", value=-number)
-        elif metric in (MetricKey.brand_market_share, MetricKey.pap_proportion,
-                        MetricKey.share_340b, MetricKey.market_segment_share):
-            # A bare number against a ratio metric is a percentage.
-            number /= 100.0
-
-        return Threshold(direction=direction, value=number)
+        # Units come from the registry, via the rule the intent guard uses to
+        # check the plan: a planner and its checker must not disagree about
+        # what "20" means for a share.
+        value = expected_value(read, get_registry().get(metric.value)["unit"])
+        if value is None:
+            return None
+        return Threshold(op=read.op, value=value)
 
     def _ranking(self, q: str, dimensions: list[Dimension]):
         from app.analytics.plan import Ranking

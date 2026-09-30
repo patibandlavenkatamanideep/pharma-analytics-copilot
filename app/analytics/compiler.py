@@ -24,6 +24,7 @@ from typing import Any
 from app.analytics.periods import ResolvedWindow, resolve
 from app.analytics.plan import AnalyticalPlan, Dimension, Filters, MetricKey, TriState
 from app.analytics.registry import MetricRegistry, get_registry
+from app.analytics.thresholds import SQL_OPERATOR
 
 
 class CompileError(ValueError):
@@ -531,7 +532,7 @@ class Compiler:
             )
 
         if plan.threshold is not None:
-            operator = ">" if plan.threshold.direction == "above" else "<"
+            operator = SQL_OPERATOR[plan.threshold.op]
             sql = (
                 f"SELECT * FROM (\n{sql}) AS filtered\n"
                 f"WHERE {value_col} IS NOT NULL AND {value_col} {operator} %s\n"
