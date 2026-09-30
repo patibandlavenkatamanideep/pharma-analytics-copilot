@@ -30,6 +30,21 @@ class CompileError(ValueError):
     pass
 
 
+class UnsupportedCombination(CompileError):
+    """The plan asks for something this metric cannot express.
+
+    Distinct from a compile failure: nothing is broken, the question just
+    combines things that have no defined meaning together -- a structural
+    count broken down by month, a comparison window on a metric that reports
+    one window. The caller should ask the user to rephrase, not report an
+    error. `reasons` holds one user-meaningful sentence per incompatibility.
+    """
+
+    def __init__(self, reasons: list[str]):
+        self.reasons = list(reasons)
+        super().__init__(" ".join(self.reasons))
+
+
 # --- identifier allowlists ---------------------------------------------------
 # key -> (id expression, label expression, tables required)
 
@@ -92,6 +107,103 @@ JOINS = {
     "z": "LEFT JOIN zip_territory z ON z.zip = o.zip",
     "c": "LEFT JOIN app_ref.product_classification c ON c.ndc = p.ndc",
 }
+
+#: The relations a query can reach from each base table. Almost every metric
+#: reads `sales s` and joins outwards. A structural count reads the
+#: organization hierarchy directly, so `organizations o` IS the base: it must
+#: not be joined in again, geography is reachable through o.zip, and nothing
+#: product- or transaction-side is reachable at all -- products join through
+#: sales.ndc, and periods and data source are sales columns.
+REACHABLE_FROM: dict[str, frozenset[str]] = {
+    "sales": frozenset({"o", "p", "z", "c"}),
+    "organizations": frozenset({"o", "z"}),
+}
+
+#: Filters that constrain the product side. Meaningless for a query that
+#: never touches a product.
+PRODUCT_FILTERS = ("product_names", "ndcs", "strengths", "market_categories",
+                   "market_subcategories", "specialties", "classifications")
+
+
+def _reads_sales(ds: "DimSpec") -> bool:
+    return "s." in ds.id_expr or "s." in ds.label_expr
+
+
+def reachable(dim: Dimension, base: str) -> bool:
+    """Can this grain be computed from `base` without inventing a join?"""
+    ds = DIMENSIONS[dim]
+    if base == "organizations" and _reads_sales(ds):
+        return False
+    return set(ds.needs) <= REACHABLE_FROM[base]
+
+
+def check_compatibility(plan: AnalyticalPlan, spec: dict[str, Any]) -> list[str]:
+    """Every reason this plan cannot be answered as asked, or [] if it can.
+
+    One place, so the answer to "can this metric be broken down by that" does
+    not depend on which code path happens to notice first. Before this
+    existed, three different things happened to three unsupported plans: a
+    structural count by territory failed in PostgreSQL with DuplicateAlias; a
+    structural count by month failed with a missing FROM entry; and a
+    comparison window on a single-window metric was silently dropped, so
+    "share this quarter compared with last" came back as one quarter.
+    """
+    kind = spec.get("kind")
+    reasons: list[str] = []
+
+    if plan.comparison is not None and kind != "period_change":
+        reasons.append(
+            f"{spec['label'].capitalize()} reports one window, so a comparison "
+            f"with another period cannot be shown with it. Growth "
+            f"(volume_growth) and share change (share_trend_pp) compare two "
+            f"windows."
+        )
+
+    if kind == "period_change":
+        # A period grain inside a two-window comparison cannot be joined. The
+        # current side is labelled 2026-Q3 and the prior side 2026-Q2, so the
+        # FULL JOIN matches nothing: every row comes back with one side null
+        # and a null growth figure -- which looks like "no growth data" rather
+        # than like a question the system cannot express. Aligning by
+        # position would be a guess about what was meant; a growth figure for
+        # each period against its own prior is a different query shape.
+        for d in plan.dimensions:
+            if d in (Dimension.period_mo, Dimension.period_qtr, Dimension.period_wk):
+                grain = d.value.replace("period_", "")
+                reasons.append(
+                    f"A {grain}-by-{grain} breakdown cannot also be a two-window "
+                    f"comparison: each side would be labelled with a different "
+                    f"{grain}, so nothing lines up. Ask for the trend "
+                    f"(\"volume by {grain}\") to see the series, or drop the "
+                    f"{grain} breakdown to see one growth figure for the window."
+                )
+                break
+
+    if kind == "count_structural":
+        entity = spec.get("count_entity", "organization")
+        bad_dims = [d.value for d in plan.dimensions
+                    if not reachable(d, "organizations")]
+        if bad_dims:
+            reasons.append(
+                f"A count of {entity} records comes from the organization "
+                f"hierarchy, which has no {', '.join(bad_dims)} -- those "
+                f"belong to sales. The {entity}-with-sales count can be broken "
+                f"down that way."
+            )
+        bad_filters = [f for f in PRODUCT_FILTERS if getattr(plan.filters, f)]
+        if bad_filters:
+            reasons.append(
+                f"A count of {entity} records is not tied to any product, so "
+                f"it cannot be restricted by {', '.join(bad_filters)}. The "
+                f"{entity}-with-sales count can."
+            )
+        if plan.rolling is not None:
+            reasons.append(
+                "A count of records on file has no series over time to "
+                "average."
+            )
+
+    return reasons
 
 
 @dataclass
@@ -292,31 +404,39 @@ class Compiler:
         # so it reads organizations directly. Row-level security still applies
         # -- organizations carries the same policy as sales -- so scope is
         # enforced exactly as it is everywhere else.
-        if kind == "count_structural":
-            # organizations is the FROM table here, so it must not also be
-            # joined in.
-            needs.discard("o")
-            sql = (
-                f"SELECT {', '.join(select_parts)}\n"
-                f"FROM organizations o\n{{joins}}\n"
-                f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
-            )
-        else:
-            sql = (
-                f"SELECT {', '.join(select_parts)}\n"
-                f"FROM sales s\n{{joins}}\n"
-                f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
-            )
+        base = "organizations" if kind == "count_structural" else "sales"
+        # The joins are rendered here rather than by each caller, because
+        # only this function knows which relation is the base. Rendered by the
+        # callers, a structural count joined organizations to itself.
+        sql = (
+            f"SELECT {', '.join(select_parts)}\n"
+            f"FROM {'organizations o' if base == 'organizations' else 'sales s'}\n"
+            f"{self._render_joins(needs, base)}\n"
+            f"WHERE {' AND '.join(where) if where else 'TRUE'}\n"
+        )
         if group_parts:
             sql += f"GROUP BY {', '.join(group_parts)}\n"
         return sql, params, needs
 
-    def _render_joins(self, needs: set[str]) -> str:
+    def _render_joins(self, needs: set[str], base: str = "sales") -> str:
         # z depends on o; c depends on p. Order is fixed, not data-dependent.
+        needs = set(needs)
         if "z" in needs:
             needs.add("o")
         if "c" in needs:
             needs.add("p")
+        unreachable = needs - REACHABLE_FROM[base]
+        if unreachable:
+            # check_compatibility should have refused the plan already; this
+            # is the backstop that keeps a missed case from reaching SQL.
+            raise CompileError(
+                f"internal: {sorted(unreachable)} not reachable from {base}")
+        if base == "organizations":
+            # organizations is the FROM table, so joining it again is the
+            # DuplicateAlias this used to produce whenever geography was
+            # asked for: `z` pulled `o` back in after the structural branch
+            # had discarded it.
+            needs.discard("o")
         return "\n".join(JOINS[k] for k in ("o", "p", "z", "c") if k in needs)
 
     # -- public entry point --------------------------------------------------
@@ -329,6 +449,8 @@ class Compiler:
     ) -> CompiledQuery:
         spec = self.registry.get(plan.metric.value)
         kind = spec.get("kind")
+        if reasons := check_compatibility(plan, spec):
+            raise UnsupportedCombination(reasons)
         window = resolve(plan.time, anchor)
         notes: list[str] = list(window.caveats)
         if window.incomplete_period:
@@ -454,8 +576,7 @@ class Compiler:
         body, params, needs = self._leaf_select(
             plan.metric.value, plan.filters, window, dims=list(plan.dimensions)
         )
-        sql, params = self._finish(
-            body.format(joins=self._render_joins(needs)), plan, params)
+        sql, params = self._finish(body, plan, params)
         return CompiledQuery(
             sql=sql, params=params, columns=self._columns(plan),
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
@@ -591,8 +712,6 @@ class Compiler:
             dims=[], join_dims=den_dims,
             extra_clauses=den_extra_clauses, extra_params=den_extra_params,
         )
-        num_sql = num_sql.format(joins=self._render_joins(num_needs))
-        den_sql = den_sql.format(joins=self._render_joins(den_needs))
 
         join_params: list[Any] = []
         if den_dims:
@@ -669,28 +788,7 @@ class Compiler:
         if plan.comparison is None:
             raise CompileError(f"{plan.metric} requires a comparison window")
 
-        # A period grain inside a two-window comparison cannot be joined.
-        # The current side is labelled 2026-Q3 and the prior side 2026-Q2, so
-        # the FULL JOIN matches nothing: every row comes back with one side
-        # null and a null growth figure. It looks like "no growth data" rather
-        # than like a question the system cannot express.
-        #
-        # Aligning by position instead would be a guess about what the user
-        # meant. What they almost certainly want -- a growth figure for each
-        # period against its own prior -- is a different query shape, not this
-        # one. So it is refused by name, with the two things that do work.
-        period_dims = [d for d in plan.dimensions
-                       if d in (Dimension.period_mo, Dimension.period_qtr,
-                                Dimension.period_wk)]
-        if period_dims:
-            grain = period_dims[0].value.replace("period_", "")
-            raise CompileError(
-                f"A {grain}-by-{grain} breakdown cannot also be a two-window "
-                f"comparison: each side would be labelled with a different "
-                f"{grain}, so nothing lines up. Ask for the trend "
-                f"(\"volume by {grain}\") to see the series, or drop the "
-                f"{grain} breakdown to see one growth figure for the window."
-            )
+        # Period grains are refused in check_compatibility, before this runs.
 
         prior = resolve(plan.comparison, anchor)
         base_key = spec["base_metric"]
@@ -705,7 +803,7 @@ class Compiler:
             body, params, needs = self._leaf_select(
                 base_key, plan.filters, w, dims=list(plan.dimensions)
             )
-            return body.format(joins=self._render_joins(needs)), params
+            return body, params
 
         cur_sql, cur_params = side(window)
         pri_sql, pri_params = side(prior)

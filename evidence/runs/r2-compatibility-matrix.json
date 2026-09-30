@@ -1,0 +1,95 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T16:30:40+00:00",
+  "claim": "Every metric x grain, metric x filter family and metric x comparison combination is either refused by name or compiles, validates and is planned by PostgreSQL; facility_count_all by territory and region matches hand-written SQL.",
+  "application": {
+    "sha": "23edfa4e0474b85bdc1d7510c1d7ea0ce809bf4e",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "app/analytics/compiler.py",
+      "app/pipeline.py",
+      "docs/TEST_INVENTORY.md",
+      "tests/integration/test_compatibility_matrix.py",
+      "tests/integration/test_structural_geography.py",
+      "tests/unit/test_compatibility_rules.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_compatibility_rules.py",
+      "tests/integration/test_compatibility_matrix.py",
+      "tests/integration/test_structural_geography.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.96
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 726
+    },
+    "blocked_reason": null,
+    "summary": "726 passed in 2.72s"
+  },
+  "artifacts": [],
+  "limits": [
+    "The matrix uses EXPLAIN: it proves planning succeeds, not that results are correct. Correctness is covered for structural geography only, by the hand-written reference queries.",
+    "Single dimensions and single filter families; combinations of several grains are not enumerated."
+  ]
+}

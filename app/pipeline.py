@@ -26,7 +26,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.analytics.compiler import Compiler, CompileError
+from app.analytics.compiler import Compiler, CompileError, UnsupportedCombination
 from app.analytics.entities import vocabulary_for
 from app.analytics.intent import blocking, find_gaps
 from app.conversation.continuity import Cohort, summarise_cohort
@@ -308,6 +308,22 @@ class Pipeline:
         # --- 7. compile -----------------------------------------------------
         try:
             query = self.compiler.compile(plan, anchor=anchor)
+        except UnsupportedCombination as exc:
+            # Nothing is broken: the question combines things that have no
+            # defined meaning together. Reporting that as an error told the
+            # user the system had failed, and counted as an execution
+            # failure in evaluation.
+            return finish(
+                PipelineResult(
+                    status="clarify", conversation_id=state.conversation_id,
+                    message=(
+                        "That combination cannot be answered as asked. "
+                        + " ".join(exc.reasons)
+                    ),
+                    plan=plan.model_dump(mode="json"),
+                ),
+                "unsupported_combination", denial_reason=str(exc)[:200],
+            )
         except (CompileError, PeriodError) as exc:
             return finish(
                 PipelineResult(
