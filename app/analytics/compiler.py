@@ -126,6 +126,34 @@ PRODUCT_FILTERS = ("product_names", "ndcs", "strengths", "market_categories",
                    "market_subcategories", "specialties", "classifications")
 
 
+#: The calendar column each period grain is labelled by.
+PERIOD_COLUMN: dict[Dimension, str] = {
+    Dimension.period_mo: "period_mo",
+    Dimension.period_qtr: "period_qtr",
+    Dimension.period_wk: "period_wk",
+}
+
+
+def needs_dense_series(plan: AnalyticalPlan) -> bool:
+    """Should this answer include the periods that have no rows?
+
+    A rolling average always does: averaging the rows that happen to exist
+    averaged June with September when July and August were empty. A single
+    time series ("volume by month" for one product) does too: a series that
+    silently skips months reads as a different trend. A breakdown by period
+    AND something else does not, because zero-filling the cross product would
+    add a row for every account in every month -- the note says periods with
+    no rows are omitted instead.
+
+    A window given as calendar dates is excluded: reporting periods follow the
+    week-ending month, so dates do not select whole periods.
+    """
+    periods = [d for d in plan.dimensions if d in PERIOD_COLUMN]
+    if len(periods) != 1 or plan.time.kind == "date_range":
+        return False
+    return plan.rolling is not None or len(plan.dimensions) == 1
+
+
 def _reads_sales(ds: "DimSpec") -> bool:
     return "s." in ds.id_expr or "s." in ds.label_expr
 
@@ -179,6 +207,14 @@ def check_compatibility(plan: AnalyticalPlan, spec: dict[str, Any]) -> list[str]
                     f"{grain} breakdown to see one growth figure for the window."
                 )
                 break
+
+    if plan.rolling is not None and plan.time.kind == "date_range":
+        reasons.append(
+            "A rolling average is taken over reporting periods, and a window "
+            "given as calendar dates does not select whole periods: reporting "
+            "months follow the week-ending date. Asking for a number of months "
+            "or weeks gives the same average over whole periods."
+        )
 
     if kind == "count_structural":
         entity = spec.get("count_entity", "organization")
@@ -460,7 +496,9 @@ class Compiler:
                 "accumulating."
             )
 
-        if kind == "ratio":
+        if needs_dense_series(plan):
+            query = self._compile_dense_series(plan, spec, window, anchor)
+        elif kind == "ratio":
             query = self._compile_ratio(plan, spec, window, anchor)
         elif kind == "period_change":
             query = self._compile_change(plan, spec, window, anchor)
@@ -469,13 +507,10 @@ class Compiler:
 
         query.notes = notes + query.notes
         query.window_label = window.label
-        if plan.rolling is not None:
+        if any(d in PERIOD_COLUMN for d in plan.dimensions) and not needs_dense_series(plan):
             query.notes.append(
-                f"Each figure is the average of that period and the "
-                f"{plan.rolling.periods - 1} before it. The first "
-                f"{plan.rolling.periods - 1} rows average fewer periods, "
-                f"because there is nothing earlier to include."
-            )
+                "Periods with no rows for a group are not listed; a missing "
+                "period means none, not unknown.")
         if spec.get("kind") == "count_structural":
             # Otherwise the answer carries a reporting window it did not use.
             query.window_label = "all periods (a structural count)"
@@ -492,7 +527,8 @@ class Compiler:
         return query
 
     def _finish(self, sql: str, plan: AnalyticalPlan, params: list[Any],
-                value_col: str = "value") -> tuple[str, list[Any]]:
+                value_col: str = "value", *,
+                rolled: bool = False) -> tuple[str, list[Any]]:
         """Apply the threshold, then order and limit.
 
         The threshold wraps the whole body rather than becoming a HAVING
@@ -507,7 +543,7 @@ class Compiler:
         # The rolling average wraps first, so a threshold filters the
         # AVERAGED value -- "months where the rolling average fell below X"
         # is about the average, not about the raw point.
-        if plan.rolling is not None:
+        if plan.rolling is not None and not rolled:
             period_index = next(
                 i for i, d in enumerate(plan.dimensions)
                 if d in (Dimension.period_mo, Dimension.period_qtr,
@@ -570,6 +606,186 @@ class Compiler:
             cols += ["point_value"]
         cols += extra or ["value"]
         return cols
+
+    def _sources_of(self, spec: dict[str, Any]) -> list[str]:
+        """Every data source a metric reads, through ratio components."""
+        found: set[str] = set(spec.get("sources") or [])
+        for side in ("numerator", "denominator"):
+            if key := spec.get(side):
+                found |= set(self._sources_of(self.registry.get(key)))
+        return sorted(found)
+
+    def _compile_dense_series(
+        self,
+        plan: AnalyticalPlan,
+        spec: dict[str, Any],
+        window: ResolvedWindow,
+        anchor: dict[str, Any],
+    ) -> CompiledQuery:
+        """A time series that includes the periods with no rows.
+
+        The window average used to run over whichever rows existed. For a
+        facility that bought in June and September only, the September
+        "3-month average" averaged June with September -- a window that does
+        not contain June -- and July and August did not appear at all. And
+        the first points of every series averaged fewer periods than asked,
+        even when the earlier months were in the data but outside the window.
+
+        Built on app_ref.calendar, the dataset's own reporting calendar:
+
+        1. every period of the plan's grain, numbered oldest first;
+        2. the periods the window asks for -- selected by applying the SAME
+           resolved window predicate to the calendar as to the facts, so
+           there is one definition of "last quarter", not two;
+        3. for a rolling average, the N-1 periods before those as well, so
+           the first requested point averages a full window;
+        4. the metric, computed over exactly those periods;
+        5. every period crossed with every group, with the facts left-joined.
+
+        An absent period is ZERO for an additive metric when every source the
+        metric reads had rows in it -- nothing was bought. It is UNKNOWN
+        where a source did not cover it, and always unknown for a ratio, whose
+        missing row means an undefined denominator. A rolling average is
+        given only when all N periods are known: a shorter average presented
+        as an N-period one is the defect this replaces.
+        """
+        kind = spec.get("kind")
+        period_index = next(i for i, d in enumerate(plan.dimensions)
+                            if d in PERIOD_COLUMN)
+        column = PERIOD_COLUMN[plan.dimensions[period_index]]
+        partition = [i for i in range(len(plan.dimensions)) if i != period_index]
+        span = plan.rolling.periods if plan.rolling is not None else 1
+        params: list[Any] = []
+
+        # 1. every period of this grain, with whether its sources covered it
+        sources = self._sources_of(spec)
+        coverage = " AND ".join(["%s = ANY(c.sources)"] * len(sources)) or "TRUE"
+        params += sources
+        ctes = [
+            "pac_periods AS (\n"
+            f"  SELECT c.{column} AS label, min(c.wk_offset) AS newest,\n"
+            # min(...) = 1 rather than bool_and, which sqlglot renames to
+            # logical_and -- an allowlist entry that depends on parser naming.
+            f"         min(CASE WHEN {coverage} THEN 1 ELSE 0 END) = 1 AS covered\n"
+            "  FROM app_ref.calendar c\n"
+            f"  GROUP BY c.{column})",
+            "pac_numbered AS (\n"
+            "  SELECT label, covered,\n"
+            "         row_number() OVER (ORDER BY newest DESC) AS pos\n"
+            "  FROM pac_periods)",
+        ]
+
+        # 2. the periods the window asks for -- the facts' own predicate
+        on_calendar = resolve(plan.time, anchor, alias="c")
+        ctes.append(
+            "pac_requested AS (\n"
+            f"  SELECT DISTINCT c.{column} AS label FROM app_ref.calendar c\n"
+            f"  WHERE {on_calendar.sql})")
+        params += on_calendar.params
+
+        # 3. extended backwards by span - 1 for a rolling average
+        ctes.append(
+            "pac_span AS (\n"
+            "  SELECT min(n.pos) - %s AS lo, max(n.pos) AS hi\n"
+            "  FROM pac_numbered n JOIN pac_requested r ON r.label = n.label)")
+        params.append(span - 1)
+        ctes.append(
+            "pac_spine AS (\n"
+            "  SELECT n.label, n.covered, n.pos,\n"
+            "         n.label IN (SELECT label FROM pac_requested) AS requested\n"
+            "  FROM pac_numbered n CROSS JOIN pac_span sp\n"
+            "  WHERE n.pos BETWEEN sp.lo AND sp.hi)")
+
+        # 4. the metric over exactly the spine's periods
+        over_spine = ResolvedWindow(
+            sql=f"s.{column} IN (SELECT label FROM pac_spine)",
+            params=[], label=window.label)
+        extra_cols: list[str] = []
+        if kind == "ratio":
+            series = self._compile_ratio(plan, spec, over_spine, anchor, apply_limit=False)
+            series_sql, series_params = series.sql, series.params
+            extra_cols = ["numerator", "denominator"]
+        else:
+            series_sql, series_params, _ = self._leaf_select(
+                plan.metric.value, plan.filters, over_spine, dims=list(plan.dimensions))
+        ctes.append(f"pac_series AS (\n{series_sql})")
+        params += series_params
+
+        # 5. every period for every group
+        dim_cols = lambda alias, i: f"{alias}.dim{i}_id, {alias}.dim{i}_label"  # noqa: E731
+        if partition:
+            ctes.append(
+                "pac_parts AS (\n  SELECT DISTINCT "
+                + ", ".join(dim_cols("se", i) for i in partition)
+                + "\n  FROM pac_series se)")
+        additive = kind in (None, "count_distinct")
+        fill = "COALESCE(se.value, 0)" if additive else "se.value"
+        select_dims = []
+        for i in range(len(plan.dimensions)):
+            if i == period_index:
+                select_dims.append(f"sp.label AS dim{i}_id, sp.label AS dim{i}_label")
+            else:
+                select_dims.append(f"pt.dim{i}_id, pt.dim{i}_label")
+        join = [f"se.dim{period_index}_id = sp.label"]
+        for i in partition:
+            join.append(f"{_join_key('se', f'dim{i}_id')} = {_join_key('pt', f'dim{i}_id')}")
+            params += [NULL_KEY_SENTINEL, NULL_KEY_SENTINEL]
+        extras = "".join(f",\n         se.{c}" for c in extra_cols)
+        ctes.append(
+            "pac_dense AS (\n"
+            f"  SELECT {', '.join(select_dims)}, sp.pos, sp.requested,\n"
+            f"         CASE WHEN sp.covered THEN {fill} END AS value{extras}\n"
+            "  FROM pac_spine sp\n"
+            + ("  CROSS JOIN pac_parts pt\n" if partition else "")
+            + f"  LEFT JOIN pac_series se ON {' AND '.join(join)})")
+
+        carried = ", ".join(f"dim{i}_id, dim{i}_label" for i in range(len(plan.dimensions)))
+        carried_extras = "".join(f", {c}" for c in extra_cols)
+        if plan.rolling is not None:
+            over = (
+                (f"PARTITION BY {', '.join(f'dim{i}_id' for i in partition)} "
+                 if partition else "")
+                + f"ORDER BY pos ROWS BETWEEN {span - 1} PRECEDING AND CURRENT ROW")
+            ctes.append(
+                "pac_rolled AS (\n"
+                f"  SELECT {carried}{carried_extras}, requested, value AS point_value,\n"
+                f"         CASE WHEN count(value) OVER ({over}) = %s\n"
+                f"              THEN avg(value) OVER ({over}) END AS value\n"
+                "  FROM pac_dense)")
+            params.append(span)
+            body = (f"WITH {', '.join(ctes)}\n"
+                    f"SELECT {carried}, point_value{carried_extras}, value\n"
+                    "FROM pac_rolled WHERE requested\n")
+        else:
+            body = (f"WITH {', '.join(ctes)}\n"
+                    f"SELECT {carried}{carried_extras}, value\n"
+                    "FROM pac_dense WHERE requested\n")
+
+        sql, params = self._finish(body, plan, params, rolled=True)
+
+        notes: list[str] = []
+        if additive:
+            notes.append(
+                "A period with no purchases is shown as zero. A period a data "
+                "source did not cover is left blank, not zero.")
+        else:
+            notes.append(
+                "A period with no data is left blank: a share with nothing to "
+                "divide by is undefined, not zero.")
+        if plan.rolling is not None:
+            notes.append(
+                f"Each figure averages that period and the {span - 1} before it, "
+                f"including periods before the window starts. It is left blank "
+                f"where any of those {span} periods is outside the data or "
+                f"unknown, rather than averaging fewer.")
+        columns = (self._columns(plan, extra=extra_cols + ["value"])
+                   if extra_cols else self._columns(plan))
+        return CompiledQuery(
+            sql=sql, params=params, columns=columns,
+            unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
+            notes=notes,
+            quality_checks=list(spec.get("quality_checks", [])) if kind == "ratio" else [],
+        )
 
     def _compile_simple(
         self, plan: AnalyticalPlan, spec: dict[str, Any], window: ResolvedWindow

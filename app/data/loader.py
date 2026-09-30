@@ -69,7 +69,7 @@ class LoadError(RuntimeError):
 def _truncate_business_data(cur: Any) -> None:
     cur.execute(
         "TRUNCATE sales, organizations, products, zip_territory, "
-        "app_ref.product_classification RESTART IDENTITY CASCADE"
+        "app_ref.product_classification, app_ref.calendar RESTART IDENTITY CASCADE"
     )
 
 
@@ -190,6 +190,49 @@ def _populate_classification(cur: Any) -> None:
         "FROM STDIN WITH (FORMAT csv)"
     ) as copy:
         copy.write(buf.read())
+
+
+def _populate_calendar(cur: Any, report: LoadReport | None = None) -> None:
+    """Rebuild the reporting calendar from the facts being published.
+
+    In the same transaction as the rows, so a snapshot and its calendar are
+    always published together. A week that maps to two months, or two labels,
+    violates the table's keys and fails the load -- a calendar that is not a
+    function of the week cannot place a period in a series.
+    """
+    cur.execute(
+        "SELECT wk_offset FROM sales GROUP BY wk_offset "
+        "HAVING count(DISTINCT (mo_offset, period_mo, period_qtr, period_wk, "
+        "week_ending_date)) > 1 LIMIT 5"
+    )
+    if bad := [r["wk_offset"] for r in cur.fetchall()]:
+        raise LoadError(
+            f"weeks {bad} map to more than one reporting month or label; the "
+            f"calendar would be ambiguous")
+    cur.execute(
+        "INSERT INTO app_ref.calendar (wk_offset, period_wk, week_ending_date, "
+        "mo_offset, period_mo, period_qtr, sources) "
+        "SELECT wk_offset, period_wk, week_ending_date, mo_offset, period_mo, "
+        "period_qtr, array_agg(DISTINCT data_source ORDER BY data_source) "
+        "FROM sales GROUP BY wk_offset, period_wk, week_ending_date, mo_offset, "
+        "period_mo, period_qtr"
+    )
+    # The calendar is built from the facts, so a week with no row in ANY
+    # source is absent from it -- and a series cannot show a period the
+    # calendar does not have. That is a source outage, not a quiet week, and
+    # it is said here rather than discovered as a missing point on a chart.
+    cur.execute(
+        "SELECT min(wk_offset) AS lo, max(wk_offset) AS hi, count(*) AS n "
+        "FROM app_ref.calendar"
+    )
+    row = cur.fetchone()
+    if report is not None and row["n"] and row["n"] != row["hi"] - row["lo"] + 1:
+        report.warn(
+            "calendar_gaps",
+            f"{row['hi'] - row['lo'] + 1 - row['n']} week(s) between the first "
+            f"and last have no rows in any source; time series cannot show them",
+            first_week=row["lo"], last_week=row["hi"], weeks_present=row["n"],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +493,7 @@ def load(mode: str) -> LoadReport:
                 _load_seed(cur, report)
             _bootstrap_users(cur, report)
             _populate_classification(cur)
+            _populate_calendar(cur, report)
             cur.execute("ANALYZE sales")
             cur.execute("ANALYZE organizations")
             _validate(cur, report)

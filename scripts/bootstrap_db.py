@@ -142,7 +142,13 @@ def main() -> int:
 
     # Migrations run as the owner so every object is owned by a non-superuser
     # role that the runtime roles are not members of.
-    owner_dsn = f"postgresql://{OWNER}:{passwords[OWNER]}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # Keyword form, not a URL: this script GENERATES the passwords, so a
+    # reserved character in one is a real input. In URL form an `@` in the
+    # password ended the userinfo and the host became part of the password.
+    # Same defect, same fix, as Settings.dsn().
+    from psycopg.conninfo import make_conninfo
+    owner_dsn = make_conninfo(host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+                              user=OWNER, password=passwords[OWNER])
 
     print("== migrations ==")
     with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:

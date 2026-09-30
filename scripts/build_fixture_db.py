@@ -40,8 +40,15 @@ def main() -> int:
 
     get_settings.cache_clear()
     sql = (ROOT / "tests" / "fixtures" / "coherent_market.sql").read_text()
+    from app.data.loader import _populate_calendar
+
     with owner_transaction() as cur:
         cur.execute(sql)
+        # Migrations ran against an empty database, so the calendar they
+        # backfilled is empty. Rebuilt the way the loader rebuilds it, with the
+        # same refusal of a week that maps to two months.
+        cur.execute("DELETE FROM app_ref.calendar")
+        _populate_calendar(cur)
         cur.execute("ANALYZE sales")
         for table in ("organizations", "products", "sales", "zip_territory"):
             cur.execute(f"SELECT count(*) AS n FROM {table}")

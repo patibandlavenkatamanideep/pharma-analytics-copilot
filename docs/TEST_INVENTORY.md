@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 483 | ✅ pass | `p1d-suite-unit.json` |
-| **Integration** | `pytest tests/integration -q` | 740 | ✅ pass | `p1d-suite-integration.json` |
+| **Unit** | `pytest tests/unit -q` | 495 | ✅ pass | `p1d-suite-unit.json` |
+| **Integration** | `pytest tests/integration -q` | 755 | ✅ pass | `p1d-suite-integration.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 115` | 115 | ✅ pass | `p1d-suite-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1338** | ✅ pass | `p1d-suite-total.json` |
+| **Total (pytest)** | `pytest tests -q` | **1365** | ✅ pass | `p1d-suite-total.json` |
 | **Browser — component** | `cd web && npm test` | 6 | ✅ pass | `p1d-suite-browser-component.json` |
 | **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -42,7 +42,7 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The result-checking integration tests are the other 68, which
+result. The result-checking integration tests are the other 83, which
 compare against SQL written by hand. The security count is also the `--min-tests` floor the release
 gate enforces, so the two cannot drift apart without the gate failing.
 
@@ -118,7 +118,7 @@ served and credentials in the environment. They last passed against the
 deployed instance on 2026-09-25. They are not part of the offline gate and
 are not claimed as passing on this revision.
 
-Neither browser suite is counted in the 1338: they do not run in the same
+Neither browser suite is counted in the 1365: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---

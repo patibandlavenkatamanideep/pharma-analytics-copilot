@@ -29,6 +29,9 @@ ALLOWED_TABLES = {
     "zip_territory",
     "product_classification",       # app_ref, reached via search_path
     "app_ref.product_classification",
+    # The reporting calendar: periods and source coverage, no restricted
+    # values. Read so that a time series includes the periods with no rows.
+    "app_ref.calendar",
 }
 
 # A strict ALLOWLIST, enforced for every function node in the tree.
@@ -46,6 +49,16 @@ ALLOWED_TABLES = {
 ALLOWED_FUNCTIONS = {
     "sum", "count", "coalesce", "nullif", "cast", "upper", "lower",
     "min", "max", "avg", "round", "abs", "greatest", "least", "any",
+    # Added for calendar-correct series. Each is a pure expression with work
+    # bounded by its input -- no generator, no I/O, nothing that can make a
+    # statement do more than the rows it already reads:
+    #   case, if   -- a conditional; blanks a rolling average that lacks a
+    #                 full window rather than averaging fewer periods. sqlglot
+    #                 parses a one-branch CASE as an If node, so both names
+    #                 denote the same SQL construct
+    #   row_number -- numbers calendar periods so a window can extend N-1
+    #                 periods before the ones requested
+    "case", "if", "row_number",
 }
 
 FORBIDDEN_SCHEMAS = {"pg_catalog", "information_schema", "app_auth", "app_conv", "app_meta"}
