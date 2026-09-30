@@ -46,6 +46,24 @@ log = logging.getLogger(__name__)
 POLICY_VERSION = "1.0.0"
 
 
+#: Every field the audit row carries. The pipeline may set only these keys
+#: (or a key in AUDIT_TRANSIENT); tests/security/test_audit_contract.py
+#: checks both that every set key is here and that every name here is a
+#: column, because a missing column fails the whole INSERT -- and the write
+#: is best-effort, so the entire row would vanish without a trace.
+AUDIT_COLUMNS = (
+    "request_id", "user_id", "role", "scope_kind", "scope_value", "wac_authorized",
+    "dataset_id", "metric_version", "policy_version", "plan_hash", "sql_hash",
+    "status", "denial_reason", "row_count", "db_ms", "total_ms", "model_id",
+    "input_tokens", "output_tokens",
+    "reason_codes", "intent_gaps", "turn_kind", "prompt_version",
+    "planner_attempts", "planner_repaired", "usage_known",
+)
+
+#: Keys used while building the row and deliberately not stored.
+AUDIT_TRANSIENT = frozenset({"blocking_gaps"})
+
+
 @dataclass
 class PipelineResult:
     status: str                      # answered | clarify | denied | error
@@ -261,8 +279,9 @@ class Pipeline:
         # so it holds for every planner, including a model that drops a filter
         # it could not resolve.
         gaps = find_gaps(question, plan, vocab)
-        audit["intent_gaps"] = [g.kind for g in gaps]
         blockers = blocking(gaps)
+        audit["intent_gaps"] = [g.kind for g in gaps]
+        audit["blocking_gaps"] = [g.kind for g in blockers]
         if blockers:
             # Answering would silently broaden the question: drop an
             # unresolvable product filter and the reply is the whole company's
@@ -275,7 +294,9 @@ class Pipeline:
                     status="clarify", conversation_id=state.conversation_id,
                     message=message, plan=plan.model_dump(mode="json"),
                 ),
-                "clarify", denial_reason="unresolved_entity",
+                # The kinds, not "unresolved_entity" for everything: a
+                # threshold that lost its direction is not an unknown entity.
+                "clarify", denial_reason=",".join(sorted({g.kind for g in blockers})),
             )
         disclosures = [g.message() for g in gaps]
 
@@ -482,13 +503,19 @@ class Pipeline:
             log.warning("failed to persist conversation turn", exc_info=True)
 
     def _write_audit(self, audit: dict[str, Any]) -> None:
-        """Hashes, counts and timings only -- never WAC values, result rows or prompts."""
-        columns = [
-            "request_id", "user_id", "role", "scope_kind", "scope_value", "wac_authorized",
-            "dataset_id", "metric_version", "policy_version", "plan_hash", "sql_hash",
-            "status", "denial_reason", "row_count", "db_ms", "total_ms", "model_id",
-            "input_tokens", "output_tokens",
-        ]
+        """Hashes, counts, codes and timings only -- never WAC values, result
+        rows, prompts or text from the question."""
+        # Derived before the write, so a code is present on every outcome
+        # path rather than only where someone remembered to add it.
+        codes = [audit.get("status")] + list(audit.get("blocking_gaps") or [])
+        audit["reason_codes"] = [c for c in dict.fromkeys(codes) if c]
+
+        unknown = set(audit) - set(AUDIT_COLUMNS) - AUDIT_TRANSIENT
+        if unknown:
+            # A key that is set and never persisted is a field that silently
+            # never reaches the audit trail. Six did, until 30 September.
+            log.error("audit keys with no column, dropped: %s", sorted(unknown))
+        columns = list(AUDIT_COLUMNS)
         values = [audit.get(c) for c in columns]
         placeholders = ", ".join(["%s"] * len(columns))
         try:

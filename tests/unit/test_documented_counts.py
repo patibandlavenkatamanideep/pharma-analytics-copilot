@@ -228,3 +228,19 @@ def test_the_dated_snapshots_say_they_are_dated():
     ):
         assert needle in (ROOT / document).read_text(), (
             f"{document} reads as current but is not")
+
+
+MIN_TESTS_FLAG = re.compile(r"--min-tests\s+(\d+)")
+
+
+@pytest.mark.parametrize("document", GOVERNED + ["docs/RUNBOOK.md", "docs/TEST_INVENTORY.md"])
+def test_every_documented_gate_command_uses_the_ci_floor(document):
+    """A copied command is a claim too. When the floor rose from 115 to 120,
+    seven places carried the old value; a reader running one of them would
+    enforce a weaker gate than CI does and believe it was the same one."""
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    floor = int(re.search(r'PAC_SECURITY_MIN_TESTS:\s*"(\d+)"', workflow).group(1))
+    stale = [(i, int(m.group(1)))
+             for i, line in enumerate((ROOT / document).read_text().splitlines(), 1)
+             for m in MIN_TESTS_FLAG.finditer(line) if int(m.group(1)) != floor]
+    assert not stale, f"{document}: --min-tests values {stale} differ from the CI floor {floor}"

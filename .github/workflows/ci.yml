@@ -92,7 +92,7 @@ jobs:
       # collected tests that skip still fail the gate.
       - name: Security suite (release gate, strict)
         env:
-          PAC_SECURITY_MIN_TESTS: "115"
+          PAC_SECURITY_MIN_TESTS: "120"
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
@@ -100,8 +100,23 @@ jobs:
       - name: Full test suite
         run: python -m pytest tests -q
 
-      - name: Held-out question set (offline planner, no spend)
-        run: python scripts/run_evals.py
+      # This step used to be named "Held-out question set" and ran the
+      # default suite -- which is the regression set the system was
+      # developed against. It is a gate, and is named as one.
+      - name: Regression question set (offline planner, gate)
+        run: python scripts/run_evals.py --provider offline --questions evals/questions.yaml
+
+      # The held-out sets are MEASUREMENTS, not gates. Gating on a holdout
+      # turns it into a target, and a set tuned against stops being held out.
+      # continue-on-error keeps a failure visible on the run without blocking
+      # it; the record is uploaded below either way.
+      - name: Held-out set 1 (measurement, not a gate)
+        continue-on-error: true
+        run: python scripts/run_evals.py --provider offline --questions evals/holdout.yaml
+
+      - name: Held-out set 2 (measurement, not a gate)
+        continue-on-error: true
+        run: python scripts/run_evals.py --provider offline --questions evals/holdout2.yaml
 
       - name: The release gate itself must reject unverified runs
         run: python -m pytest tests/unit/test_release_gate_strict.py tests/unit/test_release_gate.py -q
@@ -124,6 +139,11 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm --prefix web ci
+      # The component tests used to exist and never run in CI: this job
+      # built the bundle and stopped. They are the only automated check of
+      # the identity-isolation logic in the browser.
+      - name: Component tests (vitest, jsdom)
+        run: npm --prefix web test
       - run: npm --prefix web run build
 
   # The container image is a deliverable, so it is built on every push rather

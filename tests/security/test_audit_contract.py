@@ -12,6 +12,7 @@ row, a question, a prompt or a SQL statement.
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -124,3 +125,87 @@ def test_the_audit_records_the_contract_versions_in_force(client, make_identity)
     row = audit_rows(body["request_id"])[0]
     assert row["metric_version"] == get_registry().version
     assert row["policy_version"]
+
+
+# ---------------------------------------------------------------------------
+# Every field the pipeline records reaches the table (review finding 7b)
+# ---------------------------------------------------------------------------
+#
+# intent_gaps was set on the in-memory audit record and never written. A
+# check of every key against the INSERT's column list found five more,
+# added by later work -- turn_kind, prompt_version, planner_attempts,
+# planner_repaired, usage_known -- each carried through the request and
+# discarded at the write.
+
+def test_every_declared_audit_column_exists():
+    """The write is best-effort: a column missing from the table fails the
+    whole INSERT, which is logged and swallowed, so the ENTIRE row vanishes
+    for every request. This is the check that stops that being silent."""
+    from app.db import auth_transaction
+    from app.pipeline import AUDIT_COLUMNS
+
+    with auth_transaction() as cur:
+        cur.execute("""SELECT column_name FROM information_schema.columns
+                       WHERE table_schema = 'app_meta' AND table_name = 'query_audit'""")
+        present = {r["column_name"] for r in cur.fetchall()}
+    assert set(AUDIT_COLUMNS) <= present, sorted(set(AUDIT_COLUMNS) - present)
+
+
+def test_every_audit_key_the_pipeline_sets_is_declared():
+    """Read from the source, so a key set on a rare path is covered without
+    a request having to reach it."""
+    import pathlib
+    import re
+
+    from app.pipeline import AUDIT_COLUMNS, AUDIT_TRANSIENT
+
+    source = pathlib.Path("app/pipeline.py").read_text()
+    keys = set(re.findall(r'audit\["([a-z_]+)"\]', source))
+    keys |= set(re.findall(r'"([a-z_]+)":', source.split("audit: dict[str, Any] = {")[1]
+                                                    .split("}")[0]))
+    undeclared = keys - set(AUDIT_COLUMNS) - AUDIT_TRANSIENT
+    assert not undeclared, f"set on the audit record, never persisted: {sorted(undeclared)}"
+
+
+def test_a_clarification_records_why_as_codes(client, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    sign_in(client, user)
+    body = ask(client, "What is the volume for FLOOBERTAX this quarter?")
+
+    row = audit_rows(body["request_id"])[0]
+    assert "unresolved_product" in (row["intent_gaps"] or [])
+    assert row["reason_codes"][0] == "clarify"
+    assert "unresolved_product" in row["reason_codes"]
+
+
+def test_codes_are_codes_not_text_from_the_question(client, make_identity):
+    """The question may name an account or a product. Codes must not carry
+    it into the audit table."""
+    user = make_identity("exec", can_view_wac=1)
+    sign_in(client, user)
+    body = ask(client, "What is the volume for FLOOBERTAX this quarter?")
+
+    row = audit_rows(body["request_id"])[0]
+    # Non-empty first: over empty lists the loop below checks nothing, and
+    # passed against the version that never wrote these columns.
+    assert row["reason_codes"] and row["intent_gaps"]
+    for code in row["reason_codes"] + row["intent_gaps"]:
+        assert re.fullmatch(r"[a-z_]+", code), code
+        assert "floobertax" not in code.lower()
+
+
+def test_an_answer_records_how_it_was_planned(client, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    sign_in(client, user)
+    body = ask(client, "What is our total volume this quarter?")
+
+    row = audit_rows(body["request_id"])[0]
+    assert row["status"] == "answered"
+    assert row["reason_codes"] == ["answered"]
+    assert row["prompt_version"]
+    assert row["planner_attempts"] >= 1
+    assert row["planner_repaired"] is False
+    assert row["turn_kind"] == "fresh_question"
+    # Offline planning calls no provider. Zero tokens would be a measurement
+    # nobody took, so usage is recorded as unknown.
+    assert row["usage_known"] is False

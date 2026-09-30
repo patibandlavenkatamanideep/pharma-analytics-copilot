@@ -282,9 +282,17 @@ reports unknown for the same reason: no provider was called, so zero would be
 a measurement nobody took.
 
 The pipeline reads usage from the result of *this* request, attaches a
-planning summary to `PipelineResult`, and writes `usage_known`,
-`prompt_version`, `planner_attempts` and `planner_repaired` to the audit row.
-The evaluator reads the same summary instead of planner state.
+planning summary to `PipelineResult`, and sets `usage_known`,
+`prompt_version`, `planner_attempts` and `planner_repaired` on the audit
+record. The evaluator reads the same summary instead of planner state.
+
+> **Correction, 30 September.** This section originally said those four
+> fields were *written to the audit row*. They were set on the in-memory
+> record and dropped at the INSERT, which named only the original 19
+> columns — the same defect the review found for `intent_gaps`. Nothing
+> checked that a key set on the record had a column. They are persisted
+> since migration 011, and `tests/security/test_audit_contract.py` now
+> fails if a key is set without one.
 
 Verified: interleaved requests of 10 / 9,000 / 20 input tokens report exactly
 those; a repair reports **220**, not 120; a failed repair names the 210

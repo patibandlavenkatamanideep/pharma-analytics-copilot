@@ -379,3 +379,66 @@ def test_a_partially_carried_cohort_is_refused():
     result = FakeResult(plan={"filters": {"account_ids": ["ORG-1", "ORG-2"]}})
     ok, reason = runner.judge_turn({"type": "frozen_cohort"}, result, previous)
     assert not ok, reason
+
+
+# ---------------------------------------------------------------------------
+# A matching plan is an interpretation, not an answer (review finding 8)
+# ---------------------------------------------------------------------------
+
+PLAN_SPEC = {"type": "plan", "plan": {"metric": "paid_pack_units"}}
+
+
+def test_a_matching_plan_whose_request_errored_is_not_a_pass():
+    """The case the review reproduced: a compile failure carries its plan,
+    so status="error" with no answer passed as "plan matches"."""
+    ok, reason = verdict(PLAN_SPEC, FakeResult(
+        status="error", plan={"metric": "paid_pack_units"}, answer=None))
+    assert not ok
+    assert "error" in reason
+
+
+def test_a_matching_plan_with_no_answer_is_not_a_pass():
+    ok, _ = verdict(PLAN_SPEC, FakeResult(
+        status="answered", plan={"metric": "paid_pack_units"}, answer=None))
+    assert not ok
+
+
+def test_a_matching_plan_that_answered_passes():
+    ok, _ = verdict(PLAN_SPEC, FakeResult(
+        status="answered", plan={"metric": "paid_pack_units"},
+        answer=FakeAnswer(headline="1,234 packs", row_count=1)))
+    assert ok
+
+
+def test_a_spec_can_expect_a_plan_that_ends_in_a_clarification():
+    spec = {**PLAN_SPEC, "status": "clarify"}
+    ok, _ = verdict(spec, FakeResult(status="clarify", plan={"metric": "paid_pack_units"}))
+    assert ok
+
+
+def test_plan_matching_is_available_on_its_own_for_the_separate_score():
+    assert runner.plan_mismatch({"metric": "a"}, {"metric": "a"}) is None
+    assert "expected" in runner.plan_mismatch({"metric": "a"}, {"metric": "b"})
+
+
+# ---------------------------------------------------------------------------
+# The categories reconcile with the totals
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("status", ["answered", "denied", "clarify"])
+def test_a_passed_check_is_never_bucketed_as_a_failure(status):
+    category = runner.categorise({"type": "nonempty"}, FakeResult(status=status), True)
+    assert category in ("answer", "refusal", "unsupported")
+
+
+@pytest.mark.parametrize("status", ["answered", "denied", "clarify", "error"])
+def test_a_failed_check_is_always_wrong_or_a_failure(status):
+    category = runner.categorise({"type": "nonempty"}, FakeResult(status=status), False)
+    assert category in ("wrong", "failure")
+
+
+def test_a_pass_on_an_errored_request_is_a_judge_defect_not_a_category():
+    """It used to be bucketed as an execution failure while counting as a
+    pass, so 38/38 could sit beside a non-zero failure count."""
+    with pytest.raises(runner.SpecificationError):
+        runner.categorise({"type": "nonempty"}, FakeResult(status="error"), True)

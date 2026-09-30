@@ -122,15 +122,24 @@ CATEGORIES = {
 
 
 def categorise(spec: dict, result, ok: bool) -> str:
-    """Bucket one outcome. Failures split by whether the system broke."""
+    """Bucket one outcome. Failures split by whether the system broke.
+
+    A PASSED check is always one of answer / refusal / unsupported, and a
+    FAILED one always wrong / failure, so the categories sum to the pass and
+    fail totals. They used not to: a `plan` check whose request errored was
+    judged a pass AND bucketed as an execution failure, and the report said
+    38/38 passed beside a non-zero failure count.
+    """
     if not ok:
         return "failure" if result.status == "error" else "wrong"
+    if result.status == "error":
+        raise SpecificationError(
+            "a check passed although its request errored; an error is never a "
+            "correct outcome, so the judge for this spec is wrong")
     if result.status == "denied":
         return "refusal"
     if result.status == "clarify":
         return "unsupported"
-    if result.status == "error":
-        return "failure"
     # Answered, and accepted. If the expectation would also have accepted a
     # clarification or a refusal, this was an unsupported request handled
     # gracefully -- not a demonstration that the metric can be computed.
@@ -140,6 +149,24 @@ def categorise(spec: dict, result, ok: bool) -> str:
     if spec.get("type") == "volume_alternative":
         return "refusal"
     return "answer"
+
+
+def plan_mismatch(expected_plan: dict, actual: dict | None) -> str | None:
+    """Why the plan differs from what the spec expects, or None if it
+    matches. Interpretation only -- says nothing about execution."""
+    actual = actual or {}
+    for key, expected in expected_plan.items():
+        got = actual.get(key)
+        if isinstance(expected, dict):
+            for sub, value in expected.items():
+                if (got or {}).get(sub) != value:
+                    return f"plan.{key}.{sub} = {(got or {}).get(sub)!r}, expected {value!r}"
+        elif isinstance(expected, list):
+            if list(got or []) != expected:
+                return f"plan.{key} = {got!r}, expected {expected!r}"
+        elif got != expected:
+            return f"plan.{key} = {got!r}, expected {expected!r}"
+    return None
 
 
 def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
@@ -236,18 +263,20 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
     if kind == "plan":
         if not result.plan:
             return False, f"no plan produced ({result.status})"
-        for key, expected in spec["plan"].items():
-            actual = result.plan.get(key)
-            if isinstance(expected, dict):
-                for sub, value in expected.items():
-                    if (actual or {}).get(sub) != value:
-                        return False, f"plan.{key}.{sub} = {(actual or {}).get(sub)!r}, expected {value!r}"
-            elif isinstance(expected, list):
-                if list(actual or []) != expected:
-                    return False, f"plan.{key} = {actual!r}, expected {expected!r}"
-            elif actual != expected:
-                return False, f"plan.{key} = {actual!r}, expected {expected!r}"
-        return True, "plan matches"
+        if mismatch := plan_mismatch(spec["plan"], result.plan):
+            return False, mismatch
+        # A matching plan is a correct INTERPRETATION. It is not an answer:
+        # a compile failure carries its plan, so status="error" with no
+        # answer used to pass as "plan matches". The plan-only score is
+        # reported separately (plan_matched); the end-to-end check needs the
+        # request to have done what the spec expects.
+        want = spec.get("status", "answered")
+        if result.status != want:
+            return False, (f"plan matches, but the request ended {result.status!r}"
+                           f" where {want!r} was expected")
+        if want == "answered" and not result.answer:
+            return False, "plan matches, but no answer was produced"
+        return True, "plan matches and the request succeeded"
 
     if kind == "any_of":
         allowed = set(spec["allowed"])
@@ -506,6 +535,10 @@ def main() -> int:
                 "passed": ok,
                 "reason": reason,
                 "category": categorise(turn["expect"], result, ok),
+                # Interpretation, scored apart from execution. None when the
+                # check is not about the plan.
+                "plan_matched": (None if turn["expect"].get("type") != "plan"
+                                 else plan_mismatch(turn["expect"]["plan"], result.plan) is None),
                 "plan": result.plan,
                 "sql": result.sql,
                 # The ANSWER is recorded too, not just the plan. Without it a
@@ -554,6 +587,12 @@ def main() -> int:
         "by_category": {
             key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES
         },
+        "plan_extraction": {
+            "checks": sum(1 for r in results if r["plan_matched"] is not None),
+            "matched": sum(1 for r in results if r["plan_matched"]),
+            "matched_and_executed": sum(
+                1 for r in results if r["plan_matched"] and r["passed"]),
+        },
         "results": results,
     }
     label = questions_path.stem
@@ -561,6 +600,15 @@ def main() -> int:
     path.write_text(json.dumps(record, indent=2, default=str))
 
     counts = {key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES}
+
+    # The totals and the categories are two views of the same checks. If they
+    # disagree, one of them is wrong, and a report that prints both lets the
+    # reader pick the flattering one.
+    if passed != counts["answer"] + counts["refusal"] + counts["unsupported"] \
+            or failed != counts["wrong"] + counts["failure"]:
+        raise SpecificationError(
+            f"totals do not reconcile: {passed} passed / {failed} failed vs "
+            f"categories {counts}")
 
     print(f"\n  {passed}/{total} behavioural checks passed"
           + (f", {failed} failed" if failed else ""))
@@ -571,6 +619,13 @@ def main() -> int:
     if answerable:
         print(f"\n  Question-answering: {counts['answer']}/{answerable} of the questions"
               " this system claims to be able to compute.")
+    plan_checks = [r for r in results if r["plan_matched"] is not None]
+    if plan_checks:
+        matched = [r for r in plan_checks if r["plan_matched"]]
+        executed = [r for r in matched if r["passed"]]
+        print(f"\n  Plan extraction, scored apart from execution: "
+              f"{len(matched)}/{len(plan_checks)} plans matched; "
+              f"{len(executed)} of those also ran to the expected outcome.")
     print(f"\n  {counts['unsupported']} check(s) passed by correctly declining or"
           " clarifying. That is right behaviour,\n  and it is NOT evidence that"
           " the requested figure can be computed.")
