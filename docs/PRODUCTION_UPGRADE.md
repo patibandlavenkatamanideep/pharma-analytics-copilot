@@ -146,7 +146,7 @@ observability, real-data onboarding contracts, and layered evaluation.
 | Phase | Purpose | State |
 |---|---|---|
 | **0** | Baseline, inventory, evidence schema, reproduced defects | **complete** |
-| **1** | Repair D1–D3, R2, R8; reconcile docs | **1A, 1B, 1C done**; 1D in progress |
+| **1** | Repair D1–D3, R2, R8; reconcile docs | **complete** (1A–1D, closing checks) |
 | **2** | Original-data contracts, staging, versioned crosswalk | planned |
 | **3** | Request-wide snapshot consistency (R3) | planned |
 | **4** | Bounded runtime harness (R5, R6, R7) | planned |
@@ -551,6 +551,55 @@ written before migration 009 has NULL completeness, and NULL is read as
 not completeness.
 
 `CONTINUITY_VERSION` 1.0.0 → 1.1.0.
+
+---
+
+## Phase 1 — closing record
+
+Every change, the command that verified it, and the commit it landed in.
+Each commit was verified on its own before the next was written.
+
+| Commit | Change | Verifying command | Outcome |
+|---|---|---|---|
+| `73f0f7e` | Strict release gate rules on outcomes, not phases (D1, D3) | `pytest tests/unit/test_release_gate_strict.py -q` | 15 passed |
+| `b72f89c` | Provider-independent continuity; typed cohorts reach the live prompt (D2) | `pytest tests/unit/test_live_adapter_contract.py -q` | passed |
+| `f30c617` | Immutable request-local `PlanningResult`; usage survives repair (R2) | `pytest tests/unit/test_live_adapter_contract.py -q` | passed |
+| `522bae6` | DSN via `make_conninfo` (R8, A7) | `pytest tests/unit/test_dsn_encoding.py -q` | 37 passed; 17 fail on the previous implementation |
+| `522bae6` | Evidence capture: allowlist + value scrubbing (A20) | `pytest tests/unit/test_evidence_redaction.py -q` | 37 passed; 27 fail on the previous implementation |
+| `522bae6` | Evidence records state the changed-file list accurately (D4, A21) | `pytest tests/unit/test_evidence_record_accuracy.py -q` | 10 passed |
+| `927774a` | One measured source for test counts; drift guard (A22) | `pytest tests/unit/test_documented_counts.py -q` | 14 passed; both reverted numbers detected |
+| `dbbe846` | Browser component suite runs from this checkout (D5, A23) | `cd web && npm test` | 6 passed, ×3, 375–509 ms |
+| `91486f5` | The gate fails when a prerequisite is removed (A24) | `python3 evidence/probes/gate_requires_its_databases.py` | exit 0 — 0 / 1 / 0 as required |
+| `91486f5` | Cohort completeness across three different limits (D6, A25) | `pytest tests/unit/test_cohort_completeness.py -q` | 16 passed |
+
+Suite at the close of Phase 1: **533 passed**, 0 skipped, 0 xfail
+(`p1d-suite-total.json`). Security under the strict gate: **115 passed**
+(`p1d-suite-security.json`). Offline evaluation: 38/38, 12/12, 11/12.
+
+### What Phase 1 does not establish
+
+- **No live model was called.** Every figure here is offline or against a
+  fake transport. The last live measurement was 2026-09-25 and is labelled
+  with that date wherever it appears.
+- **No deployment was touched.** The deployed instance still runs
+  `7aae7cf`; nothing in this branch has been released.
+- **The Playwright suite did not run.** It needs a served application and
+  credentials, and is not part of the offline gate.
+- **`max_result_rows` truncation was not exercised end to end.** The cohort
+  rule is tested directly; no query was run against the 2M-row dataset that
+  returns more than the default 5,000 groups.
+- **The gate probe removes one prerequisite**, the authtest database. It
+  does not exercise removal of the working database or the coherent
+  fixture.
+- **Original-data behaviour is untested** (R1, R4). That is Phase 2.
+
+### Risks still open at the close of Phase 1
+
+`R1` classification of original data · `R3` request-wide snapshot pinning ·
+`R4` original-data onboarding · `R5` read→plan→answer concurrency ·
+`R6` request-wide deadline · `R7` best-effort audit writes ·
+`R9` observability. None were in Phase 1's scope; each has a numbered
+phase.
 
 ---
 
