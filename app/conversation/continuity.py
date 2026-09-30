@@ -41,7 +41,11 @@ from typing import Any
 
 #: Bumped when the meaning of continuity changes, so an evidence record can
 #: say which rules produced a plan.
-CONTINUITY_VERSION = "1.0.0"
+CONTINUITY_VERSION = "1.1.0"
+
+#: How many entity ids a single turn keeps. A conversation row is not a
+#: result set; this is a bound on the conversation table, not on the answer.
+COHORT_STORAGE_CAP = 200
 
 #: The plan filter each cohort grain belongs in. A grain absent from this map
 #: has no population to carry -- a period is the obvious case: "those same
@@ -115,6 +119,64 @@ class Cohort:
             return f"{len(self.ids)} {noun}"
         total = f"{self.total_available:,}" if self.total_available else "more"
         return f"{len(self.ids)} of {total} {noun} (truncated)"
+
+
+def summarise_cohort(
+    rows: list[dict[str, Any]],
+    *,
+    dimension: str | None,
+    max_rows: int,
+    source_turn: int | None = None,
+    dataset_id: str | None = None,
+) -> Cohort | None:
+    """Turn a result set into the cohort a later turn may refer back to.
+
+    Three different limits can cut a cohort down, and conflating them is
+    how a slice comes to be presented as a whole:
+
+    * the **ranking limit** -- "top 5" returns five rows, and those five
+      *are* the population the question asked about, so the cohort is
+      complete;
+    * the **response cap** (``max_rows``) -- the compiler asks for one row
+      more than the cap so truncation can be detected, and rows past the
+      cap are never shown to anyone;
+    * the **storage cap** (:data:`COHORT_STORAGE_CAP`) -- how many ids a
+      turn keeps.
+
+    Completeness used to be derived from the storage cap alone. With the
+    default configuration the two caps mask the difference, because 5,000
+    is larger than 200 and any response truncation therefore also exceeded
+    the storage cap. ``max_result_rows`` is configuration: at any value
+    below 200, a truncated answer was recorded as a complete cohort.
+
+    When the response itself was truncated the number of matching entities
+    is a floor rather than a count -- the query stopped looking -- so
+    ``total_available`` is left unknown rather than stated.
+
+    Returns ``None`` when the result has no dimension at all: a single
+    total is not a population.
+    """
+    if dimension is None:
+        return None
+
+    truncated = len(rows) > max_rows
+    shown = rows[:max_rows]
+
+    ids = tuple(
+        str(row["dim0_id"]) for row in shown
+        # A NULL group key is a real row -- it occupies the cap -- but it
+        # is not an entity anyone can refer back to.
+        if row.get("dim0_id") is not None
+    )
+
+    return Cohort(
+        dimension=dimension,
+        ids=ids[:COHORT_STORAGE_CAP],
+        source_turn=source_turn,
+        dataset_id=dataset_id,
+        complete=not truncated and len(ids) <= COHORT_STORAGE_CAP,
+        total_available=None if truncated else len(ids),
+    )
 
 
 @dataclass(frozen=True)

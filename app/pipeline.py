@@ -29,7 +29,7 @@ from typing import Any
 from app.analytics.compiler import Compiler, CompileError
 from app.analytics.entities import vocabulary_for
 from app.analytics.intent import blocking, find_gaps
-from app.conversation.continuity import Cohort
+from app.conversation.continuity import Cohort, summarise_cohort
 from app.conversation.continuity import resolve as resolve_continuity
 from app.analytics.periods import PeriodError
 from app.analytics.registry import get_registry
@@ -415,23 +415,23 @@ class Pipeline:
             answer.notes.insert(0, disclosure)
 
         # --- 11. persist ----------------------------------------------------
-        COHORT_CAP = 200
-        identified = [
-            str(r["dim0_id"]) for r in rows
-            if r.get("dim0_id") is not None
-        ] if plan.dimensions else []
-        cohort = identified[:COHORT_CAP]
-        # Whether this is the whole population. A cohort cut off at the cap
-        # is not "the previous result", and freezing it later would answer
-        # about a subset while looking like the whole.
-        cohort_complete = len(identified) <= COHORT_CAP
-        cohort_total = len(identified)
+        # One rule, in continuity.py, for all three limits that can cut a
+        # cohort down: the ranking limit, the response cap and the storage
+        # cap. Computing it here from `rows` alone got two of them wrong --
+        # it counted the renderer's discarded probe row, and it could not
+        # see truncation at all when max_result_rows was below the storage
+        # cap.
+        summary = summarise_cohort(
+            rows,
+            dimension=plan.dimensions[0].value if plan.dimensions else None,
+            max_rows=self.settings.max_result_rows,
+        )
         self._record(
             principal, state, question, plan.model_dump(mode="json"),
-            cohort, answer.headline, "answered",
-            cohort_dimension=plan.dimensions[0].value if plan.dimensions else None,
-            cohort_complete=cohort_complete,
-            cohort_total=cohort_total,
+            list(summary.ids) if summary else [], answer.headline, "answered",
+            cohort_dimension=summary.dimension if summary else None,
+            cohort_complete=summary.complete if summary else True,
+            cohort_total=summary.total_available if summary else None,
         )
 
         return finish(

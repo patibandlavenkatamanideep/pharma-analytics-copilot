@@ -107,6 +107,7 @@ Three categories, deliberately separated.
 |---|---|---|---|
 | **D1** ✅ | *Fixed in Phase 1B.* The release gate accepted a skip raised from a test body. `tests/release_gate.py` converts a skip to a failure only when `report.when == "setup"`. A `pytest.skip()` inside a test body skips at **call** phase, so `--release-gate --min-tests 1` exits **0** for a run that verified nothing. | `evidence/probes/gate_accepts_call_phase_skip.py` | `p0-defect-gate_accepts_call_phase_skip.json` |
 | **D2** ✅ | *Fixed in Phase 1A.* The live prompt mistyped cohorts and mislabelled turns. `build_system_prompt` emits *"The previous answer was about these **account ids**: ZENOVAX, GEMTARA"* for a **product** cohort, and *"This is a FOLLOW-UP"* whenever any previous plan exists. The typed-cohort work landed in `OfflinePlanner` and the pipeline but never reached the only text the live model sees. | `evidence/probes/live_prompt_mistypes_cohort.py` | `p0-defect-live_prompt_mistypes_cohort.json` |
+| **D6** ✅ | *Found and fixed before closing Phase 1.* Cohort completeness was derived from the 200-id storage cap alone, so a response truncated by `max_result_rows` was recorded as **complete** whenever fewer than 200 ids came back. Latent under the default cap of 5,000 — any response truncation also exceeded 200 — but `max_result_rows` is configuration. The cohort was also built from the raw rows, so it included the extra probe row the renderer discards and never shows, and it stated the truncated row count as an exact population total. | `tests/unit/test_cohort_completeness.py` | `p1d-cohort-completeness.json` |
 | **D5** ✅ | *Found and fixed in Phase 1D.* The 6 jsdom component tests could not be run from this checkout: the vitest worker started, never responded, and the run ended after 60 s having collected nothing. Recorded since the remediation phase as environmental — macOS stalling reads under `~/Desktop` — on evidence that never separated the path from the build cache. The cause was a stale `web/node_modules/.vite` entry. | see *The browser suites* below | `p1d-suite-browser-component.json` |
 | **D4** ✅ | *Found and fixed in Phase 1D.* The evidence recorder truncated the first changed-file path. `_git()` strips its output before the caller splits it into lines; `git status --porcelain` starts each line with a two-character status field whose first character is a space for an unstaged change, so `app/config.py` was recorded as `pp/config.py`. Five records written in Phases 1A–1C carry it; they are listed under *Phase 1D* below and were left as written rather than re-recorded against a SHA they did not measure. | `tests/unit/test_evidence_record_accuracy.py` | `p1d-record-accuracy.json` |
 | **D3** ✅ | *Fixed in Phase 1B.* CI did not run the strict gate. `.github/workflows/ci.yml:77` is `python -m pytest tests/security -q` with no `--release-gate` and no `--min-tests`. Confirmed by reading the workflow. | — | inspection |
@@ -191,6 +192,8 @@ deferred. Neither is a pass.
 | A21 | Evidence records state the changed-file list accurately | 1 | **passed** | `p1d-record-accuracy.json` |
 | A22 | No document states a test count that is not currently true | 1 | **passed** | `p1d-suite-total.json` |
 | A23 | The browser component suite runs repeatably from this checkout | 1 | **passed** | `p1d-suite-browser-component.json` |
+| A24 | The strict gate fails when a required database is removed | 1 | **passed** | `p1d-gate-requires-databases.json` |
+| A25 | Cohort completeness distinguishes ranking, response and storage limits | 1 | **passed** | `p1d-cohort-completeness.json` |
 
 ---
 
@@ -477,6 +480,77 @@ environmental diagnosis is a comfortable place to stop.
 Playwright needs the application served and credentials in the
 environment. It is not part of the offline gate and last passed against
 the deployed instance on 2026-09-25.
+
+---
+
+## Before closing Phase 1
+
+### The gate fails when a prerequisite is taken away (A24)
+
+A gate that cannot fail is not a gate, and this one had been green without
+being able to fail. `evidence/probes/gate_requires_its_databases.py` removes
+the disposable authorization database — by name, never by dropping anything
+— and runs the same module three ways:
+
+| Run | Prerequisite | Gate | Exit | Time |
+|---|---|---|---:|---:|
+| 1 | removed | off | **0** | 30.4 s |
+| 2 | removed | on | **1** | 30.3 s |
+| 3 | present | on | **0** | 0.4 s |
+
+Run 1 is what CI did for its entire history. Run 3 matters as much as run 2:
+a gate that also fails when everything is present gets switched off.
+
+Confirmed at full scope as well — with the authtest database absent,
+`pytest tests/security -q` reports **64 passed, 51 skipped, exit 0**, and
+the same run under `--release-gate --min-tests 115` turns those 51 skips
+into errors and exits non-zero. With both databases present: **115 passed**,
+no skips in any phase (`p1d-suite-security.json`).
+
+Note the probe's exit semantics are the **opposite** of the Phase 0 defect
+probes: those exit 0 while a defect is present, this one exits 0 when the
+gate behaves correctly.
+
+### Cohort completeness (A25, D6)
+
+Three different limits can cut a cohort down, and the code treated them as
+one:
+
+| Limit | Meaning | Complete? |
+|---|---|---|
+| Ranking limit — "top 5" | those five *are* the population asked about | **yes** |
+| Response cap — `max_result_rows` | rows past the cap are never shown | **no** |
+| Storage cap — 200 ids per turn | a conversation row is not a result set | **no** |
+
+Completeness was computed from the storage cap alone. Under the default
+configuration the two caps mask the difference — 5,000 is larger than 200,
+so any response truncation also exceeded the storage cap — but
+`max_result_rows` is configuration. The same rule, at a configured cap of
+50:
+
+```
+old:  complete=True   ids=51  total=51
+new:  complete=False  ids=50  total=None
+```
+
+Three things wrong in that first line. The answer *was* truncated. `ids=51`
+includes the extra probe row the compiler requests so the renderer can
+detect truncation — a row nobody is ever shown, which could then have been
+carried into a follow-up as part of "those". And `total=51` states the
+truncated row count as though it were a population count, when the query
+stopped looking; it is a floor, so it is now left unknown and reads *"50 of
+more accounts (truncated)"*.
+
+The rule now lives in one function, `summarise_cohort`, rather than being
+computed inline in the pipeline where it could not be tested and could
+drift from the renderer's own truncation check.
+
+Legacy records were already right and are now covered by a test: a turn
+written before migration 009 has NULL completeness, and NULL is read as
+**incomplete** when the turn has a cohort, because unknown completeness is
+not completeness.
+
+`CONTINUITY_VERSION` 1.0.0 → 1.1.0.
 
 ---
 

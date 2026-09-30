@@ -1,14 +1,13 @@
 {
   "evidence_schema_version": "1.0.0",
-  "recorded_at": "2026-09-30T03:31:24+00:00",
-  "claim": "The full security suite runs against both required databases under the strict gate: 115 passed, no skips in any phase.",
+  "recorded_at": "2026-09-30T03:31:11+00:00",
+  "claim": "The strict release gate fails when its disposable authorization database is removed, and passes when it is present. The same run without the gate exits 0, which is what CI did for its entire history.",
   "application": {
     "sha": "dbbe846f144f37b1449cb33d269e8d69122570f0",
     "branch": "post-assessment/production-readiness",
     "worktree_clean": false,
     "dirty_paths": [
-      "evidence/probes/gate_requires_its_databases.py",
-      "evidence/runs/p1d-gate-requires-databases.json"
+      "evidence/probes/gate_requires_its_databases.py"
     ]
   },
   "versions": {
@@ -60,32 +59,23 @@
   "command": {
     "argv": [
       "/Users/manideep/.venvs/pac/bin/python",
-      "-m",
-      "pytest",
-      "tests/security",
-      "-q",
-      "-p",
-      "no:randomly",
-      "--release-gate",
-      "--min-tests",
-      "115"
+      "evidence/probes/gate_requires_its_databases.py"
     ],
     "cwd_relative": ".",
     "env_overrides": null,
     "seed": null,
-    "duration_s": 12.99
+    "duration_s": 60.94
   },
   "outcome": {
     "status": "passed",
     "exit_code": 0,
-    "counts": {
-      "passed": 115
-    },
+    "counts": null,
     "blocked_reason": null,
-    "summary": "115 passed in 12.77s"
+    "summary": "OK: the gate fails without its database and passes with it."
   },
   "artifacts": [],
   "limits": [
-    "Exercises the authorization boundary against the working and disposable databases; it does not exercise the deployed instance."
+    "Removes the authtest database only. It does not exercise removal of the working database or the coherent fixture.",
+    "Runs one security module rather than all 115; the gate's rule is per-outcome, so this exercises the rule but not the suite."
   ]
 }
