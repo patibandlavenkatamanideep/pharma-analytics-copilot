@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # --- execution limits ---------------------------------------------------
     statement_timeout_ms: int = 5_000
     max_result_rows: int = 5_000
+
+    # --- domain ---------------------------------------------------------------
+    # The company's own name(s), as users say them: "NovaPharma volume" is
+    # company volume, not a product called NovaPharma. It comes from the
+    # business documents, not from the data -- products carry no manufacturer
+    # -- so it is configuration, and a different client sets their own.
+    # Comma-separated in the environment: PAC_COMPANY_NAMES="NovaPharma,Nova".
+    company_names: str = "NovaPharma"
     max_result_bytes: int = 4_000_000
 
     # --- LLM ----------------------------------------------------------------

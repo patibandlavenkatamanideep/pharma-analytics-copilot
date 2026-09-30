@@ -222,6 +222,10 @@ def ask(body: AskRequest, user: CurrentUser) -> dict[str, Any]:
     }
     if result.alternative:
         payload["alternative"] = result.alternative
+    if result.choices:
+        # Options the caller can already see: they came from the caller's own
+        # scoped index, so listing them discloses nothing new.
+        payload["choices"] = result.choices
     if body.include_sql:
         # The typed plan is returned alongside the SQL, under the same explicit
         # request. It is strictly less sensitive than the SQL -- it names a

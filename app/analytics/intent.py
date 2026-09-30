@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:                                  # pragma: no cover
     from app.analytics.entities import Vocabulary
+    from app.analytics.mentions import EntityIndex
     from app.analytics.plan import AnalyticalPlan
 
 # ALL-CAPS tokens that are vocabulary of the domain rather than entity names.
@@ -91,6 +92,9 @@ class IntentGap:
     kind: str
     detail: str
     suggestion: str = ""
+    #: For an ambiguous name: the candidates, as (entity_id, label, detail),
+    #: so the user chooses between real options rather than retyping.
+    choices: tuple[tuple[str, str, str], ...] = ()
 
     def message(self) -> str:
         return f"{self.detail} {self.suggestion}".strip()
@@ -131,9 +135,20 @@ def find_gaps(
     question: str,
     plan: "AnalyticalPlan",
     vocabulary: "Vocabulary",
+    index: "EntityIndex | None" = None,
 ) -> list[IntentGap]:
-    """Everything the question asked for that the plan does not deliver."""
+    """Everything the question asked for that the plan does not deliver.
+
+    `index` is the caller's entity index (app.analytics.mentions), built
+    under their scope. Without one, products are still checked -- they come
+    from the vocabulary -- but accounts cannot be.
+    """
+    from app.analytics.mentions import index_from
+
     gaps: list[IntentGap] = []
+    if index is None:
+        index = index_from(vocabulary.products, None, _other_vocabulary(vocabulary))
+    gaps += fidelity_gaps(question, plan, index, vocabulary)
 
     known_products = _normalise(vocabulary.products)
     known_places = _normalise(vocabulary.all_territories) | _normalise(vocabulary.all_regions)
@@ -161,8 +176,14 @@ def find_gaps(
         ))
 
     # --- a named product that is not a product -----------------------------
+    # ALL-CAPS anywhere reads as a product name in this domain. The slot rule
+    # in mentions.py catches the other casings; this keeps catching a capital
+    # name outside a slot. One gap per token either way.
+    already = {g.detail for g in gaps if g.kind == "unresolved_product"}
     for token in _ALLCAPS.findall(question):
         upper = token.upper()
+        if any(f'"{token}"' in d or f'"{upper}"' in d for d in already):
+            continue
         # Checked against the VOCABULARY, never against the plan. A model that
         # confidently puts FLOOBERTAX in product_names has not made FLOOBERTAX
         # real -- and skipping tokens the plan already carried meant exactly
@@ -253,6 +274,118 @@ def find_gaps(
         ))
 
     return gaps
+
+
+def _other_vocabulary(vocabulary: "Vocabulary") -> list[str]:
+    return (list(vocabulary.subcategories) + list(vocabulary.categories)
+            + list(vocabulary.specialties) + list(vocabulary.gpos)
+            + list(vocabulary.archetypes) + list(vocabulary.all_territories)
+            + list(vocabulary.all_regions) + list(vocabulary.company_names))
+
+
+def fidelity_gaps(
+    question: str,
+    plan: "AnalyticalPlan",
+    index: "EntityIndex",
+    vocabulary: "Vocabulary",
+) -> list[IntentGap]:
+    """Did every named product and account survive into the plan -- and does
+    everything the plan filters on exist?
+
+    Checked against the INDEX, never against the plan's own values: a model
+    that puts FLOOBERTAX in product_names has not made it real.
+    """
+    from app.analytics.mentions import find_mentions, normalise
+    from app.analytics.plan import Dimension
+
+    gaps: list[IntentGap] = []
+    planned_products = {normalise(p) for p in plan.filters.product_names}
+    planned_accounts = set(plan.filters.account_ids)
+    by_product = Dimension.product in plan.dimensions
+    by_account = Dimension.account in plan.dimensions
+
+    for m in find_mentions(question, index):
+        if m.kind == "unknown_product":
+            near = _closest(m.text.upper(), vocabulary.products)
+            gaps.append(IntentGap(
+                kind="unresolved_product",
+                detail=f'"{m.text}" is not a product in this dataset.',
+                suggestion=f"Did you mean {', '.join(near)}?" if near else "",
+            ))
+        elif m.kind == "unknown_account":
+            gaps.append(IntentGap(
+                kind="unresolved_account",
+                detail=f'No account called "{m.text}" is available to you.',
+                suggestion="Accounts are matched by their full name.",
+            ))
+        elif m.kind == "account" and m.ambiguous:
+            chosen = planned_accounts & set(m.ids)
+            if len(chosen) != 1:
+                gaps.append(IntentGap(
+                    kind="ambiguous_account",
+                    detail=(f'"{m.text}" is the name of {len(m.ids)} different '
+                            f"accounts."),
+                    suggestion="Which one did you mean?",
+                    choices=tuple((c.entity_id, c.label, c.detail) for c in m.candidates),
+                ))
+        elif m.reference_only:
+            continue
+        elif m.kind == "product":
+            if normalise(m.ids[0]) not in planned_products and not by_product:
+                gaps.append(IntentGap(
+                    kind="dropped_product",
+                    detail=(f"The question names {m.ids[0]}, but the figure is "
+                            f"not restricted to it."),
+                ))
+        elif m.kind == "account":
+            if m.ids[0] not in planned_accounts and not by_account:
+                gaps.append(IntentGap(
+                    kind="dropped_account",
+                    detail=(f"The question names {m.text}, but the figure is "
+                            f"not restricted to that account."),
+                ))
+
+    for name in plan.filters.product_names:
+        if normalise(name) not in index.products:
+            gaps.append(IntentGap(
+                kind="invented_product",
+                detail=f'The plan filters on "{name}", which is not a product in this dataset.',
+            ))
+    if index.has_accounts:
+        for entity_id in plan.filters.account_ids:
+            if entity_id not in index.account_ids:
+                gaps.append(IntentGap(
+                    kind="invented_account",
+                    detail="The plan filters on an account that is not available to you.",
+                ))
+    return gaps
+
+
+#: Found from the question alone. Checked BEFORE planning: there is no plan
+#: that could make them go away, so a model call to produce one is wasted.
+PRE_PLAN_KINDS = frozenset({"unresolved_product", "unresolved_account",
+                            "ambiguous_account"})
+
+
+def resolve_mentions(question: str, vocabulary: "Vocabulary", index: "EntityIndex"):
+    """The named entities, and the gaps that no plan could close.
+
+    Returns (mentions, gaps). Called on the request path before planning, so
+    an unknown or ambiguous name is asked about without a model call, and the
+    ids of the accounts the question names can be handed to the planner --
+    those ids and no others.
+    """
+    from app.analytics.mentions import find_mentions
+    from app.analytics.plan import AnalyticalPlan
+
+    mentions = find_mentions(question, index)
+    # A plan-free check: an empty plan filters nothing, so only the
+    # question-side kinds can fire, and they are the ones kept.
+    empty = AnalyticalPlan.model_validate(
+        {"metric": "paid_pack_units", "time": {"kind": "named", "named": "all_time"}})
+    gaps = [g for g in fidelity_gaps(question, empty, index, vocabulary)
+            if g.kind in PRE_PLAN_KINDS]
+    return mentions, gaps
 
 
 def _threshold_gaps(question: str, plan: "AnalyticalPlan") -> list[IntentGap]:
@@ -362,7 +495,14 @@ def blocking(gaps: list[IntentGap]) -> list[IntentGap]:
     question.
     """
     return [g for g in gaps
-            if g.kind in ("unresolved_place", "unresolved_product",
-                          "unhonoured_specialty",
-                          "threshold_direction_mismatch",
-                          "threshold_value_mismatch")]
+            if g.kind in BLOCKING_KINDS]
+
+
+#: Gaps after which any figure answers a different question than was asked.
+BLOCKING_KINDS = frozenset({
+    "unresolved_place", "unresolved_product", "unresolved_account",
+    "ambiguous_account", "dropped_product", "dropped_account",
+    "invented_product", "invented_account",
+    "unhonoured_specialty",
+    "threshold_direction_mismatch", "threshold_value_mismatch",
+})

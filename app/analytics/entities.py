@@ -45,6 +45,9 @@ class Vocabulary:
     # which looks like an answer to a question they did not ask.
     all_territories: list[str] = field(default_factory=list)
     all_regions: list[str] = field(default_factory=list)
+    # The company's own names ("NovaPharma volume" means company volume).
+    # From configuration, because the data does not carry a manufacturer.
+    company_names: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -164,11 +167,14 @@ def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocab
         )
         all_regions = [r["region_name"] for r in cur.fetchall()]
 
+    from app.config import get_settings
+
     return Vocabulary(
         products=products, subcategories=subs, categories=cats,
         specialties=specialties,
         gpos=gpos, archetypes=archetypes, territories=territories, regions=regions,
         all_territories=all_territories, all_regions=all_regions,
+        company_names=[n.strip() for n in get_settings().company_names.split(",") if n.strip()],
     )
 
 
@@ -249,3 +255,7 @@ def resolve_products(term: str) -> list[Candidate]:
 
 def clear_caches() -> None:
     _product_vocabulary.cache_clear()
+    # The account index is keyed on dataset_id too; cleared with the rest so
+    # a reload does not hold the previous snapshot's names in memory.
+    from app.analytics.mentions import clear_caches as clear_mentions
+    clear_mentions()

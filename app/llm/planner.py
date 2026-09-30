@@ -96,6 +96,10 @@ class PlanningContext:
     #: Present so the prompt and the offline planner cannot disagree about
     #: what this turn is -- which is exactly what they used to do.
     continuity: Any | None = None
+    #: Accounts the question names, resolved by the server under the
+    #: caller's scope: (as typed, entity id). Only these ids -- never the
+    #: account catalog -- reach the planner.
+    named_accounts: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -245,6 +249,14 @@ def build_system_prompt(context: PlanningContext) -> str:
 
     if context.known_products:
         parts += ["", f"Known products: {', '.join(context.known_products)}"]
+    if context.named_accounts:
+        # The ids of the accounts THIS question names, resolved on the
+        # server under the user's scope. Not a catalog: an account the
+        # question does not name is not listed, and the model never sees
+        # the list of accounts the user can access.
+        parts += ["", "ACCOUNTS THIS QUESTION NAMES (resolved by the server; "
+                      "put these ids in filters.account_ids):"]
+        parts += [f"  {label!r} = {entity_id}" for label, entity_id in context.named_accounts]
     if context.known_subcategories:
         parts += [f"Market subcategories: {', '.join(context.known_subcategories)}"]
     if context.known_categories:
@@ -871,6 +883,11 @@ class OfflinePlanner:
 
         if found := mentioned(context.known_products):
             update["product_names"] = found
+        # Resolved by the server before planning; the offline planner could
+        # not name an account at all before this, so "volume for <account>"
+        # answered for every account.
+        if context.named_accounts:
+            update["account_ids"] = [entity_id for _, entity_id in context.named_accounts]
         if subs := mentioned(context.known_subcategories):
             update["market_subcategories"] = subs
         if cats := mentioned(context.known_categories):

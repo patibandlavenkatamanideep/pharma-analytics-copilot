@@ -28,7 +28,8 @@ from typing import Any
 
 from app.analytics.compiler import Compiler, CompileError, UnsupportedCombination
 from app.analytics.entities import vocabulary_for
-from app.analytics.intent import blocking, find_gaps
+from app.analytics.intent import blocking, find_gaps, resolve_mentions
+from app.analytics.mentions import entity_index
 from app.conversation.continuity import Cohort, summarise_cohort
 from app.conversation.continuity import resolve as resolve_continuity
 from app.analytics.periods import PeriodError
@@ -80,6 +81,10 @@ class PipelineResult:
     #: Carried on the result rather than read back off the planner instance,
     #: which under concurrency belonged to whichever call finished last.
     planning: dict[str, Any] | None = None
+    #: For a clarification between real options -- an account name shared by
+    #: several accounts -- the options, as {id, label, detail}. The user picks
+    #: one instead of guessing at a spelling that would disambiguate.
+    choices: list[dict[str, str]] = field(default_factory=list)
 
 
 class Pipeline:
@@ -201,6 +206,34 @@ class Pipeline:
                 "clarify", denial_reason=f"ambiguous:{continuity.kind.value}",
             )
 
+        # --- 3b. entities the question names --------------------------------
+        # Resolved on the server, under the caller's scope, BEFORE planning.
+        # An unknown or ambiguous name has no plan that could fix it, so it is
+        # asked about without spending a model call; and the ids of accounts
+        # the question names -- those ids and no others -- go to the planner,
+        # which never sees the account catalog.
+        index = entity_index(principal, dataset["dataset_id"], vocab)
+        mentions, unresolved = resolve_mentions(question, vocab, index)
+        if unresolved:
+            audit["intent_gaps"] = [g.kind for g in unresolved]
+            audit["blocking_gaps"] = [g.kind for g in unresolved]
+            message = " ".join(g.message() for g in unresolved)
+            choices = [{"id": c[0], "label": c[1], "detail": c[2]}
+                       for g in unresolved for c in g.choices]
+            self._record(principal, state, question, None, [], message, "clarify")
+            return finish(
+                PipelineResult(
+                    status="clarify", conversation_id=state.conversation_id,
+                    message=message, choices=choices,
+                ),
+                "clarify",
+                denial_reason=",".join(sorted({g.kind for g in unresolved})),
+            )
+        named_accounts = [
+            (m.text, m.ids[0]) for m in mentions
+            if m.kind == "account" and len(m.ids) == 1 and not m.reference_only
+        ]
+
         context = PlanningContext(
             role=principal.role,
             scope_description=principal.scope_description,
@@ -222,6 +255,7 @@ class Pipeline:
             previous_cohort_complete=state.previous_cohort_complete,
             previous_cohort_total=state.previous_cohort_total,
             continuity=continuity,
+            named_accounts=named_accounts,
         )
 
         t0 = time.perf_counter()
@@ -278,7 +312,7 @@ class Pipeline:
         # rendering are all correct. Checked here rather than inside a planner
         # so it holds for every planner, including a model that drops a filter
         # it could not resolve.
-        gaps = find_gaps(question, plan, vocab)
+        gaps = find_gaps(question, plan, vocab, index)
         blockers = blocking(gaps)
         audit["intent_gaps"] = [g.kind for g in gaps]
         audit["blocking_gaps"] = [g.kind for g in blockers]
