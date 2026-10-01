@@ -14,8 +14,12 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from pydantic import ValidationError
+
 from app.analytics.plan import AnalyticalPlan
-from app.llm.planner import PlanningAttempt, PlanningContext, PlanningResult, TokenUsage
+from app.llm.planner import (
+    PlannerError, PlanningAttempt, PlanningContext, PlanningResult, TokenUsage,
+)
 
 
 class HostilePlanner:
@@ -26,8 +30,14 @@ class HostilePlanner:
     def plan(self, question: str, context: PlanningContext) -> PlanningResult:
         self.seen.append((question, context))
         raw = self._plan(question, context) if callable(self._plan) else self._plan
+        try:
+            plan = AnalyticalPlan.model_validate(raw)
+        except ValidationError as exc:
+            # What the live adapter does once its repair also fails: the
+            # request ends as a planner error, and nothing is compiled.
+            raise PlannerError(f"invalid plan: {exc.error_count()} errors") from None
         return PlanningResult(
-            plan=AnalyticalPlan.model_validate(raw), provider="hostile",
+            plan=plan, provider="hostile",
             model_id="hostile-test-double", prompt_version="test",
             planner_contract_version="test",
             attempts=(PlanningAttempt(ordinal=1, kind="initial", outcome="plan",

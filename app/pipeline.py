@@ -46,7 +46,7 @@ from app.conversation.state import (
     Finalised, StagedTurn, finalise, open_conversation)
 from app.db import (
     GenerationChanged, ScopeBindingError, analytics_transaction, auth_transaction)
-from app.llm.planner import Planner, PlannerError
+from app.llm.planner import Planner, PlannerError, typed_plan
 from app.analytics.plan import AnalyticalPlan
 from app.graph import (
     GRAPH_VERSION, RECURSION_LIMIT, build_turn_graph, checkpointer,
@@ -543,8 +543,10 @@ class Turn:
                     complete=state.previous_cohort_complete,
                     total_available=state.previous_cohort_total,
                 )
+            # Typed fields only: a model's free text from an earlier turn is
+            # not context for this one (see planner.typed_plan).
             self._continuity[question] = resolve_continuity(
-                question, previous_plan=state.previous_plan, cohort=cohort)
+                question, previous_plan=typed_plan(state.previous_plan), cohort=cohort)
         return self._continuity[question]
 
     def initial_state(self, *, question: str | None = None,
@@ -748,7 +750,7 @@ class Turn:
             known_regions=vocab.regions,
             all_territories=vocab.all_territories,
             all_regions=vocab.all_regions,
-            previous_plan=state_now.previous_plan,
+            previous_plan=typed_plan(state_now.previous_plan),
             previous_cohort=state_now.previous_cohort,
             previous_cohort_dimension=state_now.previous_cohort_dimension,
             previous_cohort_complete=state_now.previous_cohort_complete,
