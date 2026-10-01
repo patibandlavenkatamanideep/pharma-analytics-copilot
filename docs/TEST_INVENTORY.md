@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** `4e41107` plus the failure-mode change (`post-assessment/production-readiness`),
+**Measured on** `d3ad12d` plus the answer-shape change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 616 | ✅ pass | `r2-suite-7a-unit.json` |
+| **Unit** | `pytest tests/unit -q` | 642 | ✅ pass | `r2-suite-7b-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 812 | ✅ pass | `r2-suite-7a-integration.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 354` | 354 | ✅ pass | `r2-suite-7a-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1782** | ✅ pass | `r2-suite-7a-total.json` |
+| **Total (pytest)** | `pytest tests -q` | **1808** | ✅ pass | `r2-suite-7b-total.json` |
 | **Browser — component** | `cd web && npm test` | 20 | ✅ pass | `r2-suite-6c-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-browser-journeys.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -132,7 +132,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1782: they do not run in the same
+Neither browser suite is counted in the 1808: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---

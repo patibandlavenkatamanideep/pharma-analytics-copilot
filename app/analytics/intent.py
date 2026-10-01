@@ -261,6 +261,9 @@ def find_gaps(
     # --- a threshold: asked for, and did it survive intact? ----------------
     gaps += _threshold_gaps(question, plan)
 
+    # --- the shape: broken down as asked, ranked as asked? -----------------
+    gaps += _shape_gaps(question, plan)
+
     # --- a rolling average, which the plan cannot express ------------------
     if plan.rolling is None and re.search(
             r"\brolling\b|\bmoving average\b|\btrailing average\b|"
@@ -492,6 +495,65 @@ def _threshold_gaps(question: str, plan: "AnalyticalPlan") -> list[IntentGap]:
     return gaps
 
 
+_PERIODS = {"period_mo", "period_qtr", "period_wk"}
+
+
+def _shape_gaps(question: str, plan: "AnalyticalPlan") -> list[IntentGap]:
+    """A breakdown or a ranking the question asks for and the plan lacks.
+
+    A missing breakdown, or a different "top N", is disclosed: the figure is
+    true, it is just not the whole question, and the disclosure is shown
+    first. A ranking in the opposite direction blocks -- "the lowest five"
+    answered with the highest five is the opposite answer, not part of it.
+    """
+    from app.analytics.structure import asked_shape
+
+    shape = asked_shape(question)
+    planned = set(plan.dimensions)
+    gaps: list[IntentGap] = []
+    for word, grains in shape.groupings:
+        if not planned & set(grains):
+            gaps.append(IntentGap(
+                kind="grouping_dropped",
+                detail=(f"This asks for a breakdown by {word}, but the figure below "
+                        f"is not broken down that way."),
+            ))
+    r = shape.ranking
+    if r is None:
+        return gaps
+    if not planned & set(r.grains):
+        gaps.append(IntentGap(
+            kind="ranking_dropped",
+            detail=(f"This asks for a ranking of {r.word}, but the figure below is "
+                    f"not broken down by {r.word}."),
+        ))
+        return gaps
+    asked = "lowest" if r.direction == "bottom" else "highest"
+    if plan.ranking is not None and plan.ranking.direction != r.direction:
+        given = "lowest" if plan.ranking.direction == "bottom" else "highest"
+        gaps.append(IntentGap(
+            kind="ranking_direction_mismatch",
+            detail=f"This asks for the {asked} {r.word}, but the plan ranks the {given}.",
+            suggestion="Ask again, saying which end of the ranking you want.",
+        ))
+        return gaps
+    in_time_order = plan.dimensions and plan.dimensions[0].value in _PERIODS
+    if plan.ranking is None and (r.direction == "bottom" or in_time_order):
+        order = "in time order" if in_time_order else "largest first"
+        gaps.append(IntentGap(
+            kind="ranking_dropped",
+            detail=f"This asks for the {asked} {r.word}; the answer lists them {order}.",
+        ))
+    elif r.limit and (plan.ranking is None or plan.ranking.limit != r.limit):
+        shown = (f"the {plan.ranking.direction} {plan.ranking.limit}" if plan.ranking
+                 else "all of them, largest first")
+        gaps.append(IntentGap(
+            kind="ranking_limit_changed",
+            detail=f"This asks for the {r.direction} {r.limit} {r.word}; the answer shows {shown}.",
+        ))
+    return gaps
+
+
 def blocking(gaps: list[IntentGap]) -> list[IntentGap]:
     """Gaps that make an answer misleading rather than merely incomplete.
 
@@ -514,4 +576,5 @@ BLOCKING_KINDS = frozenset({
     "invented_product", "invented_account",
     "unhonoured_specialty",
     "threshold_direction_mismatch", "threshold_value_mismatch",
+    "ranking_direction_mismatch",
 })

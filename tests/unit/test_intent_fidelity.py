@@ -32,10 +32,12 @@ VOCAB = Vocabulary(
 )
 
 
-def plan_for(metric="paid_pack_units", **filters):
+def plan_for(metric="paid_pack_units", *, dimensions=(), ranking=None, **filters):
     return AnalyticalPlan.model_validate({
         "metric": metric,
         "filters": filters,
+        "dimensions": list(dimensions),
+        "ranking": ranking,
         "time": {"kind": "named", "named": "r3m"},
     })
 
@@ -77,9 +79,15 @@ def test_a_real_territory_is_not_flagged():
                  plan_for(territories=["Mid-Atlantic West"])) == set()
 
 
+#: "by GPO" and "by NDC" ask for a breakdown, so the plan that answers them
+#: has that grain; the others are not grains.
+ACRONYM_GRAIN = {"GPO": ["gpo"], "NDC": ["ndc"]}
+
+
 @pytest.mark.parametrize("acronym", ["GPO", "WAC", "PAP", "NDC", "YTD", "IDN"])
 def test_domain_acronyms_are_not_mistaken_for_products(acronym):
-    assert kinds(f"Show me volume by {acronym} this quarter", plan_for()) == set()
+    assert kinds(f"Show me volume by {acronym} this quarter",
+                 plan_for(dimensions=ACRONYM_GRAIN.get(acronym, ()))) == set()
 
 
 def test_340b_is_not_mistaken_for_a_product():
@@ -148,21 +156,25 @@ def test_a_threshold_is_disclosed_as_unexpressible(question):
 
 def test_a_plain_ranking_is_not_mistaken_for_a_threshold():
     assert kinds("What are the top 10 accounts by pack units this quarter?",
-                 plan_for()) == set()
+                 plan_for(dimensions=["account"],
+                          ranking={"direction": "top", "limit": 10})) == set()
 
 
 # ---------------------------------------------------------------------------
 # Ordinary questions produce no noise
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("question", [
-    "What are our top 5 accounts by pack units this quarter?",
-    "Show me the monthly volume trend for the last six months",
-    "Compare Q1 2026 and Q2 2026 pack units",
-    "How did we do?",
+@pytest.mark.parametrize("question, shape", [
+    ("What are our top 5 accounts by pack units this quarter?",
+     {"dimensions": ["account"], "ranking": {"direction": "top", "limit": 5}}),
+    ("Show me the monthly volume trend for the last six months",
+     {"dimensions": ["period_mo"]}),
+    ("Compare Q1 2026 and Q2 2026 pack units", {}),
+    ("How did we do?", {}),
 ])
-def test_ordinary_questions_raise_no_gaps(question):
-    assert kinds(question, plan_for()) == set(), question
+def test_ordinary_questions_raise_no_gaps(question, shape):
+    """Answered by a plan of the shape they ask for, nothing is flagged."""
+    assert kinds(question, plan_for(**shape)) == set(), question
 
 
 def test_a_product_the_planner_invented_is_still_unresolved():

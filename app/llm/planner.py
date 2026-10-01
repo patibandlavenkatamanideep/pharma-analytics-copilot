@@ -928,6 +928,17 @@ class OfflinePlanner:
                 dims.append(dim)
             if len(dims) >= 2:
                 break
+        # The shape the fidelity check reads (app.analytics.structure): the
+        # ranked entity first, then any breakdown the table above missed --
+        # "top 20 facilities", "by facility and month".
+        from app.analytics.structure import asked_shape
+
+        shape = asked_shape(q)
+        if shape.ranking and shape.ranking.grains and not set(dims) & set(shape.ranking.grains):
+            dims.insert(0, shape.ranking.grains[0])
+        for _, grains in shape.groupings:
+            if not set(dims) & set(grains):
+                dims.append(grains[0])
         # A count must not be grouped by the thing it counts -- "accounts per
         # account" is not a question. Grouping by the OTHER entity is exactly
         # the question, though: "which health systems have the most facilities"
