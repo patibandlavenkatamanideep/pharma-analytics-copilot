@@ -142,7 +142,7 @@ $CLI run --rm --network "$NET" "${jobs_env[@]}" "$TAG" \
 for _ in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && break; sleep 1; done
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && pass "ready once a dataset is published" || fail "not ready after load"
 
-emails=$($CLI run --rm --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
+$CLI run --rm --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
 import os
 from app.auth.identity import set_credential
 from app.db import owner_transaction
@@ -154,25 +154,35 @@ with owner_transaction() as cur:
 for r in rows:
     set_credential(r['user_id'], os.environ['SMOKE_PW'])
     print(r['role'], r['email'])
-")
+" > "$WORK/emails.txt" 2> "$WORK/emails.err" || { cat "$WORK/emails.err"; fail "credentials set by a jobs container"; }
+exec_email=$(awk '$1=="exec"{print $2}' "$WORK/emails.txt")
+ram_email=$(awk '$1=="ram"{print $2}' "$WORK/emails.txt")
+[ -n "$exec_email" ] && [ -n "$ram_email" ] && pass "throwaway credentials set for an Exec and a RAM" \
+  || fail "no Exec or RAM to sign in as: $(cat "$WORK/emails.txt")"
 
-journey() {  # role email -> prints the answer body
-  local jar="$WORK/$1.jar"
-  local code
-  code=$(curl -s -o /dev/null -w '%{http_code}' -c "$jar" -H 'Content-Type: application/json' \
-    -d "{\"email\": \"$2\", \"password\": \"$USERPW\"}" "$BASE/api/login")
-  [ "$code" = "200" ] || fail "$1 signs in ($code)"
-  curl -s -b "$jar" -H 'Content-Type: application/json' -H "Idempotency-Key: smoke-$1-$RANDOM$RANDOM" \
-    -d '{"question": "total WAC revenue last quarter"}' "$BASE/api/ask"
+# Each step writes to a file and is checked here, in the main shell: a
+# failure inside $(...) would be captured and the script would stop silently.
+signin() {  # role email
+  curl -s -o "$WORK/$1.login" -w '%{http_code}' -c "$WORK/$1.jar" \
+    -H 'Content-Type: application/json' \
+    -d "{\"email\": \"$2\", \"password\": \"$USERPW\"}" "$BASE/api/login"
 }
-exec_email=$(echo "$emails" | awk '$1=="exec"{print $2}')
-ram_email=$(echo "$emails" | awk '$1=="ram"{print $2}')
-exec_body=$(journey exec "$exec_email")
-echo "$exec_body" | python3 -c "import json,sys; b=json.load(sys.stdin); sys.exit(0 if b['status']=='answered' and '\$' in b['message'] else 1)" \
-  && pass "an Exec signs in and gets a priced answer" || fail "Exec journey: $exec_body"
-ram_body=$(journey ram "$ram_email")
-echo "$ram_body" | python3 -c "import json,sys; b=json.load(sys.stdin); sys.exit(0 if b['status'] in ('answered','denied') and '\$' not in json.dumps(b) else 1)" \
-  && pass "a RAM asking for revenue sees no currency anywhere in the response" || fail "RAM journey: $ram_body"
+ask() {  # role question -> body in $WORK/<role>.answer
+  curl -s -o "$WORK/$1.answer" -w '%{http_code}' -b "$WORK/$1.jar" \
+    -H 'Content-Type: application/json' -H "Idempotency-Key: smoke-$1-$RANDOM$RANDOM" \
+    -d "{\"question\": \"$2\"}" "$BASE/api/ask"
+}
+code=$(signin exec "$exec_email"); [ "$code" = "200" ] && pass "an Exec signs in" \
+  || fail "Exec sign-in returned $code: $(cat "$WORK/exec.login")"
+code=$(ask exec "total WAC revenue last quarter")
+python3 -c "import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if b['status']=='answered' and '\$' in b['message'] else 1)" "$WORK/exec.answer" \
+  && pass "the Exec gets a priced answer" || fail "Exec answer ($code): $(cat "$WORK/exec.answer")"
+code=$(signin ram "$ram_email"); [ "$code" = "200" ] && pass "a RAM signs in" \
+  || fail "RAM sign-in returned $code: $(cat "$WORK/ram.login")"
+code=$(ask ram "total WAC revenue last quarter")
+python3 -c "import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if b['status'] in ('answered','denied') and '\$' not in json.dumps(b) else 1)" "$WORK/ram.answer" \
+  && pass "the RAM asking for revenue sees no currency anywhere in the response" \
+  || fail "RAM answer ($code): $(cat "$WORK/ram.answer")"
 curl -s -o /dev/null -b "$WORK/ram.jar" -c "$WORK/ram.jar" -X POST "$BASE/api/logout"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$WORK/ram.jar" "$BASE/api/me")" = "401" ] \
   && pass "after sign-out the session no longer works" || fail "session survived sign-out"
