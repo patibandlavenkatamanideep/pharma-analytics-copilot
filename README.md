@@ -1,6 +1,12 @@
 # Pharma Analytics Copilot
 
-### 🔗 Live: **https://44-217-117-172.sslip.io**
+### 🔗 Live (historical deployment of the submitted build): **https://44-217-117-172.sslip.io**
+
+> **This branch** (`post-assessment/production-readiness`) is post-submission
+> engineering. The live URL runs an earlier build, and none of this branch
+> is deployed. What this branch establishes, and what it does not, is in
+> **[`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md)**. It is not
+> production-ready, and that document says exactly why.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is
@@ -33,6 +39,12 @@ DDL, seed data and the generator are unmodified.
 | Check a requirement against its evidence | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) |
 | See a real transcript, including the refusals | [`docs/DEMO.md`](docs/DEMO.md) — generated, not written |
 | Know what was found and fixed in review, and what is still open | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) |
+| **See what this branch has proven, and what is blocked** | [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) |
+| Ingest new and corrected sales | [`docs/INGESTION.md`](docs/INGESTION.md) |
+| Observe it: traces, metrics, alerts | [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) |
+| Know what is remembered, for how long, and how to export or delete it | [`docs/RETENTION.md`](docs/RETENTION.md) |
+| Size it | [`docs/CAPACITY.md`](docs/CAPACITY.md) |
+| Check dependencies and scanning | [`docs/SUPPLY_CHAIN.md`](docs/SUPPLY_CHAIN.md) |
 
 ---
 
@@ -190,6 +202,12 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 ---
 
 ## Status
+
+**Current (this branch):** see
+[`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). Everything below in
+this section is the **historical** record of the submitted build and its
+deployment in September 2026. It is kept as it was, and is not a claim
+about this branch.
 
 Verified on the full dataset: ingestion, the authorization boundary (362 tests),
 metric semantics against hand-written reference SQL, and the API and UI served

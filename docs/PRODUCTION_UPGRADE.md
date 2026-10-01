@@ -3,9 +3,14 @@
 Post-assessment work toward supporting **original data** on the assignment
 schema, with reliable execution, auditable evidence and safe operations.
 
-This document is the current state. It does not describe intentions as
-achievements: every claim points at a record under `evidence/runs/`, and
-anything unmeasured says so.
+> **Superseded as the current state on 2026-10-01.** This document records
+> Phase 0 and Phase 1, which ended at `85bac76`. The work on the 30 September
+> review, Phases 2 to 8, and the branch's current verdict are in
+> [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md). The text below is kept as the
+> record it was, with its own dated corrections.
+
+It does not describe intentions as achievements: every claim points at a
+record under `evidence/runs/`, and anything unmeasured says so.
 
 ---
 
