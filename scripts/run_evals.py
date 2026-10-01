@@ -433,14 +433,21 @@ FROZEN = ROOT / "evals" / "frozen.json"
 
 
 class Budget:
-    """Tokens a live run may spend, checked BEFORE each question.
+    """Tokens a live run may spend, enforced at EVERY model call.
 
-    A question can cost two model calls (the plan and one repair), and a call
-    whose usage the provider did not report -- a timeout, a dropped
-    connection -- may still have been billed. So: the next question runs only
-    if two more calls at the ceiling would still fit, and an unreported call
-    is charged AT the ceiling, never as zero. The ceilings are deliberately
-    above what was measured (about 4,670 input / 160 output per question).
+    The pipeline's planner asks allow_call() before each call -- the plan
+    and any repair alike -- and reports each one to record_call(). While
+    metered, the SDK's own retries are off (planner.PlanningContext.spend),
+    so every billable call passes through here: a retried call would
+    otherwise bill invisibly, because the provider reports usage only for
+    the last one. A call is allowed only if one more at the per-call ceiling
+    still fits, so the charged total can never exceed the caps. A call whose
+    usage was not reported is charged AT the ceiling, never as zero.
+
+    Before each question, can_afford_another() also asks for room for two
+    calls (the plan and a repair), so a question is not started that the
+    budget would cut off half-way. The ceilings are deliberately above what
+    was measured (about 4,670 input / 160 output per call).
     """
 
     def __init__(self, max_input: int, max_output: int, *,
@@ -448,34 +455,44 @@ class Budget:
         self.max_input, self.max_output = max_input, max_output
         self.input_ceiling, self.output_ceiling = input_ceiling, output_ceiling
         self.input = self.output = 0
+        self.calls = 0
         self.unreported_calls = 0
+        self.refused_calls = 0
+
+    def _fits(self, calls: int) -> bool:
+        return (self.input + calls * self.input_ceiling <= self.max_input
+                and self.output + calls * self.output_ceiling <= self.max_output)
 
     def can_afford_another(self) -> bool:
-        return (self.input + 2 * self.input_ceiling <= self.max_input
-                and self.output + 2 * self.output_ceiling <= self.max_output)
+        return self._fits(2)
 
-    def charge(self, planning: dict[str, Any] | None) -> None:
-        attempts = (planning or {}).get("attempts")
-        if not attempts:
-            # Planning failed before reporting what it did: the worst case.
-            self.input += 2 * self.input_ceiling
-            self.output += 2 * self.output_ceiling
-            self.unreported_calls += 2
-            return
-        for attempt in attempts:
-            usage = attempt.get("usage") or {}
-            if usage.get("known"):
-                self.input += usage.get("input_tokens") or 0
-                self.output += usage.get("output_tokens") or 0
-            else:
-                self.input += self.input_ceiling
-                self.output += self.output_ceiling
-                self.unreported_calls += 1
+    def allow_call(self) -> bool:
+        if self._fits(1):
+            return True
+        self.refused_calls += 1
+        return False
+
+    def record_call(self, usage: Any) -> None:
+        self.calls += 1
+        if getattr(usage, "known", False):
+            self.input += usage.input_tokens or 0
+            self.output += usage.output_tokens or 0
+            # The input ceiling is an estimate (output is capped by
+            # max_tokens). A call larger than it overshoots once, by the
+            # excess; from then on every allowance assumes calls that size.
+            self.input_ceiling = max(self.input_ceiling, usage.input_tokens or 0)
+            self.output_ceiling = max(self.output_ceiling, usage.output_tokens or 0)
+        else:
+            self.input += self.input_ceiling
+            self.output += self.output_ceiling
+            self.unreported_calls += 1
 
     def as_dict(self) -> dict[str, Any]:
         return {"max_input_tokens": self.max_input, "max_output_tokens": self.max_output,
                 "charged_input_tokens": self.input, "charged_output_tokens": self.output,
+                "model_calls": self.calls,
                 "unreported_calls_charged_at_ceiling": self.unreported_calls,
+                "calls_refused_by_budget": self.refused_calls,
                 "input_ceiling_per_call": self.input_ceiling,
                 "output_ceiling_per_call": self.output_ceiling}
 
@@ -605,6 +622,9 @@ def main() -> int:
 
     planner = build_planner()
     pipeline = Pipeline(planner)
+    # Every model call is metered: asked before, recorded after, with the
+    # SDK's retries off so none is billed unseen.
+    pipeline.spend = budget
     dataset = pipeline.current_dataset()
 
     from app.analytics.registry import get_registry
@@ -650,8 +670,6 @@ def main() -> int:
 
             # From the result of THIS request, not from planner state.
             planning = result.planning or {}
-            if budget is not None:
-                budget.charge(result.planning)
             usage = planning.get("usage") or {}
             results.append({
                 "id": label,

@@ -218,3 +218,22 @@ def test_concurrent_requests_under_pool_pressure_all_finish(pipeline, ram_user, 
     assert not errors, errors
     assert results.count("answered") == 12, results
     assert time.perf_counter() - started < 60
+
+
+def test_an_exhausted_evaluation_budget_makes_no_model_call(exec_user):
+    """A metered pipeline (evaluation only) whose spend cannot cover one
+    more call asks the model nothing, says so, and records why."""
+    import importlib.util
+    import pathlib
+
+    spec = importlib.util.spec_from_file_location(
+        "run_evals", pathlib.Path(__file__).resolve().parents[2] / "scripts" / "run_evals.py")
+    ev = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ev)
+
+    pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
+    pipe.spend = ev.Budget(1_000, 1_000)           # below one call's ceiling
+    result = pipe.ask(exec_user, QUESTION)
+    assert result.status == "error" and "spend limit" in result.message
+    assert planner._client.messages.requests == []
+    assert audit_status(result.request_id) == "budget_exhausted"

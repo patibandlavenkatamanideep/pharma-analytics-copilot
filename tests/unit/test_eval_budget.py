@@ -25,30 +25,110 @@ def ev():
     return module
 
 
-def attempt(i, o, known=True):
-    return {"usage": {"input_tokens": i, "output_tokens": o, "known": known}}
+def usage(i, o):
+    from app.llm.planner import TokenUsage
+    return TokenUsage(input_tokens=i, output_tokens=o)
+
+
+def unreported():
+    from app.llm.planner import TokenUsage
+    return TokenUsage()
 
 
 def test_reported_usage_is_charged_as_reported(ev):
     b = ev.Budget(100_000, 10_000)
-    b.charge({"attempts": [attempt(4_670, 160)]})
-    b.charge({"attempts": [attempt(4_500, 300), attempt(4_900, 150)]})   # a repair
-    assert (b.input, b.output, b.unreported_calls) == (14_070, 610, 0)
+    for u in (usage(4_670, 160), usage(4_500, 300), usage(4_900, 150)):
+        assert b.allow_call()
+        b.record_call(u)
+    assert (b.input, b.output, b.calls, b.unreported_calls) == (14_070, 610, 3, 0)
 
 
 def test_an_unreported_call_is_charged_at_the_ceiling_never_zero(ev):
     b = ev.Budget(100_000, 100_000)
-    b.charge({"attempts": [attempt(None, None, known=False)]})
+    b.record_call(unreported())
     assert (b.input, b.output, b.unreported_calls) == (8_000, 4_096, 1)
-    b.charge(None)                               # planning failed before reporting
-    assert (b.input, b.output, b.unreported_calls) == (24_000, 12_288, 3)
 
 
-def test_the_next_question_runs_only_if_its_worst_case_still_fits(ev):
+def test_a_call_is_allowed_only_if_one_more_at_the_ceiling_fits(ev):
+    b = ev.Budget(10_000, 10_000)
+    assert b.allow_call()                         # 8,000 <= 10,000
+    b.record_call(usage(4_670, 160))
+    assert not b.allow_call()                     # 4,670 + 8,000 > 10,000
+    assert b.refused_calls == 1
+
+
+def test_the_next_question_needs_room_for_a_plan_and_a_repair(ev):
     b = ev.Budget(20_000, 10_000)
-    assert b.can_afford_another()                # 2 x 8,000 = 16,000 <= 20,000
-    b.charge({"attempts": [attempt(4_670, 160)]})
-    assert not b.can_afford_another()            # 4,670 + 16,000 > 20,000
+    assert b.can_afford_another()                 # 2 x 8,000 = 16,000 <= 20,000
+    b.record_call(usage(4_670, 160))
+    assert not b.can_afford_another()             # 4,670 + 16,000 > 20,000
+
+
+def test_whatever_the_calls_report_the_caps_hold(ev):
+    """Usage within the per-call ceilings, reported or not, in any order:
+    the charged total never exceeds either cap."""
+    import random
+    rng = random.Random(7)
+    for _ in range(200):
+        b = ev.Budget(rng.randint(5_000, 60_000), rng.randint(4_096, 20_000))
+        while b.allow_call():
+            b.record_call(unreported() if rng.random() < 0.3
+                          else usage(rng.randint(0, 8_000), rng.randint(0, 4_096)))
+            assert b.input <= b.max_input and b.output <= b.max_output
+
+
+def test_a_call_above_the_ceiling_raises_the_ceiling(ev):
+    """The input ceiling is an estimate. A call that exceeds it can overshoot
+    the cap once, by that excess; the ceiling then rises to it, so the next
+    allowance accounts for prompts that size."""
+    b = ev.Budget(50_000, 50_000)
+    b.record_call(usage(9_500, 100))
+    assert b.input_ceiling == 9_500
+
+
+# -- the planner honours the meter --------------------------------------------------
+
+def planner_with(replies):
+    from tests.unit.test_live_adapter_contract import make_planner
+    return make_planner(replies)
+
+
+def test_a_repair_the_budget_cannot_cover_is_never_made(ev):
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import (
+        FakeBlock, FakeResponse, FakeUsage, context_with, valid_plan_block,
+    )
+
+    budget = ev.Budget(12_000, 10_000)              # room for exactly one call
+    planner = planner_with([
+        FakeResponse([FakeBlock(type="tool_use", name="emit_plan",
+                                input={"metric": "not_a_metric"})], FakeUsage(4_670, 160)),
+        FakeResponse([valid_plan_block()], FakeUsage(4_670, 160)),
+    ])
+    ctx = context_with("top accounts")
+    ctx.spend = budget
+    with pytest.raises(PlannerBudgetExhausted):
+        planner.plan("top accounts", ctx)
+    assert len(planner._client.messages.requests) == 1
+    assert (budget.calls, budget.input, budget.refused_calls) == (1, 4_670, 1)
+
+
+def test_sdk_retries_are_off_while_metered_and_kept_otherwise(ev):
+    import time as _time
+    from tests.unit.test_live_adapter_contract import FakeResponse, context_with, valid_plan_block
+
+    metered = planner_with([FakeResponse([valid_plan_block()], None)] * 2)
+    for deadline in (None, _time.time() + 60):
+        ctx = context_with("top accounts")
+        ctx.spend, ctx.deadline_at = ev.Budget(100_000, 100_000), deadline
+        metered.plan("top accounts", ctx)
+    assert [o["max_retries"] for o in metered._client.options] == [0, 0]
+
+    unmetered = planner_with([FakeResponse([valid_plan_block()], None)])
+    ctx = context_with("top accounts")
+    ctx.deadline_at = _time.time() + 120
+    unmetered.plan("top accounts", ctx)
+    assert unmetered._client.options[0]["max_retries"] == 2
 
 
 def test_the_smoke_subset_is_one_question_per_family(ev):

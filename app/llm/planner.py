@@ -70,6 +70,10 @@ class PlannerOutOfTime(PlannerError):
     """The request's budget ran out before the model could be asked."""
 
 
+class PlannerBudgetExhausted(PlannerError):
+    """A metered spend refused the next model call (see PlanningContext.spend)."""
+
+
 class PlannerUnavailable(PlannerError):
     """The model could not be reached in time -- a timeout, a rate limit after
     the SDK's own retries, a connection failure. Not a question the user
@@ -135,6 +139,12 @@ class PlanningContext:
     #: The planner spends at most what is left of it. None means unbounded,
     #: which only tests and offline tooling should use.
     deadline_at: float | None = None
+    #: A metered spend, for evaluation runs: asked before EVERY model call
+    #: (allow_call() -> bool) and told after it (record_call(TokenUsage)).
+    #: While metered, the SDK's own retries are off, so one attempt is
+    #: exactly one billable call and none goes uncounted -- a retried call's
+    #: usage is otherwise invisible: the provider reports only the last one.
+    spend: Any | None = None
 
 
 #: Below this many seconds of request budget, a provider attempt is not
@@ -437,7 +447,8 @@ class BedrockPlanner:
         attempts: list[PlanningAttempt] = []
 
         deadline = context.deadline_at
-        plan, err, attempt = self._traced(system, messages, tool, 1, "initial", deadline)
+        spend = context.spend
+        plan, err, attempt = self._traced(system, messages, tool, 1, "initial", deadline, spend)
         attempts.append(attempt)
         if plan is not None:
             return self._result(plan, attempts)
@@ -467,7 +478,7 @@ class BedrockPlanner:
                 ),
             },
         ]
-        plan, err2, attempt = self._traced(system, messages, tool, 2, "repair", deadline)
+        plan, err2, attempt = self._traced(system, messages, tool, 2, "repair", deadline, spend)
         attempts.append(attempt)
         if attempt.outcome == "out_of_time":
             raise PlannerOutOfTime(err2)
@@ -500,21 +511,26 @@ class BedrockPlanner:
 
     def _traced(
         self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
-        ordinal: int, kind: str, deadline_at: float | None = None,
+        ordinal: int, kind: str, deadline_at: float | None = None, spend: Any = None,
     ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         """One model call, inside its own span, counted by outcome. Tokens are
         counted only as the provider reported them; an unreported call is
         counted as unknown, never as zero."""
         model = self.model_id
+        if spend is not None and not spend.allow_call():
+            raise PlannerBudgetExhausted(
+                f"the spend limit does not cover another model call (attempt {ordinal})")
         with telemetry.span("pac.plan.attempt", **{
                 "pac.attempt": ordinal, "pac.attempt_kind": kind,
                 "pac.model_id": model}) as span:
             plan, err, attempt = self._attempt(system, messages, tool, ordinal, kind,
-                                               deadline_at)
+                                               deadline_at, metered=spend is not None)
             usage = attempt.usage
             span.set(**{"pac.outcome": attempt.outcome, "pac.usage_known": usage.known,
                         "pac.tokens.input": usage.input_tokens,
                         "pac.tokens.output": usage.output_tokens})
+        if spend is not None:
+            spend.record_call(usage)
         telemetry.count("pac.llm.attempts", outcome=attempt.outcome, model=model, kind=kind)
         if not usage.known:
             telemetry.count("pac.llm.usage_unknown", model=model)
@@ -532,7 +548,7 @@ class BedrockPlanner:
 
     def _attempt(
         self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
-        ordinal: int, kind: str, deadline_at: float | None = None,
+        ordinal: int, kind: str, deadline_at: float | None = None, metered: bool = False,
     ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         request: dict[str, Any] = {
             "model": self.model_id,
@@ -568,7 +584,9 @@ class BedrockPlanner:
             timeout = min(float(self.settings.llm_timeout_s), remaining)
             client = self._client.with_options(
                 timeout=timeout,
-                max_retries=2 if remaining >= 3 * timeout else 0)
+                max_retries=0 if metered else (2 if remaining >= 3 * timeout else 0))
+        elif metered:
+            client = self._client.with_options(max_retries=0)
         try:
             response = client.messages.create(**request)
         except Exception as exc:

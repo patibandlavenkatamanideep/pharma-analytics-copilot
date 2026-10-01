@@ -559,14 +559,34 @@ python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml
     --smoke --max-input-tokens 150000 --max-output-tokens 70000
 ```
 
-The budget is checked **before** each question. The next question runs only
-if two more model calls at the per-call ceiling would still fit (8,000
-input, 4,096 output; measured usage is about 4,670 and 160). A call whose
-usage the provider did not report is charged at the ceiling, never as zero.
-A run the budget cuts short lists the questions it skipped and exits
-non-zero, so it can never pass as complete. The caps above are a ceiling,
-not an estimate. Expected spend for the smoke run is roughly 75,000 input
-and 3,000 output tokens, including a repair or two.
+The budget is enforced at **every model call**, not per question:
+
+- **Before each call**, the planner asks the budget whether one more call
+  at the per-call ceiling (8,000 input, 4,096 output; measured usage is
+  about 4,670 and 160) still fits. A repair is a call like any other: if it
+  does not fit, it is not made.
+- **While metered, the SDK's own retries are off.** Every billable call
+  therefore passes through the check. A retried call would otherwise bill
+  invisibly, because the provider reports usage only for the last call.
+  The trade-off: a transient provider error fails that question instead of
+  being retried, and is recorded as such.
+- **A call whose usage was not reported** is charged at the ceiling, never
+  as zero.
+- **The charged total cannot exceed the caps**, provided each call stays
+  within the ceiling. Output always does, since it is capped by
+  `max_tokens`. The input ceiling is an estimate: a call above it can
+  overshoot once, by the excess, and the ceiling then rises to that size.
+- **A question starts only if a plan and a repair would both fit**, so none
+  is cut off half-way.
+- **A run the budget cuts short** lists the questions it skipped and exits
+  non-zero, so it can never pass as complete.
+
+These rules are pinned by tests: `tests/unit/test_eval_budget.py`, and the
+exhausted-budget case in `tests/integration/test_failure_modes.py`.
+
+The caps above are a ceiling, not an estimate. Expected spend for the smoke
+run is roughly 75,000 input and 3,000 output tokens, including a repair or
+two.
 
 **2. The regression sets.** `questions.yaml` (`status: regression`), and
 `holdout.yaml` and `holdout2.yaml` (both `status: spent`: they were run live

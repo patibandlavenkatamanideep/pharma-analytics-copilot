@@ -49,7 +49,8 @@ from app.conversation.state import (
 from app.db import (
     GenerationChanged, ScopeBindingError, analytics_transaction, auth_transaction)
 from app.llm.planner import (
-    Planner, PlannerError, PlannerOutOfTime, PlannerUnavailable, typed_plan,
+    Planner, PlannerBudgetExhausted, PlannerError, PlannerOutOfTime, PlannerUnavailable,
+    typed_plan,
 )
 from app.analytics.plan import AnalyticalPlan
 from app.graph import (
@@ -170,6 +171,10 @@ class DeadlineExceeded(RuntimeError):
 
 
 class Pipeline:
+    #: A metered spend for model calls (PlanningContext.spend). Set only by
+    #: evaluation tooling; serving requests are bounded by per-user quotas.
+    spend: Any = None
+
     def __init__(self, planner: Planner) -> None:
         self.planner = planner
         self.settings = get_settings()
@@ -762,6 +767,7 @@ class Turn:
             continuity=self.continuity(question),
             named_accounts=[tuple(x) for x in state.get("named_accounts") or []],
             deadline_at=self.deadline_at,
+            spend=self.pipe.spend,
         )
         t0 = time.perf_counter()
         try:
@@ -769,6 +775,12 @@ class Turn:
         except PlannerOutOfTime:
             # The same outcome as a deadline met between steps.
             raise DeadlineExceeded() from None
+        except PlannerBudgetExhausted as exc:
+            self.finish(PipelineResult(
+                status="error", conversation_id=self.state.conversation_id,
+                message="Not run: the evaluation's spend limit is exhausted.",
+            ), "budget_exhausted", denial_reason=str(exc)[:200])
+            return {"route": "end", "outcome": "error"}
         except PlannerUnavailable as exc:
             log.warning("planner unavailable: %s", exc)
             self.finish(PipelineResult(

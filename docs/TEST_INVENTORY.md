@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** `7292f42` (`post-assessment/production-readiness`),
+**Measured on** the metered-evaluation change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 652 | ✅ pass | `r2-image-pytest.json` |
-| **Integration** | `pytest tests/integration -q` | 815 | ✅ pass | `r2-suite-7c-integration.json` |
+| **Unit** | `pytest tests/unit -q` | 658 | ✅ pass | `r2-metered-pytest.json` |
+| **Integration** | `pytest tests/integration -q` | 816 | ✅ pass | `r2-metered-pytest.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 364` | 364 | ✅ pass | `r2-final2-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1831** | ✅ pass | `r2-image-pytest.json` |
+| **Total (pytest)** | `pytest tests -q` | **1838** | ✅ pass | `r2-metered-pytest.json` |
 | **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-final2-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final2-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -42,13 +42,13 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 143 do check results or behaviour:
+result. The other 144 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
   (`tests/integration/test_ingestion.py`);
 - 6 trace real requests (`tests/integration/test_telemetry_pipeline.py`);
-- 10 inject provider and database failures
+- 11 inject provider and database failures, or an exhausted spend
   (`tests/integration/test_failure_modes.py`).
 
 The security count is also the `--min-tests` floor the release
@@ -132,7 +132,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1831: they do not run in the same
+Neither browser suite is counted in the 1838: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
