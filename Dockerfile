@@ -25,8 +25,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Dependencies first, so application edits do not invalidate the layer.
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Installed from the hashed lock: every package, direct and transitive, at
+# the version the suites ran on, and refused if its hash has changed.
+COPY requirements.lock ./
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 
 COPY app/ ./app/
 COPY migrations/ ./migrations/

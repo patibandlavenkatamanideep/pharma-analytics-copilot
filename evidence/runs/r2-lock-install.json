@@ -1,0 +1,73 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:36:37+00:00",
+  "claim": "The hashed lock installs into a clean Python 3.13 environment with hashes required, as the image installs it, and the unit suite passes there.",
+  "application": {
+    "sha": "fdf4c5f58bcde088ecca45d3c0903d4281165a2a",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/RUNBOOK.md",
+      "docs/SUPPLY_CHAIN.md",
+      "evidence/runs/r2-supply-chain.json",
+      "requirements.lock",
+      "requirements.txt",
+      "scripts/restore_drill.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/bash",
+      "-c",
+      "set -eo pipefail; uv venv --python 3.13 /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/lockvenv -q; uv pip install --python /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/lockvenv/bin/python --require-hashes -r requirements.lock -q; uv pip install --python /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/lockvenv/bin/python -q pytest==8.3.4 pytest-asyncio==0.25.0 httpx==0.28.1; /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/lockvenv/bin/python -m pytest tests/unit -q -p no:randomly 2>&1 | tail -1"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 42.69
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 642
+    },
+    "blocked_reason": null,
+    "summary": "642 passed, 5 warnings in 28.64s"
+  },
+  "artifacts": [],
+  "limits": [
+    "A local virtual environment, not the image's python:3.13-slim base; the image build itself was not run (Docker daemon not running)."
+  ]
+}

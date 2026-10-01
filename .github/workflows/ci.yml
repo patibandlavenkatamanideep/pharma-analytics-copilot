@@ -48,8 +48,10 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install -e .
+          # The same hashed set the image installs, then the test tools.
+          pip install --require-hashes -r requirements.lock
+          pip install pytest==8.3.4 pytest-asyncio==0.25.0 httpx==0.28.1
+          pip install --no-deps -e .
 
       - name: Bootstrap database, roles and security policies
         run: python scripts/bootstrap_db.py --drop
@@ -177,6 +179,39 @@ jobs:
   # The container image is a deliverable, so it is built on every push rather
   # than trusted. Built and exercised, never pushed: no registry, no cloud, no
   # cost beyond runner minutes.
+  # Dependencies and secrets. Fails on a known vulnerability with a fix, and
+  # on any credential-shaped string anywhere in the history.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # the secret scan reads every commit
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Python dependencies against known vulnerabilities (pinned, hashed lock)
+        run: |
+          pip install pip-audit==2.7.3
+          pip-audit --require-hashes --disable-pip -r requirements.lock
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: JavaScript dependencies against known vulnerabilities
+        working-directory: web
+        run: |
+          npm ci --no-fund
+          npm audit --omit=dev --audit-level=high
+
+      - name: No secret in any commit
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --no-banner
+
   image:
     runs-on: ubuntu-latest
 
@@ -204,6 +239,17 @@ jobs:
           tags: pharma-analytics-copilot:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Known-vulnerable packages in the OS layer or the Python environment
+      # fail the build when a fixed version exists. Policy and exceptions:
+      # docs/SUPPLY_CHAIN.md.
+      - name: Scan the image for vulnerabilities with a fix available
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: pharma-analytics-copilot:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
       # The application refuses to serve unless it can verify the database
       # security boundary. That is deliberate -- a mis-provisioned deployment
