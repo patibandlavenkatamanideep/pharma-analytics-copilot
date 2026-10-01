@@ -87,7 +87,9 @@ status is not set to error.
 | `pac.ingest.batches` | counter | `status`, `source` |
 | `pac.ingest.events` | counter | `outcome`, `source` |
 | `pac.ingest.quarantined` | counter | `reason`, `source` |
-| `pac.ingest.lag` | gauge, s | `source`. Age of the newest applied event when its batch landed |
+| `pac.ingest.lag` | gauge, s | `source`. Arrival lag: age of the newest applied event when its batch landed. A diagnostic, **not** freshness: it does not change between batches |
+| `pac.ingest.since_success` | observed gauge, s | `source`. Seconds since the source's last accepted batch, **read from the database at every collection**, so it grows when a feed stops |
+| `pac.ingest.watermark_age` | observed gauge, s | `source`. Seconds since the newest event time applied for the source, read at every collection. Grows when the data stops moving forward, even if batches keep arriving |
 | `pac.ingest.duration` | histogram, s | `status` |
 
 Every label has a small, bounded set of values. **No metric carries a user,
@@ -139,6 +141,45 @@ is dropped. Exports run on a background thread, and each is bounded by
   shutdown, which returns in a bounded time.
 
 On shutdown the app flushes what it can within those timeouts, then stops.
+The whole flush is also capped at twice `PAC_OTEL_TIMEOUT_S` plus a second,
+as a backstop. Each exporter request is already bounded by its own timeout.
+
+**The ingestion job is a separate process** and exports its own telemetry.
+`scripts/ingest.py` configures the exporters at start and flushes them in
+a `finally`, after publication has committed. Tested with the real command
+as a subprocess (`tests/integration/test_ingest_observability.py`):
+
+- with a local OTLP receiver, `pac.ingest.batches`, `pac.ingest.duration`
+  and the `pac.ingest` span arrive;
+- with a collector that accepts and never answers, the batch is published
+  and the command exits 0 in about 5 s. With nothing listening it takes
+  about 2.6 s. The exporter timeout was 2 s in both cases.
+
+## Freshness
+
+A stopped feed has to be visible without another batch. The persisted
+watermark (`app_ingest.watermarks`, written in the publishing transaction)
+is read **at every metric collection** and turned into two gauges:
+`pac.ingest.since_success` (time since the last accepted batch, which
+catches missed runs) and `pac.ingest.watermark_age` (age of the newest
+event applied, which catches data that stops moving). Both use the
+database's clock. Publication delay is a third, separate measurement
+(`pac.ingest.duration`). A running API exports the gauges continuously, and
+the ingestion job exports them once per run. If they cannot be read, they
+are omitted rather than reported wrong, and the absence alert above fires.
+
+Independently of any collector, a scheduler can run:
+
+```bash
+python3 scripts/ingest.py --check-freshness --max-since-success 26h \
+    --max-watermark-age 3d --source distributor-feed
+```
+
+It prints each source's freshness as JSON and exits 3 with stable codes
+(`missed_run`, `stale_data`, `never_delivered`) when a limit is exceeded.
+Tested with a feed that stops after a healthy batch. Moving the persisted
+times back three days, with no new batch, raises the gauge by three days
+and makes the check fail.
 
 ## Alerts
 
@@ -159,7 +200,9 @@ SLOs.
 | Database errors | `increase(pac_db_errors_total{kind="unavailable"}[5m]) > 0` | — | Database unreachable |
 | Audit loss | `increase(pac_persistence_failures_total{kind="audit"}[5m]) > 0` | — | A request went unaudited. Page |
 | Turns not saved | `increase(pac_persistence_failures_total{kind="turn"}[15m]) > 3` | — | Conversations not being recorded |
-| Feed stale | `pac_ingest_lag_seconds > 172800` | — | Newest data more than two days old when it landed |
+| Missed ingestion run | `max by (source) (pac_ingest_since_success_seconds) > 93600` | 15m | No accepted batch for 26 hours (a daily feed plus a margin; set to the feed's schedule) |
+| Data not moving | `max by (source) (pac_ingest_watermark_age_seconds) > 259200` | 1h | Newest applied event older than three days, even if batches arrive |
+| Freshness not reported | `absent_over_time(pac_ingest_since_success_seconds[30m])` | — | No process is reporting freshness: the API is down, the collector is not receiving, or the database cannot be read. Without this, the two alerts above would go quiet exactly when they are needed |
 | Batch rejected | `increase(pac_ingest_batches_total{status="rejected"}[1h]) > 0` | — | A feed delivered a broken batch |
 | Quarantine rising | `sum(increase(pac_ingest_quarantined_total[1d])) > 100` | — | Feed quality degrading |
 

@@ -78,6 +78,9 @@ services:
       PAC_DB_OWNER_PASSWORD: ${PAC_DB_OWNER_PASSWORD:?}
       PAC_DB_AUTH_PASSWORD: ${PAC_DB_AUTH_PASSWORD:?}
       PAC_ENVIRONMENT: cloud
+      # Ingestion exports its own batches, events, quarantine and freshness
+      # (scripts/ingest.py); unset, nothing leaves the process.
+      PAC_OTEL_ENDPOINT: ${PAC_OTEL_ENDPOINT:-}
     command: ["python", "scripts/migrate.py"]
     restart: "no"
 

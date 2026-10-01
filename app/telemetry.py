@@ -31,6 +31,7 @@ from __future__ import annotations
 import dataclasses
 import logging
 import re
+import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -257,10 +258,22 @@ INSTRUMENTS: dict[str, tuple[str, str, str]] = {
     "pac.ingest.batches": ("counter", "{batch}", "Ingestion batches by outcome"),
     "pac.ingest.events": ("counter", "{event}", "Ingested events by outcome"),
     "pac.ingest.quarantined": ("counter", "{event}", "Quarantined events by reason"),
-    "pac.ingest.lag": ("gauge", "s", "Age of the newest applied event when its batch landed"),
+    "pac.ingest.lag": ("gauge", "s", "Arrival lag: age of the newest applied event when its "
+                       "batch landed. Not freshness -- see pac.ingest.since_success"),
     "pac.ingest.duration": ("histogram", "s", "Ingestion batch duration"),
     "pac.admission.refused": ("counter", "{request}", "Work refused for load, by stage and reason"),
     "pac.admission.wait": ("histogram", "ms", "Time queued for admission, by stage"),
+}
+
+#: Gauges read when metrics are collected, not recorded when something
+#: happens: they change with time alone, so a feed that stops makes them
+#: worse without another event (app/data/freshness.py). name -> (unit,
+#: description, SourceFreshness attribute).
+OBSERVED: dict[str, tuple[str, str, str]] = {
+    "pac.ingest.since_success": ("s", "Seconds since the source's last accepted batch, "
+                                      "read at collection", "since_success_s"),
+    "pac.ingest.watermark_age": ("s", "Seconds since the newest event applied for the "
+                                      "source, read at collection", "watermark_age_s"),
 }
 
 #: Spans whose duration is also a stage metric.
@@ -292,12 +305,33 @@ def _make_instruments(meter) -> dict[str, Any]:
 _state.instruments = _make_instruments(metrics.NoOpMeter("pac"))
 
 
-def use(tracer_provider=None, meter_provider=None) -> None:
-    """Point this module at the given providers (tests, or configure())."""
+def _observe(attribute: str, read):
+    def callback(_options):
+        from opentelemetry.metrics import Observation
+        try:
+            found = read()
+        except Exception as exc:
+            # No observation: the gauge goes absent, which is alertable. The
+            # exception's text is not logged; it can carry connection detail.
+            log.warning("freshness could not be read (%s); not reported this time",
+                        type(exc).__name__)
+            return []
+        return [Observation(getattr(f, attribute), {"source": f.source}) for f in found]
+    return callback
+
+
+def use(tracer_provider=None, meter_provider=None, *, freshness=None) -> None:
+    """Point this module at the given providers (tests, or configure()).
+    `freshness` reads app/data/freshness.py's measurements at each metric
+    collection; without it the OBSERVED gauges are not registered."""
     _state.tracer = (tracer_provider.get_tracer("pac") if tracer_provider
                      else trace.NoOpTracer())
-    _state.instruments = _make_instruments(
-        meter_provider.get_meter("pac") if meter_provider else metrics.NoOpMeter("pac"))
+    meter = meter_provider.get_meter("pac") if meter_provider else metrics.NoOpMeter("pac")
+    _state.instruments = _make_instruments(meter)
+    if meter_provider is not None and freshness is not None:
+        for name, (unit, description, attribute) in OBSERVED.items():
+            meter.create_observable_gauge(name, callbacks=[_observe(attribute, freshness)],
+                                          unit=unit, description=description)
 
 
 def reset() -> None:
@@ -337,20 +371,39 @@ def configure(settings) -> None:
                                                        timeout=settings.otel_timeout_s)),
             export_interval_millis=15_000,
             export_timeout_millis=settings.otel_timeout_s * 1000)])
-    use(tracer_provider, meter_provider)
+    from app.data import freshness
+
+    use(tracer_provider, meter_provider, freshness=freshness.read)
     _state.providers = [tracer_provider, meter_provider]
     _state.configured = True
     log.info("telemetry exporting to %s", base)
 
 
-def shutdown() -> None:
-    """Flush what can be flushed within the exporters' timeouts, then stop."""
-    for provider in _state.providers:
-        try:
-            provider.shutdown()
-        except Exception:
-            log.warning("telemetry shutdown failed", exc_info=True)
-    _state.providers = []
+def shutdown(timeout_s: float | None = None) -> None:
+    """Flush what can be flushed, then stop -- within `timeout_s` at most
+    (default: twice the exporter timeout, plus one second). The exporters
+    bound each request; this bounds the whole, so a collector that is down,
+    or accepts a connection and never answers, delays a process's exit by
+    at most that and never holds it open. Whatever was not flushed by then
+    is dropped."""
+    providers, _state.providers = _state.providers, []
+    if providers:
+        if timeout_s is None:
+            from app.config import get_settings
+            timeout_s = 2 * get_settings().otel_timeout_s + 1
+
+        def stop():
+            for provider in providers:
+                try:
+                    provider.shutdown()
+                except Exception:
+                    log.warning("telemetry shutdown failed", exc_info=True)
+
+        worker = threading.Thread(target=stop, name="pac-telemetry-shutdown", daemon=True)
+        worker.start()
+        worker.join(timeout_s)
+        if worker.is_alive():
+            log.warning("telemetry not flushed within %.0f s; continuing without it", timeout_s)
     reset()
 
 

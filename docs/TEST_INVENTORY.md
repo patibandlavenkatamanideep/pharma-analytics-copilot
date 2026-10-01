@@ -28,9 +28,9 @@ whether an answer is arithmetically right.
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 673 | ✅ pass | `r2-admission-pytest.json` |
-| **Integration** | `pytest tests/integration -q` | 823 | ✅ pass | `r2-admission-pytest.json` |
+| **Integration** | `pytest tests/integration -q` | 830 | ✅ pass | `r2-admission-pytest.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 390` | 390 | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
-| **Total (pytest)** | `pytest tests -q` | **1886** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
+| **Total (pytest)** | `pytest tests -q` | **1893** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
 | **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final3-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -44,12 +44,15 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 149 do check results or behaviour:
+result. The other 158 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
   (`tests/integration/test_ingestion.py`);
 - 6 trace real requests (`tests/integration/test_telemetry_pipeline.py`);
+- 9 run the real ingestion command against a local OTLP receiver, a
+  hanging one and none, and check freshness after a feed stops
+  (`tests/integration/test_ingest_observability.py`);
 - 11 inject provider and database failures, or an exhausted spend
   (`tests/integration/test_failure_modes.py`);
 - 5 exercise admission control on the real request path

@@ -8,8 +8,10 @@ instruments were no-ops even with a collector set. And the stale-feed alert
 watched a lag set only when a batch landed: a healthy last batch followed
 by silence left it looking healthy for ever.
 
-The collector here is a local OTLP/HTTP receiver in a thread, decoding what
-the real exporter sends. No external service is contacted.
+The first two tests reproduced it on the unmodified code
+(evidence/runs/r3-r4-reproduced.json). The collector here is a local
+OTLP/HTTP receiver in a thread, decoding what the real exporter sends. No
+external service is contacted.
 """
 
 from __future__ import annotations
@@ -30,10 +32,6 @@ from tests.integration.test_ingestion import (  # noqa: F401  (fixtures)
 )
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-
-R4 = pytest.mark.xfail(strict=True, reason="R4: ingestion telemetry is not configured in "
-                                           "the jobs process, and freshness does not age")
-
 
 class Collector:
     """An OTLP/HTTP receiver: records every export request it is sent."""
@@ -125,7 +123,6 @@ def ingest_cli(*args: str, endpoint: str | None, timeout: float = 90):
 
 # -- the jobs process exports what it measures ---------------------------------------
 
-@R4
 def test_the_ingest_command_exports_its_metrics_and_span_to_the_collector(fresh, tmp_path):
     collector = Collector()
     try:
@@ -151,8 +148,12 @@ def exported():
 
     from app import telemetry
 
+    from app.data import freshness
+
     reader = InMemoryMetricReader()
-    telemetry.use(None, MeterProvider(metric_readers=[reader]))
+    # As configure() installs it in the API and jobs processes: freshness is
+    # read at every collection.
+    telemetry.use(None, MeterProvider(metric_readers=[reader]), freshness=freshness.read)
     try:
         yield reader
     finally:
@@ -184,7 +185,6 @@ def backdate(source: str, interval: str) -> None:
                     "WHERE source_system = %s", (interval, interval, source))
 
 
-@R4
 def test_freshness_keeps_ageing_after_the_feed_stops(fresh, exported):
     """A healthy batch, then silence. Some exported signal must grow by the
     silence without another batch arriving -- the review's stopped feed."""
@@ -194,3 +194,95 @@ def test_freshness_keeps_ageing_after_the_feed_stops(fresh, exported):
     after = gauges_for(exported, SOURCE)
     aged = {name: after[name] - before.get(name, 0.0) for name in after}
     assert any(delta >= 3 * 86_400 - 120 for delta in aged.values()), (before, after)
+
+
+# -- a collector that fails costs nothing but its own data ----------------------------
+
+@pytest.mark.parametrize("collector_kind", ["hangs", "refuses"])
+def test_a_failing_collector_neither_fails_nor_holds_up_ingestion(fresh, tmp_path,
+                                                                   collector_kind):
+    """A collector that accepts and never answers, or one that is not there:
+    the batch is published, the command exits 0, and the exit is bounded by
+    the flush limit (2 x the 2 s exporter timeout + 1 s here), not by the
+    collector."""
+    if collector_kind == "hangs":
+        collector = Collector(respond=False)
+        endpoint = collector.url
+    else:
+        collector, endpoint = None, "http://127.0.0.1:9"        # nothing listens
+    try:
+        proc, elapsed = ingest_cli(str(batch_file(tmp_path, f"down-{collector_kind}")),
+                                   endpoint=endpoint, timeout=60)
+    finally:
+        if collector:
+            collector.close()
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    assert json.loads(proc.stdout.splitlines()[-1])["status"] == "published"
+    from app.db import owner_transaction
+    with owner_transaction() as cur:
+        cur.execute("SELECT status FROM app_ingest.batches WHERE batch_id = %s",
+                    (f"down-{collector_kind}",))
+        assert cur.fetchone()["status"] == "published"
+    assert elapsed < 20, f"the command took {elapsed:.1f} s with a {collector_kind} collector"
+
+
+# -- freshness, checked without a collector ----------------------------------------------
+
+def check(*args):
+    proc, _ = ingest_cli("--check-freshness", *args, endpoint=None)
+    return proc.returncode, json.loads(proc.stdout)
+
+
+def test_the_freshness_check_passes_while_the_feed_delivers(fresh):
+    assert run(batch("check-1", ev("check-1"))).status == "published"
+    code, report = check("--max-since-success", "26h", "--source", SOURCE)
+    assert code == 0 and report["problems"] == []
+    assert [s["source"] for s in report["sources"]] == [SOURCE]
+
+
+def test_the_freshness_check_fails_when_the_feed_stops(fresh):
+    """The stopped feed, seen without any collector: three silent days are a
+    missed run against a 26-hour limit."""
+    assert run(batch("check-2", ev("check-2"))).status == "published"
+    backdate(SOURCE, "3 days")
+    code, report = check("--max-since-success", "26h", "--source", SOURCE)
+    assert code == 3
+    assert [p["problem"] for p in report["problems"]] == ["missed_run"]
+    assert report["problems"][0]["since_success_s"] >= 3 * 86_400 - 120
+
+
+def test_old_data_is_stale_even_when_batches_keep_arriving(fresh):
+    """since_success and watermark_age fail differently: batches arriving
+    with nothing new keep the first healthy and the second ageing."""
+    assert run(batch("check-3", ev("check-3"))).status == "published"
+    from app.db import owner_transaction
+    with owner_transaction() as cur:
+        cur.execute("UPDATE app_ingest.watermarks SET watermark = watermark - interval '30 days' "
+                    "WHERE source_system = %s", (SOURCE,))
+    code, report = check("--max-since-success", "26h", "--max-watermark-age", "7d")
+    assert code == 3 and [p["problem"] for p in report["problems"]] == ["stale_data"]
+
+
+def test_an_expected_source_that_never_delivered_is_a_problem(fresh):
+    code, report = check("--source", "a-feed-that-never-came")
+    assert code == 3
+    assert {"source": "a-feed-that-never-came", "problem": "never_delivered"} in report["problems"]
+
+
+def test_an_unreadable_freshness_is_absent_not_an_error(fresh, monkeypatch):
+    """If the database cannot be read, the gauges report nothing this time --
+    absence is what the alert watches -- and collection does not fail."""
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+    from app import telemetry
+
+    def broken():
+        raise ConnectionError("password=hunter2 host=db")
+
+    reader = InMemoryMetricReader()
+    telemetry.use(None, MeterProvider(metric_readers=[reader]), freshness=broken)
+    try:
+        assert "pac.ingest.since_success" not in gauges_for(reader, SOURCE)
+    finally:
+        telemetry.reset()

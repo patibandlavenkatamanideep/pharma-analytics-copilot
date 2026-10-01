@@ -263,6 +263,13 @@ anything. `GET /api/me` reports:
 
 The interface shows "data through …" in the header and the times on hover.
 
+For monitoring, the same persisted times are read at every metric
+collection: `pac.ingest.since_success` (missed runs) and
+`pac.ingest.watermark_age` (data not moving). They keep ageing when a feed
+stops, which the per-batch `pac.ingest.lag` cannot do. `scripts/ingest.py
+--check-freshness` checks them without a collector. See
+[OBSERVABILITY.md](OBSERVABILITY.md#freshness).
+
 ## Attribution versus access
 
 A sales row records `org_id` and nothing about territory, region or parent
