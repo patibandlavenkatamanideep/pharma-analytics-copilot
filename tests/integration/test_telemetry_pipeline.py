@@ -14,6 +14,7 @@ import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor, SimpleSpanProcessor, SpanExporter, SpanExportResult,
 )
@@ -30,7 +31,7 @@ STAGES = ["pac.ask", "pac.state_load", "pac.resolve", "pac.plan", "pac.check",
 @pytest.fixture
 def traced():
     memory = InMemorySpanExporter()
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(SimpleSpanProcessor(RedactingSpanExporter(memory)))
     reader = InMemoryMetricReader()
     telemetry.use(provider, MeterProvider(metric_readers=[reader]))
@@ -158,7 +159,7 @@ def test_answers_do_not_wait_for_or_fail_with_the_collector(pipeline, exec_user,
     baseline = pipeline.ask(exec_user, question)
     untraced = time.perf_counter() - started
 
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(processor())
     telemetry.use(provider, None)
     try:

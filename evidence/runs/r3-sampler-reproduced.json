@@ -1,0 +1,66 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T19:44:30+00:00",
+  "claim": "Telemetry tests depend on ambient sampling (expected outcome: failed): with OTEL_TRACES_SAMPLER=traceidratio at 1%, tests that build TracerProvider() without a sampler lose their spans",
+  "application": {
+    "sha": "e512bbb74b27043454c75f4f6003f8959ca1d6b2",
+    "branch": "post-assessment/release-risks",
+    "worktree_clean": true,
+    "dirty_paths": []
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_telemetry.py",
+      "tests/integration/test_telemetry_pipeline.py",
+      "tests/integration/test_ingest_observability.py",
+      "tests/security/test_failure_responses.py",
+      "-q"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "OTEL_TRACES_SAMPLER": "<set, value withheld>",
+      "OTEL_TRACES_SAMPLER_ARG": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 8.42
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 7,
+      "passed": 30
+    },
+    "blocked_reason": null,
+    "summary": "7 failed, 30 passed in 7.82s"
+  },
+  "artifacts": [],
+  "limits": null
+}

@@ -110,8 +110,11 @@ def batch_file(tmp_path, batch_id: str) -> pathlib.Path:
 
 
 def ingest_cli(*args: str, endpoint: str | None, timeout: float = 90):
+    # The span this test looks for must be sampled whatever the environment
+    # says; the command itself follows OTEL_TRACES_SAMPLER, as production does.
     env = {**os.environ, "PAC_DB_NAME": INGEST_DB, "PYTHONPATH": str(ROOT),
-           "PAC_OTEL_TIMEOUT_S": "2"}
+           "PAC_OTEL_TIMEOUT_S": "2", "OTEL_TRACES_SAMPLER": "always_on"}
+    env.pop("OTEL_TRACES_SAMPLER_ARG", None)
     env.pop("PAC_OTEL_ENDPOINT", None)
     if endpoint:
         env["PAC_OTEL_ENDPOINT"] = endpoint

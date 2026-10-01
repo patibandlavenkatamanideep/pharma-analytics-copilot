@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 718 | ✅ pass | `r2-admission-pytest.json` |
+| **Unit** | `pytest tests/unit -q` | 719 | ✅ pass | `r2-admission-pytest.json` |
 | **Integration** | `pytest tests/integration -q` | 883 | ✅ pass | `r2-admission-pytest.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 390` | 390 | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
-| **Total (pytest)** | `pytest tests -q` | **1991** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
+| **Total (pytest)** | `pytest tests -q` | **1992** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
 | **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final3-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |

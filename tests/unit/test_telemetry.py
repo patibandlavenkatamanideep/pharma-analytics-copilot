@@ -14,6 +14,7 @@ import pytest
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import ALWAYS_ON
 from opentelemetry.sdk.trace.export import (
     BatchSpanProcessor, SimpleSpanProcessor, SpanExporter, SpanExportResult,
 )
@@ -36,7 +37,7 @@ SECRETS = {
 @pytest.fixture
 def spans():
     memory = InMemorySpanExporter()
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(SimpleSpanProcessor(RedactingSpanExporter(memory)))
     reader = InMemoryMetricReader()
     meters = MeterProvider(metric_readers=[reader])
@@ -180,7 +181,7 @@ class Stalled(SpanExporter):
 
 def test_an_exporter_that_raises_never_reaches_the_caller():
     exporter = RedactingSpanExporter(Exploding())
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(SimpleSpanProcessor(exporter))
     telemetry.use(provider, None)
     try:
@@ -193,7 +194,7 @@ def test_an_exporter_that_raises_never_reaches_the_caller():
 
 def test_a_stalled_collector_never_holds_up_the_code_being_traced():
     stalled = Stalled()
-    provider = TracerProvider()
+    provider = TracerProvider(sampler=ALWAYS_ON)
     provider.add_span_processor(BatchSpanProcessor(RedactingSpanExporter(stalled),
                                                    max_queue_size=256,
                                                    max_export_batch_size=64,
@@ -284,3 +285,21 @@ def test_a_call_with_no_reported_usage_is_unknown_not_free(spans):
     names = [name for name, _ in points(spans.reader)]
     assert "pac.llm.usage_unknown" in names
     assert "pac.llm.tokens" not in names
+
+
+def test_these_tests_do_not_depend_on_the_ambient_sampler(monkeypatch):
+    """A test environment may carry production sampling (1% is common). The
+    providers built here pin ALWAYS_ON, so the spans they check exist
+    whatever OTEL_TRACES_SAMPLER says; configure() still follows it."""
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "always_off")
+    memory = InMemorySpanExporter()
+    provider = TracerProvider(sampler=ALWAYS_ON)
+    provider.add_span_processor(SimpleSpanProcessor(memory))
+    with provider.get_tracer("t").start_as_current_span("pac.check"):
+        pass
+    assert [s.name for s in memory.get_finished_spans()] == ["pac.check"]
+    assert not TracerProvider().sampler.should_sample(None, 1, "x").decision.is_sampled(), \
+        "an unpinned provider follows the environment, as production does"
