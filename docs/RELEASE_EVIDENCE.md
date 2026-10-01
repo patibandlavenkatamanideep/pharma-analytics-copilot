@@ -44,7 +44,7 @@ RPO has been agreed. Each of these, and what it needs, is listed under
 | Full pytest | `pytest tests -q` | **1819 passed**, 0 failed, 0 skipped | `r2-final-pytest.json` |
 | Unit | `pytest tests/unit -q` | 642 passed | `r2-suite-7b-unit.json` (unchanged since) |
 | Integration | `pytest tests/integration -q` | 815 passed | `r2-suite-7c-integration.json` |
-| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 362` | **362 passed**, gate satisfied | `r2-final-security.json` |
+| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 364` | **362 passed**, gate satisfied | `r2-final-security.json` |
 | Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final-ingestion.json` |
 | Component (vitest) | `cd web && npm test` | **21 passed** | `r2-final-component.json` |
 | Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final-browser.json` |
@@ -117,7 +117,7 @@ The executable ledger above covers it, with Phase 1's own record in
 
 Locally verified:
 
-- CI runs the security suite under `--release-gate --min-tests 362`, plus
+- CI runs the security suite under `--release-gate --min-tests 364`, plus
   the component tests and the browser journeys. A skip fails the gate:
   `r2-final-security.json`, `tests/unit/test_release_gate.py`.
 - Plan-only evaluation is scored apart from end-to-end success (`4971b58`).

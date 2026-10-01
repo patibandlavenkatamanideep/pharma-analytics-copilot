@@ -34,7 +34,12 @@ cleanup() {
 }
 trap cleanup EXIT
 pass() { echo "PASS  $*"; RESULTS+=("PASS: $*"); }
-fail() { echo "FAIL  $*"; RESULTS+=("FAIL: $*"); summary; exit 1; }
+fail() {
+  echo "FAIL  $*"; RESULTS+=("FAIL: $*")
+  # The container is removed on exit: show why it failed while it exists.
+  $CLI logs --tail 40 "$APP" 2>&1 | sed 's/^/  app| /' || true
+  summary; exit 1
+}
 summary() {
   printf '%s\n' "${RESULTS[@]}" > "$WORK/results.txt"
   python3 - "$WORK/results.txt" "$RELEASE" <<'PY'

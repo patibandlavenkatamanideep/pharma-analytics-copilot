@@ -1,0 +1,79 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T14:42:47+00:00",
+  "claim": "The full pytest suite passes at its documented count.",
+  "application": {
+    "sha": "daa38a5ce04aa74f43640c0c58cc0aaf43f870b9",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/llm/prompt_fingerprint.py",
+      "docs/RELEASE_EVIDENCE.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evals/holdout.yaml",
+      "evals/holdout2.yaml",
+      "evals/questions.yaml",
+      "evidence/runs/r2-provisioning-security.json",
+      "migrations/008_login_attempts.sql",
+      "scripts/image_smoke.sh",
+      "tests/security/test_fresh_provisioning.py",
+      "tests/unit/test_prompt_version.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 152.35
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 1821
+    },
+    "blocked_reason": null,
+    "summary": "1821 passed, 5 warnings in 141.82s (0:02:21)"
+  },
+  "artifacts": [],
+  "limits": null
+}
