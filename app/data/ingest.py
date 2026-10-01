@@ -59,7 +59,8 @@ from zoneinfo import ZoneInfo
 from app import telemetry
 from app.config import get_settings
 from app.data.loader import (
-    VALID_SOURCES, LoadError, _json, _populate_calendar, _validate, publication_lock,
+    SALES_COLS, VALID_SOURCES, LoadError, _json, _populate_calendar, _validate,
+    publication_lock, reclaim_after_publication,
 )
 from app.data.manifest import MAPPING_VERSION, LoadReport
 from app.data.schema_contract import require_compatible
@@ -240,6 +241,9 @@ class IngestOutcome:
     pack_delta: Decimal = Decimal(0)
     #: The newest event time applied, for freshness lag.
     newest_event: datetime | None = None
+    #: Dead row versions VACUUM could not reclaim, per table: a reader older
+    #: than the settle time still held them. Autovacuum finishes the job.
+    dead_rows_after_reclaim: dict[str, int] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
         d = dict(self.__dict__)
@@ -415,12 +419,10 @@ def _ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome
         raise
 
     if outcome.status == "published":
-        # Reclaim dead tuples the corrections and any offset shift left, now
-        # that the new generation is committed. VACUUM cannot run inside a
-        # transaction.
-        with owner_transaction(autocommit=True) as cur:
-            cur.execute("VACUUM (ANALYZE) sales")
-            cur.execute("VACUUM (ANALYZE) app_ref.calendar")
+        # Reclaim the row versions corrections and any offset shift replaced,
+        # once readers that predate the commit are done with them.
+        outcome.dead_rows_after_reclaim = reclaim_after_publication(
+            ("sales", "app_ref.calendar"))
         from app.analytics.entities import clear_caches
 
         clear_caches()
@@ -627,8 +629,7 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
     if low["wk"] is None:
         raise LoadError("the batch would leave no sales at all")
     if low["wk"] or low["mo"]:
-        cur.execute("UPDATE sales SET wk_offset = wk_offset - %s, mo_offset = mo_offset - %s",
-                    (low["wk"], low["mo"]))
+        _shift_offsets(cur, low["wk"], low["mo"])
     outcome.anchor_shift_weeks = -low["wk"]
     outcome.anchor_shift_months = -low["mo"]
 
@@ -666,6 +667,38 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
         (dataset_id,))
     outcome.dataset_id = dataset_id
     outcome.status = "published"
+
+
+def _shift_offsets(cur: Any, weeks: int, months: int) -> None:
+    """Shift every fact's offsets, keeping the table in reporting order.
+
+    An UPDATE puts each new row version wherever there is free space. The
+    supplied data is stored in period order (mo_offset correlation 0.99998),
+    which is what makes "last quarter" read a contiguous slice of the table.
+    After three UPDATE-based shifts on the full dataset the correlation was
+    -0.35, and throughput at 8 concurrent clients fell from 22 to 12 answers
+    a second. Neither VACUUM FULL nor REINDEX brought it back; the order
+    was gone.
+
+    So the shift is a delete and an ordered insert, in the publication's
+    transaction. sale_id is preserved, so the ingestion ledger still points
+    at the right rows. Readers on the previous generation keep seeing the
+    old rows until commit, exactly as with an UPDATE; the unique index
+    accepts the reinserted ids because the rows they replace were deleted
+    by this same transaction.
+    """
+    columns = ["sale_id", *SALES_COLS]
+    shifted = ", ".join(
+        f"{c} - %(wk)s AS {c}" if c == "wk_offset"
+        else f"{c} - %(mo)s AS {c}" if c == "mo_offset" else c
+        for c in columns)
+    cur.execute(f"CREATE TEMP TABLE pac_shifted ON COMMIT DROP AS "
+                f"SELECT {shifted} FROM sales", {"wk": weeks, "mo": months})
+    cur.execute("DELETE FROM sales")
+    cur.execute(f"INSERT INTO sales ({', '.join(columns)}) "
+                f"SELECT {', '.join(columns)} FROM pac_shifted "
+                f"ORDER BY mo_offset, wk_offset, sale_id")
+    cur.execute("DROP TABLE pac_shifted")
 
 
 def _record_batch(cur: Any, batch: SourceBatch, outcome: IngestOutcome,

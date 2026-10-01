@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # rejected whole: past that point the feed is broken, and publishing the
     # remainder would present a partial period as a complete one.
     ingest_max_quarantine_ratio: float = 0.05
+    # How long a publication waits before reclaiming the rows it replaced:
+    # longer than any of this application's read transactions can run
+    # (statement timeout 5 s, idle-in-transaction 10 s). A VACUUM run
+    # earlier reclaims nothing that an in-flight reader can still see.
+    publication_settle_seconds: float = 20.0
 
     # --- retention (app/retention.py; proposals, not an agreed policy) -----------
     # A conversation untouched this long is deleted with its turns, cohorts,

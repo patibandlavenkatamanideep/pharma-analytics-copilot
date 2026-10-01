@@ -491,3 +491,56 @@ def test_users_are_told_how_fresh_the_data_is(fresh, monkeypatch):
     assert after["data_through"] == "2026-09-24"
     assert after["incremental"] is True and after["last_ingest_at"] is not None
     assert after["published_at"] > before["published_at"]
+
+
+@pytest.mark.parametrize("settle, reclaimed", [(0, False), (2.5, True)],
+                         ids=["immediate", "after-settling"])
+def test_rows_replaced_by_a_publication_are_reclaimed_once_readers_finish(
+        fresh, monkeypatch, settle, reclaimed):
+    """A reader that started before the commit can still see the replaced
+    rows, so a VACUUM run immediately reclaims none of them. Waiting out the
+    reader first reclaims them all."""
+    from app.config import get_settings
+    from app.db import analytics_transaction
+
+    run(batch("b1", *filler("r", 20)))                    # rows to correct
+    monkeypatch.setattr(get_settings(), "publication_settle_seconds", settle)
+    holding, released = threading.Event(), threading.Event()
+
+    def reader():
+        with analytics_transaction(scope_kind="global", scope_value=None,
+                                   wac_authorized=False) as cur:
+            cur.execute("SELECT count(*) FROM sales")
+            holding.set()
+            released.wait(10)
+
+    t = threading.Thread(target=reader)
+    t.start()
+    holding.wait(10)
+    threading.Timer(1.0, released.set).start()
+    corrections = [ev(f"r-{i}", version=2, packs=2) for i in range(20)]
+    out = run(batch("b2", *corrections))
+    t.join(10)
+    assert out.status == "published" and out.corrected == 20
+    left = out.dead_rows_after_reclaim["sales"]
+    assert (left == 0) is reclaimed, left
+
+
+def test_an_anchor_shift_keeps_every_sale_id_and_the_period_order(fresh):
+    """The shift rewrites every row. It must not renumber them -- the ledger
+    points at sale_ids -- and it must leave the table stored in period
+    order, which an UPDATE does not (see ingest._shift_offsets)."""
+    run(batch("b1", *filler("k", 5)))
+    before = {r["sale_id"] for r in q("SELECT sale_id FROM sales")}
+    ledger = {r["sale_id"] for r in q("SELECT sale_id FROM app_ingest.event_ledger "
+                                      "WHERE sale_id IS NOT NULL")}
+    out = run(batch("b2", ev("new", "2026-09-24T10:00")))
+    assert out.anchor_shift_weeks == 1
+    after = {r["sale_id"] for r in q("SELECT sale_id FROM sales")}
+    assert before < after and ledger <= after
+    from app.db import owner_transaction
+    with owner_transaction() as cur:
+        cur.execute("ANALYZE sales")
+    correlation = q("SELECT correlation FROM pg_stats WHERE tablename = 'sales' "
+                    "AND attname = 'mo_offset'")[0]["correlation"]
+    assert correlation > 0.9, correlation

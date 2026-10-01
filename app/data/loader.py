@@ -20,6 +20,7 @@ from __future__ import annotations
 import csv
 import io
 import pathlib
+import time
 import uuid
 from typing import Any
 
@@ -64,6 +65,56 @@ ZIP_COLS = [
 
 class LoadError(RuntimeError):
     """Raised when the dataset cannot be safely published."""
+
+
+def reclaim_after_publication(tables: tuple[str, ...]) -> dict[str, int]:
+    """VACUUM what a publication replaced, once readers can no longer need it.
+
+    A VACUUM run the moment a publication commits cannot remove the old row
+    versions: requests already in flight hold snapshots from before the
+    commit, and those versions are still visible to them. Measured under
+    load, the immediate VACUUM after a new-week publication reclaimed none
+    of 2,020,461 dead rows; every scan then read twice the data, and
+    throughput fell by a third until autovacuum -- throttled, several
+    minutes -- caught up.
+
+    So it waits first. This application's own readers are bounded: a
+    statement times out at statement_timeout, and an idle transaction is
+    ended after 10 s. The settle time covers both. A reader outside those
+    bounds (a backup, an ad-hoc session) can still hold rows back; what is
+    left is reported, and autovacuum finishes it.
+    """
+    from app.config import get_settings
+
+    import re
+
+    settings = get_settings()
+    time.sleep(settings.publication_settle_seconds)
+    remaining: dict[str, int] = {}
+    with owner_transaction(autocommit=True) as cur:
+        # Counted from VACUUM's own report. pg_stat_user_tables read straight
+        # after a VACUUM showed 0 dead rows while a reader was still holding
+        # 20 -- a second VACUUM found all 20 -- so the statistic is not
+        # evidence here; the VACUUM's account of what it could not remove is.
+        notes: list[str] = []
+
+        def collect(diagnostic) -> None:
+            notes.append(diagnostic.message_primary or "")
+
+        conn = cur.connection
+        conn.add_notice_handler(collect)
+        try:
+            for table in tables:
+                notes.clear()
+                cur.execute(f"VACUUM (VERBOSE, ANALYZE) {table}")
+                kept = [int(m.group(1)) for n in notes if "finished vacuuming" in n
+                        and ".pg_toast." not in n
+                        for m in [re.search(r"(\d+) are dead but not yet removable", n)] if m]
+                # -1: the report did not say (a server version with other wording).
+                remaining[table] = kept[0] if kept else -1
+        finally:
+            conn.remove_notice_handler(collect)
+    return remaining
 
 
 def publication_lock(cur: Any) -> None:
@@ -565,14 +616,15 @@ def load(mode: str) -> LoadReport:
             )
         raise
 
+    # Reclaim the previous snapshot's rows once readers that started before
+    # the commit have finished. Outside the transaction: VACUUM cannot run
+    # inside one.
+    report.source_coverage["dead_rows_after_reclaim"] = reclaim_after_publication(
+        ("sales", "organizations", "products", "zip_territory"))
+
     # The in-process vocabulary cache describes the snapshot that was live when
     # it was filled. Dropping it here keeps THIS process honest; other
     # processes are covered by the cache being keyed on dataset_id.
-    # Reclaim the previous snapshot's rows now that no reader can need them
-    # for long. Outside the transaction: VACUUM cannot run inside one.
-    with owner_transaction(autocommit=True) as cur:
-        for table in ("sales", "organizations", "products", "zip_territory"):
-            cur.execute(f"VACUUM (ANALYZE) {table}")
 
     from app.analytics.entities import clear_caches
 

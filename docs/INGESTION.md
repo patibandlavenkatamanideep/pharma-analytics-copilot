@@ -214,9 +214,33 @@ A request already running read its generation and facts under one
 repeatable-read snapshot ([Phase 5A](PRODUCTION_UPGRADE.md)). It either
 finishes on the old generation, complete, or is told `refresh` if it planned
 on the old one and executes after the flip. Vocabulary and entity caches are
-keyed by dataset id, so every worker drops them on the next request. After
-commit, `VACUUM (ANALYZE)` reclaims the dead row versions left by
-corrections and offset rewrites.
+keyed by dataset id, so every worker drops them on the next request.
+
+After the commit, the row versions that corrections and offset rewrites
+replaced are reclaimed by `VACUUM`, but **not immediately**. A request
+already in flight holds a snapshot from before the commit, and those
+versions are still visible to it, so a VACUUM run at once can remove none
+of them.
+
+This was measured under load. The immediate VACUUM after a new-week
+publication left all 2,020,461 replaced rows in place. Every scan then read
+twice the data, and throughput at 16 concurrent clients fell from 23 to 16
+answers per second. Autovacuum, which is throttled, took about six minutes
+to catch up.
+
+Each publication now waits `PAC_PUBLICATION_SETTLE_SECONDS` (default 20)
+before vacuuming. That is longer than any of this application's read
+transactions can last: statements time out at 5 s, and an idle transaction
+is ended after 10 s. The batch outcome then reports, per table, how many
+dead rows VACUUM still could not remove (`dead_rows_after_reclaim`). The
+count is taken from VACUUM's own report rather than from
+`pg_stat_user_tables`. The statistic read 0 while a reader still held 20
+rows, which a second VACUUM then found, so it is not evidence here. A
+reader outside those bounds, such as a backup or an ad-hoc session, can
+still hold rows back; autovacuum finishes the job. Tested both ways in
+`test_rows_replaced_by_a_publication_are_reclaimed_once_readers_finish`:
+reclaimed after settling, not reclaimed when vacuumed immediately with a
+reader open.
 
 Full loads, seed loads and incremental batches take the same advisory lock
 (`pac:publication`). Two publications never interleave. This is tested: a
@@ -301,31 +325,61 @@ the retained batches up to the last good one.
 
 ## Measured limits
 
-Measured on 2026-09-30 on the development machine (Apple silicon, 10 cores,
-PostgreSQL 16.14). The data was a disposable copy of the full 2,000,000-row
-dataset; the working database was not touched. The reproducible command is
-`scripts/measure_ingestion.py`, which refuses to run against the working
-database. The record is `evidence/runs/r2-ingestion-scale.json`.
+Measured on 2026-09-30 and 2026-10-01 on the development machine (Apple
+silicon, 10 cores, PostgreSQL 16.14), on disposable copies of the full
+2,000,000-row dataset. The working database was not touched. The
+reproducible command is `scripts/measure_ingestion.py`, which refuses to
+run against the working database.
 
-| Batch | Time |
-|---|---:|
-| 500 new sales in the latest week (anchor unchanged) | 6.7 s |
-| The same batch replayed (`no_change`) | 0.14 s |
-| 500 new sales in a **new** week (every `wk_offset` rewritten) | 133 s (108 s in an earlier run) |
+| Batch | Before the fixes below (`r2-ingestion-scale.json`) | Now (`r2-ingestion-scale-ordered.json`) |
+|---|---:|---:|
+| 500 new sales in the latest week | 6.7 s | 25.1 s (incl. the 20 s settle) |
+| The same batch replayed (`no_change`) | 0.14 s | 0.14 s |
+| 500 new sales in a **new** week (every offset rewritten) | 133 s (108 s in an earlier run) | 124 s (incl. the 20 s settle) |
+| Reader latency during the new-week batch: median / worst | 53 / 971 ms | 38 / 297 ms |
+| Table stored in period order afterwards (`mo_offset` correlation) | -0.35 after three shifts | 1.00 |
 
-The new-week case is dominated by one `UPDATE` of all 2,000,001 rows, which
-took 103 s when timed on its own, followed by a `VACUUM` of about 17 s. The
-offset columns are indexed and stored on every fact, so the update cannot be
-a heap-only update. It happens once per reporting week, when the first sale
-of a new week arrives.
+A new-week batch rewrites every fact's offsets, which the supplied contract
+stores on each row. It happens once per reporting week, when the first sale
+of a new week arrives. Readers are never blocked: the slowdown is I/O
+contention, not a lock wait, and the statement timeout is 5 s. Other
+publications wait on the advisory lock for the duration.
 
-Readers are not blocked during it. While the rewrite was in flight, a
-representative month query sampled every second (121 samples) had a median
-of 53 ms against 18 ms idle, and a worst case of 971 ms. That is I/O
-contention, not a lock wait: the statement timeout is 5 s and no sample
-failed. Other publications wait on the advisory lock for the whole time.
+### Two problems found under load, and fixed
 
-The cost is a consequence of the supplied contract, which stores offsets on
-each fact. Calendar-relative offsets resolved at query time would remove it,
-but that changes how the supplied columns are used, so it is recorded here
-rather than done.
+**Replaced rows were not reclaimed.** The VACUUM ran the moment the
+publication committed, while readers still held snapshots from before it.
+It removed none of the 2,020,461 replaced rows. See
+[Publication](#publication) for how reclaiming now waits for those readers.
+
+**The shift scrambled the table's order.** The supplied data is stored in
+reporting-period order, which is what makes "last quarter" read a
+contiguous slice. The shift used to be an `UPDATE`, which puts each new row
+version wherever there is free space. After three shifts the `mo_offset`
+correlation was -0.35, and throughput at 8 concurrent clients fell from
+about 22 to 12 to 13 answers a second. `REINDEX CONCURRENTLY` restored the
+index sizes and `VACUUM FULL` the table size; neither restored the speed,
+because the order was gone.
+
+The shift is now a delete followed by an insert in period order, in the
+publication's transaction. `sale_id`s are preserved, so the ledger still
+points at the right rows, and readers on the previous generation see the
+old rows until commit, as before. After a new-week batch on a fresh copy:
+
+| | Before the batch | After it |
+|---|---:|---:|
+| Throughput at 8 clients | 19.3/s, p95 2.0 s (cold cache) | 17.6/s, p95 1.6 s |
+
+These figures are from `r2-throughput-fresh.json` and
+`r2-throughput-after-ordered-shift.json`. Tested:
+`test_an_anchor_shift_keeps_every_sale_id_and_the_period_order` fails when
+the shift is an `UPDATE` (correlation 0.75 on the seed against more than 0.9
+required).
+
+Index sizes still double after a shift (1.3 GB against 0.65 GB). That did
+not cost throughput in these measurements. `REINDEX TABLE CONCURRENTLY
+sales` restores them online in about 40 s, if wanted.
+
+The offsets stored on each fact are the root cost. Resolving offsets from
+the calendar at query time would remove the rewrite entirely, but it changes
+how the supplied columns are used, so it is recorded here rather than done.

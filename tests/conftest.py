@@ -22,6 +22,11 @@ for _name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
               "PAC_USER_CONCURRENT_RUNS"):
     _os.environ.setdefault(_name, "1000000")
 
+# A publication waits for in-flight readers before reclaiming the rows it
+# replaced (loader.reclaim_after_publication). A test process has no other
+# readers, and dozens of tests publish.
+_os.environ.setdefault("PAC_PUBLICATION_SETTLE_SECONDS", "0")
+
 
 def _database_available() -> tuple[bool, str]:
     try:
