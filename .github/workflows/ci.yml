@@ -12,8 +12,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # main, and the post-assessment branches, so their CI runs without
+    # waiting for a pull request.
+    branches: [main, "post-assessment/**"]
   pull_request:
+  # Run on any branch from the Actions tab or `gh workflow run ci.yml --ref <branch>`.
+  workflow_dispatch:
 
 jobs:
   test:
