@@ -129,7 +129,7 @@ def test_the_inventory_matches_the_release_gate_floor(collected):
 
 @pytest.mark.parametrize("relative,expected_in_doc", [
     ("web/src/__tests__", "component"),
-    ("web/e2e/chat.spec.js", "end to end"),
+    ("web/e2e", "end to end"),
 ])
 def test_the_inventory_states_the_browser_counts(relative, expected_in_doc):
     row = next(line for line in INVENTORY.read_text().splitlines()
@@ -165,7 +165,7 @@ def test_every_count_claim_is_currently_true(collected, document):
         count_under(collected, "tests/security"),
         sum(collected.values()),
         js_tests("web/src/__tests__"),
-        js_tests("web/e2e/chat.spec.js"),
+        js_tests("web/e2e"),
     }
 
     wrong: list[str] = []
@@ -212,7 +212,7 @@ def _resolve_named_target(collected: Counter, line: str):
         if name == "web/src/__tests__":
             return name, js_tests("web/src/__tests__")
         if name == "web/e2e":
-            return name, js_tests("web/e2e/chat.spec.js")
+            return name, js_tests("web/e2e")
     return None
 
 

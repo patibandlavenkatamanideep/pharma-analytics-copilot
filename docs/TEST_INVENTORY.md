@@ -30,7 +30,7 @@ whether an answer is arithmetically right.
 | **Security** | `pytest tests/security -q --release-gate --min-tests 196` | 196 | ✅ pass | `r2-suite-security.json` |
 | **Total (pytest)** | `pytest tests -q` | **1536** | ✅ pass | `p1d-suite-total.json` |
 | **Browser — component** | `cd web && npm test` | 16 | ✅ pass | `r2-suite-browser-component.json` |
-| **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-browser-journeys.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
 Unit and integration counts are what pytest collects, not what anyone
@@ -113,10 +113,16 @@ So it was never the path and never the filesystem: a stale entry in
 directory before running. The suite takes under half a second, which does
 not need a cache.
 
-**End-to-end tests (6, Playwright + Chromium).** These need the application
-served and credentials in the environment. They last passed against the
-deployed instance on 2026-09-25. They are not part of the offline gate and
-are not claimed as passing on this revision.
+**End-to-end tests (10, Playwright + Chromium).** These pass here, against
+a real server and the disposable database, in about six seconds:
+`scripts/browser_journeys.py` provisions disposable identities -- and two
+clinics sharing a name, for the clarification journey -- starts the
+application, runs Playwright, and removes everything it created. Journeys:
+a priced answer rendered, reload keeps the session, sign-out survives
+reload, follow-up and New conversation, a RAM sees no currency, an
+out-of-scope territory refused, identity change leaves nothing on screen,
+a conversation belongs to its owner, a clarification answered by choosing,
+an ended session returns to sign-in. CI runs them in the test job.
 
 Neither browser suite is counted in the 1536: they do not run in the same
 command, and a single number that mixed them would imply they do.

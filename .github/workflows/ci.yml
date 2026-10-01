@@ -121,6 +121,22 @@ jobs:
       - name: The release gate itself must reject unverified runs
         run: python -m pytest tests/unit/test_release_gate_strict.py tests/unit/test_release_gate.py -q
 
+      # Real Chromium against the real server and the disposable database:
+      # sign-in, reload, sign-out, identity change, conversation ownership,
+      # clarification by choosing, an ended session. The runner provisions
+      # disposable identities and removes them afterwards.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Browser journeys (Playwright, Chromium)
+        run: |
+          npm --prefix web ci
+          npm --prefix web run build
+          (cd web && npx playwright install --with-deps chromium)
+          python scripts/browser_journeys.py
+
       - name: Upload evaluation record
         if: always()
         uses: actions/upload-artifact@v4

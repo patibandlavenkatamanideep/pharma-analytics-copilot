@@ -117,7 +117,7 @@ python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
 python3 -m pytest tests/security -q --release-gate --min-tests 196  # release gate
 
 cd web && npm test                           # 16 jsdom component tests
-cd web && npm run test:e2e                   # 6 real-browser tests (Playwright)
+python3 scripts/browser_journeys.py          # 10 real-browser tests against a local server
 
 python3 scripts/run_evals.py                              # regression set
 python3 scripts/run_evals.py --questions evals/holdout.yaml   # held-out set
