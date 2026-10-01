@@ -315,26 +315,43 @@ def auth_methods() -> dict[str, Any]:
 
 
 @app.get("/api/auth/oidc/start")
-def oidc_start(next: str = "/") -> RedirectResponse:
-    begun = oidc_provider().begin(next)
-    return RedirectResponse(begun.authorization_url, status_code=302)
+def oidc_start(request: Request, next: str = "/") -> RedirectResponse:
+    from app.auth.oidc import PENDING_TTL_SECONDS, binding_cookie_name
+
+    settings = get_settings()
+    name = binding_cookie_name(settings.cookie_secure)
+    begun = oidc_provider().begin(next, browser=request.cookies.get(name))
+    response = RedirectResponse(begun.authorization_url, status_code=302)
+    # The browser binding (app/auth/oidc.py). Lax, not Strict: the callback
+    # is a top-level GET from the provider's site, and a Strict cookie would
+    # not be sent on it. Lives exactly as long as the attempt it binds.
+    response.set_cookie(key=name, value=begun.binding, max_age=PENDING_TTL_SECONDS,
+                        path="/", httponly=True, secure=settings.cookie_secure,
+                        samesite="lax")
+    return response
 
 
 @app.get("/api/auth/oidc/callback")
 def oidc_callback(request: Request, code: str = "", state: str = "",
                   error: str | None = None) -> Response:
     from app.auth.identity import _hash_ip
-    from app.auth.oidc import OIDCError
+    from app.auth.oidc import OIDCError, binding_cookie_name
 
     provider = oidc_provider()
+    settings = get_settings()
+    name = binding_cookie_name(settings.cookie_secure)
+    browser = request.cookies.get(name)
     if error:
         # The provider declined (the user cancelled, or policy refused). Its
-        # own description is not repeated: it can name internal policy.
+        # own description is not repeated: it can name internal policy. The
+        # attempt is over -- for the browser that started it; another browser
+        # cannot end someone else's.
+        provider.cancel(state=state, browser=browser)
         raise HTTPException(status_code=400, detail={
             "code": "provider_declined", "message": "Sign-in was not completed."})
     try:
         token, expires_at, _principal, target = provider.complete(
-            code=code, state=state,
+            code=code, state=state, browser=browser,
             user_agent=request.headers.get("user-agent"),
             ip_hash=_hash_ip(request.client.host if request.client else None))
     except OIDCError as exc:
@@ -343,6 +360,10 @@ def oidc_callback(request: Request, code: str = "", state: str = "",
                             detail={"code": exc.code, "message": str(exc)}) from None
     response = RedirectResponse(target, status_code=303)
     _set_session_cookie(response, token, expires_at)
+    if not provider.pending_in(browser):
+        # Nothing else from this browser is in flight: the binding is spent.
+        response.delete_cookie(name, path="/", secure=settings.cookie_secure,
+                               httponly=True, samesite="lax")
     return response
 
 

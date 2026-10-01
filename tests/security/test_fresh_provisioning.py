@@ -121,3 +121,42 @@ def test_a_freshly_provisioned_database_can_sign_someone_in(fresh_db):
     set_credential(user_id, password)
     session, principal = authenticate(email, password, user_agent="test", ip="127.0.0.1")
     assert principal.user_id == user_id and session.token
+
+
+def test_a_freshly_provisioned_database_signs_someone_in_through_sso(fresh_db, monkeypatch):
+    """Single sign-on on a database migrated once, browser binding included:
+    the attempt is stored, a callback from another browser is refused before
+    the code is redeemed, and the starting browser is signed in. The provider
+    is the in-process one (tests/security/fake_idp.py); a real IdP is a
+    staging check (docs/RUNBOOK.md)."""
+    import httpx2 as httpx
+
+    from app.auth.oidc import OIDCError, Provider
+    from app.config import get_settings
+    from app.db import owner_transaction
+    from tests.security.fake_idp import CLIENT, ISSUER, REDIRECT, FakeIdP
+
+    for name, value in {"PAC_OIDC_ENABLED": "true", "PAC_OIDC_ISSUER": ISSUER,
+                        "PAC_OIDC_CLIENT_ID": CLIENT, "PAC_OIDC_REDIRECT_URI": REDIRECT}.items():
+        monkeypatch.setenv(name, value)
+    get_settings.cache_clear()
+    user_id = f"pacfresh-{secrets.token_hex(4)}"
+    with owner_transaction() as cur:
+        cur.execute("INSERT INTO users (user_id, email, full_name, role, can_view_wac) "
+                    "VALUES (%s, %s, 'Fresh SSO', 'exec', 1)", (user_id, f"{user_id}@fresh.invalid"))
+        cur.execute("INSERT INTO app_auth.identities (issuer, subject, user_id) "
+                    "VALUES (%s, %s, %s)", (ISSUER, "sub-fresh", user_id))
+    idp = FakeIdP()
+    provider = Provider(transport=httpx.MockTransport(idp.handler))
+    begun = provider.begin("/")
+    code, state = idp.authorize(begun.authorization_url, sub="sub-fresh")
+
+    with pytest.raises(OIDCError) as refused:
+        provider.complete(code=code, state=state, browser=secrets.token_urlsafe(32))
+    assert refused.value.code == "browser_mismatch" and code in idp.codes
+
+    token, _, principal, target = provider.complete(code=code, state=state,
+                                                    browser=begun.binding)
+    assert principal.user_id == user_id and token and target == "/"
+    monkeypatch.undo()
+    get_settings.cache_clear()

@@ -11,8 +11,10 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** the admission-control change (`post-assessment/production-readiness`),
-offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
+**Counts** are what pytest collects at the current commit of
+`post-assessment/release-risks`; the runs that establish each result, with
+their commit and tree state, are listed in
+[RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
 
 ---
 
@@ -27,8 +29,8 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 664 | ✅ pass | `r2-admission-pytest.json` |
 | **Integration** | `pytest tests/integration -q` | 821 | ✅ pass | `r2-admission-pytest.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 366` | 366 | ✅ pass | `r2-admission-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1851** | ✅ pass | `r2-admission-pytest.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 379` | 379 | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
+| **Total (pytest)** | `pytest tests -q` | **1864** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
 | **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final3-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -167,7 +169,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 366`, and fails on a skip in any phase, a
+`--release-gate --min-tests 379`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -184,7 +186,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 366
+python3 -m pytest tests/security -q --release-gate --min-tests 379
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

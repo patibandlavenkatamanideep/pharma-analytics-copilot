@@ -98,6 +98,59 @@ Model IDs must be inference profiles (the `us.` or `global.` prefix) for the
 dated releases; bare IDs return
 `Invocation ... with on-demand throughput isn't supported`.
 
+### Enabling single sign-on
+
+Off by default. Password sign-in is unaffected either way.
+
+| Variable | Purpose |
+|---|---|
+| `PAC_OIDC_ENABLED` | `true` to offer SSO |
+| `PAC_OIDC_ISSUER` | the issuer exactly as the provider publishes it |
+| `PAC_OIDC_CLIENT_ID` / `PAC_OIDC_CLIENT_SECRET` | the registered client; a secret only for a confidential client |
+| `PAC_OIDC_REDIRECT_URI` | `https://<host>/api/auth/oidc/callback`, registered with the provider |
+| `PAC_OIDC_ALGORITHMS` | `RS256,ES256`; never `none` or HMAC |
+| `PAC_OIDC_LINK_BY_VERIFIED_EMAIL` | `false`; see `app/auth/oidc.py` before enabling |
+
+Accounts are linked by `(issuer, subject)` in `app_auth.identities`. An
+administrator creates the link.
+
+**Browser binding.** `GET /api/auth/oidc/start` sets an HttpOnly cookie,
+`__Host-pac_oidc` (Secure, `Path=/`, `SameSite=Lax`, 10 minutes). The
+callback is refused with `browser_mismatch` unless it arrives with that
+cookie, and the check happens before the code is exchanged. This is what
+stops a callback obtained in one browser from signing in another (login
+CSRF). Consequences for operators:
+
+- The application must be served over HTTPS with `PAC_COOKIE_SECURE=true`.
+  Without Secure the browser rejects a `__Host-` cookie.
+- The provider must return to the callback with a top-level `GET`, the
+  default `response_mode=query`. `form_post` is a cross-site POST, which
+  does not carry a `SameSite=Lax` cookie, so it is not supported.
+- Sign-ins started in two tabs of one browser can both finish. Starting in
+  one browser and finishing in another cannot.
+
+**Verifying with a real provider (staging).** The tests use an in-process
+provider (`tests/security/fake_idp.py`) that checks PKCE, nonce, signatures
+and single-use codes. They do not establish interoperability with a
+specific provider or its MFA policy. With a registered client on staging,
+check and record each of these:
+
+1. A linked user completes sign-in and `GET /api/me` shows the right role
+   and scope.
+2. The start response sets `__Host-pac_oidc` with `Secure; HttpOnly;
+   SameSite=Lax; Path=/` (browser developer tools).
+3. Copy the callback URL from browser A, before it loads, into a private
+   window B. B receives `400 browser_mismatch` and is not signed in. A can
+   still finish.
+4. Cancel at the provider. The callback answers `400 provider_declined`,
+   and going back to the same attempt answers `invalid_state`.
+5. Wait more than 10 minutes on the provider's page, then finish. The
+   callback answers `invalid_state`.
+6. Disable the account, then sign in again. The callback answers
+   `403 disabled`.
+7. The provider's signing-key rotation (where it can be triggered) is
+   picked up without a restart.
+
 ---
 
 ## 4. Daily operation
@@ -118,7 +171,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 366
+python3 -m pytest tests/security -q --release-gate --min-tests 379
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

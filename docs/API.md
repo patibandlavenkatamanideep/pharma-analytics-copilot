@@ -58,17 +58,28 @@ Only when single sign-on is configured (`PAC_OIDC_ENABLED`), otherwise
 path. Redirects (`302`) to the provider with `state`, `nonce` and a PKCE
 `S256` challenge; all three are held on the server, not in a cookie.
 
+Sets the **browser binding** cookie: `__Host-pac_oidc` (`pac_oidc` where
+cookies are not Secure), HttpOnly, `SameSite=Lax`, `Path=/`, `Max-Age=600`.
+It holds a 256-bit secret whose hash is stored with the attempt. A browser
+that already has an attempt pending keeps its secret, so two tabs can both
+finish.
+
 ### GET /api/auth/oidc/callback
 
-The provider's redirect target. Validates the single-use `state`, exchanges
-the code with the PKCE verifier, verifies the ID token (signature against
-the issuer's keys, allowed algorithm, issuer, audience/`azp`, expiry,
-nonce), maps the verified `(issuer, subject)` to an account, sets the
-session cookie and redirects (`303`) to `next`.
+The provider's redirect target. Validates the single-use `state` **and that
+the request carries the binding cookie of the browser that started it**,
+both before the code is exchanged. It then exchanges the code with the PKCE
+verifier, verifies the ID token (signature against the issuer's keys,
+allowed algorithm, issuer, audience/`azp`, expiry, nonce), maps the
+verified `(issuer, subject)` to an account, sets the session cookie and
+redirects (`303`) to `next`. The binding cookie is cleared once no other
+attempt from that browser is pending. A callback with `?error=` ends the
+attempt, but only from the browser that started it.
 
 | Status | Code | Meaning |
 |---|---|---|
 | 400 | `invalid_state` | Unknown, reused or expired sign-in attempt |
+| 400 | `browser_mismatch` | The attempt was started in another browser, or the binding cookie is missing; nothing was redeemed |
 | 400 | `invalid_token` / `token_rejected` | The token or the code exchange failed verification |
 | 400 | `provider_declined` / `provider_unavailable` | The provider refused or could not be reached |
 | 403 | `not_linked` | A valid identity with no account link here |

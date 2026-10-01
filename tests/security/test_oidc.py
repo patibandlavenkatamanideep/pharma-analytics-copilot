@@ -14,78 +14,18 @@ provider, or that provider's MFA policy. Those need a registered client.
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import secrets
 import time
-from urllib.parse import parse_qs, urlsplit
 
 import httpx2 as httpx
 import pytest
-from joserfc import jwt
-from joserfc.jwk import KeySet, RSAKey
+from joserfc.jwk import RSAKey
 
+from tests.security.fake_idp import CLIENT, ISSUER, REDIRECT, FakeIdP
 from tests.security.helpers import sign_in  # noqa: F401  (fixture module import)
 
 pytestmark = pytest.mark.security
-
-ISSUER = "https://idp.test"
-CLIENT = "pac-client"
-REDIRECT = "http://testserver/api/auth/oidc/callback"
-
-
-class FakeIdP:
-    def __init__(self):
-        self.signing = RSAKey.generate_key(2048, parameters={"kid": "k1", "use": "sig"},
-                                           private=True)
-        self.published = [self.signing]
-        self.codes: dict[str, dict] = {}
-        self.claim_overrides: dict = {}
-        self.sign_with = None            # a different key, to forge
-        self.header_overrides: dict = {}
-
-    def handler(self, request: httpx.Request) -> httpx.Response:
-        path = request.url.path
-        if path == "/.well-known/openid-configuration":
-            return httpx.Response(200, json={
-                "issuer": ISSUER, "authorization_endpoint": f"{ISSUER}/authorize",
-                "token_endpoint": f"{ISSUER}/token", "jwks_uri": f"{ISSUER}/jwks"})
-        if path == "/jwks":
-            return httpx.Response(200, json=KeySet(self.published).as_dict(private=False))
-        if path == "/token":
-            form = parse_qs(request.content.decode())
-            code = form.get("code", [""])[0]
-            grant = self.codes.pop(code, None)                       # single use
-            verifier = form.get("code_verifier", [""])[0]
-            challenge = base64.urlsafe_b64encode(
-                hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
-            if grant is None or challenge != grant["challenge"] \
-                    or form.get("redirect_uri", [""])[0] != REDIRECT:
-                return httpx.Response(400, json={"error": "invalid_grant"})
-            now = int(time.time())
-            claims = {"iss": ISSUER, "aud": CLIENT, "sub": grant["sub"], "iat": now,
-                      "exp": now + 300, "nonce": grant["nonce"],
-                      "email": grant.get("email"), "email_verified": grant.get("verified", False),
-                      **self.claim_overrides}
-            header = {"alg": "RS256", "kid": "k1", **self.header_overrides}
-            token = jwt.encode(header, {k: v for k, v in claims.items() if v is not None},
-                               self.sign_with or self.signing)
-            return httpx.Response(200, json={"access_token": "at", "token_type": "Bearer",
-                                             "id_token": token})
-        return httpx.Response(404)
-
-    def authorize(self, url: str, *, sub: str, email: str | None = None,
-                  verified: bool = False) -> tuple[str, str]:
-        """What the provider does after the user authenticates: return a
-        code bound to THIS request's PKCE challenge and nonce."""
-        query = {k: v[0] for k, v in parse_qs(urlsplit(url).query).items()}
-        assert query["response_type"] == "code"
-        assert query["code_challenge_method"] == "S256", "PKCE missing or not S256"
-        assert query["client_id"] == CLIENT and query["redirect_uri"] == REDIRECT
-        code = secrets.token_urlsafe(16)
-        self.codes[code] = {"challenge": query["code_challenge"], "nonce": query["nonce"],
-                            "sub": sub, "email": email, "verified": verified}
-        return code, query["state"]
 
 
 @pytest.fixture
@@ -286,12 +226,9 @@ def test_sso_is_absent_unless_configured(client):
 #
 # Review of 1 October 2026, R1: login CSRF. State, nonce and verifier were
 # stored server-side and found by `state` alone, so a callback obtained in
-# one browser completed in any other. These reproduce it; the fix binds each
-# sign-in to a secret held in the starting browser's cookie.
-
-R1 = pytest.mark.xfail(strict=True, reason="R1: the OIDC callback is not bound to the "
-                                           "browser that started the sign-in")
-
+# one browser completed in any other. The first four reproduced it on the
+# unmodified code (evidence/runs/r3-r1-reproduced.json); each sign-in is now
+# bound to a secret held in the starting browser's cookie.
 
 def another_browser():
     """A second browser: the same application, its own empty cookie jar."""
@@ -314,7 +251,6 @@ def callback(browser, code, state):
                        follow_redirects=False)
 
 
-@R1
 def test_a_callback_carried_to_another_browser_does_not_sign_it_in(client, idp, make_identity):
     """The review's reproduction. Browser A starts a sign-in and authenticates
     as the ATTACKER; browser B -- the victim, with no cookies and no sign-in
@@ -333,7 +269,6 @@ def test_a_callback_carried_to_another_browser_does_not_sign_it_in(client, idp, 
     assert callback(client, code, state).status_code == 303
 
 
-@R1
 def test_a_callback_without_the_binding_cookie_is_refused(client, idp, make_identity):
     user = make_identity("exec", can_view_wac=1)
     link(user, "sub-nocookie")
@@ -344,7 +279,6 @@ def test_a_callback_without_the_binding_cookie_is_refused(client, idp, make_iden
     assert client.get("/api/me").status_code == 401
 
 
-@R1
 def test_a_callback_with_another_browsers_binding_is_refused(client, idp, make_identity):
     user = make_identity("exec", can_view_wac=1)
     link(user, "sub-wrongcookie")
@@ -355,7 +289,6 @@ def test_a_callback_with_another_browsers_binding_is_refused(client, idp, make_i
     assert r.status_code == 400 and r.json()["detail"]["code"] == "browser_mismatch"
 
 
-@R1
 def test_starting_a_sign_in_sets_an_httponly_binding_cookie(client, idp):
     client.cookies.clear()
     start = client.get("/api/auth/oidc/start", follow_redirects=False)
@@ -363,3 +296,109 @@ def test_starting_a_sign_in_sets_an_httponly_binding_cookie(client, idp):
     assert cookie.startswith("pac_oidc="), cookie
     attributes = [a.strip().lower() for a in cookie.split(";")]
     assert {"httponly", "samesite=lax", "path=/", "max-age=600"} <= set(attributes)
+
+
+def test_over_https_the_binding_cookie_is_secure_and_host_prefixed(client, idp, monkeypatch):
+    """`__Host-` makes the browser refuse the cookie unless it is Secure,
+    Path=/ and host-only, so a sibling subdomain cannot plant a binding."""
+    from app.config import get_settings
+    monkeypatch.setenv("PAC_COOKIE_SECURE", "true")
+    get_settings.cache_clear()
+    start = client.get("/api/auth/oidc/start", follow_redirects=False)
+    cookie = start.headers.get("set-cookie", "")
+    attributes = [a.strip().lower() for a in cookie.split(";")]
+    assert cookie.startswith("__Host-pac_oidc="), cookie
+    assert {"httponly", "secure", "samesite=lax", "path=/", "max-age=600"} <= set(attributes)
+    assert not any(a.startswith("domain=") for a in attributes)
+
+
+def test_the_binding_is_stored_only_as_a_hash(client, idp):
+    from app.db import owner_transaction
+    client.cookies.clear()
+    start = client.get("/api/auth/oidc/start", follow_redirects=False)
+    secret = start.cookies["pac_oidc"]
+    with owner_transaction() as cur:
+        cur.execute("SELECT * FROM app_auth.oidc_pending WHERE binding_hash = %s",
+                    (hashlib.sha256(secret.encode()).hexdigest(),))
+        rows = cur.fetchall()
+    assert len(rows) == 1
+    assert secret not in repr(dict(rows[0]))
+
+
+def test_two_sign_ins_started_in_one_browser_can_both_finish(client, idp, make_identity):
+    """Tabs, deliberately: a start in a browser with an attempt already
+    pending shares its binding, so neither tab invalidates the other."""
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-tabs")
+    client.cookies.clear()
+    first = client.get("/api/auth/oidc/start", follow_redirects=False)
+    second = client.get("/api/auth/oidc/start", follow_redirects=False)
+    assert first.cookies["pac_oidc"] == second.cookies["pac_oidc"]
+    code1, state1 = idp.authorize(first.headers["location"], sub="sub-tabs")
+    code2, state2 = idp.authorize(second.headers["location"], sub="sub-tabs")
+    later = callback(client, code2, state2)
+    assert later.status_code == 303
+    assert not cleared(later), "the binding was cleared while the other tab was pending"
+    earlier = callback(client, code1, state1)
+    assert earlier.status_code == 303
+    assert cleared(earlier), "nothing is pending any more, so the binding should go"
+
+
+def cleared(response) -> bool:
+    return any(c.startswith("pac_oidc=") and "max-age=0" in c.lower()
+               for c in response.headers.get_list("set-cookie"))
+
+
+def test_a_fresh_browser_gets_a_fresh_binding(client, idp):
+    """A binding is not reused once nothing is pending under it: a start
+    after the attempt ended mints a new secret."""
+    from app.db import owner_transaction
+    client.cookies.clear()
+    old = client.get("/api/auth/oidc/start", follow_redirects=False).cookies["pac_oidc"]
+    with owner_transaction() as cur:
+        cur.execute("DELETE FROM app_auth.oidc_pending WHERE binding_hash = %s",
+                    (hashlib.sha256(old.encode()).hexdigest(),))
+    new = client.get("/api/auth/oidc/start", follow_redirects=False).cookies["pac_oidc"]
+    assert new != old
+
+
+def test_a_malformed_binding_cookie_is_replaced_not_trusted(client, idp):
+    client.cookies.clear()
+    client.cookies.set("pac_oidc", "chosen-by-someone-else")
+    start = client.get("/api/auth/oidc/start", follow_redirects=False)
+    assert start.cookies["pac_oidc"] != "chosen-by-someone-else"
+
+
+def test_a_cancelled_sign_in_cannot_be_finished_afterwards(client, idp, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-cancel")
+    _, code, state = started(client, idp, "sub-cancel")
+    declined = client.get(f"/api/auth/oidc/callback?error=access_denied&state={state}",
+                          follow_redirects=False)
+    assert declined.status_code == 400
+    assert declined.json()["detail"]["code"] == "provider_declined"
+    after = callback(client, code, state)
+    assert after.status_code == 400 and after.json()["detail"]["code"] == "invalid_state"
+    assert client.get("/api/me").status_code == 401
+
+
+def test_another_browser_cannot_cancel_a_sign_in(client, idp, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-nocancel")
+    _, code, state = started(client, idp, "sub-nocancel")
+    another_browser().get(f"/api/auth/oidc/callback?error=access_denied&state={state}",
+                          follow_redirects=False)
+    assert callback(client, code, state).status_code == 303
+
+
+def test_an_expired_attempt_is_refused_even_from_the_right_browser(client, idp, make_identity):
+    from app.db import owner_transaction
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-expired-bound")
+    _, code, state = started(client, idp, "sub-expired-bound")
+    with owner_transaction() as cur:
+        cur.execute("UPDATE app_auth.oidc_pending SET expires_at = now() - interval '1 second' "
+                    "WHERE state_hash = %s", (hashlib.sha256(state.encode()).hexdigest(),))
+    r = callback(client, code, state)
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "invalid_state"
+    assert code in idp.codes, "an expired attempt still redeemed its code"

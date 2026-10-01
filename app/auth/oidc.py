@@ -11,6 +11,16 @@ What is validated, and where:
 * **state** -- random, single use, stored server-side by hash, expires in
   ten minutes. A callback with an unknown, reused or expired state is
   refused: it is either forged or replayed.
+* **browser binding** -- the attempt belongs to the browser that started
+  it. Start sets an HttpOnly cookie holding a 256-bit secret, and only its
+  hash is stored with the attempt. The callback must present that cookie, or
+  it is refused BEFORE the code is exchanged. Without this, state proves only
+  that the attempt exists, not whose browser it is in, so a callback
+  obtained in one browser signed in any other (login CSRF; review of
+  1 October 2026, R1). The cookie is `__Host-` prefixed whenever cookies are
+  Secure, so a sibling subdomain cannot plant one. Tabs: a start in a browser
+  that already has an attempt pending shares that attempt's secret, so
+  sign-ins begun in two tabs can both finish.
 * **PKCE** -- an S256 code challenge on the authorization request, the
   verifier on the token request. An intercepted code is useless without it.
 * **ID token** -- signature against the issuer's published keys (re-fetched
@@ -32,6 +42,7 @@ Enterprise MFA is the provider's policy, not this code's.
 from __future__ import annotations
 
 import hashlib
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -49,6 +60,17 @@ PENDING_TTL_SECONDS = 600
 CLOCK_LEEWAY_SECONDS = 60
 _METADATA_TTL_SECONDS = 3600
 
+#: The cookie binding a sign-in attempt to the browser that started it.
+BINDING_COOKIE = "pac_oidc"
+_BINDING_SHAPE = re.compile(r"[A-Za-z0-9_-]{43}")      # secrets.token_urlsafe(32)
+
+
+def binding_cookie_name(secure: bool) -> str:
+    """`__Host-pac_oidc` over HTTPS: the browser accepts it only with Secure,
+    Path=/ and no Domain, so no other host under the same parent domain can
+    set it. Plain `pac_oidc` only where cookies are not Secure (local HTTP)."""
+    return f"__Host-{BINDING_COOKIE}" if secure else BINDING_COOKIE
+
 
 class OIDCError(AuthenticationError):
     """A sign-in through the provider failed. `code` is safe to show."""
@@ -62,6 +84,8 @@ class OIDCError(AuthenticationError):
 class Begun:
     authorization_url: str
     state: str
+    #: The browser secret to set as the binding cookie. Never stored.
+    binding: str
 
 
 def _hash(value: str) -> str:
@@ -122,7 +146,11 @@ class Provider:
 
     # -- the flow ----------------------------------------------------------------
 
-    def begin(self, redirect_after: str | None = None) -> Begun:
+    def begin(self, redirect_after: str | None = None, *,
+              browser: str | None = None) -> Begun:
+        """Start an attempt bound to this browser. `browser` is the binding
+        cookie it already holds, if any: reused while another attempt from it
+        is still pending (a second tab), otherwise replaced."""
         from authlib.integrations.httpx_client import OAuth2Client
 
         state = secrets.token_urlsafe(32)
@@ -130,11 +158,18 @@ class Provider:
         verifier = secrets.token_urlsafe(64)
         with auth_transaction() as cur:
             cur.execute("DELETE FROM app_auth.oidc_pending WHERE expires_at <= now()")
+            binding = None
+            if browser and _BINDING_SHAPE.fullmatch(browser):
+                cur.execute("SELECT 1 FROM app_auth.oidc_pending WHERE binding_hash = %s "
+                            "LIMIT 1", (_hash(browser),))
+                if cur.fetchone():
+                    binding = browser
+            binding = binding or secrets.token_urlsafe(32)
             cur.execute(
-                "INSERT INTO app_auth.oidc_pending (state_hash, nonce, code_verifier, "
-                "  redirect_after, expires_at) "
-                "VALUES (%s, %s, %s, %s, now() + make_interval(secs => %s))",
-                (_hash(state), nonce, verifier, safe_redirect(redirect_after),
+                "INSERT INTO app_auth.oidc_pending (state_hash, binding_hash, nonce, "
+                "  code_verifier, redirect_after, expires_at) "
+                "VALUES (%s, %s, %s, %s, %s, now() + make_interval(secs => %s))",
+                (_hash(state), _hash(binding), nonce, verifier, safe_redirect(redirect_after),
                  PENDING_TTL_SECONDS))
         client = OAuth2Client(
             client_id=self.settings.oidc_client_id,
@@ -145,22 +180,55 @@ class Provider:
         url, _ = client.create_authorization_url(
             self.metadata()["authorization_endpoint"], state=state,
             code_verifier=verifier, nonce=nonce)
-        return Begun(authorization_url=url, state=state)
+        return Begun(authorization_url=url, state=state, binding=binding)
 
-    def complete(self, *, code: str, state: str, user_agent: str | None = None,
+    def cancel(self, *, state: str, browser: str | None) -> bool:
+        """The provider reported the attempt declined or cancelled. Ends it,
+        but only from the browser that started it: another browser cannot
+        cancel someone else's sign-in."""
+        with auth_transaction() as cur:
+            cur.execute("DELETE FROM app_auth.oidc_pending "
+                        "WHERE state_hash = %s AND binding_hash = %s",
+                        (_hash(state or ""), _hash(browser or "")))
+            return cur.rowcount > 0
+
+    def pending_in(self, browser: str | None) -> bool:
+        """Whether this browser has another attempt still pending."""
+        if not browser:
+            return False
+        with auth_transaction() as cur:
+            cur.execute("SELECT 1 FROM app_auth.oidc_pending WHERE binding_hash = %s "
+                        "AND expires_at > now() LIMIT 1", (_hash(browser),))
+            return cur.fetchone() is not None
+
+    def complete(self, *, code: str, state: str, browser: str | None,
+                 user_agent: str | None = None,
                  ip_hash: str | None = None) -> tuple[str, datetime, Principal, str]:
-        """Finish a sign-in. Returns (session token, expiry, principal,
-        where to send the user)."""
+        """Finish a sign-in. `browser` is the binding cookie this callback
+        arrived with. Returns (session token, expiry, principal, where to
+        send the user)."""
         from authlib.integrations.httpx_client import OAuth2Client
 
-        # Single use: the row is deleted as it is read, so a replayed
-        # callback finds nothing.
+        # Single use, and only by the browser that started it: the row is
+        # deleted as it is read, and only when the binding matches, so a
+        # replayed callback finds nothing and a callback carried to another
+        # browser neither succeeds nor uses up the real one.
+        other = None
         with auth_transaction() as cur:
             cur.execute(
-                "DELETE FROM app_auth.oidc_pending WHERE state_hash = %s "
+                "DELETE FROM app_auth.oidc_pending WHERE state_hash = %s AND binding_hash = %s "
                 "RETURNING nonce, code_verifier, redirect_after, expires_at > now() AS live",
-                (_hash(state or ""),))
+                (_hash(state or ""), _hash(browser or "")))
             pending = cur.fetchone()
+            if pending is None:
+                cur.execute("SELECT expires_at > now() AS live FROM app_auth.oidc_pending "
+                            "WHERE state_hash = %s", (_hash(state or ""),))
+                other = cur.fetchone()
+        if pending is None and other is not None and other["live"]:
+            # Checked before the code is exchanged: nothing is redeemed.
+            raise OIDCError("browser_mismatch",
+                            "This sign-in was started in a different browser. "
+                            "Start again from this one.")
         if pending is None or not pending["live"]:
             raise OIDCError("invalid_state",
                             "That sign-in link has expired or was already used. Try again.")
