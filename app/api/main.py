@@ -114,6 +114,17 @@ def _allowed_origins() -> set[str]:
 app.add_middleware(RequestGuard, max_body_bytes=get_settings().max_request_bytes,
                    allowed_origins=_allowed_origins())
 
+#: docs/API.md describes this version. Bumped when a response shape changes.
+API_VERSION = "2"
+
+
+@app.middleware("http")
+async def _api_version(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["X-API-Version"] = API_VERSION
+    return response
+
 
 def pipeline() -> Pipeline:
     if _pipeline is None:                       # pragma: no cover

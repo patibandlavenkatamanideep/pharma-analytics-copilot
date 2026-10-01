@@ -68,7 +68,11 @@ def count_under(collected: Counter, prefix: str) -> int:
 
 
 def js_tests(relative: str) -> int:
-    return len(JS_TEST.findall((ROOT / relative).read_text()))
+    """Test cases in a JS test file, or in every test file under a directory."""
+    path = ROOT / relative
+    files = (sorted(path.glob("*.test.jsx")) + sorted(path.glob("*.spec.js"))
+             if path.is_dir() else [path])
+    return sum(len(JS_TEST.findall(f.read_text())) for f in files)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +128,7 @@ def test_the_inventory_matches_the_release_gate_floor(collected):
 
 
 @pytest.mark.parametrize("relative,expected_in_doc", [
-    ("web/src/__tests__/identity-isolation.test.jsx", "component"),
+    ("web/src/__tests__", "component"),
     ("web/e2e/chat.spec.js", "end to end"),
 ])
 def test_the_inventory_states_the_browser_counts(relative, expected_in_doc):
@@ -160,7 +164,7 @@ def test_every_count_claim_is_currently_true(collected, document):
         count_under(collected, "tests/integration"),
         count_under(collected, "tests/security"),
         sum(collected.values()),
-        js_tests("web/src/__tests__/identity-isolation.test.jsx"),
+        js_tests("web/src/__tests__"),
         js_tests("web/e2e/chat.spec.js"),
     }
 
@@ -206,7 +210,7 @@ def _resolve_named_target(collected: Counter, line: str):
         if name.startswith("tests/"):
             return name, count_under(collected, name)
         if name == "web/src/__tests__":
-            return name, js_tests("web/src/__tests__/identity-isolation.test.jsx")
+            return name, js_tests("web/src/__tests__")
         if name == "web/e2e":
             return name, js_tests("web/e2e/chat.spec.js")
     return None

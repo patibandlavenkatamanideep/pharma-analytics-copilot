@@ -1,0 +1,135 @@
+# API contract
+
+Version **2** (every `/api` response carries `X-API-Version: 2`). Version 1
+was the submitted assessment's API; version 2 adds runs, idempotency,
+cancellation, clarification choices and the persistence outcome. Nothing in
+version 1's request shapes was removed.
+
+`tests/unit/test_api_contract_doc.py` fails if a route exists that this
+document does not describe, or the reverse.
+
+## Conventions
+
+- **Identity** is an opaque, `HttpOnly`, `Secure`, `SameSite=Lax` session
+  cookie. No endpoint accepts a user id, role, scope, SQL or metric formula;
+  all of them are derived on the server from the session.
+- **State-changing requests** (`POST`) must be `application/json`, at most
+  64 KiB, and same-origin: a request whose `Origin` (or `Sec-Fetch-Site`)
+  names another site is refused with `403 cross_origin` before any route
+  runs.
+- **Errors** carry `detail.code` (stable, machine-readable) and
+  `detail.message` (for people). Codes are listed per endpoint.
+- **Not yours and not found are the same answer.** Another user's
+  conversation or run returns the same `404` as one that does not exist.
+
+### Session lifecycle
+
+| Bound | Value | Notes |
+|---|---|---|
+| Absolute | 12 h from sign-in | Never extended, by activity or rotation |
+| Idle | 30 min | A session unused this long is dead |
+| Rotation | 15 min | An older token is replaced on its next use; `Set-Cookie` carries the new one |
+| Rotation grace | 30 s | The old token keeps working for requests already in flight |
+
+Disabling an account, changing its password, or `POST /api/logout` ends
+sessions immediately.
+
+## Endpoints
+
+### POST /api/login
+
+`{"email": str, "password": str}` → `200 {"user": {...}}` and the session
+cookie.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 401 | — | Wrong email or password, or an account with no usable scope |
+| 429 | — | Too many failed attempts for this email or address |
+
+### POST /api/logout
+
+No body. Revokes the session and clears the cookie. Always `200`.
+
+### GET /api/me
+
+The signed-in user (`name`, `email`, `role`, `scope`, `can_view_pricing`)
+and the published dataset (`id`, `mode`, `latest_month`, `latest_quarter`,
+`rows`). `401` when not signed in.
+
+### POST /api/ask
+
+```json
+{"question": "str, 1-1000 chars",
+ "conversation_id": "str | null",
+ "include_sql": false}
+```
+
+Optional header **`Idempotency-Key`** (8–128 chars of `[A-Za-z0-9_-:.]`).
+Send a new key per question and the same key on a retry of that question.
+
+Response `200`:
+
+| Field | Always | Meaning |
+|---|---|---|
+| `status` | yes | `answered`, `clarify`, `denied`, `error`, `conflict`, `cancelled` |
+| `conversation_id` | yes | Continue the conversation by sending it back |
+| `message` | yes | Headline, clarification or refusal text |
+| `request_id` | yes | Correlates with the audit row and logs |
+| `run_id` | yes | This request's run (`GET /api/runs/{run_id}`) |
+| `persistence` | yes | `saved`, `not_saved`, `failed`, `conflict` — whether this turn is now part of the conversation |
+| `choices` | on some `clarify` | `[{"id", "label", "detail"}]` in display order; reply with "the second one", the number, or a distinguishing detail |
+| `alternative` | on some `denied` | What the user can ask instead |
+| `answer` | on `answered` | `headline`, `columns`, `rows`, `scope_note`, `period_note`, `warnings`, `notes`, `row_count`, `truncated` |
+| `plan`, `sql` | only with `include_sql` | The typed plan, and the SQL this user was authorised to run |
+| `replayed` | on a replay | `true` when the response is the stored outcome of an earlier request with the same key |
+
+Interpreting `persistence`: only `saved` means the next turn can build on
+this one. `failed` returns the answer but it was not recorded; `conflict`
+means the conversation moved on while this was being answered and the
+answer is withheld.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 404 | — | The conversation does not exist or is not yours |
+| 409 | `conversation_busy` | Another question in this conversation is being answered |
+| 409 | `same_request_running` | This key's request is still running |
+| 409 | `idempotency_key_reused` | This key was used for a different request |
+| 403 | `access_changed` | The stored outcome was computed under access you no longer have |
+| 429 | `rate_limited` | Per-user rate or concurrency limit; honour `Retry-After` |
+| 413 / 415 / 403 | `request_too_large` / `unsupported_media_type` / `cross_origin` | Refused by the request guard |
+| 500 | — | Unexpected; `detail.request_id` identifies the log entry |
+
+### POST /api/runs/cancel
+
+`{"run_id": str}` or `{"idempotency_key": str}` — the key works before the
+run id is known. Cancels one of **your** running requests at its next step;
+nothing is recorded for it. `200 {"status": "cancel_requested"}`, or `404`
+when there is no running request of yours by that name.
+
+### GET /api/runs/{run_id}
+
+`{"run_id", "conversation_id", "status", "turn_seq", "created_at",
+"finished_at"}` for your own run under your current access; `404` otherwise.
+Run statuses: `running`, `succeeded`, `failed`, `conflicted`, `abandoned`,
+`cancelled`.
+
+### GET /api/conversations
+
+Your conversations under your **current** access, newest first:
+`{"conversations": [{"conversation_id", "title", "updated_at"}]}`. A
+conversation recorded under access you no longer hold is not listed.
+
+### GET /api/conversations/{conversation_id}
+
+`{"conversation_id", "turns": [{"seq", "question", "answer_text", "status",
+"created_at"}]}`, or `404` — the same for missing, someone else's, and
+recorded under access you no longer hold.
+
+### GET /health
+
+Liveness: `200 {"status": "ok"}` whenever the process serves requests.
+
+### GET /ready
+
+Readiness: `200` only when a published dataset exists; `503` before the
+first load, so a container is not sent traffic it cannot serve.

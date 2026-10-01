@@ -25,11 +25,11 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 578 | ✅ pass | `p1d-suite-unit.json` |
+| **Unit** | `pytest tests/unit -q` | 581 | ✅ pass | `p1d-suite-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 759 | ✅ pass | `p1d-suite-integration.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 177` | 177 | ✅ pass | `r2-suite-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1514** | ✅ pass | `p1d-suite-total.json` |
-| **Browser — component** | `cd web && npm test` | 6 | ✅ pass | `p1d-suite-browser-component.json` |
+| **Total (pytest)** | `pytest tests -q` | **1517** | ✅ pass | `p1d-suite-total.json` |
+| **Browser — component** | `cd web && npm test` | 14 | ✅ pass | `r2-suite-browser-component.json` |
 | **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
@@ -90,7 +90,7 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (6, vitest + jsdom).** These pass here, in about 400 ms.
+**Component tests (14, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses).
 
 They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run
@@ -118,7 +118,7 @@ served and credentials in the environment. They last passed against the
 deployed instance on 2026-09-25. They are not part of the offline gate and
 are not claimed as passing on this revision.
 
-Neither browser suite is counted in the 1514: they do not run in the same
+Neither browser suite is counted in the 1517: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---

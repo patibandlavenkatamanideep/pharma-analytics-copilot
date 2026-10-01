@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
 const api = async (path, options = {}) => {
+  const { headers: extra, ...rest } = options;
   const res = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
+    ...rest,
+    headers: { "Content-Type": "application/json", ...(extra || {}) },
     credentials: "same-origin",
-    ...options,
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     // `detail` is a plain string for expected refusals, and an object carrying
-    // a request id for an unhandled failure. Showing the id gives the user
-    // something to quote when reporting it.
+    // a stable `code` (and, for an unhandled failure, a request id) otherwise.
+    // Showing the id gives the user something to quote when reporting it.
     const detail = body.detail;
     const message =
       typeof detail === "string"
@@ -20,12 +21,24 @@ const api = async (path, options = {}) => {
       detail?.request_id ? `${message} (reference ${detail.request_id})` : message,
     );
     err.requestId = detail?.request_id;
+    err.status = res.status;
+    err.code = typeof detail === "object" ? detail?.code : undefined;
+    err.retryAfter = res.headers?.get?.("Retry-After");
     throw err;
   }
   return body;
 };
 
-function Login({ onSignedIn }) {
+// One key per question, reused on a retry of that question. The server keeps
+// one committed outcome per key, so resending after a dropped connection
+// returns the answer that was already computed instead of asking twice.
+const newKey = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `k-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function Login({ onSignedIn, notice }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -76,6 +89,7 @@ function Login({ onSignedIn }) {
             required
           />
         </label>
+        {notice && !error && <div className="notice">{notice}</div>}
         {error && <div className="error">{error}</div>}
         <button type="submit" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
@@ -142,7 +156,7 @@ function ResultTable({ answer }) {
   );
 }
 
-function Turn({ turn }) {
+function Turn({ turn, onChoose }) {
   if (turn.role === "user") {
     return (
       <div className="turn user">
@@ -171,6 +185,30 @@ function Turn({ turn }) {
         <p className="headline">{turn.text}</p>
 
         {turn.alternative && <p className="alternative">{turn.alternative}</p>}
+
+        {/* Options shown exactly as the server stored them, in its order, so
+            choosing the second one means what the server will read as 2. */}
+        {turn.choices?.length > 0 && (
+          <div className="choices" role="group" aria-label="Choose one">
+            {turn.choices.map((c, i) => (
+              <button
+                key={c.id}
+                className="choice"
+                disabled={!onChoose}
+                onClick={() => onChoose?.(String(i + 1), `${c.label} (${c.detail})`)}
+              >
+                <strong>{c.label}</strong> <span className="muted small">{c.detail}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {turn.persistence === "failed" && (
+          <p className="warning" role="status">
+            This answer was not saved to the conversation, so a follow-up will not
+            build on it.
+          </p>
+        )}
 
         {answer && <ResultTable answer={answer} />}
 
@@ -221,7 +259,11 @@ export default function App() {
   const [conversationId, setConversationId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showSql, setShowSql] = useState(false);
+  const [notice, setNotice] = useState(null);
   const bottom = useRef(null);
+  // The key of the question in flight, so Stop can cancel it on the server
+  // before its run id is known.
+  const currentKey = useRef(null);
 
   // Every sign-in and sign-out bumps this. A request captures the value it was
   // issued under and refuses to touch state if it has moved on since.
@@ -293,7 +335,9 @@ export default function App() {
     await api("/api/logout", { method: "POST" });
   };
 
-  const ask = async (text) => {
+  const replaceLast = (turn) => setTurns((t) => [...t.slice(0, -1), turn]);
+
+  const ask = async (text, display) => {
     const q = (text ?? question).trim();
     if (!q || busy) return;
     // Captured now, checked before every write below. `stale()` is the only
@@ -303,12 +347,14 @@ export default function App() {
 
     const controller = new AbortController();
     inFlight.current = controller;
+    const key = newKey();
+    currentKey.current = key;
 
     setQuestion("");
     setBusy(true);
     setTurns((t) => [
       ...t,
-      { role: "user", text: q },
+      { role: "user", text: display || q },
       { role: "assistant", pending: true, stage: "Interpreting your question…" },
     ]);
 
@@ -322,46 +368,91 @@ export default function App() {
       });
     }, 500);
 
+    const body = JSON.stringify({
+      question: q,
+      conversation_id: conversationId,
+      include_sql: showSql,
+    });
+    const send = async (attempt) => {
+      try {
+        return await api("/api/ask", {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Idempotency-Key": key },
+          body,
+        });
+      } catch (err) {
+        if (err.name === "AbortError" || stale()) throw err;
+        // Safe to resend with the SAME key: the server returns the outcome it
+        // committed for this key rather than answering a second time. A
+        // dropped connection has no status; a 5xx or "still running" is
+        // worth one more look.
+        const retryable =
+          err.status === undefined || err.status >= 500 ||
+          err.code === "same_request_running";
+        if (retryable && attempt < 2) {
+          await sleep(attempt === 0 ? 400 : 1200);
+          return send(attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     try {
-      const res = await api("/api/ask", {
-        method: "POST",
-        signal: controller.signal,
-        body: JSON.stringify({
-          question: q,
-          conversation_id: conversationId,
-          include_sql: showSql,
-        }),
-      });
+      const res = await send(0);
       if (stale()) return;
       setConversationId(res.conversation_id);
-      setTurns((t) => [
-        ...t.slice(0, -1),
-        {
-          role: "assistant",
-          status: res.status,
-          text: res.message,
-          alternative: res.alternative,
-          answer: res.answer,
-          sql: res.sql,
-        },
-      ]);
+      replaceLast({
+        role: "assistant",
+        status: res.status,
+        text: res.status === "cancelled" ? "Stopped." : res.message,
+        alternative: res.alternative,
+        answer: res.answer,
+        sql: res.sql,
+        choices: res.choices,
+        persistence: res.persistence,
+      });
     } catch (err) {
       // An abort is this component cancelling its own request, not a failure
       // worth showing -- and after an identity change there is no transcript
       // it would belong to anyway.
       if (stale() || err.name === "AbortError") return;
-      setTurns((t) => [
-        ...t.slice(0, -1),
-        { role: "assistant", status: "error", text: err.message },
-      ]);
+      if (err.status === 401) {
+        // Idle or absolute expiry, or revoked elsewhere: back to sign-in,
+        // with the transcript cleared like any other identity change.
+        newIdentity();
+        setUser(null);
+        setDataset(null);
+        setNotice("Your session ended. Sign in again to continue.");
+        return;
+      }
+      replaceLast({ role: "assistant", status: "error", text: err.message });
     } finally {
       clearTimeout(stage);
       if (inFlight.current === controller) inFlight.current = null;
+      if (currentKey.current === key) currentKey.current = null;
       if (!stale()) setBusy(false);
     }
   };
 
-  if (!user) return <Login onSignedIn={signIn} />;
+  // Stop the question in flight: abort the request here, and ask the server
+  // to stop its run at the next step, by the key -- the run id is not known
+  // until a response arrives.
+  const stop = () => {
+    const key = currentKey.current;
+    inFlight.current?.abort();
+    inFlight.current = null;
+    setBusy(false);
+    replaceLast({ role: "assistant", status: "cancelled", text: "Stopped." });
+    if (key) {
+      api("/api/runs/cancel", {
+        method: "POST",
+        body: JSON.stringify({ idempotency_key: key }),
+      }).catch(() => {});
+    }
+  };
+
+  if (!user) return <Login onSignedIn={(u) => { setNotice(null); signIn(u); }} notice={notice} />;
 
   return (
     <div className="app">
@@ -414,7 +505,13 @@ export default function App() {
           </div>
         )}
         {turns.map((turn, i) => (
-          <Turn key={i} turn={turn} />
+          <Turn
+            key={i}
+            turn={turn}
+            // Only the latest clarification can be answered: an older one has
+            // been superseded on the server.
+            onChoose={!busy && i === turns.length - 1 ? ask : undefined}
+          />
         ))}
         <div ref={bottom} />
       </main>
@@ -433,9 +530,15 @@ export default function App() {
             disabled={busy}
             autoFocus
           />
-          <button type="submit" disabled={busy || !question.trim()}>
-            Ask
-          </button>
+          {busy ? (
+            <button type="button" className="stop" onClick={stop}>
+              Stop
+            </button>
+          ) : (
+            <button type="submit" disabled={!question.trim()}>
+              Ask
+            </button>
+          )}
         </form>
         <label className="sql-toggle">
           <input

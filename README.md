@@ -116,7 +116,7 @@ python3 scripts/build_authtest_db.py         # disposable database for the auth 
 python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
 python3 -m pytest tests/security -q --release-gate --min-tests 177  # release gate
 
-cd web && npm test                           # 6 jsdom component tests
+cd web && npm test                           # 14 jsdom component tests
 cd web && npm run test:e2e                   # 6 real-browser tests (Playwright)
 
 python3 scripts/run_evals.py                              # regression set

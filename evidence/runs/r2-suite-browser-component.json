@@ -1,0 +1,70 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T00:58:13+00:00",
+  "claim": "The 14 jsdom component tests pass, including the API v2 contract: an Idempotency-Key per question reused on retry, Stop cancelling by key, clarification choices in server order, the not-saved notice, an ended session returning to sign-in, busy and rate-limited messages.",
+  "application": {
+    "sha": "46956c785e5e7f9bd96618615854181ecc1ec4ce",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "README.md",
+      "app/api/main.py",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/TEST_INVENTORY.md",
+      "tests/unit/test_api_contract_doc.py",
+      "tests/unit/test_documented_counts.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/sh",
+      "-c",
+      "cd web && npm test 2>&1"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.8
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 14
+    },
+    "blocked_reason": null,
+    "summary": "   Duration  1.23s (tests 44%, environment 41%, import 10%, transform 4%, worker 1%)"
+  },
+  "artifacts": [],
+  "limits": [
+    "jsdom with a stubbed fetch: no real browser, no real server."
+  ]
+}

@@ -323,3 +323,9 @@ footer input { flex: 1; }
   .bubble { max-width: 100%; }
   .turn.user .bubble { max-width: 90%; }
 }
+
+/* Clarification choices: the options the server stored, in its order. */
+.choices { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.choice { text-align: left; padding: 8px 10px; border-radius: 8px; }
+.notice { background: #eef4ff; color: #1d3f8a; padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+button.stop { background: #8a1c1c; }
