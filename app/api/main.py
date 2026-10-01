@@ -286,8 +286,19 @@ def me(user: CurrentUser) -> dict[str, Any]:
             "latest_month": dataset["reporting_anchor"].get("max_period_mo"),
             "latest_quarter": dataset["reporting_anchor"].get("max_period_qtr"),
             "rows": dataset["row_counts"],
+            # Freshness: the latest sale the data contains, when this
+            # generation was published, and when an incremental feed last
+            # delivered (changed or not) -- so "as of" is never a guess.
+            "data_through": dataset["reporting_anchor"].get("max_txn"),
+            "published_at": _iso(dataset["published_at"]),
+            "incremental": dataset["parent_dataset_id"] is not None,
+            "last_ingest_at": _iso(dataset["last_ingest_at"]),
         },
     }
+
+
+def _iso(value: Any) -> str | None:
+    return value.isoformat() if value is not None else None
 
 
 def _describe(principal: Principal) -> dict[str, Any]:

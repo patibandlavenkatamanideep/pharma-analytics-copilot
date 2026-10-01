@@ -82,7 +82,11 @@ No body. Revokes the session and clears the cookie. Always `200`.
 
 The signed-in user (`name`, `email`, `role`, `scope`, `can_view_pricing`)
 and the published dataset (`id`, `mode`, `latest_month`, `latest_quarter`,
-`rows`). `401` when not signed in.
+`rows`), with its freshness: `data_through` (the latest transaction date in
+the data), `published_at` (when this generation was published),
+`incremental` (whether an incremental batch built it) and `last_ingest_at`
+(when any feed last delivered a batch, or `null`). See
+[INGESTION.md](INGESTION.md#freshness). `401` when not signed in.
 
 ### POST /api/ask
 

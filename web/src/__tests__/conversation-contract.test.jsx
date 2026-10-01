@@ -37,7 +37,7 @@ function makeFetch(script) {
     if (path === "/api/me") {
       return fetchMock.signedOut
         ? respond(401, { detail: "Not signed in." })
-        : respond(200, { user: USER, dataset: { latest_month: "2026-09" } });
+        : respond(200, { user: USER, dataset: fetchMock.dataset || { latest_month: "2026-09" } });
     }
     if (path === "/api/logout") return respond(200, { status: "signed out" });
     if (path === "/api/auth/methods") return respond(200, fetchMock.methods || { password: true, oidc: false });
@@ -208,5 +208,16 @@ describe("API v2 in the interface", () => {
     const [first, again] = global.fetch.asks;
     expect(again.key).toEqual(first.key);
     expect(global.fetch.asks).toHaveLength(2);
+  });
+
+  it("shows the date the data runs through, with publication times on hover", async () => {
+    global.fetch = makeFetch([]);
+    global.fetch.dataset = {
+      latest_month: "2026-10", data_through: "2026-10-02", incremental: true,
+      published_at: "2026-10-03T09:00:00+00:00", last_ingest_at: "2026-10-03T08:59:00+00:00",
+    };
+    await renderSignedIn();
+    const label = await screen.findByText(/data through 2026-10-02/);
+    expect(label.getAttribute("title")).toMatch(/published .* feed last delivered /);
   });
 });

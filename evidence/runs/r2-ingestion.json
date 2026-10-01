@@ -1,0 +1,114 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T01:56:49+00:00",
+  "claim": "Incremental ingestion applies real batches to a disposable database: replay changes nothing, a correction applied twice updates once, tombstones hold against late copies, equal amounts with distinct ids are distinct sales, unreconciled or broken batches are rejected before any write, invalid events are quarantined by reason, the business timezone decides the day, a new week or month shifts every offset with the calendar and manifest in the same transaction, and publications serialise.",
+  "application": {
+    "sha": "873d6998b7ff79dc94f433521f4898be54c4c6a9",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/api/main.py",
+      "app/config.py",
+      "app/data/ingest.py",
+      "app/data/loader.py",
+      "app/data/sources.py",
+      "app/pipeline.py",
+      "docs/API.md",
+      "docs/INGESTION.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/runs/r2-ingestion-scale.json",
+      "migrations/018_ingestion.sql",
+      "scripts/build_ingesttest_db.py",
+      "scripts/ingest.py",
+      "scripts/measure_ingestion.py",
+      "tests/integration/test_ingestion.py",
+      "tests/unit/test_ingest_calendar.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-6c01eaac1b9e",
+    "load_mode": "seed",
+    "fingerprint": "c3dee29009ee95eb6d4138c3",
+    "row_counts": {
+      "sales": 272,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 26,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-24",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-27"
+    },
+    "database": "pharma_analytics_ingesttest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration/test_ingestion.py",
+      "tests/unit/test_ingest_calendar.py",
+      "-q",
+      "-p",
+      "no:randomly",
+      "--release-gate",
+      "--min-tests",
+      "55"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 3.82
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 55
+    },
+    "blocked_reason": null,
+    "summary": "55 passed in 3.14s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Runs on the 271-row seed base, whose calendar is internally inconsistent in two weeks; convention detection on a coherent Saturday calendar is covered by unit tests, not by a full-data integration run.",
+    "Synthetic and hand-built events only; no production feed has been connected."
+  ]
+}

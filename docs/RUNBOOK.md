@@ -169,6 +169,26 @@ Relative periods are anchored to the manifest's reporting anchor, never the
 server clock, so a refresh moves the windows and the same question legitimately
 returns a new number.
 
+### Incremental batches
+
+New, corrected and deleted sales can be applied without a full reload, run
+from the jobs container:
+
+```bash
+python3 scripts/ingest.py batch-0001.json      # exit 1 if a batch was rejected
+```
+
+Each batch is reconciled against its declared totals, validated (invalid
+events quarantined with a reason), applied by event identity and version,
+and published as a new generation in one transaction. A replay changes
+nothing. A batch that adds a new week rewrites every fact's week offset;
+on the full dataset that took 108–133 s, and readers kept answering
+throughout (median 53 ms, worst 971 ms). The contract, the outcomes table, recovery and the
+measurements are in [INGESTION.md](INGESTION.md).
+
+A full or seed load clears the ingestion ledger, so retained batches can be
+replayed onto the new base.
+
 ---
 
 ## 8. Backup and restore

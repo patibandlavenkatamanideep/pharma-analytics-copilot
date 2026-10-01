@@ -70,6 +70,11 @@ jobs:
       - name: Build the disposable authorization-test database
         run: python scripts/build_authtest_db.py
 
+      # Ingestion tests add, correct and delete sales and move the reporting
+      # anchor, so they get a database of their own.
+      - name: Build the disposable ingestion-test database
+        run: python scripts/build_ingesttest_db.py
+
       - name: Verify the security boundary is intact
         run: |
           python - <<'PY'
@@ -96,6 +101,13 @@ jobs:
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
+
+      # Strict for the same reason as the security suite: without its
+      # database every ingestion test skips, and a skip is not a pass.
+      - name: Incremental ingestion (strict)
+        run: |
+          python -m pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py \
+            -q --release-gate --min-tests 55
 
       - name: Full test suite
         run: python -m pytest tests -q

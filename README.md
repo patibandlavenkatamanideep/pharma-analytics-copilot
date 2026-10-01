@@ -174,7 +174,7 @@ rotated.
 ```
 app/analytics/    metric registry, typed plan, period resolver, compiler, AST validator
 app/auth/         identity, sessions, policy
-app/data/         ingestion, manifest, derived classification
+app/data/         loading, incremental ingestion, manifest, derived classification
 app/conversation/ owner-scoped structured follow-up state
 app/llm/          Bedrock planner + deterministic offline planner
 app/pipeline.py   plan → authorize → compile → validate → execute → render → audit

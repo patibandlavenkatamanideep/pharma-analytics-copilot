@@ -263,6 +263,22 @@ const SUGGESTIONS = [
   "Compare Onmark vs ION affiliated accounts by total pack units",
 ];
 
+// How current the answers are. The date a sale was last recorded, not the
+// date the page loaded; publication and feed times on hover.
+function Freshness({ dataset }) {
+  if (!dataset) return null;
+  const through = dataset.data_through || dataset.latest_month;
+  const details = [
+    dataset.published_at && `published ${new Date(dataset.published_at).toLocaleString()}`,
+    dataset.last_ingest_at && `feed last delivered ${new Date(dataset.last_ingest_at).toLocaleString()}`,
+  ].filter(Boolean).join(" · ");
+  return (
+    <span className="muted small freshness" title={details || undefined}>
+      {" "}· {through ? `data through ${through}` : ""}
+    </span>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [dataset, setDataset] = useState(null);
@@ -478,10 +494,7 @@ export default function App() {
       <header>
         <div>
           <strong>Pharma Analytics Copilot</strong>
-          <span className="muted small">
-            {" "}
-            · {dataset?.latest_month ? `data through ${dataset.latest_month}` : ""}
-          </span>
+          <Freshness dataset={dataset} />
         </div>
         <div className="identity">
           <span className="who">{user.name}</span>

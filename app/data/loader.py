@@ -66,6 +66,14 @@ class LoadError(RuntimeError):
     """Raised when the dataset cannot be safely published."""
 
 
+def publication_lock(cur: Any) -> None:
+    """Serialise everything that publishes a dataset generation -- a full
+    load, a seed load, an incremental batch -- for the rest of the
+    transaction. Two publications interleaving would each build on a parent
+    the other is replacing."""
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext('pac:publication'))")
+
+
 def _truncate_business_data(cur: Any) -> None:
     """Remove the previous snapshot's rows, inside the publication transaction.
 
@@ -80,6 +88,11 @@ def _truncate_business_data(cur: Any) -> None:
     for table in ("sales", "app_ref.product_classification", "app_ref.calendar",
                   "organizations", "products", "zip_territory"):
         cur.execute(f"DELETE FROM {table}")
+    # The ledger records which events were applied to THIS dataset's facts.
+    # A new base does not contain them, so the same events sent again must
+    # apply again. Batch history is kept: it is a record of what was sent.
+    cur.execute("DELETE FROM app_ingest.event_ledger")
+    cur.execute("DELETE FROM app_ingest.watermarks")
 
 
 def _copy_csv(cur: Any, table: str, columns: list[str], path: pathlib.Path) -> int:
@@ -481,6 +494,7 @@ def load(mode: str) -> LoadReport:
     try:
         # One transaction: either the whole snapshot lands or none of it does.
         with owner_transaction() as cur:
+            publication_lock(cur)
             # Before anything is truncated or written: refuse a database whose
             # shape this system cannot answer questions about. Failing here is
             # far better than failing mid-query, or -- worse -- succeeding

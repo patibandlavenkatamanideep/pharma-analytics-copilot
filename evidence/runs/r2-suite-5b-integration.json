@@ -1,0 +1,87 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T01:57:42+00:00",
+  "claim": "The integration suite passes at its documented count.",
+  "application": {
+    "sha": "873d6998b7ff79dc94f433521f4898be54c4c6a9",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/api/main.py",
+      "app/config.py",
+      "app/data/ingest.py",
+      "app/data/loader.py",
+      "app/data/sources.py",
+      "app/pipeline.py",
+      "docs/API.md",
+      "docs/INGESTION.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/runs/r2-ingestion-scale.json",
+      "evidence/runs/r2-ingestion.json",
+      "evidence/runs/r2-suite-5b-unit.json",
+      "migrations/018_ingestion.sql",
+      "scripts/build_ingesttest_db.py",
+      "scripts/ingest.py",
+      "scripts/measure_ingestion.py",
+      "tests/integration/test_ingestion.py",
+      "tests/unit/test_ingest_calendar.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 26.93
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 796
+    },
+    "blocked_reason": null,
+    "summary": "796 passed in 26.46s"
+  },
+  "artifacts": [],
+  "limits": null
+}

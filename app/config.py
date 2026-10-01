@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     # Comma-separated in the environment: PAC_COMPANY_NAMES="NovaPharma,Nova".
     company_names: str = "NovaPharma"
 
+    # --- incremental ingestion --------------------------------------------------
+    # The timezone a source timestamp is converted in to decide which
+    # business day -- and so which week and month -- a sale belongs to. A sale
+    # at 23:30 New York time on a Saturday is Saturday's, whatever UTC says.
+    business_timezone: str = "America/New_York"
+    # A batch in which more than this share of events fail validation is
+    # rejected whole: past that point the feed is broken, and publishing the
+    # remainder would present a partial period as a complete one.
+    ingest_max_quarantine_ratio: float = 0.05
+
     # --- runs -------------------------------------------------------------------
     # How long one request may hold a conversation before another may take
     # it over. Longer than the slowest legitimate request, or a slow answer

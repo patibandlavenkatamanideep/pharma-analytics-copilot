@@ -193,7 +193,9 @@ class Pipeline:
         with auth_transaction() as cur:
             cur.execute(
                 "SELECT dataset_id, load_mode, reporting_anchor, row_counts, warnings, "
-                "       published_at, source_coverage "
+                "       published_at, source_coverage, parent_dataset_id, "
+                "       (SELECT max(last_batch_at) FROM app_ingest.watermarks) "
+                "         AS last_ingest_at "
                 "FROM app_meta.dataset_manifest WHERE load_state = 'published' "
                 "ORDER BY published_at DESC LIMIT 1"
             )
