@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** the bounded-evaluation change (`post-assessment/production-readiness`),
+**Measured on** `7292f42` (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 652 | ✅ pass | `r2-image-pytest.json` |
 | **Integration** | `pytest tests/integration -q` | 815 | ✅ pass | `r2-suite-7c-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 364` | 364 | ✅ pass | `r2-provisioning-security.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 364` | 364 | ✅ pass | `r2-final2-security.json` |
 | **Total (pytest)** | `pytest tests -q` | **1831** | ✅ pass | `r2-image-pytest.json` |
-| **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-final-component.json` |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final-browser.json` |
+| **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-final2-component.json` |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final2-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
 Unit and integration counts are what pytest collects, not what anyone

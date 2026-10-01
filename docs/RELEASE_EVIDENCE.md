@@ -9,10 +9,10 @@ belongs in the [Blocked](#blocked-what-needs-an-external-input) or
 | | |
 |---|---|
 | Branch | `post-assessment/production-readiness` |
-| Code measured | `12cecbe` |
+| Code measured | `7292f42` |
 | Reviewed baseline | `c8aab5b`: the commit the 30 September 2026 review assessed. `main` still points at it; nothing on this branch is merged or pushed |
 | Versions | metric registry 1.4.0 (`5a39a26aaa68db9e`), policy 1.0.0, schema contract 1.0.0, prompt 2.1.0, planner contract 2.0.0, graph 1.0.0 |
-| Environment | macOS on Apple silicon (10 cores), Python 3.13.2, PostgreSQL 16.14, offline planner |
+| Environment | macOS on Apple silicon (10 cores), Python 3.13.2, PostgreSQL 16.14, offline planner; the image built and run with podman 5.7.1 (arm64 VM) |
 | Recorded | 2026-09-30 to 2026-10-01 |
 
 ## Verdict
@@ -23,16 +23,23 @@ belongs in the [Blocked](#blocked-what-needs-an-external-input) or
 - every mandatory suite passes, with no skips;
 - the security gate is strict.
 
+The actual image has also been built from the commit and tested end to end
+locally: 22 checks, a clean vulnerability scan, and an Exec and a RAM
+journey on a freshly provisioned database. That test found a defect no
+other test could: a first deployment could not sign anyone in. It is fixed
+in `eebc974`.
+
 The conditions that need an environment are not met. The current prompt
 (2.1.0) has never been evaluated against the live model. Hosted CI has not
-run on this branch. Nothing has been deployed or verified in staging. There
-is no redundancy and no point-in-time recovery, and no service level, RTO or
-RPO has been agreed. Each of these, and what it needs, is listed under
-[Blocked](#blocked-what-needs-an-external-input).
+run on this branch. The image was built with podman on arm64, not by CI on
+amd64. Nothing has been deployed or verified in staging. There is no
+redundancy and no point-in-time recovery, and no service level, RTO or RPO
+has been agreed. [Next steps](#next-steps-in-order) puts them in order, and
+[Blocked](#blocked-what-needs-an-external-input) says what each one needs.
 
 | Category | Meaning here |
 |---|---|
-| **Implemented** | In the code at `12cecbe` |
+| **Implemented** | In the code at `7292f42` |
 | **Locally verified** | An executable check passed on this machine, with a record |
 | **Staging verified** | Verified in a deployed environment. **Nothing is**: no staging exists for this branch |
 | **Blocked** | Implemented as far as possible; verification needs an input listed below |
@@ -41,14 +48,14 @@ RPO has been agreed. Each of these, and what it needs, is listed under
 
 | Check | Command | Result | Record |
 |---|---|---|---|
-| Full pytest | `pytest tests -q` | **1819 passed**, 0 failed, 0 skipped | `r2-final-pytest.json` |
-| Unit | `pytest tests/unit -q` | 642 passed | `r2-suite-7b-unit.json` (unchanged since) |
-| Integration | `pytest tests/integration -q` | 815 passed | `r2-suite-7c-integration.json` |
-| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 364` | **362 passed**, gate satisfied | `r2-final-security.json` |
-| Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final-ingestion.json` |
-| Component (vitest) | `cd web && npm test` | **21 passed** | `r2-final-component.json` |
-| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final-browser.json` |
-| Review ledger | `python3 evidence/probes/review_2026_09_30.py` | **0 reproduced, 20 fixed, 0 open** | `r2-ledger-final.json` |
+| Full pytest | `pytest tests -q` | **1831 passed**, 0 failed, 0 skipped | `r2-image-pytest.json` |
+| Unit / integration | `pytest tests/unit -q`, `tests/integration -q` | 652 / 815 passed | included in `r2-image-pytest.json` |
+| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 364` | **364 passed**, gate satisfied | `r2-final2-security.json` |
+| Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final2-ingestion.json` |
+| Component (vitest) | `npm ci && npx vitest run` on a clean copy of `web/` | **21 passed** | `r2-final2-component.json`. Run in place it collected nothing: iCloud had evicted the checkout's `node_modules` (see the record) |
+| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final2-browser.json` |
+| **The image** (podman, arm64) | `CONTAINER_CLI=podman scripts/image_smoke.sh` | **22 passed**, trivy: no HIGH/CRITICAL with a fix | `r2-image-smoke.json` |
+| Review ledger | `python3 evidence/probes/review_2026_09_30.py` | **0 reproduced, 20 fixed, 0 open** | `r2-final2-ledger.json` |
 | Offline evaluation: regression set (gate) | `run_evals.py --questions evals/questions.yaml` | 38/38 | `r2-eval-final-questions.json` |
 | Offline evaluation: holdout 1 | same, `holdout.yaml` | 12/12 | `r2-eval-final-holdout.json` |
 | Offline evaluation: holdout 2 | same, `holdout2.yaml` | **11/12**. k-07 is the offline planner's known limitation (it reads "growing or declining month over month" as growth), recorded as a failure | `r2-eval-final-holdout2.json` |
@@ -107,6 +114,8 @@ fails without the fix.
 | The anchor shift (`UPDATE` of every row) scrambled the table's period order and cut throughput by about 40% | Load profile | `66e62d2` |
 | 13 known vulnerabilities (starlette 0.41.3, python-multipart 0.0.20) | `pip-audit` | `05ff022` |
 | `pg_stat_user_tables` reported 0 dead rows while 20 were held | Reclaim test | `66e62d2` (counted from VACUUM's own report) |
+| A freshly provisioned database could not sign anyone in: `login_attempts` was granted only on a second migration pass, and its sequence nowhere | Building and testing the actual image | `eebc974`, with a test that provisions in one pass |
+| 11 HIGH vulnerabilities in the image, none of which pip-audit reported: Debian openssl and libpcre2, plus urllib3, msgpack and `pkg_resources` vendored in pip | trivy on the built image | `f81d67f` (security updates applied; pip removed from the runtime image) |
 
 ## The brief, phase by phase
 
@@ -119,7 +128,7 @@ Locally verified:
 
 - CI runs the security suite under `--release-gate --min-tests 364`, plus
   the component tests and the browser journeys. A skip fails the gate:
-  `r2-final-security.json`, `tests/unit/test_release_gate.py`.
+  `r2-final2-security.json`, `tests/unit/test_release_gate.py`.
 - Plan-only evaluation is scored apart from end-to-end success (`4971b58`).
 
 ### Phase 2 and 3: plan, entities, conversation, LangGraph
@@ -185,7 +194,7 @@ Locally verified:
     advisory lock;
   - watermarks and freshness are reported in `/api/me`.
 
-  Records: `r2-ingestion.json`, `r2-final-ingestion.json`,
+  Records: `r2-ingestion.json`, `r2-final2-ingestion.json`,
   `r2-ingestion-scale-ordered.json`.
 - **Attribution and access.** Historical attribution follows the current
   hierarchy, while access is always current
@@ -247,10 +256,20 @@ Locally verified:
   `--require-hashes` by the image and CI. It installs into a clean
   environment and the unit suite passes there (`r2-lock-install.json`).
 - **Scans.** `pip-audit` (after fixing 13 vulnerabilities), `npm audit`
-  and `gitleaks` over all commits are clean (`r2-supply-chain.json`). The
-  image scan (trivy) is defined but not run.
+  and `gitleaks` over all commits are clean (`r2-supply-chain.json`).
+  `trivy` on the built image is clean after fixing 11 more
+  (`r2-image-smoke.json`); [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md) explains why
+  both scanners run.
+- **The image itself** is built from `git archive` of the commit and passes
+  22 checks (`scripts/image_smoke.sh`): the CI image job's checks, plus
+  readiness with data, an Exec and a RAM journey on a freshly provisioned
+  database, sign-out, a clean stop, and the scan. It was built with podman
+  on arm64, image ID `f8d727a3fdf6…`. That ID identifies this local build;
+  the amd64 image CI builds will have its own.
 - **Release identity** from the build to the image label, `/health` and
-  spans. CI asserts it (not run).
+  spans. It is verified on the local image; CI also asserts it (not run).
+- **CI runs on this branch** (pushes to `post-assessment/**`) and on
+  manual dispatch, not only on `main` and pull requests.
 - **Liveness and readiness are separate.** Readiness covers the database
   and the checkpoint store, not the model or the collector.
 - **Graceful drain.** In-flight answers complete at SIGTERM; exit 4 s
@@ -324,14 +343,45 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
 - **Retention:** `scripts/prune_state.py` in the jobs container
   ([RETENTION.md](RETENTION.md)).
 
+## Reading the measurements
+
+- **Capacity is offline-pipeline capacity.** 20 answers a second says
+  nothing about live-model throughput, latency, rate limits or cost.
+- **The 32-client timeout rate is a boundary**, not a pass or a fail. It
+  should set per-replica concurrency and a global admission limit; no such
+  limit is implemented ([CAPACITY.md](CAPACITY.md)).
+- **Freshness** is source arrival delay plus batch schedule plus
+  publication. Only publication is measured: about 40 s, or about 7 minutes
+  for the first batch of a new week under load.
+- **The 22 s restore** proves the procedure. It does not demonstrate
+  point-in-time recovery, recovery from losing the host, or a production
+  RTO ([RUNBOOK.md §8](RUNBOOK.md)).
+- **Test counts** say how many checks exist, not what they establish. The
+  layers, their assertions and what each does *not* establish are in
+  [TEST_INVENTORY.md](TEST_INVENTORY.md).
+
+## Next steps, in order
+
+| # | Step | Evidence required | State |
+|---|---|---|---|
+| 1 | Build and test the actual image | Builds, starts, passes smoke tests, reviewed vulnerability scan | **Done locally** with podman on arm64 (`r2-image-smoke.json`). Still to do: the same on amd64 in CI |
+| 2 | Run hosted CI on this branch | Every required suite executes with zero mandatory skips | The workflow now runs on `post-assessment/**` pushes and on manual dispatch. Needs this branch pushed |
+| 3 | Evaluate prompt 2.1.0 against the live model | Model id, dataset, prompt fingerprint, results, failures, latency, tokens | The runner is ready: budget-capped, `--smoke` first, fingerprint recorded ([EVALUATION.md](EVALUATION.md#running-the-next-live-evaluation-prompt-210)). Needs credentials and a budget |
+| 4 | Deploy the tested image to staging | Deployed digest = evaluated artifact; authenticated journeys pass | Needs a staging environment. The digest to compare is the one CI pushes, recorded with the run |
+| 5 | Verify operational readiness | SSO, telemetry delivery, permission revocation, backup recovery, failure handling, agreed targets | Implemented and tested locally; each needs its environment or decision (below) |
+
+Redundancy, managed PostgreSQL and point-in-time recovery follow from the
+availability and data-loss targets, once those are set. They are not
+prerequisites for staging. Telemetry delivery needs a collector; the
+instrumentation itself is tested locally.
+
 ## Blocked: what needs an external input
 
 | Verification | Status | Exactly what is needed |
 |---|---|---|
-| Live-model evaluation of prompt 2.1.0 (accuracy, latency, usage, cost) | Implemented; blocked | AWS credentials with Bedrock access to `us.anthropic.claude-opus-4-5-20251101-v1:0`, and an approved spend. Three sets of 62 questions is about 290k input and 10k output tokens per run. Then run `scripts/run_evals.py --provider bedrock` for each set |
+| Live-model evaluation of prompt 2.1.0 (accuracy, latency, usage, cost) | Implemented, budget-capped; blocked | AWS credentials with Bedrock access to `us.anthropic.claude-opus-4-5-20251101-v1:0`, and an approved budget: about 75k input / 3k output tokens for the smoke run, then about 300k / 15k for the three regression sets |
 | A fresh, independent holdout set | Not started | Questions written by someone who has not seen the system's development sets. One written by this work would not be independent |
-| Hosted CI, including the supply-chain job and the image scan | Defined; never run | Authorization to push this branch to GitHub |
-| Image build and trivy scan locally | Defined; not run | Docker daemon running on this machine (or hosted CI) |
+| Hosted CI, including the supply-chain job and the amd64 image build and scan | Defined; never run. The workflow runs on this branch and on dispatch | Authorization to push this branch to GitHub |
 | Staging and deployment parity | Nothing deployed | Access to a staging environment, and authorization to deploy this branch there |
 | Single sign-on with a real IdP | Tested against an in-process provider only | An IdP registration: issuer, client id and secret, and the redirect URI registered |
 | Telemetry export and the proposed alerts | Tested with in-memory exporters only | An OTLP collector endpoint and a metrics backend, to set `PAC_OTEL_ENDPOINT` and load the alert rules |
