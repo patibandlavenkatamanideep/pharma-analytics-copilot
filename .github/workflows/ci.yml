@@ -103,7 +103,7 @@ jobs:
       # collected tests that skip still fail the gate.
       - name: Security suite (release gate, strict)
         env:
-          PAC_SECURITY_MIN_TESTS: "364"
+          PAC_SECURITY_MIN_TESTS: "366"
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
@@ -181,7 +181,7 @@ jobs:
       # security floor, and the unit suite checks it equals the tests defined.
       - name: Component tests (vitest, jsdom, gated)
         env:
-          PAC_COMPONENT_MIN_TESTS: "21"
+          PAC_COMPONENT_MIN_TESTS: "22"
         run: |
           npm --prefix web test -- --reporter=default --reporter=json \
             --outputFile=component-results.json

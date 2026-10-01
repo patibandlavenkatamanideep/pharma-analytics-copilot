@@ -136,3 +136,55 @@ def test_readiness_requires_the_checkpoint_store(client, monkeypatch):
     assert r.status_code == 503
     assert r.json() == {"status": "not ready", "reason": "database unavailable"}
     assert client.get("/health").status_code == 200
+
+
+def test_a_worker_at_its_request_limit_refuses_at_once_and_only_questions(
+        client, make_identity, monkeypatch):
+    from app.config import get_settings
+
+    me = make_identity("exec", can_view_wac=1)
+    sign_in(client, me)
+    monkeypatch.setattr(get_settings(), "admission_max_inflight_requests", 0)
+    r = client.post("/api/ask", json={"question": "total volume last quarter"})
+    assert r.status_code == 503 and r.headers["retry-after"] == "2"
+    assert r.json()["detail"]["code"] == "overloaded" and leaks(r) == []
+    assert client.get("/api/me").status_code == 200        # nothing else is refused
+
+
+def test_a_full_query_queue_is_a_503_and_the_same_key_answers_once_there_is_room(
+        client, make_identity, monkeypatch):
+    import threading
+
+    from app import admission
+    from app.config import get_settings
+
+    me = make_identity("exec", can_view_wac=1)
+    sign_in(client, me)
+    settings = get_settings()
+    monkeypatch.setattr(settings, "admission_query_slots", 1)
+    monkeypatch.setattr(settings, "admission_query_queue", 0)
+    admission.reset()
+    gate, held, release = admission.query_gate(), threading.Event(), threading.Event()
+
+    def holder():
+        with gate.admitted(max_wait=1):
+            held.set()
+            release.wait(30)
+
+    t = threading.Thread(target=holder)
+    t.start()
+    try:
+        assert held.wait(5)
+        headers = {"Idempotency-Key": "overload-retry-0001"}
+        body = {"question": "total paid pack units last quarter"}
+        r = client.post("/api/ask", json=body, headers=headers)
+        assert r.status_code == 503 and int(r.headers["retry-after"]) > 0
+        assert r.json()["detail"]["code"] == "overloaded" and leaks(r) == []
+    finally:
+        release.set()
+        t.join(5)
+    try:
+        r = client.post("/api/ask", json=body, headers=headers)
+        assert r.status_code == 200 and r.json()["status"] == "answered"
+    finally:
+        admission.reset()                      # never leave a one-slot gate behind

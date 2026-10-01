@@ -102,6 +102,15 @@ class Settings(BaseSettings):
     user_requests_per_minute: int = 20
     user_requests_per_hour: int = 300
     user_concurrent_runs: int = 2
+    # Admission (app/admission.py), per worker process. Sized from the load
+    # profile: throughput peaks near 8 concurrent analytical queries per
+    # replica (2 workers x 4), and expensive queries start timing out well
+    # before 32. Questions beyond these limits get 503 `overloaded` at once
+    # rather than a timeout later.
+    admission_max_inflight_requests: int = 24
+    admission_query_slots: int = 4
+    admission_query_queue: int = 16
+    admission_query_wait_seconds: float = 10.0
     max_result_bytes: int = 4_000_000
 
     # --- LLM ----------------------------------------------------------------

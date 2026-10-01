@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg_pool import PoolTimeout
 from pydantic import BaseModel, Field
 
-from app import telemetry
+from app import admission, telemetry
 from app.api.guard import RequestGuard
 from app.auth import identity
 from app.auth.policy import Principal
@@ -124,6 +124,38 @@ app.add_middleware(RequestGuard, max_body_bytes=get_settings().max_request_bytes
 
 #: docs/API.md describes this version. Bumped when a response shape changes.
 API_VERSION = "2"
+
+
+OVERLOADED_MESSAGE = ("The service is busy right now. Your question was not "
+                      "answered; please try again in a moment.")
+
+
+def _overloaded(retry_after: int) -> HTTPException:
+    return HTTPException(status_code=503, detail={
+        "code": "overloaded", "message": OVERLOADED_MESSAGE},
+        headers={"Retry-After": str(retry_after)})
+
+
+_in_flight = {"asks": 0}
+
+
+@app.middleware("http")
+async def _admit_requests(request: Request, call_next):
+    """At most admission_max_inflight_requests questions in flight in this
+    worker. Beyond that, 503 at once -- before the body is read -- rather
+    than an unbounded queue in the thread pool (app/admission.py). Counted in
+    the event loop, which is single-threaded, so a plain counter is exact."""
+    if request.method != "POST" or request.url.path != "/api/ask":
+        return await call_next(request)
+    if _in_flight["asks"] >= get_settings().admission_max_inflight_requests:
+        telemetry.count("pac.admission.refused", stage="request", reason="inflight_limit")
+        return JSONResponse(status_code=503, headers={"Retry-After": "2"}, content={
+            "detail": {"code": "overloaded", "message": OVERLOADED_MESSAGE}})
+    _in_flight["asks"] += 1
+    try:
+        return await call_next(request)
+    finally:
+        _in_flight["asks"] -= 1
 
 
 @app.middleware("http")
@@ -403,6 +435,8 @@ def ask(
         raise HTTPException(status_code=429, detail={
             "code": "rate_limited", "message": str(exc)},
             headers={"Retry-After": str(exc.retry_after)}) from None
+    except admission.Overloaded as exc:
+        raise _overloaded(exc.retry_after) from None
     except DATABASE_UNAVAILABLE:
         raise                          # 503, by the handler below
     except Exception:

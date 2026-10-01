@@ -28,7 +28,7 @@ import psycopg
 from dataclasses import dataclass, field
 from typing import Any
 
-from app import telemetry
+from app import admission, telemetry
 from app.analytics.compiler import (
     CohortBinding, Compiler, CompileError, UnsupportedCombination)
 from app.analytics.entities import vocabulary_for
@@ -219,7 +219,8 @@ class Pipeline:
     #: Refusals that are outcomes, not failures, and the status they are
     #: counted under.
     _REFUSALS = {"RunBusy": "busy", "IdempotencyConflict": "idempotency_conflict",
-                 "ReplayUnavailable": "access_changed", "QuotaExceeded": "rate_limited"}
+                 "ReplayUnavailable": "access_changed", "QuotaExceeded": "rate_limited",
+                 "Overloaded": "overloaded"}
 
     def ask(
         self,
@@ -234,7 +235,7 @@ class Pipeline:
         started = time.perf_counter()
         status, persistence = "error", "not_saved"
         refusals = (runs.RunBusy, runs.IdempotencyConflict, runs.ReplayUnavailable,
-                    runs.QuotaExceeded)
+                    runs.QuotaExceeded, admission.Overloaded)
         with telemetry.span("pac.ask", expected=refusals, **{
                 "pac.role": principal.role, "pac.release": self.settings.release,
                 "pac.registry_version": get_registry().version,
@@ -576,6 +577,13 @@ class Turn:
             "disclosures": [],
             "model_calls": 0,
         }
+
+    def _stop_waiting(self) -> None:
+        """Between admission waits: a cancel or the deadline ends the wait."""
+        if time.time() > self.deadline_at:
+            raise DeadlineExceeded()
+        if runs.cancel_requested(self.run.run_id):
+            raise runs.Cancelled()
 
     def guard(self, state: dict[str, Any]) -> None:
         """Every node starts here. A checkpoint from another graph version is
@@ -959,11 +967,16 @@ class Turn:
         self.guard(state)
         t0 = time.perf_counter()
         try:
-            # One snapshot: the published generation is checked and the facts
-            # read in the same repeatable-read transaction, so the rows are the
-            # generation this request planned against -- its calendar, its
-            # vocabulary, its anchor -- or the query does not run.
-            with telemetry.span("pac.sql", expected=(GenerationChanged,)) as sql_span, \
+            # Admitted first: at most a few analytical queries run at once per
+            # worker, and the rest wait in arrival order -- for a bounded time,
+            # never past the deadline, and not at all once cancelled. A query
+            # that cannot be admitted is refused as overload, before it adds
+            # to the contention that would make it time out anyway.
+            wait_budget = min(self.pipe.settings.admission_query_wait_seconds,
+                              self.deadline_at - time.time())
+            with admission.query_gate().admitted(
+                    max_wait=max(wait_budget, 0.0), should_stop=self._stop_waiting), \
+                    telemetry.span("pac.sql", expected=(GenerationChanged,)) as sql_span, \
                     analytics_transaction(
                         scope_kind=principal.scope_kind,
                         scope_value=principal.scope_value,
@@ -973,6 +986,20 @@ class Turn:
                 cur.execute(query.sql, query.params)
                 rows = cur.fetchall()
                 sql_span.set(**{"pac.row_count": len(rows)})
+        except admission.Overloaded as exc:
+            if time.time() >= self.deadline_at:
+                raise DeadlineExceeded() from None
+            # Recorded, then raised: the API answers 503 with Retry-After,
+            # and the run is closed as failed with its checkpoint kept, so a
+            # retry with the same key resumes here without planning again.
+            self.audit.update(status="overloaded", denial_reason=str(exc)[:200])
+            self.pipe._write_audit(self.audit)
+            runs.fail(self.run, None)
+            raise
+        except (runs.Cancelled, DeadlineExceeded):
+            # Raised while queued for admission: handled by ask(), not a
+            # database failure.
+            raise
         except GenerationChanged as exc:
             # A refresh landed while this was being planned. The plan's
             # vocabulary and calendar describe the old data, so it is not run.

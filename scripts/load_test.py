@@ -176,13 +176,19 @@ def virtual_user(user: dict, stop: threading.Event, rec: Recorder, phase: str, s
                             headers={"Idempotency-Key": f"load-{uuid.uuid4().hex}"})
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") \
                 else {}
+            detail = body.get("detail") if isinstance(body.get("detail"), dict) else {}
             rec.add({"phase": phase, "role": user["role"], "class": cls,
                      "started": started, "ms": (time.perf_counter() - t0) * 1000,
                      "http": r.status_code, "status": body.get("status"),
+                     "code": detail.get("code"),
                      "request_id": body.get("request_id"),
                      # The first words of a non-answer: which failure it was.
                      "message": (body.get("message") or "")[:40]
                      if body.get("status") != "answered" else None})
+            if r.status_code == 503 and detail.get("code") == "overloaded":
+                # As the interface does: wait as asked, with jitter.
+                time.sleep(min(float(r.headers.get("Retry-After", 2)), 10)
+                           * (1 + rng.random() * 0.5))
         except Exception as exc:
             rec.add({"phase": phase, "role": user["role"], "class": cls, "started": started,
                      "ms": (time.perf_counter() - t0) * 1000, "http": None,
@@ -302,7 +308,11 @@ def report(rows: list[dict], phases: list[dict]) -> list[dict]:
     for ph in phases:
         mine = [r for r in rows if r.get("phase") == ph["phase"]]
         ok = [r for r in mine if r.get("http") == 200 and r.get("status") == "answered"]
-        failed = [r for r in mine if r.get("http") != 200 or r.get("status") == "error"]
+        # A refusal for load is a predictable outcome, counted on its own;
+        # an error is anything else that did not answer.
+        refused = [r for r in mine if r.get("code") == "overloaded"]
+        failed = [r for r in mine if r.get("code") != "overloaded"
+                  and (r.get("http") != 200 or r.get("status") == "error")]
         statuses: dict[str, int] = {}
         for r in mine:
             key = r.get("status") or f"http_{r.get('http')}" if r.get("http") else (
@@ -313,19 +323,25 @@ def report(rows: list[dict], phases: list[dict]) -> list[dict]:
             **ph,
             "requests": len(mine),
             "throughput_rps": round(len(mine) / ph["wall_s"], 2) if ph["wall_s"] else None,
+            "answers_per_s": round(len(ok) / ph["wall_s"], 2) if ph["wall_s"] else None,
             "error_rate": round(len(failed) / len(mine), 4) if mine else None,
+            "refused_rate": round(len(refused) / len(mine), 4) if mine else None,
             "statuses": statuses,
             "client_ms": summary([r["ms"] for r in ok]),
             "server_total_ms": summary([s["total_ms"] for s in server if s["total_ms"]]),
             "server_db_ms": summary([s["db_ms"] for s in server if s["db_ms"]]),
             "client_ms_by_class": {c: summary([r["ms"] for r in ok if r["class"] == c])
                                    for c in QUESTIONS},
-            # Why the non-answers happened: the audit outcome, the class of
-            # question, and the message the user saw.
+            # Why the non-answers happened: the audit outcome (or the HTTP
+            # code for a refusal that never reached the pipeline), the class
+            # of question, and the message the user saw.
             "failures": _tally(
-                (audit.get(r.get("request_id"), {}).get("status") or r.get("error") or "?",
+                (audit.get(r.get("request_id"), {}).get("status") or r.get("code")
+                 or r.get("error") or "?",
                  r.get("class"), r.get("message"))
                 for r in failed),
+            "refused_overloaded": len(refused),
+            "refused_ms": summary([r["ms"] for r in refused]),
         }
         if ph.get("window"):
             w = ph["window"]

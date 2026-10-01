@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** the metered-evaluation change (`post-assessment/production-readiness`),
+**Measured on** the admission-control change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -25,11 +25,11 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 658 | ✅ pass | `r2-metered-pytest.json` |
-| **Integration** | `pytest tests/integration -q` | 816 | ✅ pass | `r2-metered-pytest.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 364` | 364 | ✅ pass | `r2-final2-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1838** | ✅ pass | `r2-metered-pytest.json` |
-| **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-final2-component.json` |
+| **Unit** | `pytest tests/unit -q` | 664 | ✅ pass | `r2-admission-pytest.json` |
+| **Integration** | `pytest tests/integration -q` | 821 | ✅ pass | `r2-admission-pytest.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 366` | 366 | ✅ pass | `r2-admission-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1851** | ✅ pass | `r2-admission-pytest.json` |
+| **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final2-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
@@ -42,14 +42,16 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 144 do check results or behaviour:
+result. The other 149 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
   (`tests/integration/test_ingestion.py`);
 - 6 trace real requests (`tests/integration/test_telemetry_pipeline.py`);
 - 11 inject provider and database failures, or an exhausted spend
-  (`tests/integration/test_failure_modes.py`).
+  (`tests/integration/test_failure_modes.py`);
+- 5 exercise admission control on the real request path
+  (`tests/integration/test_admission_pipeline.py`).
 
 The security count is also the `--min-tests` floor the release
 gate enforces, so the two cannot drift apart without the gate failing.
@@ -98,7 +100,7 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (21, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer.
+**Component tests (22, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer, one for waiting out an overload before retrying.
 
 They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run
@@ -132,7 +134,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1838: they do not run in the same
+Neither browser suite is counted in the 1851: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -165,7 +167,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 364`, and fails on a skip in any phase, a
+`--release-gate --min-tests 366`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -182,7 +184,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 364
+python3 -m pytest tests/security -q --release-gate --min-tests 366
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

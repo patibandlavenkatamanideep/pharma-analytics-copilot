@@ -274,4 +274,19 @@ describe("API v2 in the interface", () => {
       { run_id: "r_1", helpful: false, reason: "wrong_number" }]);
     await screen.findByText(/thanks, noted/i);
   });
+
+  it("when the server is overloaded, waits as long as it asks and retries with the same key", async () => {
+    global.fetch = makeFetch([
+      respond(503, { detail: { code: "overloaded", message: "The service is busy right now." } },
+              { "Retry-After": "1" }),
+      answered(),
+    ]);
+    await renderSignedIn();
+    const started = Date.now();
+    await ask("total volume");
+    await screen.findByText("1,234 packs", {}, { timeout: 4000 });
+    const [first, again] = global.fetch.asks;
+    expect(again.key).toEqual(first.key);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
+  });
 });

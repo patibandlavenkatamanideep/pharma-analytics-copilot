@@ -68,12 +68,8 @@ where this configuration stops answering everything it admits. Whether
 that is acceptable depends on a service target that has not been set. What
 it should inform:
 
-- **Admission control.** Today the limits are per user (2 concurrent
-  requests, 20 a minute) and the connection pools, which queue. Nothing
-  caps the total number of expensive questions in flight. A global limit,
-  sized from this boundary, would turn timeouts at saturation into an
-  immediate "busy, try again" for the questions over the limit. It is not
-  implemented.
+- **Admission control.** Implemented since this profile was measured
+  (see [Admission control](#admission-control) and its own measurement).
 - **Concurrency per replica.** Size the number of users per replica from
   the 8-client knee, not from the 32-client figure.
 
@@ -117,6 +113,35 @@ cost is not established. [INGESTION.md](INGESTION.md#measured-limits)
 describes two refresh problems this profile found and how they were fixed:
 replaced rows not being reclaimed, and the shift scrambling the table's
 order.
+
+## Admission control
+
+`app/admission.py`. Work is admitted in two places per worker process, and
+refused early and predictably rather than late, by a timeout:
+
+| Stage | Limit (per worker) | Beyond it |
+|---|---|---|
+| Questions in flight | `PAC_ADMISSION_MAX_INFLIGHT_REQUESTS` = 24 | 503 `overloaded` at once, before the body is read |
+| Analytical queries running | `PAC_ADMISSION_QUERY_SLOTS` = 4 | wait in the queue |
+| Queries waiting | `PAC_ADMISSION_QUERY_QUEUE` = 16, first come first served | 503 `overloaded` at once |
+| Longest wait | `PAC_ADMISSION_QUERY_WAIT_SECONDS` = 10, never past the request deadline | 503 `overloaded` (or "took too long" if the deadline ran out) |
+
+The query limits are sized from the profile above. Throughput peaks around
+8 concurrent queries per replica, which is two workers with 4 slots each.
+Across a deployment the totals multiply by workers and replicas.
+
+- **Fairness.** One user holds at most 2 places, because the per-user
+  concurrency limit is counted in the database across workers. The queue
+  is first-come-first-served, so later arrivals cannot starve anyone.
+- **Cancellation.** A cancel ends a wait at the next check, within about
+  0.25 s.
+- **A refused question retried** with the same idempotency key resumes
+  after planning, so the model is not paid for twice.
+- **The interface** waits out `Retry-After` with jitter before retrying.
+
+Tested: `tests/unit/test_admission.py`,
+`tests/integration/test_admission_pipeline.py` and the 503 cases in
+`tests/security/test_failure_responses.py`.
 
 ## Freshness
 

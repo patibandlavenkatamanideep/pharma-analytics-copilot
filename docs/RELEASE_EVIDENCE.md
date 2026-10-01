@@ -50,7 +50,7 @@ has been agreed. [Next steps](#next-steps-in-order) puts them in order, and
 |---|---|---|---|
 | Full pytest | `pytest tests -q` | **1831 passed**, 0 failed, 0 skipped | `r2-image-pytest.json` |
 | Unit / integration | `pytest tests/unit -q`, `tests/integration -q` | 652 / 815 passed | included in `r2-image-pytest.json` |
-| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 364` | **364 passed**, gate satisfied | `r2-final2-security.json` |
+| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 366` | **364 passed**, gate satisfied | `r2-final2-security.json` |
 | Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final2-ingestion.json` |
 | Component (vitest) | `npm ci && npx vitest run` on a clean copy of `web/` | **21 passed** | `r2-final2-component.json`. Run in place it collected nothing: iCloud had evicted the checkout's `node_modules` (see the record) |
 | Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final2-browser.json` |
@@ -126,7 +126,7 @@ The executable ledger above covers it, with Phase 1's own record in
 
 Locally verified:
 
-- CI runs the security suite under `--release-gate --min-tests 364`, plus
+- CI runs the security suite under `--release-gate --min-tests 366`, plus
   the component tests and the browser journeys. A skip fails the gate:
   `r2-final2-security.json`, `tests/unit/test_release_gate.py`.
 - Plan-only evaluation is scored apart from end-to-end success (`4971b58`).

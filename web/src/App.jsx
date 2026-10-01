@@ -494,7 +494,13 @@ export default function App() {
           err.status === undefined || err.status >= 500 ||
           err.code === "same_request_running";
         if (retryable && attempt < 2) {
-          await sleep(attempt === 0 ? 400 : 1200);
+          // Overload: wait as long as the server asks (at most 10 s), with
+          // jitter so that every refused browser does not come back at the
+          // same instant and refuse itself again.
+          const wait = err.code === "overloaded"
+            ? Math.min(Number(err.retryAfter) || 2, 10) * 1000 * (1 + Math.random() * 0.5)
+            : (attempt === 0 ? 400 : 1200);
+          await sleep(wait);
           return send(attempt + 1);
         }
         throw err;

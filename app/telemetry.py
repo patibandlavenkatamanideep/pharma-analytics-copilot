@@ -259,6 +259,8 @@ INSTRUMENTS: dict[str, tuple[str, str, str]] = {
     "pac.ingest.quarantined": ("counter", "{event}", "Quarantined events by reason"),
     "pac.ingest.lag": ("gauge", "s", "Age of the newest applied event when its batch landed"),
     "pac.ingest.duration": ("histogram", "s", "Ingestion batch duration"),
+    "pac.admission.refused": ("counter", "{request}", "Work refused for load, by stage and reason"),
+    "pac.admission.wait": ("histogram", "ms", "Time queued for admission, by stage"),
 }
 
 #: Spans whose duration is also a stage metric.
