@@ -53,6 +53,20 @@ class Settings(BaseSettings):
     # remainder would present a partial period as a complete one.
     ingest_max_quarantine_ratio: float = 0.05
 
+    # --- retention (app/retention.py; proposals, not an agreed policy) -----------
+    # A conversation untouched this long is deleted with its turns, cohorts,
+    # clarifications, runs and workflow state.
+    conversation_retention_days: int = 180
+    # The security audit trail: kept this long, then deleted by the jobs
+    # container. Not shortened by a user's deletion request.
+    audit_retention_days: int = 400
+    # Ended sessions and failed sign-in attempts are evidence for abuse
+    # investigation for a while, then noise.
+    session_record_retention_days: int = 30
+    login_attempt_retention_days: int = 30
+    # Quarantined ingestion events, kept for diagnosis and resubmission.
+    quarantine_retention_days: int = 90
+
     # --- telemetry ----------------------------------------------------------------
     # The release this process is running, reported with every span. Set by
     # the build to the image's source revision; "dev" means unreleased.

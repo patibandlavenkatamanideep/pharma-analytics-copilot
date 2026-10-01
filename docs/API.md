@@ -162,6 +162,37 @@ conversation recorded under access you no longer hold is not listed.
 "created_at"}]}`, or `404` — the same for missing, someone else's, and
 recorded under access you no longer hold.
 
+### DELETE /api/conversations/{conversation_id}
+
+Deletes one of **your** conversations with its turns, cohorts,
+clarifications, runs and workflow checkpoints. Works whatever access the
+conversation was recorded under: deleting discloses nothing.
+`200 {"deleted": true}`.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 404 | — | No such conversation of yours (the same for someone else's) |
+| 409 | `conversation_busy` | A question in it is still being answered |
+
+### GET /api/me/data
+
+Your data as a JSON download (`Content-Disposition: attachment`,
+`Cache-Control: no-store`): profile, conversations with turns, cohorts and
+their members, clarifications and run records, sessions (times and user
+agent only), linked sign-in identities, and a summary of your audit records.
+Bound to **current** access. A conversation recorded under access you no
+longer hold is withheld whole and counted in `withheld_conversations`. See
+[RETENTION.md](RETENTION.md).
+
+### DELETE /api/me/data
+
+Deletes every conversation you own, as above, regardless of the access it
+was recorded under. You stay signed in. Security audit records are kept for
+the audit retention period; they hold hashes, codes and timings, not
+questions or results. `200 {"deleted": {"conversations": n,
+"workflow_threads": m}}`, or `409 conversation_busy` while a question is
+being answered.
+
 ### GET /health
 
 Liveness: `200 {"status": "ok"}` whenever the process serves requests.

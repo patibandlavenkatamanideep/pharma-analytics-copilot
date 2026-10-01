@@ -356,6 +356,21 @@ export default function App() {
     setBusy(false);
   };
 
+  // Deleting removes the conversation on the server -- its turns, the
+  // populations a follow-up would refer to, and any paused question -- not
+  // just this screen.
+  const deleteConversation = async () => {
+    if (!conversationId) return;
+    if (!window.confirm("Delete this conversation? This cannot be undone.")) return;
+    try {
+      await api(`/api/conversations/${encodeURIComponent(conversationId)}`,
+                { method: "DELETE" });
+      newConversation();
+    } catch (err) {
+      window.alert(err.message);
+    }
+  };
+
   const signOut = async () => {
     newIdentity();
     setUser(null);
@@ -513,6 +528,18 @@ export default function App() {
           >
             New conversation
           </button>
+          <button
+            className="link"
+            onClick={deleteConversation}
+            disabled={!conversationId || busy}
+            title="Delete this conversation from the server"
+          >
+            Delete conversation
+          </button>
+          <a className="link" href="/api/me/data" download="my-data.json"
+             title="Download your conversations and account data">
+            My data
+          </a>
           <button className="link" onClick={signOut}>
             Sign out
           </button>

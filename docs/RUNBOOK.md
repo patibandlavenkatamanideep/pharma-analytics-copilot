@@ -74,6 +74,7 @@ environment or `.env`. No secret is ever committed.
 | `PAC_INGEST_MAX_QUARANTINE_RATIO` | `0.05` | above this share of invalid events a batch is rejected |
 | `PAC_OTEL_ENDPOINT` | unset | OTLP/HTTP collector; unset exports nothing ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | `PAC_RELEASE` | `dev` | release identifier reported with telemetry |
+| `PAC_CONVERSATION_RETENTION_DAYS`, `PAC_AUDIT_RETENTION_DAYS`, … | 180, 400, … | retention periods, applied by `scripts/prune_state.py` ([RETENTION.md](RETENTION.md)) |
 
 ### Enabling the live planner
 
@@ -115,7 +116,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 341
+python3 -m pytest tests/security -q --release-gate --min-tests 350
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

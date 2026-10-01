@@ -33,7 +33,7 @@ from app.conversation.state import (
 )
 from app.db import close_pools, verify_runtime_role_safety
 from app.llm.planner import build_planner
-from app.conversation import runs
+from app.conversation import privacy, runs
 from app.pipeline import Pipeline, to_payload
 
 log = logging.getLogger(__name__)
@@ -447,6 +447,42 @@ def conversation(conversation_id: str, user: CurrentUser) -> dict[str, Any]:
         # Same response whether it is empty, missing, or someone else's.
         raise HTTPException(status_code=404, detail="That conversation does not exist.")
     return {"conversation_id": conversation_id, "turns": history}
+
+
+@app.delete("/api/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str, user: CurrentUser) -> dict[str, Any]:
+    """Delete one of your conversations and everything hanging off it."""
+    try:
+        deleted = privacy.delete_conversation(user, conversation_id,
+                                              pipeline().graph.checkpointer)
+    except privacy.ConversationBusy as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "conversation_busy", "message": str(exc)}) from None
+    if not deleted:
+        raise HTTPException(status_code=404, detail="That conversation does not exist.")
+    return {"deleted": True}
+
+
+@app.get("/api/me/data")
+def export_my_data(user: CurrentUser) -> JSONResponse:
+    """Your data, as you may currently see it, as a download."""
+    from fastapi.encoders import jsonable_encoder
+
+    return JSONResponse(jsonable_encoder(privacy.export(user)), headers={
+        "Content-Disposition": 'attachment; filename="my-data.json"',
+        "Cache-Control": "no-store"})
+
+
+@app.delete("/api/me/data")
+def delete_my_data(user: CurrentUser) -> dict[str, Any]:
+    """Delete every conversation you own. You stay signed in; audit records
+    are kept (see docs/RETENTION.md)."""
+    try:
+        done = privacy.delete_all(user, pipeline().graph.checkpointer)
+    except privacy.ConversationBusy as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "conversation_busy", "message": str(exc)}) from None
+    return {"deleted": {"conversations": done.conversations, "workflow_threads": done.threads}}
 
 
 # ---------------------------------------------------------------------------

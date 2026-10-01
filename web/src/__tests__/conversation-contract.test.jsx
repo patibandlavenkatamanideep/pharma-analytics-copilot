@@ -41,6 +41,10 @@ function makeFetch(script) {
     }
     if (path === "/api/logout") return respond(200, { status: "signed out" });
     if (path === "/api/auth/methods") return respond(200, fetchMock.methods || { password: true, oidc: false });
+    if (path.startsWith("/api/conversations/") && options.method === "DELETE") {
+      (fetchMock.deletes ||= []).push(path);
+      return respond(200, { deleted: true });
+    }
     if (path === "/api/runs/cancel") {
       cancels.push(JSON.parse(options.body));
       return respond(200, { status: "cancel_requested" });
@@ -219,5 +223,35 @@ describe("API v2 in the interface", () => {
     await renderSignedIn();
     const label = await screen.findByText(/data through 2026-10-02/);
     expect(label.getAttribute("title")).toMatch(/published .* feed last delivered /);
+  });
+
+  it("deletes the conversation on the server, after confirmation, and clears it", async () => {
+    global.fetch = makeFetch([answered()]);
+    await renderSignedIn();
+    await ask("total volume");
+    await screen.findByText("1,234 packs");
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /delete conversation/i }));
+    });
+    expect(global.fetch.deletes).toBeUndefined();
+
+    confirm.mockReturnValueOnce(true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /delete conversation/i }));
+    });
+    expect(global.fetch.deletes).toEqual(["/api/conversations/c1"]);
+    await waitFor(() => expect(screen.queryByText("1,234 packs")).toBeNull());
+    confirm.mockRestore();
+  });
+
+  it("offers a download of the user's own data", async () => {
+    global.fetch = makeFetch([]);
+    await renderSignedIn();
+    const link = screen.getByRole("link", { name: /my data/i });
+    expect(link.getAttribute("href")).toBe("/api/me/data");
+    expect(link.hasAttribute("download")).toBe(true);
+    expect(screen.getByRole("button", { name: /delete conversation/i }).disabled).toBe(true);
   });
 });
