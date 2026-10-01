@@ -44,6 +44,15 @@ SCRIPT = [
 
 
 def main() -> int:
+    import os
+
+    # A batch measurement, not a user: the per-user request limits exist to
+    # protect the service from one person's browser, and would throttle a run
+    # that asks dozens of questions as the same principal in seconds.
+    for name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+                 "PAC_USER_CONCURRENT_RUNS"):
+        os.environ.setdefault(name, "1000000")
+
     from app.auth.policy import principal_for_user_id
     from app.config import get_settings
     from app.db import close_pools, owner_transaction

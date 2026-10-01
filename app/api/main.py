@@ -20,6 +20,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app.api.guard import RequestGuard
 from app.auth import identity
 from app.auth.policy import Principal
 from app.config import get_settings
@@ -49,6 +50,16 @@ async def lifespan(app: FastAPI):
     if problems:
         raise RuntimeError("database security boundary is not intact: " + "; ".join(problems))
 
+    # The serving process does not need the owner credential: it never
+    # creates, alters or loads anything. Holding it anyway turns a compromise
+    # of the web process into a compromise of the schema and every table.
+    # In the cloud environment that is refused; locally (tests and scripts
+    # share one .env) it is a warning.
+    for problem in serving_credential_problems(settings):
+        if settings.environment == "cloud":
+            raise RuntimeError(problem)
+        log.warning("%s (allowed only because PAC_ENVIRONMENT=local)", problem)
+
     global _pipeline
     _pipeline = Pipeline(build_planner(settings))
 
@@ -76,7 +87,32 @@ async def lifespan(app: FastAPI):
     close_pools()
 
 
+def serving_credential_problems(settings) -> list[str]:
+    """Credentials the serving process holds and should not."""
+    problems = []
+    if settings.db_owner_password:
+        problems.append(
+            "the serving process holds the database OWNER credential "
+            "(PAC_DB_OWNER_PASSWORD); migrations and ingestion run in the jobs "
+            "container, which is the only place it belongs")
+    return problems
+
+
 app = FastAPI(title="Pharma Analytics Copilot", lifespan=lifespan, docs_url=None, redoc_url=None)
+
+
+def _allowed_origins() -> set[str]:
+    settings = get_settings()
+    origins = {o.strip() for o in settings.allowed_origins.split(",") if o.strip()}
+    if settings.environment == "local":
+        # The Vite dev server proxies /api with changeOrigin, so the backend
+        # sees its own host while the browser sends the dev server's origin.
+        origins |= {"http://localhost:5173", "http://127.0.0.1:5173"}
+    return origins
+
+
+app.add_middleware(RequestGuard, max_body_bytes=get_settings().max_request_bytes,
+                   allowed_origins=_allowed_origins())
 
 
 def pipeline() -> Pipeline:
@@ -101,12 +137,39 @@ def session_token(request: Request) -> str | None:
     return request.cookies.get(get_settings().cookie_name)
 
 
-def current_principal(request: Request) -> Principal:
-    """Resolve the caller. The browser supplies only an opaque token."""
-    principal = identity.resolve(session_token(request))
+def current_principal(request: Request, response: Response) -> Principal:
+    """Resolve the caller. The browser supplies only an opaque token.
+
+    A token past the rotation window is replaced here, on the response of the
+    request that used it, with the same absolute expiry.
+    """
+    token = session_token(request)
+    principal, due = identity.resolve_session(token)
     if principal is None:
         raise HTTPException(status_code=401, detail="Not signed in.")
+    if due and token:
+        rotated = identity.rotate(token)
+        if rotated is not None:
+            _set_session_cookie(response, *rotated)
     return principal
+
+
+def _set_session_cookie(response: Response, token: str, expires_at) -> None:
+    from datetime import datetime, timezone
+
+    settings = get_settings()
+    remaining = int((expires_at - datetime.now(timezone.utc)).total_seconds())
+    response.set_cookie(
+        key=settings.cookie_name,
+        value=token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        # What is left of the ABSOLUTE lifetime, so a rotated cookie cannot
+        # outlive the session it belongs to.
+        max_age=max(remaining, 0),
+        path="/",
+    )
 
 
 CurrentUser = Annotated[Principal, Depends(current_principal)]
@@ -119,7 +182,6 @@ class LoginRequest(BaseModel):
 
 @app.post("/api/login")
 def login(body: LoginRequest, request: Request, response: Response) -> dict[str, Any]:
-    settings = get_settings()
     try:
         session, principal = identity.authenticate(
             body.email, body.password,
@@ -133,15 +195,7 @@ def login(body: LoginRequest, request: Request, response: Response) -> dict[str,
     except identity.AuthenticationError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from None
 
-    response.set_cookie(
-        key=settings.cookie_name,
-        value=session.token,
-        httponly=True,
-        secure=settings.cookie_secure,
-        samesite="lax",
-        max_age=settings.session_ttl_hours * 3600,
-        path="/",
-    )
+    _set_session_cookie(response, session.token, session.expires_at)
     return {"user": _describe(principal)}
 
 
@@ -219,6 +273,10 @@ def ask(
     except runs.ReplayUnavailable as exc:
         raise HTTPException(status_code=403, detail={
             "code": "access_changed", "message": str(exc)}) from None
+    except runs.QuotaExceeded as exc:
+        raise HTTPException(status_code=429, detail={
+            "code": "rate_limited", "message": str(exc)},
+            headers={"Retry-After": str(exc.retry_after)}) from None
     except Exception:
         # An unhandled failure still has to be investigable. Without an id in
         # the response there is nothing to connect the user's report to the
@@ -238,6 +296,26 @@ def ask(
     # Built once, by the pipeline, so the copy stored for idempotent replay
     # is exactly this body.
     return result.payload or to_payload(result, body.include_sql)
+
+
+class CancelRequest(BaseModel):
+    run_id: str | None = Field(default=None, max_length=64)
+    idempotency_key: str | None = Field(default=None, max_length=128)
+
+
+@app.post("/api/runs/cancel")
+def cancel_run(body: CancelRequest, user: CurrentUser) -> dict[str, Any]:
+    """Ask one of your own running requests to stop at its next step. By run
+    id, or by the Idempotency-Key it was sent with -- the run id is not known
+    until the response arrives. Someone else's run is indistinguishable from
+    one that does not exist."""
+    if not (body.run_id or body.idempotency_key):
+        raise HTTPException(status_code=422, detail="Name a run_id or an idempotency_key.")
+    found = runs.request_cancel(user, run_id=body.run_id,
+                                idempotency_key=body.idempotency_key)
+    if not found:
+        raise HTTPException(status_code=404, detail="No running request by that name.")
+    return {"status": "cancel_requested"}
 
 
 @app.get("/api/runs/{run_id}")

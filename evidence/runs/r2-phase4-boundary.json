@@ -1,0 +1,115 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T00:52:08+00:00",
+  "claim": "The serving process refuses the owner credential in the cloud environment; sessions die after 30 idle minutes and rotate after 15 without extending their absolute expiry; cross-site, non-JSON and oversized state-changing requests are refused before any route; per-user rate and concurrency limits are counted in the database; a request can be cancelled by its owner and stops at the next step.",
+  "application": {
+    "sha": "45c7d3cb17c891f2d68a5438535ddbe90d497bd6",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/api/guard.py",
+      "app/api/main.py",
+      "app/auth/identity.py",
+      "app/config.py",
+      "app/conversation/runs.py",
+      "app/pipeline.py",
+      "compose.prod.yaml",
+      "compose.yaml",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "migrations/014_session_lifecycle.sql",
+      "migrations/015_run_limits.sql",
+      "scripts/benchmark.py",
+      "scripts/make_demo.py",
+      "scripts/migrate.py",
+      "scripts/run_evals.py",
+      "tests/conftest.py",
+      "tests/security/test_request_guard.py",
+      "tests/security/test_run_limits.py",
+      "tests/security/test_serving_credentials.py",
+      "tests/security/test_session_policy.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-6f58698776e4",
+    "load_mode": "seed",
+    "fingerprint": "a29d02f0c9b24ea00e05f664",
+    "row_counts": {
+      "sales": 271,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-15",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-20"
+    },
+    "database": "pharma_analytics_authtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/security/test_serving_credentials.py",
+      "tests/security/test_session_policy.py",
+      "tests/security/test_request_guard.py",
+      "tests/security/test_run_limits.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.75
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 27
+    },
+    "blocked_reason": null,
+    "summary": "27 passed in 2.15s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Proxy trust (FORWARDED_ALLOW_IPS) is configured in compose.prod.yaml but not exercised; no proxy runs in the tests.",
+    "The container-level refusal is proven in CI's image job, which was not run here; locally it is proven through the ASGI lifespan.",
+    "Cancellation is cooperative between steps; a SQL statement already running is bounded by its timeout, not interrupted."
+  ]
+}

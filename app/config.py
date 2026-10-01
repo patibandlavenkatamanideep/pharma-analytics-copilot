@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     request_deadline_seconds: int = 60
     # How long a client idempotency key keeps its meaning.
     idempotency_retention_seconds: int = 86_400
+    # Per user, across every worker and replica (counted in the database).
+    user_requests_per_minute: int = 20
+    user_requests_per_hour: int = 300
+    user_concurrent_runs: int = 2
     max_result_bytes: int = 4_000_000
 
     # --- LLM ----------------------------------------------------------------
@@ -75,7 +79,24 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 30.0
 
     # --- sessions -----------------------------------------------------------
+    # Absolute: fixed at sign-in, never extended by activity or rotation.
     session_ttl_hours: int = 12
+    # Idle: a session unused this long is dead inside its absolute window.
+    session_idle_minutes: int = 30
+    # Rotation: a token older than this is replaced on its next use, so a
+    # leaked token is useful for minutes rather than for the whole day.
+    session_rotate_minutes: int = 15
+    # How long a rotated-out token keeps working, so requests already in
+    # flight with the old cookie are not signed out mid-answer.
+    session_rotation_grace_seconds: int = 30
+
+    # --- request protections ----------------------------------------------------
+    # Origins allowed to send state-changing requests besides the app's own.
+    # Same-origin needs no entry. Comma-separated.
+    allowed_origins: str = ""
+    # Largest request body accepted, in bytes. A question is at most 1,000
+    # characters; nothing the API accepts comes close to this.
+    max_request_bytes: int = 65_536
     cookie_secure: bool = True
     cookie_name: str = "pac_session"
 

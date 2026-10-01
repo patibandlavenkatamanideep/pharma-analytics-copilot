@@ -445,6 +445,12 @@ def main() -> int:
     import os
 
     os.environ["PAC_LLM_PROVIDER"] = args.provider
+    # A batch measurement, not a user: the per-user request limits exist to
+    # protect the service from one person's browser, and would throttle a run
+    # that asks dozens of questions as the same principal in seconds.
+    for name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+                 "PAC_USER_CONCURRENT_RUNS"):
+        os.environ.setdefault(name, "1000000")
     from app.config import get_settings
 
     get_settings.cache_clear()

@@ -52,6 +52,15 @@ def percentile(values: list[float], pct: float) -> float:
 
 
 def main() -> int:
+    import os
+
+    # A batch measurement, not a user: the per-user request limits exist to
+    # protect the service from one person's browser, and would throttle a run
+    # that asks dozens of questions as the same principal in seconds.
+    for name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+                 "PAC_USER_CONCURRENT_RUNS"):
+        os.environ.setdefault(name, "1000000")
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--concurrency", type=int, default=1)
     ap.add_argument("--iterations", type=int, default=5)

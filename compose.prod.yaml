@@ -14,6 +14,16 @@ services:
     environment:
       PAC_COOKIE_SECURE: "true"     # served over HTTPS, so the cookie is Secure
       PAC_ENVIRONMENT: cloud
+      # Only Caddy's address may set X-Forwarded-For / -Proto. Without this,
+      # every user arrived from Caddy's IP, so the login rate limit -- keyed on
+      # client address -- treated all of them as one client. Trusting every
+      # address instead would let anyone choose their own.
+      FORWARDED_ALLOW_IPS: "172.30.0.10"
+    # Both: `default` reaches the database, `edge` is where Caddy is. Naming
+    # only edge would detach the app from the database.
+    networks:
+      default:
+      edge:
     restart: unless-stopped
 
   caddy:
@@ -28,7 +38,16 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data        # certificates survive a restart
       - caddy_config:/config
+    networks:
+      edge:
+        ipv4_address: 172.30.0.10
     restart: unless-stopped
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
 
 volumes:
   caddy_data:

@@ -13,6 +13,15 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
+# The suite asks hundreds of questions as a handful of principals in seconds.
+# Per-user request limits protect the service from one person's browser; the
+# tests that exercise them set their own low limits explicitly.
+import os as _os
+
+for _name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+              "PAC_USER_CONCURRENT_RUNS"):
+    _os.environ.setdefault(_name, "1000000")
+
 
 def _database_available() -> tuple[bool, str]:
     try:

@@ -61,6 +61,18 @@ class RunBusy(Exception):
             "This conversation is already answering another question.")
 
 
+class QuotaExceeded(Exception):
+    """This user is asking faster, or more at once, than allowed."""
+
+    def __init__(self, message: str, retry_after: int):
+        self.retry_after = retry_after
+        super().__init__(message)
+
+
+class Cancelled(Exception):
+    """The owner cancelled the run; it stops at the next step boundary."""
+
+
 class IdempotencyConflict(Exception):
     """The key was used for a different request."""
 
@@ -118,6 +130,7 @@ def acquire(
     idempotency_key: str | None = None,
     lease_seconds: int = 120,
     retention_seconds: int = 86_400,
+    limits: tuple[int, int, int] | None = None,
 ) -> Run:
     """Start a run, or return the stored outcome of the one this key names.
 
@@ -177,6 +190,8 @@ def acquire(
 
             _reclaim_stale(cur, conversation_id)
             _refuse_if_busy(cur, conversation_id)
+            if limits is not None:
+                _enforce_limits(cur, principal.user_id, *limits)
             run_id = _new_run_id()
             cur.execute(
                 "INSERT INTO app_conv.runs (run_id, conversation_id, owner_user_id, "
@@ -195,6 +210,62 @@ def acquire(
         # process without it, or a key reused concurrently. Either way the
         # conversation is busy; nothing was written.
         raise RunBusy("unknown") from None
+
+
+def _enforce_limits(cur, user_id: str, per_minute: int, per_hour: int,
+                    concurrent: int) -> None:
+    """Per-user rate and concurrency, from the runs table.
+
+    In the database rather than in process memory, so the limits hold across
+    every worker and replica; serialised per user so two requests racing for
+    the last slot cannot both take it. A replayed request never reaches
+    here -- returning a stored answer costs nothing worth limiting.
+    """
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext('quota:' || %s))", (user_id,))
+    cur.execute(
+        "SELECT count(*) FILTER (WHERE created_at > now() - interval '1 minute') AS minute, "
+        "       count(*) FILTER (WHERE created_at > now() - interval '1 hour') AS hour, "
+        "       count(*) FILTER (WHERE status = 'running' AND lease_expires_at > now()) AS live "
+        "FROM app_conv.runs WHERE owner_user_id = %s "
+        "  AND (created_at > now() - interval '1 hour' "
+        "       OR (status = 'running' AND lease_expires_at > now()))",
+        (user_id,))
+    row = cur.fetchone()
+    if row["live"] >= concurrent:
+        raise QuotaExceeded(
+            f"You already have {row['live']} questions being answered. Wait for one "
+            f"to finish before asking another.", retry_after=5)
+    if row["minute"] >= per_minute:
+        raise QuotaExceeded("Too many questions in the last minute. Try again shortly.",
+                            retry_after=60)
+    if row["hour"] >= per_hour:
+        raise QuotaExceeded("Too many questions in the last hour. Try again later.",
+                            retry_after=900)
+
+
+def request_cancel(principal: Principal, *, run_id: str | None = None,
+                   idempotency_key: str | None = None) -> bool:
+    """Ask a running run to stop. Owner only; True if a running run was found.
+
+    By idempotency key as well as by run id, because a client cancelling an
+    in-flight request does not yet have the run id -- it arrives with the
+    response.
+    """
+    with auth_transaction() as cur:
+        cur.execute(
+            "UPDATE app_conv.runs SET cancel_requested_at = now() "
+            "WHERE owner_user_id = %s AND status = 'running' "
+            "  AND (run_id = %s OR (idempotency_key IS NOT NULL AND idempotency_key = %s))",
+            (principal.user_id, run_id, idempotency_key))
+        return cur.rowcount > 0
+
+
+def cancel_requested(run_id: str) -> bool:
+    with auth_transaction() as cur:
+        cur.execute("SELECT cancel_requested_at IS NOT NULL AS c FROM app_conv.runs "
+                    "WHERE run_id = %s", (run_id,))
+        row = cur.fetchone()
+    return bool(row and row["c"])
 
 
 def _reclaim_stale(cur, conversation_id: str) -> None:
@@ -221,7 +292,8 @@ def fail(run: Run, outcome: dict[str, Any] | None, *, status: str = "failed") ->
         with auth_transaction() as cur:
             cur.execute(
                 "UPDATE app_conv.runs SET status = %s, outcome = %s::jsonb, "
-                "  finished_at = now() WHERE run_id = %s AND status = 'running'",
+                "  finished_at = now() WHERE run_id = %s "
+                "  AND status IN ('running', 'failed')",
                 (status, json.dumps(outcome, default=str) if outcome else None, run.run_id))
     except Exception:                                            # pragma: no cover
         pass

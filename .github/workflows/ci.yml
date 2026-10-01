@@ -92,7 +92,7 @@ jobs:
       # collected tests that skip still fail the gate.
       - name: Security suite (release gate, strict)
         env:
-          PAC_SECURITY_MIN_TESTS: "150"
+          PAC_SECURITY_MIN_TESTS: "177"
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
@@ -224,16 +224,38 @@ jobs:
             pharma-analytics-copilot:ci \
             python -c "import app.data.loader, app.pipeline, app.api.main; print('app package importable')"
 
-      - name: Start the container against the database
+      # The serving process must not hold the owner credential. In the cloud
+      # environment it refuses to start if given one: migrations and loads
+      # run in the one-shot jobs container instead.
+      - name: It refuses to serve while holding the owner credential
         env:
           PAC_DB_OWNER_PASSWORD: ci-owner-pw
           PAC_DB_AUTH_PASSWORD: ci-auth-pw
           PAC_DB_EXEC_PASSWORD: ci-exec-pw
           PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
+          docker run --rm --network host \
+            -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
+            -e PAC_DB_OWNER_PASSWORD -e PAC_DB_AUTH_PASSWORD \
+            -e PAC_DB_EXEC_PASSWORD -e PAC_DB_SCOPED_PASSWORD \
+            -e PAC_LLM_PROVIDER=offline \
+            pharma-analytics-copilot:ci \
+            timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8001 \
+            > owner.log 2>&1 && echo "started anyway" || true
+          if grep -q "OWNER credential" owner.log; then
+            echo "refused to serve with the owner credential, as designed"
+          else
+            echo "expected a refusal; got:"; tail -20 owner.log; exit 1
+          fi
+
+      - name: Start the container against the database
+        env:
+          PAC_DB_AUTH_PASSWORD: ci-auth-pw
+          PAC_DB_EXEC_PASSWORD: ci-exec-pw
+          PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
+        run: |
           docker run -d --name pac --network host \
-            -e PAC_DB_HOST=127.0.0.1 \
-            -e PAC_DB_OWNER_PASSWORD="$PAC_DB_OWNER_PASSWORD" \
+            -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
             -e PAC_DB_AUTH_PASSWORD="$PAC_DB_AUTH_PASSWORD" \
             -e PAC_DB_EXEC_PASSWORD="$PAC_DB_EXEC_PASSWORD" \
             -e PAC_DB_SCOPED_PASSWORD="$PAC_DB_SCOPED_PASSWORD" \

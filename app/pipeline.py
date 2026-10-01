@@ -250,6 +250,9 @@ class Pipeline:
             idempotency_key=idempotency_key,
             lease_seconds=self.settings.run_lease_seconds,
             retention_seconds=self.settings.idempotency_retention_seconds,
+            limits=(self.settings.user_requests_per_minute,
+                    self.settings.user_requests_per_hour,
+                    self.settings.user_concurrent_runs),
         )
         if run.replay is not None:
             replayed = dict(run.replay)
@@ -283,6 +286,13 @@ class Pipeline:
                 config["configurable"]["thread_id"] = thread_id
                 out = self.graph.invoke(turn.initial_state(), config, context=turn,
                                         durability="sync")
+        except runs.Cancelled:
+            if turn.result is None:
+                turn.finish(PipelineResult(
+                    status="cancelled", conversation_id=state.conversation_id,
+                    message="Cancelled."), "cancelled")
+                runs.fail(run, None, status="cancelled")
+            out = {}
         except DeadlineExceeded:
             if turn.result is None:
                 turn.finish(PipelineResult(
@@ -513,6 +523,10 @@ class Turn:
             raise StaleState(state.get("graph_version"))
         if time.time() > self.deadline_at:
             raise DeadlineExceeded()
+        # Cooperative: checked between steps. A statement already running is
+        # bounded by its timeout rather than interrupted mid-scan.
+        if runs.cancel_requested(self.run.run_id):
+            raise runs.Cancelled()
 
     # -- recording -------------------------------------------------------------
 

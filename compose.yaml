@@ -28,7 +28,9 @@ services:
       PAC_DB_HOST: db
       PAC_DB_PORT: "5432"
       PAC_DB_NAME: ${PAC_DB_NAME:-pharma_analytics}
-      PAC_DB_OWNER_PASSWORD: ${PAC_DB_OWNER_PASSWORD:?}
+      # No PAC_DB_OWNER_PASSWORD: the serving process never creates, alters
+      # or loads anything, and refuses to start in the cloud environment if
+      # it is given the owner credential. See the `jobs` service below.
       PAC_DB_AUTH_PASSWORD: ${PAC_DB_AUTH_PASSWORD:?}
       PAC_DB_EXEC_PASSWORD: ${PAC_DB_EXEC_PASSWORD:?}
       PAC_DB_SCOPED_PASSWORD: ${PAC_DB_SCOPED_PASSWORD:?}
@@ -47,6 +49,26 @@ services:
       # is never exposed to the internet.
       - "127.0.0.1:8000:8000"
     restart: unless-stopped
+
+  # One-shot work that needs the owner role: migrations and ingestion.
+  # Same image, run on demand, never left running, never published:
+  #   docker compose --profile jobs run --rm jobs python scripts/migrate.py
+  #   docker compose --profile jobs run --rm jobs python scripts/load_data.py --mode full
+  jobs:
+    build: .
+    profiles: ["jobs"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PAC_DB_HOST: db
+      PAC_DB_PORT: "5432"
+      PAC_DB_NAME: ${PAC_DB_NAME:-pharma_analytics}
+      PAC_DB_OWNER_PASSWORD: ${PAC_DB_OWNER_PASSWORD:?}
+      PAC_DB_AUTH_PASSWORD: ${PAC_DB_AUTH_PASSWORD:?}
+      PAC_ENVIRONMENT: cloud
+    command: ["python", "scripts/migrate.py"]
+    restart: "no"
 
 volumes:
   pgdata:
