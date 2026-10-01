@@ -38,52 +38,63 @@ def unreported():
 def test_reported_usage_is_charged_as_reported(ev):
     b = ev.Budget(100_000, 10_000)
     for u in (usage(4_670, 160), usage(4_500, 300), usage(4_900, 150)):
-        assert b.allow_call()
-        b.record_call(u)
+        assert b.reserve(18_000, 4_096)
+        b.record_call(u, (18_000, 4_096))
     assert (b.input, b.output, b.calls, b.unreported_calls) == (14_070, 610, 3, 0)
+    assert not b.violated
 
 
-def test_an_unreported_call_is_charged_at_the_ceiling_never_zero(ev):
+def test_an_unreported_call_is_charged_its_whole_reservation_never_zero(ev):
     b = ev.Budget(100_000, 100_000)
-    b.record_call(unreported())
-    assert (b.input, b.output, b.unreported_calls) == (8_000, 4_096, 1)
+    b.record_call(unreported(), (18_500, 2_048))
+    assert (b.input, b.output, b.unreported_calls) == (18_500, 2_048, 1)
 
 
-def test_a_call_is_allowed_only_if_one_more_at_the_ceiling_fits(ev):
-    b = ev.Budget(10_000, 10_000)
-    assert b.allow_call()                         # 8,000 <= 10,000
-    b.record_call(usage(4_670, 160))
-    assert not b.allow_call()                     # 4,670 + 8,000 > 10,000
+def test_a_call_is_sent_only_if_its_own_bound_fits_what_is_left(ev):
+    b = ev.Budget(30_000, 10_000)
+    assert b.reserve(18_000, 4_096)
+    b.record_call(usage(4_670, 160), (18_000, 4_096))
+    assert b.reserve(18_000, 4_096)                 # 4,670 + 18,000 <= 30,000
+    b.record_call(usage(4_670, 160), (18_000, 4_096))
+    assert not b.reserve(21_000, 4_096)             # 9,340 + 21,000 > 30,000
     assert b.refused_calls == 1
 
 
 def test_the_next_question_needs_room_for_a_plan_and_a_repair(ev):
-    b = ev.Budget(20_000, 10_000)
-    assert b.can_afford_another()                 # 2 x 8,000 = 16,000 <= 20,000
-    b.record_call(usage(4_670, 160))
-    assert not b.can_afford_another()             # 4,670 + 16,000 > 20,000
+    b = ev.Budget(40_000, 10_000)
+    assert b.can_afford_another()                   # nothing reserved yet
+    assert b.reserve(18_000, 4_096)
+    b.record_call(usage(4_670, 160), (18_000, 4_096))
+    assert not b.can_afford_another()               # 4,670 + 2 x 18,000 > 40,000
 
 
 def test_whatever_the_calls_report_the_caps_hold(ev):
-    """Usage within the per-call ceilings, reported or not, in any order:
-    the charged total never exceeds either cap."""
+    """Any sequence of calls, any reservation sizes, usage reported or not,
+    each within its own reservation: the charged total never exceeds either
+    cap, and nothing is flagged."""
     import random
     rng = random.Random(7)
-    for _ in range(200):
-        b = ev.Budget(rng.randint(5_000, 60_000), rng.randint(4_096, 20_000))
-        while b.allow_call():
+    for _ in range(300):
+        b = ev.Budget(rng.randint(5_000, 120_000), rng.randint(1_024, 40_000))
+        for _ in range(rng.randint(1, 60)):
+            reservation = (rng.randint(1, 30_000), rng.choice((1_024, 2_048, 4_096, 8_192)))
+            if not b.reserve(*reservation):
+                continue
             b.record_call(unreported() if rng.random() < 0.3
-                          else usage(rng.randint(0, 8_000), rng.randint(0, 4_096)))
+                          else usage(rng.randint(0, reservation[0]),
+                                     rng.randint(0, reservation[1])), reservation)
             assert b.input <= b.max_input and b.output <= b.max_output
+        assert not b.violated
 
 
-def test_a_call_above_the_ceiling_raises_the_ceiling(ev):
-    """The input ceiling is an estimate. A call that exceeds it can overshoot
-    the cap once, by that excess; the ceiling then rises to it, so the next
-    allowance accounts for prompts that size."""
+def test_usage_above_its_reservation_is_a_violation_not_a_new_estimate(ev):
+    """It used to raise an 'estimate' and carry on, overshooting the cap. A
+    bound that is exceeded is a failure: counted, and the planner stops."""
     b = ev.Budget(50_000, 50_000)
-    b.record_call(usage(9_500, 100))
-    assert b.input_ceiling == 9_500
+    assert b.reserve(9_000, 4_096)
+    b.record_call(usage(9_500, 100), (9_000, 4_096))
+    assert b.violated and b.bound_violations == 1
+    assert b.as_dict()["bound_violations"] == 1
 
 
 # -- the planner honours the meter --------------------------------------------------
@@ -93,13 +104,30 @@ def planner_with(replies):
     return make_planner(replies)
 
 
+def input_bound(request):
+    from app.llm.token_bound import input_upper_bound
+    return input_upper_bound(request)
+
+
+def first_request(question, ctx=None):
+    """The request the planner sends first for this question, captured from
+    an unmetered run against the fake client."""
+    from tests.unit.test_live_adapter_contract import FakeResponse, context_with, valid_plan_block
+    planner = planner_with([FakeResponse([valid_plan_block()], None)])
+    planner.plan(question, ctx or context_with(question))
+    return planner._client.messages.requests[0]
+
+
 def test_a_repair_the_budget_cannot_cover_is_never_made(ev):
     from app.llm.planner import PlannerBudgetExhausted
     from tests.unit.test_live_adapter_contract import (
         FakeBlock, FakeResponse, FakeUsage, context_with, valid_plan_block,
     )
 
-    budget = ev.Budget(12_000, 10_000)              # room for exactly one call
+    first = first_request("top accounts")
+    # Room for the first call's bound and a little more: never for a repair,
+    # whose request is the first one plus the correction.
+    budget = ev.Budget(input_bound(first) + 1_000, 10_000)
     planner = planner_with([
         FakeResponse([FakeBlock(type="tool_use", name="emit_plan",
                                 input={"metric": "not_a_metric"})], FakeUsage(4_670, 160)),
@@ -180,10 +208,8 @@ def test_a_live_run_without_a_budget_is_refused_before_anything_starts(ev, monke
 # 8,000-token estimate, never with the request about to be sent; the output
 # side assumed 4,096 whatever max_tokens was configured; a larger call was
 # charged afterwards and the estimate raised. So the cap could be exceeded.
-
-R3 = pytest.mark.xfail(strict=True, reason="R3: the evaluation cap is checked against an "
-                                           "estimate, not the request being sent")
-
+# The four tests below reproduced it on the unmodified code
+# (evidence/runs/r3-r3-reproduced.json).
 
 def long_catalog_context(entries: int = 1_000):
     """A planning context whose prompt is far larger than any fixed estimate:
@@ -193,7 +219,6 @@ def long_catalog_context(entries: int = 1_000):
         f"Group Purchasing Organisation {i:04d}" for i in range(entries)])
 
 
-@R3
 def test_a_first_call_larger_than_the_cap_is_never_sent(ev):
     """The review's reproduction: a 16,000-token input cap admitted a call
     that then billed 17,000. A request that cannot be shown to fit is not sent."""
@@ -210,7 +235,6 @@ def test_a_first_call_larger_than_the_cap_is_never_sent(ev):
     assert (budget.input, budget.output) == (0, 0)
 
 
-@R3
 @pytest.mark.parametrize("max_tokens,output_cap,sent", [
     (8_192, 6_000, False),      # the response may be 8,192 tokens: does not fit
     (1_024, 1_500, True),       # at most 1,024: fits, whatever a fixed 4,096 says
@@ -235,7 +259,6 @@ def test_the_output_reservation_is_the_configured_max_tokens(ev, monkeypatch, ma
         assert planner._client.messages.requests == []
 
 
-@R3
 def test_a_call_with_unreported_usage_is_charged_at_least_its_own_size(ev):
     """Unknown usage is charged conservatively: never less than the request
     that was sent could have cost, and the full output it was allowed."""
@@ -251,7 +274,6 @@ def test_a_call_with_unreported_usage_is_charged_at_least_its_own_size(ev):
     assert budget.output == request["max_tokens"]
 
 
-@R3
 def test_usage_above_the_preflight_bound_stops_the_run(ev):
     """If a call ever bills more than its reservation, the bound was wrong:
     the run stops rather than carry on with a cap it cannot keep."""
@@ -265,3 +287,57 @@ def test_usage_above_the_preflight_bound_stops_the_run(ev):
     ctx.spend = ev.Budget(10**8, 10**6)
     with pytest.raises(PlannerBudgetExhausted):
         planner.plan("top accounts", ctx)
+
+
+def test_the_bound_covers_everything_the_request_carries():
+    """System text (catalogue, conversation state), every message (question,
+    repair), the tool schema and the tool choice all count; a longer
+    catalogue or a repair makes a larger bound."""
+    from app.llm.token_bound import FRAMING_ALLOWANCE, input_upper_bound
+
+    small = first_request("top accounts")
+    large = first_request("top accounts", long_catalog_context())
+    assert input_upper_bound(large) - input_upper_bound(small) >= (
+        len(large["system"].encode()) - len(small["system"].encode()))
+    repair = dict(small, messages=small["messages"] + [
+        {"role": "assistant", "content": "I produced an invalid plan."},
+        {"role": "user", "content": "That plan failed validation: metric: Input should be ..."}])
+    assert input_upper_bound(repair) > input_upper_bound(small)
+    assert input_upper_bound(small) >= FRAMING_ALLOWANCE + len(small["system"].encode())
+
+
+def test_text_that_normalisation_expands_is_measured_expanded():
+    """One character can become many under NFKC; the larger length counts."""
+    from app.llm.token_bound import input_upper_bound
+    plain = {"max_tokens": 1, "system": "a" * 3, "messages": []}
+    ligature = {"max_tokens": 1, "system": "\ufdfa", "messages": []}   # 3 bytes, NFKC 33
+    assert input_upper_bound(ligature) - input_upper_bound(plain) >= 30
+
+
+def test_a_repair_larger_than_what_is_left_is_refused_before_it_is_sent(ev):
+    """The first call fits; the repair -- the same request plus the error --
+    does not fit what the first call left. It is never sent."""
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import (
+        FakeBlock, FakeResponse, FakeUsage, valid_plan_block,
+    )
+    ctx = long_catalog_context()
+    first = first_request("top accounts", ctx)
+    budget = ev.Budget(input_bound(first) + 500, 10_000)
+    planner = planner_with([
+        FakeResponse([FakeBlock(type="tool_use", name="emit_plan",
+                                input={"metric": "not_a_metric"})], FakeUsage(9_000, 160)),
+        FakeResponse([valid_plan_block()], FakeUsage(9_000, 160)),
+    ])
+    ctx = long_catalog_context()
+    ctx.spend = budget
+    with pytest.raises(PlannerBudgetExhausted, match="repair"):
+        planner.plan("top accounts", ctx)
+    assert len(planner._client.messages.requests) == 1
+    assert budget.input == 9_000 <= budget.max_input
+
+
+def test_the_record_says_how_the_bound_was_computed(ev):
+    record = ev.Budget(1, 1).as_dict()
+    assert "utf8" in record["input_bound_method"] and "checked" in record["input_bound_method"]
+    assert record["output_bound_method"] == "the request's max_tokens"

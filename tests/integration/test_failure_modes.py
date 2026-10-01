@@ -232,7 +232,7 @@ def test_an_exhausted_evaluation_budget_makes_no_model_call(exec_user):
     spec.loader.exec_module(ev)
 
     pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
-    pipe.spend = ev.Budget(1_000, 1_000)           # below one call's ceiling
+    pipe.spend = ev.Budget(1_000, 1_000)           # below any request's bound
     result = pipe.ask(exec_user, QUESTION)
     assert result.status == "error" and "spend limit" in result.message
     assert planner._client.messages.requests == []

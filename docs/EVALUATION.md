@@ -559,34 +559,55 @@ python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml
     --smoke --max-input-tokens 150000 --max-output-tokens 70000
 ```
 
-The budget is enforced at **every model call**, not per question:
+The budget is enforced at **every model call**, against what that call
+can cost, not per question and not against a fixed estimate:
 
-- **Before each call**, the planner asks the budget whether one more call
-  at the per-call ceiling (8,000 input, 4,096 output; measured usage is
-  about 4,670 and 160) still fits. A repair is a call like any other: if it
-  does not fit, it is not made.
+- **Before each call**, the planner builds the exact request and reserves
+  its upper bound: input from the request's own bytes (system text with
+  the catalogue and any conversation state, every message including a
+  repair's correction, the tool schema), output from its `max_tokens`
+  (`app/llm/token_bound.py`). The call is sent only if both fit in what is
+  left. A request that cannot be shown to fit, including a first call
+  larger than the whole cap, is never sent. A repair is a call like any
+  other.
+- **The output bound is the provider's guarantee.** Generation stops at
+  `max_tokens`, so the configured value is reserved, whatever it is.
+- **The input bound is conservative, not exact.** It assumes a token
+  encodes at least one byte (true of byte-level BPE tokenisers; the
+  provider's tokeniser is not published) and that the provider's framing
+  fits a fixed allowance. On this pipeline's requests it is about 24,100 to
+  24,200 per first call, roughly five times the 4,670 measured live in
+  September. It is **checked**: a call that reports more than it reserved
+  is a bound violation, which stops the run at once, is printed, and is
+  recorded (`budget.bound_violations`). The provider's token-counting
+  endpoint would make the preflight exact. It is not used because it cannot
+  be verified offline.
 - **While metered, the SDK's own retries are off.** Every billable call
   therefore passes through the check. A retried call would otherwise bill
   invisibly, because the provider reports usage only for the last call.
   The trade-off: a transient provider error fails that question instead of
   being retried, and is recorded as such.
-- **A call whose usage was not reported** is charged at the ceiling, never
-  as zero.
-- **The charged total cannot exceed the caps**, provided each call stays
-  within the ceiling. Output always does, since it is capped by
-  `max_tokens`. The input ceiling is an estimate: a call above it can
-  overshoot once, by the excess, and the ceiling then rises to that size.
-- **A question starts only if a plan and a repair would both fit**, so none
-  is cut off half-way.
+- **A call whose usage was not reported** is charged its whole reservation,
+  never zero.
+- **So the charged total cannot exceed the caps** unless a call breaks its
+  bound, and if one does, the run stops and says so.
+- **A question starts only if a plan and a repair the size of the largest
+  reservation so far would both fit**, so none is cut off half-way. This is
+  scheduling; the per-call check is the enforcement.
 - **A run the budget cuts short** lists the questions it skipped and exits
-  non-zero, so it can never pass as complete.
+  non-zero, as does a run with a bound violation. Neither can pass as
+  complete.
 
 These rules are pinned by tests: `tests/unit/test_eval_budget.py`, and the
 exhausted-budget case in `tests/integration/test_failure_modes.py`.
 
-The caps above are a ceiling, not an estimate. Expected spend for the smoke
-run is roughly 75,000 input and 3,000 output tokens, including a repair or
-two.
+**Sizing the caps.** Each call reserves about 24,500 input tokens and
+`max_tokens` (4,096) output, but is charged what it bills. A cap therefore
+needs the expected spend **plus one reservation** of headroom, or the last
+questions are refused. The smoke caps above allow about 21 calls at the
+September cost. Expected spend for the smoke run is roughly 75,000 input
+and 3,000 output tokens on the old prompt. Prompt 2.1.0's system text is
+about 9 KB, and its real cost is what the smoke run will measure.
 
 **2. The regression sets.** `questions.yaml` (`status: regression`), and
 `holdout.yaml` and `holdout2.yaml` (both `status: spent`: they were run live

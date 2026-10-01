@@ -71,7 +71,8 @@ class PlannerOutOfTime(PlannerError):
 
 
 class PlannerBudgetExhausted(PlannerError):
-    """A metered spend refused the next model call (see PlanningContext.spend)."""
+    """A metered spend refused the next model call, or a call billed more
+    than its preflight bound and the run was stopped (PlanningContext.spend)."""
 
 
 class PlannerUnavailable(PlannerError):
@@ -139,8 +140,12 @@ class PlanningContext:
     #: The planner spends at most what is left of it. None means unbounded,
     #: which only tests and offline tooling should use.
     deadline_at: float | None = None
-    #: A metered spend, for evaluation runs: asked before EVERY model call
-    #: (allow_call() -> bool) and told after it (record_call(TokenUsage)).
+    #: A metered spend, for evaluation runs. Before EVERY model call it is
+    #: asked to reserve that call's upper bound -- input from the exact
+    #: request (app/llm/token_bound.py), output from its max_tokens --
+    #: reserve(input, output) -> bool; after it, it is told the reported
+    #: usage and the reservation, record_call(TokenUsage, (input, output)),
+    #: and `violated` says whether a call billed more than it reserved.
     #: While metered, the SDK's own retries are off, so one attempt is
     #: exactly one billable call and none goes uncounted -- a retried call's
     #: usage is otherwise invisible: the provider reports only the last one.
@@ -515,22 +520,41 @@ class BedrockPlanner:
     ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         """One model call, inside its own span, counted by outcome. Tokens are
         counted only as the provider reported them; an unreported call is
-        counted as unknown, never as zero."""
+        counted as unknown, never as zero.
+
+        Metered: the request is built first, and the spend reserves what
+        THAT request can bill before it is sent -- never a fixed estimate.
+        A request that cannot be shown to fit is not sent."""
         model = self.model_id
-        if spend is not None and not spend.allow_call():
-            raise PlannerBudgetExhausted(
-                f"the spend limit does not cover another model call (attempt {ordinal})")
+        request = self._request(system, messages, tool)
+        reserved: tuple[int, int] | None = None
+        if spend is not None:
+            from app.llm import token_bound
+
+            reserved = (token_bound.input_upper_bound(request),
+                        token_bound.output_upper_bound(request))
+            if not spend.reserve(*reserved):
+                raise PlannerBudgetExhausted(
+                    f"the spend limit does not cover model call {ordinal} ({kind}), which "
+                    f"can bill up to {reserved[0]:,} input and {reserved[1]:,} output tokens")
         with telemetry.span("pac.plan.attempt", **{
                 "pac.attempt": ordinal, "pac.attempt_kind": kind,
                 "pac.model_id": model}) as span:
-            plan, err, attempt = self._attempt(system, messages, tool, ordinal, kind,
+            plan, err, attempt = self._attempt(request, ordinal, kind,
                                                deadline_at, metered=spend is not None)
             usage = attempt.usage
             span.set(**{"pac.outcome": attempt.outcome, "pac.usage_known": usage.known,
                         "pac.tokens.input": usage.input_tokens,
                         "pac.tokens.output": usage.output_tokens})
         if spend is not None:
-            spend.record_call(usage)
+            spend.record_call(usage, reserved)
+            if spend.violated:
+                # The bound was wrong for this call. Carrying on would spend
+                # against a cap that can no longer be kept.
+                raise PlannerBudgetExhausted(
+                    f"model call {ordinal} billed more than its preflight bound "
+                    f"({usage.input_tokens} input / {usage.output_tokens} output against "
+                    f"{reserved[0]:,} / {reserved[1]:,}); the metered run is stopped")
         telemetry.count("pac.llm.attempts", outcome=attempt.outcome, model=model, kind=kind)
         if not usage.known:
             telemetry.count("pac.llm.usage_unknown", model=model)
@@ -546,15 +570,16 @@ class BedrockPlanner:
                             model=model)
         return plan, err, attempt
 
-    def _attempt(
-        self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
-        ordinal: int, kind: str, deadline_at: float | None = None, metered: bool = False,
-    ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
+    def _request(self, system: str, messages: list[dict[str, Any]],
+                 tool: dict[str, Any]) -> dict[str, Any]:
+        """The exact request a call sends: what a metered spend bounds."""
         request: dict[str, Any] = {
             "model": self.model_id,
             "max_tokens": self.settings.llm_max_tokens,
             "system": system,
-            "messages": messages,
+            # A copy: the repair appends to the caller's list after this
+            # request was bounded and sent.
+            "messages": list(messages),
             "tools": [tool],
             "tool_choice": {"type": "tool", "name": "emit_plan"},
         }
@@ -563,7 +588,12 @@ class BedrockPlanner:
         # understood. Plan extraction is a constrained task either way.
         if not self._legacy_endpoint:
             request["output_config"] = {"effort": self.settings.llm_effort}
+        return request
 
+    def _attempt(
+        self, request: dict[str, Any], ordinal: int, kind: str,
+        deadline_at: float | None = None, metered: bool = False,
+    ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         def record(outcome: str, usage: TokenUsage, error: str | None) -> PlanningAttempt:
             return PlanningAttempt(ordinal=ordinal, kind=kind, outcome=outcome,
                                    usage=usage, error=error)

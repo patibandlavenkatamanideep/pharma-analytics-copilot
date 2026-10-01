@@ -433,68 +433,87 @@ FROZEN = ROOT / "evals" / "frozen.json"
 
 
 class Budget:
-    """Tokens a live run may spend, enforced at EVERY model call.
+    """Tokens a live run may spend, enforced at EVERY model call against what
+    that call can actually bill.
 
-    The pipeline's planner asks allow_call() before each call -- the plan
-    and any repair alike -- and reports each one to record_call(). While
-    metered, the SDK's own retries are off (planner.PlanningContext.spend),
-    so every billable call passes through here: a retried call would
-    otherwise bill invisibly, because the provider reports usage only for
-    the last one. A call is allowed only if one more at the per-call ceiling
-    still fits, so the charged total can never exceed the caps. A call whose
-    usage was not reported is charged AT the ceiling, never as zero.
+    Before each call -- the plan and any repair alike -- the planner builds
+    the exact request and asks reserve(input, output) for its upper bound:
+    input from the request's own bytes (app/llm/token_bound.py, which states
+    the assumptions), output from its max_tokens. The call is sent only if
+    both fit in what is left. After it, record_call(usage, reservation)
+    charges what the provider reported; a call whose usage was not reported
+    is charged its whole reservation, never zero. While metered, the SDK's
+    own retries are off (planner.PlanningContext.spend), so every billable
+    call passes through here.
 
-    Before each question, can_afford_another() also asks for room for two
-    calls (the plan and a repair), so a question is not started that the
-    budget would cut off half-way. The ceilings are deliberately above what
-    was measured (about 4,670 input / 160 output per call).
+    So the charged total cannot exceed either cap -- provided each call bills
+    no more than its bound. That proviso is checked, not assumed: a call
+    reporting more than it reserved is a bound violation, counted here, and
+    the planner stops the run at once (`violated`). The output side is the
+    provider's own guarantee (generation stops at max_tokens); the input
+    side is a conservative bound under stated assumptions, not a provider
+    count, and the record says so (as_dict()["input_bound_method"]).
+
+    can_afford_another() is scheduling, not enforcement: before starting a
+    question it asks for room for two calls (a plan and a repair) the size
+    of the largest reservation made so far, so a question is not begun that
+    the budget would cut off half-way. Before the first call nothing is
+    known, and the per-call check alone decides.
     """
 
-    def __init__(self, max_input: int, max_output: int, *,
-                 input_ceiling: int = 8_000, output_ceiling: int = 4_096):
+    def __init__(self, max_input: int, max_output: int):
         self.max_input, self.max_output = max_input, max_output
-        self.input_ceiling, self.output_ceiling = input_ceiling, output_ceiling
         self.input = self.output = 0
         self.calls = 0
         self.unreported_calls = 0
         self.refused_calls = 0
+        self.bound_violations = 0
+        self.largest_reservation = (0, 0)
 
-    def _fits(self, calls: int) -> bool:
-        return (self.input + calls * self.input_ceiling <= self.max_input
-                and self.output + calls * self.output_ceiling <= self.max_output)
-
-    def can_afford_another(self) -> bool:
-        return self._fits(2)
-
-    def allow_call(self) -> bool:
-        if self._fits(1):
+    def reserve(self, input_tokens: int, output_tokens: int) -> bool:
+        """May a call that can bill up to this much be sent?"""
+        if (self.input + input_tokens <= self.max_input
+                and self.output + output_tokens <= self.max_output):
+            self.largest_reservation = (max(self.largest_reservation[0], input_tokens),
+                                        max(self.largest_reservation[1], output_tokens))
             return True
         self.refused_calls += 1
         return False
 
-    def record_call(self, usage: Any) -> None:
+    def record_call(self, usage: Any, reserved: tuple[int, int]) -> None:
         self.calls += 1
+        reserved_input, reserved_output = reserved
         if getattr(usage, "known", False):
-            self.input += usage.input_tokens or 0
-            self.output += usage.output_tokens or 0
-            # The input ceiling is an estimate (output is capped by
-            # max_tokens). A call larger than it overshoots once, by the
-            # excess; from then on every allowance assumes calls that size.
-            self.input_ceiling = max(self.input_ceiling, usage.input_tokens or 0)
-            self.output_ceiling = max(self.output_ceiling, usage.output_tokens or 0)
+            charged_input, charged_output = usage.input_tokens or 0, usage.output_tokens or 0
+            if charged_input > reserved_input or charged_output > reserved_output:
+                self.bound_violations += 1
         else:
-            self.input += self.input_ceiling
-            self.output += self.output_ceiling
+            charged_input, charged_output = reserved_input, reserved_output
             self.unreported_calls += 1
+        self.input += charged_input
+        self.output += charged_output
+
+    @property
+    def violated(self) -> bool:
+        return self.bound_violations > 0
+
+    def can_afford_another(self) -> bool:
+        largest_input, largest_output = self.largest_reservation
+        return (self.input + 2 * largest_input <= self.max_input
+                and self.output + 2 * largest_output <= self.max_output)
 
     def as_dict(self) -> dict[str, Any]:
+        from app.llm import token_bound
         return {"max_input_tokens": self.max_input, "max_output_tokens": self.max_output,
                 "charged_input_tokens": self.input, "charged_output_tokens": self.output,
                 "model_calls": self.calls,
-                "unreported_calls_charged_at_ceiling": self.unreported_calls,
+                "unreported_calls_charged_at_reservation": self.unreported_calls,
                 "calls_refused_by_budget": self.refused_calls,
-                "input_ceiling_per_call": self.input_ceiling,
-                "output_ceiling_per_call": self.output_ceiling}
+                "bound_violations": self.bound_violations,
+                "largest_input_reservation": self.largest_reservation[0],
+                "largest_output_reservation": self.largest_reservation[1],
+                "input_bound_method": token_bound.METHOD,
+                "output_bound_method": "the request's max_tokens"}
 
 
 def smoke_subset(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -634,7 +653,9 @@ def main() -> int:
 
     not_run: list[str] = []
     for item in questions:
-        if budget is not None and not budget.can_afford_another():
+        if budget is not None and (budget.violated or not budget.can_afford_another()):
+            # A violated bound stops everything: the cap can no longer be
+            # shown to hold for the next call.
             not_run.append(item["id"])
             continue
         principal = principals[item["principal"]]
@@ -789,8 +810,12 @@ def main() -> int:
         b = budget.as_dict()
         print(f"\n  Spend: {b['charged_input_tokens']:,} input / {b['charged_output_tokens']:,} "
               f"output tokens charged against {b['max_input_tokens']:,} / "
-              f"{b['max_output_tokens']:,}; {b['unreported_calls_charged_at_ceiling']} "
-              f"unreported call(s) charged at the ceiling.")
+              f"{b['max_output_tokens']:,}; {b['unreported_calls_charged_at_reservation']} "
+              f"unreported call(s) charged at their reservation; {b['calls_refused_by_budget']} "
+              f"call(s) refused before sending.")
+        if budget.violated:
+            print(f"\n  BOUND VIOLATED: {b['bound_violations']} call(s) billed more than their "
+                  "preflight bound, so the cap was not provably kept. The run was stopped.")
     if not_run:
         print(f"\n  STOPPED BY BUDGET: {len(not_run)} question(s) not run: {', '.join(not_run)}."
               "\n  The totals above cover only the questions that ran.")
@@ -804,7 +829,8 @@ def main() -> int:
         )
     close_pools()
     # A run the budget cut short is not a pass, however its questions did.
-    return 0 if failed == 0 and not not_run else 1
+    violated = budget is not None and budget.violated
+    return 0 if failed == 0 and not not_run and not violated else 1
 
 
 if __name__ == "__main__":
