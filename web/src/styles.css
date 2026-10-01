@@ -330,3 +330,9 @@ footer input { flex: 1; }
 .notice { background: #eef4ff; color: #1d3f8a; padding: 8px 10px; border-radius: 6px; font-size: 14px; }
 button.stop { background: #8a1c1c; }
 .sso { display: block; text-align: center; margin-top: 12px; font-size: 14px; }
+
+.feedback {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}

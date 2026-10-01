@@ -9,6 +9,7 @@ What a user owns, and where it lives:
 =====================  ====================================================
 conversations, turns   app_conv -- their questions and the answers shown
 cohorts, members       app_conv -- the populations a "those accounts" refers to
+feedback               app_conv -- ratings and comments on answers
 clarifications         app_conv -- questions asked back, and their choices
 runs                   app_conv -- request records, with the stored outcome
                        an idempotent retry replays
@@ -146,6 +147,14 @@ def export(principal: Principal) -> dict[str, Any]:
             clarifications.setdefault(c.pop("conversation_id"), []).append(dict(c))
 
         cur.execute(
+            "SELECT conversation_id, turn_seq, rating, reason, comment, created_at "
+            "FROM app_conv.feedback WHERE conversation_id = ANY(%s) "
+            "ORDER BY conversation_id, turn_seq", (ids,))
+        feedback: dict[str, list[dict[str, Any]]] = {}
+        for f in cur.fetchall():
+            feedback.setdefault(f.pop("conversation_id"), []).append(dict(f))
+
+        cur.execute(
             "SELECT conversation_id, run_id, status, turn_seq, created_at, finished_at "
             "FROM app_conv.runs WHERE conversation_id = ANY(%s) ORDER BY created_at", (ids,))
         runs: dict[str, list[dict[str, Any]]] = {}
@@ -173,7 +182,8 @@ def export(principal: Principal) -> dict[str, Any]:
              "turns": turns.get(r["conversation_id"], []),
              "cohorts": cohorts.get(r["conversation_id"], []),
              "clarifications": clarifications.get(r["conversation_id"], []),
-             "runs": runs.get(r["conversation_id"], [])}
+             "runs": runs.get(r["conversation_id"], []),
+             "feedback": feedback.get(r["conversation_id"], [])}
             for r in visible],
         "withheld_conversations": withheld,
         "withheld_reason": (

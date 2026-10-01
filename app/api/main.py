@@ -35,7 +35,7 @@ from app.conversation.state import (
 )
 from app.db import close_pools, verify_runtime_role_safety
 from app.llm.planner import build_planner
-from app.conversation import privacy, runs
+from app.conversation import feedback, privacy, runs
 from app.pipeline import Pipeline, to_payload
 
 log = logging.getLogger(__name__)
@@ -424,6 +424,27 @@ def ask(
     # Built once, by the pipeline, so the copy stored for idempotent replay
     # is exactly this body.
     return result.payload or to_payload(result, body.include_sql)
+
+
+class FeedbackRequest(BaseModel):
+    run_id: str = Field(max_length=64)
+    helpful: bool
+    reason: str | None = Field(default=None, max_length=40)
+    comment: str | None = Field(default=None, max_length=500)
+
+
+@app.post("/api/feedback")
+def give_feedback(body: FeedbackRequest, user: CurrentUser) -> dict[str, Any]:
+    """Rate one of your own answers. Replaces earlier feedback on it."""
+    try:
+        recorded = feedback.record(user, body.run_id, helpful=body.helpful,
+                                   reason=body.reason, comment=body.comment)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "invalid_reason",
+                                                     "message": str(exc)}) from None
+    if not recorded:
+        raise HTTPException(status_code=404, detail="That answer does not exist.")
+    return {"recorded": True}
 
 
 class CancelRequest(BaseModel):

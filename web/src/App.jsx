@@ -168,6 +168,55 @@ function ResultTable({ answer }) {
   );
 }
 
+const REASONS = [
+  ["wrong_number", "Wrong number"],
+  ["different_question", "Answered a different question"],
+  ["missing_data", "Missing data"],
+  ["other", "Something else"],
+];
+
+// Feedback on one saved answer. It goes to the server with the run id, and
+// only the person who asked can give it; it does not change any answer.
+function Feedback({ runId }) {
+  const [state, setState] = useState("idle");
+  const send = async (helpful, reason) => {
+    setState("sending");
+    try {
+      await api("/api/feedback", {
+        method: "POST",
+        body: JSON.stringify({ run_id: runId, helpful, reason }),
+      });
+      setState("sent");
+    } catch {
+      setState("failed");
+    }
+  };
+  if (state === "sent") return <p className="muted small">Thanks, noted.</p>;
+  if (state === "failed") return <p className="muted small">Feedback could not be recorded.</p>;
+  if (state === "why") {
+    return (
+      <div className="feedback" role="group" aria-label="What was wrong">
+        {REASONS.map(([code, label]) => (
+          <button key={code} className="link small" onClick={() => send(false, code)}>
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="feedback" role="group" aria-label="Was this right">
+      <button className="link small" disabled={state === "sending"} onClick={() => send(true)}>
+        Helpful
+      </button>
+      <button className="link small" disabled={state === "sending"}
+              onClick={() => setState("why")}>
+        Not right
+      </button>
+    </div>
+  );
+}
+
 function Turn({ turn, onChoose }) {
   if (turn.role === "user") {
     return (
@@ -250,6 +299,10 @@ function Turn({ turn, onChoose }) {
             <summary>SQL that produced this answer</summary>
             <pre>{turn.sql}</pre>
           </details>
+        )}
+
+        {turn.status === "answered" && turn.persistence === "saved" && turn.runId && (
+          <Feedback runId={turn.runId} />
         )}
       </div>
     </div>
@@ -461,6 +514,7 @@ export default function App() {
         sql: res.sql,
         choices: res.choices,
         persistence: res.persistence,
+        runId: res.run_id,
       });
     } catch (err) {
       // An abort is this component cancelling its own request, not a failure

@@ -31,6 +31,7 @@ longer holds is neither continued nor listed, and it is not exported.
 | `app_conv.conversations`, `turns` | Questions, the answers shown, statuses | yes | 180 days since last activity |
 | `app_conv.cohorts`, `cohort_members` | Populations for follow-ups | yes, with the conversation | with the conversation |
 | `app_conv.clarifications` | Questions asked back and their choices | yes, with the conversation | expire after 30 min; deleted with the conversation |
+| `app_conv.feedback` | Ratings, a reason, and an optional comment, on your own answers | yes, with the conversation | with the conversation |
 | `app_conv.runs` | Request records, with the stored outcome an idempotent retry replays | yes, with the conversation | the idempotency period (24 h), then pruned |
 | `app_graph` checkpoints | Workflow state, one thread per run | yes, with the conversation | finished threads pruned at once; orphans after 24 h |
 | `app_auth.sessions` | Sign-in state: token hash, times, user agent, address hash | no; `POST /api/logout` ends one | 30 days after expiry or revocation |
@@ -85,6 +86,30 @@ them. They hold hashes, codes, counts, versions and timings, with no
 question text, SQL or results. The serving role cannot delete them at all:
 it has `INSERT` and `SELECT` only. They expire after the audit retention
 period, deleted by the jobs container running as the owner.
+
+## Feedback and failure triage
+
+Feedback (`POST /api/feedback`) is owner-scoped like the answer it rates.
+Only the asker can give it, and only under their current access. It does
+not change behaviour by itself.
+
+`scripts/failure_sample.py`, run as the owner in the jobs container, draws
+a random sample of recent failures for triage. A failure here is a request
+that ended in an error, a blocking intent gap or a refresh, or an answer
+marked "not right". Each record carries:
+
+- the outcome, reason codes and intent gaps;
+- the metric, plan and SQL hashes;
+- the versions, timings and role.
+
+It carries nothing that identifies or quotes the user: no user id, email,
+question text or answer. Comments are the user's own words, so they are
+withheld unless the operator passes `--include-comments`.
+
+A confirmed failure goes back into the product as a regression test that a
+person writes with an **invented** question. The user's text is never copied
+into the repository. Policy is never relaxed to make a complaint go away.
+No model is trained on any of it.
 
 ## The scheduled job
 

@@ -136,6 +136,20 @@ answer is withheld.
 | 413 / 415 / 403 | `request_too_large` / `unsupported_media_type` / `cross_origin` | Refused by the request guard |
 | 500 | — | Unexpected; `detail.request_id` identifies the log entry |
 
+### POST /api/feedback
+
+`{"run_id": str, "helpful": bool, "reason": str | null, "comment": str | null}`.
+Rates one of **your own** saved answers, recorded under the access you hold
+now. A second rating replaces the first. `reason` is one of `wrong_number`,
+`different_question`, `missing_data`, `too_slow` or `other`. `comment` is at
+most 500 characters. Feedback is deleted with its conversation.
+`200 {"recorded": true}`.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 404 | — | No answered request of yours by that id, under your current access |
+| 422 | `invalid_reason` | `reason` is not one of the listed values |
+
 ### POST /api/runs/cancel
 
 `{"run_id": str}` or `{"idempotency_key": str}` — the key works before the

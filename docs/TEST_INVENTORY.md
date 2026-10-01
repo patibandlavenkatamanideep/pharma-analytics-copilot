@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** `2fc0070` plus the ingestion reclaim and ordering change (`post-assessment/production-readiness`),
+**Measured on** `66e62d2` plus the feedback change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -27,9 +27,9 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 642 | ✅ pass | `r2-suite-7b-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 815 | ✅ pass | `r2-suite-7c-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 354` | 354 | ✅ pass | `r2-suite-7a-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1811** | ✅ pass | `r2-suite-7c-total.json` |
-| **Browser — component** | `cd web && npm test` | 20 | ✅ pass | `r2-suite-6c-component.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 360` | 360 | ✅ pass | `r2-suite-7d-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1817** | ✅ pass | `r2-suite-7d-total.json` |
+| **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-suite-7d-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-browser-journeys.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
@@ -98,7 +98,7 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (20, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data.
+**Component tests (21, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer.
 
 They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run
@@ -132,7 +132,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1811: they do not run in the same
+Neither browser suite is counted in the 1817: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -165,7 +165,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 354`, and fails on a skip in any phase, a
+`--release-gate --min-tests 360`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -182,7 +182,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 354
+python3 -m pytest tests/security -q --release-gate --min-tests 360
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

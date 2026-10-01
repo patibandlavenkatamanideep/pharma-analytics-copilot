@@ -45,6 +45,10 @@ function makeFetch(script) {
       (fetchMock.deletes ||= []).push(path);
       return respond(200, { deleted: true });
     }
+    if (path === "/api/feedback") {
+      (fetchMock.feedback ||= []).push(JSON.parse(options.body));
+      return respond(200, { recorded: true });
+    }
     if (path === "/api/runs/cancel") {
       cancels.push(JSON.parse(options.body));
       return respond(200, { status: "cancel_requested" });
@@ -253,5 +257,21 @@ describe("API v2 in the interface", () => {
     expect(link.getAttribute("href")).toBe("/api/me/data");
     expect(link.hasAttribute("download")).toBe(true);
     expect(screen.getByRole("button", { name: /delete conversation/i }).disabled).toBe(true);
+  });
+
+  it("sends feedback on a saved answer, with the reason chosen", async () => {
+    global.fetch = makeFetch([answered()]);
+    await renderSignedIn();
+    await ask("total volume");
+    await screen.findByText("1,234 packs");
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /not right/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /wrong number/i }));
+    });
+    expect(global.fetch.feedback).toEqual([
+      { run_id: "r_1", helpful: false, reason: "wrong_number" }]);
+    await screen.findByText(/thanks, noted/i);
   });
 });
