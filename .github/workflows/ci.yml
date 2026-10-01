@@ -405,3 +405,14 @@ jobs:
       - name: Stop
         if: always()
         run: docker rm -f pac || true
+
+      # The same image, end to end, as scripts/image_smoke.sh runs it locally:
+      # a FRESH database provisioned in one pass (the database a first
+      # deployment gets), data published by a jobs container, an Exec and a
+      # RAM signing in over real sessions, sign-out, a clean stop, and a
+      # second scan. The steps above never sign in, which is how a fresh
+      # database that refused every sign-in once went unnoticed.
+      - name: Image journeys on a freshly provisioned database
+        env:
+          PAC_SMOKE_IMAGE: pharma-analytics-copilot:ci
+        run: bash scripts/image_smoke.sh

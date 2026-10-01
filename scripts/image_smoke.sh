@@ -6,7 +6,8 @@
 #   scripts/image_smoke.sh                      # with docker
 #   CONTAINER_CLI=podman scripts/image_smoke.sh # with podman
 #
-# It builds the COMMITTED tree at HEAD; commit first.
+# It builds the COMMITTED tree at HEAD; commit first. With PAC_SMOKE_IMAGE set
+# it tests that already-built image instead (CI builds once, then runs this).
 #
 # Everything runs in throwaway containers on a private network: a fresh
 # postgres:16-alpine, the image provisioning its own database, a jobs-style
@@ -16,7 +17,7 @@
 set -euo pipefail
 
 CLI=${CONTAINER_CLI:-docker}
-TAG=pharma-analytics-copilot:smoke
+TAG=${PAC_SMOKE_IMAGE:-pharma-analytics-copilot:smoke}
 TRIVY_IMAGE=${TRIVY_IMAGE:-docker.io/aquasec/trivy:0.58.1}
 RELEASE=$(git rev-parse HEAD)
 NET=pac-smoke-net DB=pac-smoke-db APP=pac-smoke-app
@@ -62,11 +63,16 @@ jobs_env=("${app_env[@]}" -e PAC_DB_OWNER_PASSWORD="$OWNER")
 # also avoids reading the checkout through the VM's file sharing, which
 # failed on this machine for a file in a synced folder.
 started=$(date +%s)
-mkdir -p "$WORK/context"
-git archive "$RELEASE" | tar -x -C "$WORK/context"
-$CLI build --build-arg PAC_RELEASE="$RELEASE" -t "$TAG" "$WORK/context" > "$WORK/build.log" 2>&1 \
-  || { tail -30 "$WORK/build.log"; fail "image builds"; }
-pass "image builds ($(( $(date +%s) - started )) s)"
+if [ -n "${PAC_SMOKE_IMAGE:-}" ]; then
+  $CLI image inspect "$TAG" >/dev/null 2>&1 || fail "image $TAG exists"
+  pass "testing the prebuilt image $TAG"
+else
+  mkdir -p "$WORK/context"
+  git archive "$RELEASE" | tar -x -C "$WORK/context"
+  $CLI build --build-arg PAC_RELEASE="$RELEASE" -t "$TAG" "$WORK/context" > "$WORK/build.log" 2>&1 \
+    || { tail -30 "$WORK/build.log"; fail "image builds"; }
+  pass "image builds ($(( $(date +%s) - started )) s)"
+fi
 label=$($CLI image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "$TAG")
 [ "$label" = "$RELEASE" ] && pass "image is labelled with commit $RELEASE" || fail "revision label is '$label'"
 size=$($CLI image inspect --format '{{.Size}}' "$TAG")
