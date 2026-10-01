@@ -34,11 +34,23 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# Debian security updates published since the base image was built. The
+# image scan found openssl and libpcre2 one security release behind; the
+# fixes were already in the Debian archive, so they are applied here rather
+# than waited for in the next base image.
+RUN apt-get update \
+ && apt-get -y upgrade --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
+
 # Dependencies first, so application edits do not invalidate the layer.
 # Installed from the hashed lock: every package, direct and transitive, at
 # the version the suites ran on, and refused if its hash has changed.
+# pip is then removed: nothing runs it after build, and it carries its own
+# vendored copies of urllib3, msgpack and pkg_resources, which the scan
+# flagged at vulnerable versions (the application's own urllib3 is current).
 COPY requirements.lock ./
-RUN pip install --no-cache-dir --require-hashes -r requirements.lock
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock \
+ && python -m pip uninstall -y pip
 
 COPY app/ ./app/
 COPY migrations/ ./migrations/
