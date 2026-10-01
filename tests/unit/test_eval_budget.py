@@ -172,3 +172,96 @@ def test_a_live_run_without_a_budget_is_refused_before_anything_starts(ev, monke
     monkeypatch.setattr(sys, "argv", ["run_evals.py", "--provider", "bedrock"])
     assert ev.main() == 2
     assert "needs a budget" in capsys.readouterr().err
+
+
+# -- the cap is checked against the request actually sent ---------------------------
+#
+# Review of 1 October 2026, R3. allow_call() compared the cap with a fixed
+# 8,000-token estimate, never with the request about to be sent; the output
+# side assumed 4,096 whatever max_tokens was configured; a larger call was
+# charged afterwards and the estimate raised. So the cap could be exceeded.
+
+R3 = pytest.mark.xfail(strict=True, reason="R3: the evaluation cap is checked against an "
+                                           "estimate, not the request being sent")
+
+
+def long_catalog_context(entries: int = 1_000):
+    """A planning context whose prompt is far larger than any fixed estimate:
+    the vocabulary a large customer's catalogue puts in every request."""
+    from tests.unit.test_live_adapter_contract import context_with
+    return context_with("top accounts", known_gpos=[
+        f"Group Purchasing Organisation {i:04d}" for i in range(entries)])
+
+
+@R3
+def test_a_first_call_larger_than_the_cap_is_never_sent(ev):
+    """The review's reproduction: a 16,000-token input cap admitted a call
+    that then billed 17,000. A request that cannot be shown to fit is not sent."""
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import FakeResponse, FakeUsage, valid_plan_block
+
+    budget = ev.Budget(16_000, 8_192)
+    planner = planner_with([FakeResponse([valid_plan_block()], FakeUsage(17_000, 160))])
+    ctx = long_catalog_context()
+    ctx.spend = budget
+    with pytest.raises(PlannerBudgetExhausted):
+        planner.plan("top accounts", ctx)
+    assert planner._client.messages.requests == []
+    assert (budget.input, budget.output) == (0, 0)
+
+
+@R3
+@pytest.mark.parametrize("max_tokens,output_cap,sent", [
+    (8_192, 6_000, False),      # the response may be 8,192 tokens: does not fit
+    (1_024, 1_500, True),       # at most 1,024: fits, whatever a fixed 4,096 says
+])
+def test_the_output_reservation_is_the_configured_max_tokens(ev, monkeypatch, max_tokens,
+                                                              output_cap, sent):
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import (
+        FakeResponse, FakeUsage, context_with, valid_plan_block,
+    )
+
+    planner = planner_with([FakeResponse([valid_plan_block()], FakeUsage(4_670, 160))])
+    monkeypatch.setattr(planner.settings, "llm_max_tokens", max_tokens)
+    ctx = context_with("top accounts")
+    ctx.spend = ev.Budget(10**6, output_cap)
+    if sent:
+        planner.plan("top accounts", ctx)
+        assert [r["max_tokens"] for r in planner._client.messages.requests] == [max_tokens]
+    else:
+        with pytest.raises(PlannerBudgetExhausted):
+            planner.plan("top accounts", ctx)
+        assert planner._client.messages.requests == []
+
+
+@R3
+def test_a_call_with_unreported_usage_is_charged_at_least_its_own_size(ev):
+    """Unknown usage is charged conservatively: never less than the request
+    that was sent could have cost, and the full output it was allowed."""
+    from tests.unit.test_live_adapter_contract import FakeResponse, valid_plan_block
+
+    planner = planner_with([FakeResponse([valid_plan_block()], None)])
+    ctx = long_catalog_context()
+    budget = ev.Budget(10**6, 10**6)
+    ctx.spend = budget
+    planner.plan("top accounts", ctx)
+    request = planner._client.messages.requests[0]
+    assert budget.input >= len(request["system"].encode())
+    assert budget.output == request["max_tokens"]
+
+
+@R3
+def test_usage_above_the_preflight_bound_stops_the_run(ev):
+    """If a call ever bills more than its reservation, the bound was wrong:
+    the run stops rather than carry on with a cap it cannot keep."""
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import (
+        FakeResponse, FakeUsage, context_with, valid_plan_block,
+    )
+
+    planner = planner_with([FakeResponse([valid_plan_block()], FakeUsage(10_000_000, 160))])
+    ctx = context_with("top accounts")
+    ctx.spend = ev.Budget(10**8, 10**6)
+    with pytest.raises(PlannerBudgetExhausted):
+        planner.plan("top accounts", ctx)
