@@ -111,7 +111,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 196
+python3 -m pytest tests/security -q --release-gate --min-tests 325
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

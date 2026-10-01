@@ -27,8 +27,8 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 581 | ✅ pass | `p1d-suite-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 759 | ✅ pass | `p1d-suite-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 196` | 196 | ✅ pass | `r2-suite-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1536** | ✅ pass | `p1d-suite-total.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 325` | 325 | ✅ pass | `r2-suite-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1665** | ✅ pass | `p1d-suite-total.json` |
 | **Browser — component** | `cd web && npm test` | 16 | ✅ pass | `r2-suite-browser-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-browser-journeys.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -124,7 +124,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1536: they do not run in the same
+Neither browser suite is counted in the 1665: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -157,7 +157,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 196`, and fails on a skip in any phase, a
+`--release-gate --min-tests 325`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -174,7 +174,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 196
+python3 -m pytest tests/security -q --release-gate --min-tests 325
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline
