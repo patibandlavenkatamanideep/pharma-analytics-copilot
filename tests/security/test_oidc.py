@@ -280,3 +280,86 @@ def test_an_sso_only_user_cannot_use_a_password(client, idp, make_identity):
 def test_sso_is_absent_unless_configured(client):
     assert client.get("/api/auth/methods").json() == {"password": True, "oidc": False}
     assert client.get("/api/auth/oidc/start", follow_redirects=False).status_code == 404
+
+
+# -- the callback must come from the browser that started the sign-in --------------
+#
+# Review of 1 October 2026, R1: login CSRF. State, nonce and verifier were
+# stored server-side and found by `state` alone, so a callback obtained in
+# one browser completed in any other. These reproduce it; the fix binds each
+# sign-in to a secret held in the starting browser's cookie.
+
+R1 = pytest.mark.xfail(strict=True, reason="R1: the OIDC callback is not bound to the "
+                                           "browser that started the sign-in")
+
+
+def another_browser():
+    """A second browser: the same application, its own empty cookie jar."""
+    from fastapi.testclient import TestClient
+
+    import app.api.main as api
+    return TestClient(api.app)
+
+
+def started(client, idp, sub):
+    client.cookies.clear()
+    start = client.get("/api/auth/oidc/start", follow_redirects=False)
+    assert start.status_code == 302
+    code, state = idp.authorize(start.headers["location"], sub=sub)
+    return start, code, state
+
+
+def callback(browser, code, state):
+    return browser.get(f"/api/auth/oidc/callback?code={code}&state={state}",
+                       follow_redirects=False)
+
+
+@R1
+def test_a_callback_carried_to_another_browser_does_not_sign_it_in(client, idp, make_identity):
+    """The review's reproduction. Browser A starts a sign-in and authenticates
+    as the ATTACKER; browser B -- the victim, with no cookies and no sign-in
+    of its own -- is sent A's callback. B must not end up signed in as the
+    attacker, and the code must not even be redeemed."""
+    attacker = make_identity("exec", can_view_wac=1)
+    link(attacker, "sub-attacker")
+    _, code, state = started(client, idp, "sub-attacker")
+    victim = another_browser()
+    r = callback(victim, code, state)
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "browser_mismatch"
+    assert "set-cookie" not in r.headers
+    assert victim.get("/api/me").status_code == 401
+    assert code in idp.codes, "the code was redeemed before the browser was checked"
+    # Refusing B did not use up A's sign-in.
+    assert callback(client, code, state).status_code == 303
+
+
+@R1
+def test_a_callback_without_the_binding_cookie_is_refused(client, idp, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-nocookie")
+    _, code, state = started(client, idp, "sub-nocookie")
+    client.cookies.clear()
+    r = callback(client, code, state)
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "browser_mismatch"
+    assert client.get("/api/me").status_code == 401
+
+
+@R1
+def test_a_callback_with_another_browsers_binding_is_refused(client, idp, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-wrongcookie")
+    _, code, state = started(client, idp, "sub-wrongcookie")
+    client.cookies.clear()
+    client.cookies.set("pac_oidc", secrets.token_urlsafe(32))
+    r = callback(client, code, state)
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "browser_mismatch"
+
+
+@R1
+def test_starting_a_sign_in_sets_an_httponly_binding_cookie(client, idp):
+    client.cookies.clear()
+    start = client.get("/api/auth/oidc/start", follow_redirects=False)
+    cookie = start.headers.get("set-cookie", "")
+    assert cookie.startswith("pac_oidc="), cookie
+    attributes = [a.strip().lower() for a in cookie.split(";")]
+    assert {"httponly", "samesite=lax", "path=/", "max-age=600"} <= set(attributes)
