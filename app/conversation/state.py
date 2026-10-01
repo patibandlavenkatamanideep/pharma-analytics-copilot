@@ -73,6 +73,9 @@ class PendingClarification:
     #: As shown, in the order shown: [{"id", "label", "detail"}, ...]
     choices: list[dict[str, str]]
     dataset_id: str | None
+    #: The paused workflow thread that asked. Resumed only through this row,
+    #: which open_conversation reached through the owner check.
+    graph_thread_id: str | None = None
 
 
 @dataclass
@@ -198,7 +201,8 @@ def open_conversation(
                 members = [r["entity_id"] for r in cur.fetchall()]
 
             cur.execute(
-                "SELECT clarification_id, kind, question, slot_text, choices, dataset_id "
+                "SELECT clarification_id, kind, question, slot_text, choices, dataset_id, "
+                "       graph_thread_id "
                 "FROM app_conv.clarifications "
                 "WHERE conversation_id = %s AND status = 'pending' AND expires_at > now() "
                 "  AND scope_fingerprint = %s",
@@ -211,7 +215,8 @@ def open_conversation(
                     kind=pending_row["kind"], question=pending_row["question"],
                     slot_text=pending_row["slot_text"],
                     choices=list(pending_row["choices"] or []),
-                    dataset_id=pending_row["dataset_id"])
+                    dataset_id=pending_row["dataset_id"],
+                    graph_thread_id=pending_row["graph_thread_id"])
             cur.execute(
                 "SELECT COALESCE(max(seq), 0) AS m FROM app_conv.turns "
                 "WHERE conversation_id = %s",
@@ -406,14 +411,15 @@ def finalise(principal: Principal, state: ConversationState, run, turn: StagedTu
                 cur.execute(
                     "INSERT INTO app_conv.clarifications (clarification_id, conversation_id, "
                     "  turn_seq, kind, question, slot_text, choices, dataset_id, "
-                    "  scope_fingerprint, expires_at) "
+                    "  scope_fingerprint, expires_at, graph_thread_id) "
                     "SELECT %s, %s, %s, %s, %s, %s, %s::jsonb, dataset_id, %s, "
-                    "  now() + make_interval(secs => %s) "
+                    "  now() + make_interval(secs => %s), %s "
                     "FROM app_conv.conversations WHERE conversation_id = %s",
                     ("q_" + _secrets.token_urlsafe(12), state.conversation_id, seq,
                      c["kind"], c["question"][:2000], c.get("slot_text"),
                      json.dumps(c["choices"]), principal.fingerprint(),
-                     CLARIFICATION_TTL_SECONDS, state.conversation_id))
+                     CLARIFICATION_TTL_SECONDS, c.get("graph_thread_id"),
+                     state.conversation_id))
 
             cur.execute(
                 "UPDATE app_conv.conversations SET updated_at = now(), "

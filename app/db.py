@@ -46,6 +46,32 @@ def get_pool(role: Literal["owner", "auth", "exec", "scoped"]) -> ConnectionPool
     return _POOLS[role]
 
 
+def graph_pool() -> ConnectionPool:
+    """Connections for the graph checkpointer.
+
+    The AUTH login -- the role that already owns user-visible conversation
+    state -- with its search_path pinned to app_graph, because the
+    checkpointer's table names are unqualified. It holds DML on those tables
+    and nothing more: the tables were created by the owner, and this role
+    cannot create, alter or drop them.
+
+    autocommit and prepare_threshold=0 are what PostgresSaver requires of
+    pooled connections; it manages its own statements.
+    """
+    settings = get_settings()
+    if "graph" not in _POOLS:
+        _POOLS["graph"] = ConnectionPool(
+            settings.dsn("auth"),
+            min_size=1,
+            max_size=4,
+            kwargs={"row_factory": dict_row, "autocommit": True,
+                    "prepare_threshold": 0,
+                    "options": "-c search_path=app_graph"},
+            open=True,
+        )
+    return _POOLS["graph"]
+
+
 def close_pools() -> None:
     for pool in _POOLS.values():
         try:

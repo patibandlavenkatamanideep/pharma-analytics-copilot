@@ -156,6 +156,14 @@ def main() -> int:
             cur.execute(path.read_text())
             print(f"  applied {path.name}")
 
+    # The graph checkpointer's tables come from its own supported setup(),
+    # run as the owner like every other migration.
+    print("== graph store ==")
+    import subprocess
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "setup_graph_store.py")],
+                   check=True, env={**os.environ, "PAC_DB_NAME": DB_NAME,
+                                    "PAC_SETUP_OWNER_DSN": owner_dsn})
+
     print("== login roles ==")
     with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
         for login, privilege in LOGIN_ROLES.items():

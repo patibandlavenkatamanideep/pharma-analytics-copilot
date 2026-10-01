@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 573 | ✅ pass | `p1d-suite-unit.json` |
+| **Unit** | `pytest tests/unit -q` | 578 | ✅ pass | `p1d-suite-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 759 | ✅ pass | `p1d-suite-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 139` | 139 | ✅ pass | `r2-suite-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1471** | ✅ pass | `p1d-suite-total.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 150` | 150 | ✅ pass | `r2-suite-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1487** | ✅ pass | `p1d-suite-total.json` |
 | **Browser — component** | `cd web && npm test` | 6 | ✅ pass | `p1d-suite-browser-component.json` |
 | **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -118,7 +118,7 @@ served and credentials in the environment. They last passed against the
 deployed instance on 2026-09-25. They are not part of the offline gate and
 are not claimed as passing on this revision.
 
-Neither browser suite is counted in the 1471: they do not run in the same
+Neither browser suite is counted in the 1487: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -151,7 +151,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 139`, and fails on a skip in any phase, a
+`--release-gate --min-tests 150`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -168,7 +168,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 139
+python3 -m pytest tests/security -q --release-gate --min-tests 150
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

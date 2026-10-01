@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
@@ -100,6 +101,15 @@ class PlanningContext:
     #: caller's scope: (as typed, entity id). Only these ids -- never the
     #: account catalog -- reach the planner.
     named_accounts: list[tuple[str, str]] = field(default_factory=list)
+    #: Wall-clock time (time.time()) by which the whole request must finish.
+    #: The planner spends at most what is left of it. None means unbounded,
+    #: which only tests and offline tooling should use.
+    deadline_at: float | None = None
+
+
+#: Below this many seconds of request budget, a provider attempt is not
+#: started: it could not finish, and it would bill for the attempt anyway.
+MIN_ATTEMPT_SECONDS = 3.0
 
 
 @dataclass(frozen=True)
@@ -389,10 +399,16 @@ class BedrockPlanner:
         messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
         attempts: list[PlanningAttempt] = []
 
-        plan, err, attempt = self._attempt(system, messages, tool, 1, "initial")
+        deadline = context.deadline_at
+        plan, err, attempt = self._attempt(system, messages, tool, 1, "initial", deadline)
         attempts.append(attempt)
         if plan is not None:
             return self._result(plan, attempts)
+        if deadline is not None and deadline - time.time() < MIN_ATTEMPT_SECONDS:
+            # A repair that cannot finish before the request's deadline is a
+            # bill with no answer attached. Reported as what it is.
+            raise PlannerError(
+                f"no time left in the request budget to repair the plan: {err}")
 
         # One bounded repair. The model is told exactly what failed
         # validation; it does not get to widen the schema, only to satisfy it.
@@ -406,7 +422,7 @@ class BedrockPlanner:
                 ),
             },
         ]
-        plan, err2, attempt = self._attempt(system, messages, tool, 2, "repair")
+        plan, err2, attempt = self._attempt(system, messages, tool, 2, "repair", deadline)
         attempts.append(attempt)
         if plan is not None:
             # The first attempt's tokens were spent and are kept. Overwriting
@@ -435,7 +451,7 @@ class BedrockPlanner:
 
     def _attempt(
         self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
-        ordinal: int, kind: str,
+        ordinal: int, kind: str, deadline_at: float | None = None,
     ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         request: dict[str, Any] = {
             "model": self.model_id,
@@ -455,8 +471,23 @@ class BedrockPlanner:
             return PlanningAttempt(ordinal=ordinal, kind=kind, outcome=outcome,
                                    usage=usage, error=error)
 
+        # One retry layer, bounded by the request. The SDK's own retries
+        # (max_retries=2) around each of two attempts, each with the full
+        # client timeout, compounded to six timeouts for one question -- with
+        # no limit above them. Each attempt now gets what is left of the
+        # request's budget, and SDK retries only when that covers them.
+        client = self._client
+        if deadline_at is not None:
+            remaining = deadline_at - time.time()
+            if remaining < MIN_ATTEMPT_SECONDS:
+                message = "request deadline reached before this attempt"
+                return None, message, record("transport_error", TokenUsage(), message)
+            timeout = min(float(self.settings.llm_timeout_s), remaining)
+            client = self._client.with_options(
+                timeout=timeout,
+                max_retries=2 if remaining >= 3 * timeout else 0)
         try:
-            response = self._client.messages.create(**request)
+            response = client.messages.create(**request)
         except Exception as exc:
             # A transport failure spent an unknown number of tokens: the
             # request may have reached the provider. Recorded as unknown,

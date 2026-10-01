@@ -10,3 +10,9 @@ sqlglot==26.2.1
 PyYAML==6.0.2
 python-multipart==0.0.20
 anthropic[bedrock]==1.8.0
+# Orchestration: the turn workflow and its durable PostgreSQL checkpoints.
+# Pulls langchain-core and the langsmith client in transitively. Neither is
+# used directly -- no chains, no agents -- and LangSmith export is switched
+# off at startup unless PAC_LANGSMITH_TRACING=true (app/graph/__init__.py).
+langgraph==1.2.12
+langgraph-checkpoint-postgres==3.1.2

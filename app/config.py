@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     # it over. Longer than the slowest legitimate request, or a slow answer
     # loses its lease mid-flight and is refused at commit as a conflict.
     run_lease_seconds: int = 120
+    # The whole request's wall-clock budget: planning (every attempt and SDK
+    # retry), execution and commit. Shorter than the lease, so a run that
+    # respects it never loses its lease mid-flight.
+    request_deadline_seconds: int = 60
     # How long a client idempotency key keeps its meaning.
     idempotency_retention_seconds: int = 86_400
     max_result_bytes: int = 4_000_000
