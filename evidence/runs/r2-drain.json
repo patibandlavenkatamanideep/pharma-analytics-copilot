@@ -1,0 +1,94 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:41:33+00:00",
+  "claim": "SIGTERM with four slow answers in flight, server started as the image starts it (2 workers, 65 s graceful window): every in-flight request received its complete response and the process exited cleanly once the last was out. Whether a request sent just after the signal is served was observed both ways across runs and is reported, not asserted.",
+  "application": {
+    "sha": "05ff022c0bc3ff66c09d72e036f34090c8a9fb17",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/RUNBOOK.md",
+      "evidence/runs/r2-drain.json",
+      "evidence/runs/r2-restore-drill.json",
+      "scripts/drain_check.py",
+      "scripts/restore_drill.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-9779fd427612",
+    "load_mode": "full",
+    "fingerprint": "4fdc682dc1ec8c6dd2c2bba6",
+    "row_counts": {
+      "sales": 2002000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 37,
+      "max_wk": 157,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-10-01",
+      "max_period_mo": "2026-10",
+      "max_period_qtr": "2026-Q4",
+      "max_week_ending": "2026-10-03"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/drain_check.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 6.83
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"in_flight\": 4, \"complete_responses\": 4, \"answered\": 4, \"results\": [{\"http\": 200, \"status\": \"answered\", \"seconds\": 4.37}, {\"http\": 200, \"status\": \"answered\", \"seconds\": 4.37}, {\"http\": 200, \"status\": \"answered\", \"seconds\": 4.38}, {\"http\": 200, \"status\": \"answered\", \"seconds\": 4.38}], \"request_after_signal_observed\": \"ReadTimeout\", \"exit_seconds_after_signal\": 4.02, \"exit_code\": 0}"
+  },
+  "artifacts": [],
+  "limits": [
+    "A local process, not a container under an orchestrator; compose's stop_grace_period was not exercised.",
+    "Answers in flight took a few seconds; a request longer than the 65 s window would be cut, which this run did not test.",
+    "An earlier run with six in flight completed all six responses, but they hit the 5 s statement timeout -- a test of the timeout, not of the drain."
+  ]
+}

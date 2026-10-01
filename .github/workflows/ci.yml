@@ -99,7 +99,7 @@ jobs:
       # collected tests that skip still fail the gate.
       - name: Security suite (release gate, strict)
         env:
-          PAC_SECURITY_MIN_TESTS: "360"
+          PAC_SECURITY_MIN_TESTS: "362"
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
@@ -237,6 +237,10 @@ jobs:
           push: false
           load: true
           tags: pharma-analytics-copilot:ci
+          # The image carries the commit it was built from (/health, spans,
+          # the OCI revision label), so a running container can be tied to
+          # this run's test and evaluation records.
+          build-args: PAC_RELEASE=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -364,6 +368,14 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)
           [ "$code" = "200" ] || { echo "UI not served ($code)"; exit 1; }
           echo "UI served from the same origin"
+
+      - name: The running container reports the commit it was built from
+        run: |
+          release=$(curl -s http://127.0.0.1:8000/health | python3 -c "import json,sys; print(json.load(sys.stdin)['release'])")
+          [ "$release" = "${{ github.sha }}" ] || { echo "expected ${{ github.sha }}, got $release"; exit 1; }
+          label=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' pharma-analytics-copilot:ci)
+          [ "$label" = "${{ github.sha }}" ] || { echo "label is $label"; exit 1; }
+          echo "release $release"
 
       - name: Unauthenticated API access is refused
         run: |

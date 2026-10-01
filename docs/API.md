@@ -209,15 +209,22 @@ being answered.
 
 ### GET /health
 
-Liveness: `200 {"status": "ok"}` whenever the process serves requests.
+Liveness: `200 {"status": "ok", "release": str}` whenever the process serves
+requests. `release` is the source revision the image was built from (`dev`
+for an unreleased build). Liveness does not touch the database: a database
+outage makes the service unready, not dead, so an orchestrator waits rather
+than restarting healthy processes.
 
 ### GET /ready
 
 Readiness: `200 {"status": "ready", "dataset": id}` only when a published
-dataset exists and the database answers; otherwise `503` with `reason`
+dataset exists and the database and the workflow checkpoint store answer; otherwise `503` with `reason`
 `no published dataset` or `database unavailable`, so a container is not sent
 traffic it cannot serve. Unauthenticated, so the reason is one of these fixed
-phrases and never the underlying error.
+phrases and never the underlying error. The model provider and the telemetry
+collector are not readiness conditions: without the provider, questions
+return "busy or unreachable" while sign-in, history, export and deletion keep
+working.
 
 ### Failures common to every endpoint
 

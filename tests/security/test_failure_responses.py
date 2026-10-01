@@ -112,3 +112,27 @@ def test_a_failed_audit_write_still_answers_and_is_counted(client, make_identity
                 for sm in rm.scope_metrics for m in sm.metrics
                 if m.name == "pac.persistence.failures" for p in m.data.data_points]
     assert any(dict(p.attributes) == {"kind": "audit"} and p.value >= 1 for p in failures)
+
+
+def test_liveness_reports_the_release_it_is_running(client):
+    from app.config import get_settings
+
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok", "release": get_settings().release}
+
+
+def test_readiness_requires_the_checkpoint_store(client, monkeypatch):
+    """Every question writes workflow checkpoints, so a store that cannot be
+    reached makes the service unready -- with the same fixed reason, and no
+    detail."""
+    import app.db as db
+
+    def unreachable():
+        raise psycopg.OperationalError('connection to server at "10.0.0.5" failed')
+
+    monkeypatch.setattr(db, "graph_pool", unreachable)
+    r = client.get("/ready")
+    assert r.status_code == 503
+    assert r.json() == {"status": "not ready", "reason": "database unavailable"}
+    assert client.get("/health").status_code == 200

@@ -116,7 +116,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 360
+python3 -m pytest tests/security -q --release-gate --min-tests 362
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,
@@ -188,8 +188,8 @@ Each batch is reconciled against its declared totals, validated (invalid
 events quarantined with a reason), applied by event identity and version,
 and published as a new generation in one transaction. A replay changes
 nothing. A batch that adds a new week rewrites every fact's week offset;
-on the full dataset that took 108–133 s, and readers kept answering
-throughout (median 53 ms, worst 971 ms). The contract, the outcomes table, recovery and the
+on the full dataset that took 124 s idle and about 7 minutes under load,
+and readers kept answering throughout ([CAPACITY.md](CAPACITY.md)). The contract, the outcomes table, recovery and the
 measurements are in [INGESTION.md](INGESTION.md).
 
 A full or seed load clears the ingestion ledger, so retained batches can be
@@ -200,18 +200,111 @@ replayed onto the new base.
 ## 8. Backup and restore
 
 ```bash
-pg_dump -Fc pharma_analytics > pac-$(date +%F).dump
-pg_restore -d pharma_analytics --clean --if-exists pac-2026-09-23.dump
+# Backup: one consistent snapshot; readers and writers are not blocked.
+pg_dump -Fc -f pac-$(date +%F).dump pharma_analytics
+
+# Restore into a NEW database, check it, then point the app at it.
+createdb -O pac_owner pharma_analytics_restored
+pg_restore -d pharma_analytics_restored -j 4 pac-2026-10-01.dump
+PAC_DB_NAME=pharma_analytics_restored python3 -c \
+  "from app.db import verify_runtime_role_safety as v; print(v() or 'boundary intact')"
 ```
 
-Roles live outside the database, so re-run `scripts/bootstrap_db.py` (without
-`--drop`) after restoring into a fresh cluster, then re-provision logins. The
-business data can always be rebuilt from the generator with `SEED = 42`, so the
-dump matters mainly for `app_auth`, `app_conv` and `app_meta`.
+**Drill.** `scripts/restore_drill.py` does all of this against a disposable
+target and checks the result. Row counts, the published generation,
+row-level-security policies and grants must match the source. The runtime
+boundary check must pass, the restored database must report ready, and the
+same questions, asked as a RAM and as an Exec, must get the same answers.
+Measured on 2026-10-01 from a full-size copy (2,002,000 sales) on the
+development machine (`evidence/runs/r2-restore-drill.json`):
+
+| Step | Time |
+|---|---:|
+| `pg_dump -Fc` (45.5 MB) | 4.5 s |
+| `pg_restore -j 4` | 18.5 s |
+| Restore to ready, every check passed | **22.4 s** |
+
+**RTO** (restore-to-ready) is therefore under a minute at this size on this
+hardware, plus however long it takes to fetch the dump and repoint the app.
+**RPO** is the interval between backups: a nightly `pg_dump` loses up to a
+day. Anything tighter needs WAL archiving with point-in-time recovery, or a
+managed database that provides it. Neither is configured here, and no RPO
+has been agreed.
+
+Restoring into a **new cluster** needs the roles first: run
+`scripts/bootstrap_db.py` (without `--drop`) before `pg_restore`, then
+re-provision logins. The drill restored within the same cluster, where
+the roles already existed, so that path is not measured.
+
+The dump matters most for `app_auth`, `app_conv`, `app_meta` and
+`app_ingest`. The business data can be regenerated (`SEED = 42`), but
+incremental batches are not stored server-side. A source must keep its
+batches so they can be replayed after a restore ([INGESTION.md](INGESTION.md)).
+Restored backups still hold data users have since deleted until the backups
+themselves expire ([RETENTION.md](RETENTION.md)).
 
 ---
 
-## 9. What to check before calling a deployment good
+## 9. Connections, replicas and shutdown
+
+**Connection budget.** Each worker process opens these pools:
+
+| Pool | Role | Max |
+|---|---|---:|
+| exec | `pac_exec_login` | 8 |
+| scoped | `pac_scoped_login` | 8 |
+| auth | `pac_auth_login` | 4 |
+| graph (checkpoints) | `pac_auth_login` | 4 |
+| **per worker** | | **24** |
+
+The image runs 2 workers, so one replica uses up to **48**. The jobs
+container (owner pool, max 4) runs alongside on demand. PostgreSQL's default
+`max_connections` is 100, which is therefore **one replica plus jobs**.
+Before adding replicas, either raise `max_connections` or put PgBouncer in
+transaction mode in front. Budget at least
+`replicas × workers × 24 + 4 + superuser_reserved_connections`. The scoped
+and exec pools are where requests queue under load (see
+[CAPACITY.md](CAPACITY.md)). Their size is the backpressure point. In the
+load profile, all 16 scoped connections were active from 16 clients
+upward, and that is where expensive questions began to hit the statement
+timeout. Raising the pool size moves the queue into the database rather
+than removing it; measure before changing it.
+
+**What is safe across replicas.** Every piece of shared state lives in
+PostgreSQL:
+
+- **Quotas:** counted in `app_conv.runs`, under an advisory lock.
+- **One live request per conversation:** a run lease.
+- **One outcome per idempotency key:** a unique index.
+- **Sessions, clarifications and checkpoints.**
+- **Ingestion and loads:** one advisory publication lock.
+
+The in-process caches (vocabularies, entity indexes) are keyed by dataset
+id and scope, so a replica never serves another generation's names. Not
+verified: running more than one replica, which no environment here has
+done.
+
+**Shutdown.** On SIGTERM uvicorn lets in-flight requests finish for up to
+65 s, longer than the 60 s request deadline. Compose's `stop_grace_period`
+is 75 s. The app then flushes telemetry within its export timeout and
+closes its pools.
+
+`scripts/drain_check.py` measured this. With four slow answers in flight at
+the signal, all four were answered and the process exited 4 s later
+(`evidence/runs/r2-drain.json`).
+
+It also stops accepting new connections, but not at the instant of the
+signal. A request made 0.3 s after it was served in some runs and not in
+others. So take a replica out of the load balancer (or let readiness fail)
+before stopping it, rather than relying on the signal to turn traffic away.
+
+A request still running after the 65 s window loses its lease. Its
+idempotency key can be retried, and the retry resumes from the last
+checkpoint.
+
+---
+
+## 10. What to check before calling a deployment good
 
 - `/ready` returns a dataset id.
 - `verify_runtime_role_safety()` returns no problems.

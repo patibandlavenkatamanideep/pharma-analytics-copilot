@@ -20,7 +20,13 @@ services:
     # deliberately no `ports:` — the database is not reachable from outside
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        PAC_RELEASE: ${PAC_RELEASE:-dev}
+    # Longer than uvicorn's graceful window (65 s), which is longer than the
+    # request deadline (60 s): a stop drains in-flight answers.
+    stop_grace_period: 75s
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +45,8 @@ services:
       PAC_BEDROCK_MODEL_ID: ${PAC_BEDROCK_MODEL_ID:-}
       PAC_COOKIE_SECURE: ${PAC_COOKIE_SECURE:-true}
       PAC_ENVIRONMENT: cloud
+      # Optional OTLP/HTTP collector; unset, no telemetry leaves the process.
+      PAC_OTEL_ENDPOINT: ${PAC_OTEL_ENDPOINT:-}
       # Credentials come from the task role in AWS; these are for local runs.
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -55,7 +63,10 @@ services:
   #   docker compose --profile jobs run --rm jobs python scripts/migrate.py
   #   docker compose --profile jobs run --rm jobs python scripts/load_data.py --mode full
   jobs:
-    build: .
+    build:
+      context: .
+      args:
+        PAC_RELEASE: ${PAC_RELEASE:-dev}
     profiles: ["jobs"]
     depends_on:
       db:

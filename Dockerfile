@@ -13,6 +13,15 @@ RUN npm run build
 # ---------- stage 2: runtime ----------
 FROM python:3.13-slim AS runtime
 
+# The source revision this image was built from. Passed by the build
+# (`--build-arg PAC_RELEASE=$(git rev-parse HEAD)`), reported by /health and
+# with every span, and stamped on the image, so a running container can be
+# tied to the commit, the evaluation records and the image digest. "dev"
+# means an unreleased local build.
+ARG PAC_RELEASE=dev
+LABEL org.opencontainers.image.revision=$PAC_RELEASE \
+      org.opencontainers.image.source="https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot"
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -20,7 +29,8 @@ ENV PYTHONUNBUFFERED=1 \
     # directory, so `python scripts/load_data.py` could not import `app`.
     # uvicorn happened to work because it inserts the CWD itself, which hid
     # this until the first real deployment ran a script.
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    PAC_RELEASE=$PAC_RELEASE
 
 WORKDIR /app
 
@@ -48,4 +58,11 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=4).status==200 else 1)"
 
-CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# On SIGTERM uvicorn lets in-flight requests finish -- for up to 65 s, longer
+# than the 60 s request deadline, so a deploy never cuts an answer off
+# mid-flight (scripts/drain_check.py). The orchestrator's stop timeout must be
+# longer still (compose: stop_grace_period 75s), and it should stop routing
+# to the container first: new connections are not refused at the instant of
+# the signal.
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", \
+     "--timeout-graceful-shutdown", "65"]

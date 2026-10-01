@@ -533,7 +533,8 @@ def delete_my_data(user: CurrentUser) -> dict[str, Any]:
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    """Liveness: the process answers. Also which release it is running."""
+    return {"status": "ok", "release": get_settings().release}
 
 
 @app.get("/ready")
@@ -546,6 +547,15 @@ def ready() -> JSONResponse:
     """
     try:
         dataset = pipeline().current_dataset()
+        # Every question writes workflow checkpoints; without the store no
+        # question can be answered. The model provider and the telemetry
+        # collector are deliberately NOT checked: losing either degrades
+        # answers or observability, and taking every replica out of service
+        # for it would turn a partial outage into a total one.
+        from app.db import graph_pool
+
+        with graph_pool().connection() as conn:
+            conn.execute("SELECT 1 FROM checkpoint_migrations LIMIT 1")
     except DATABASE_UNAVAILABLE as exc:
         log.warning("not ready: database unavailable (%s)", type(exc).__name__)
         return JSONResponse({"status": "not ready", "reason": "database unavailable"},
