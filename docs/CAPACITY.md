@@ -132,7 +132,11 @@ Across a deployment the totals multiply by workers and replicas.
 
 - **Fairness.** One user holds at most 2 places, because the per-user
   concurrency limit is counted in the database across workers. The queue
-  is first-come-first-served, so later arrivals cannot starve anyone.
+  is first-come-first-served, so later arrivals cannot starve anyone. The
+  per-user rate counts every attempt that does work, including a retry of
+  a request that failed, was abandoned or was cancelled. Replaying a
+  committed answer is free. Before the fix for review R2 (1 October 2026), a
+  retry skipped these limits (`tests/security/test_retry_quotas.py`).
 - **Cancellation.** A cancel ends a wait at the next check, within about
   0.25 s.
 - **A refused question retried** with the same idempotency key resumes

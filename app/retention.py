@@ -67,6 +67,12 @@ def apply(settings=None, checkpointer=None) -> Retained:
             out.deleted[name] = cur.rowcount
         cur.execute("DELETE FROM app_auth.oidc_pending WHERE expires_at < now()")
         out.deleted["oidc_pending"] = cur.rowcount
+        # Rate-limit attempts are pruned per user as they are counted; this
+        # catches users who stopped asking.
+        from app.conversation.runs import ATTEMPT_RETENTION
+        cur.execute("DELETE FROM app_conv.run_attempts WHERE started_at < now() - %s::interval",
+                    (ATTEMPT_RETENTION,))
+        out.deleted["run_attempts"] = cur.rowcount
     # After the commit: a thread whose conversation is gone is unreachable,
     # so a failure here leaves only what the orphan pruning removes.
     if checkpointer is not None:

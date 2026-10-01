@@ -7,8 +7,9 @@ per-user limits were checked, and the rate windows counted runs by their
 original creation time, so a retry was never counted. A client could retry a
 failing request without limit, across conversations and workers.
 
-These call the real acquisition path (runs.acquire) against PostgreSQL, the
-way each worker does. Two workers are two threads with their own database
+The first nine reproduced it on the unmodified code
+(evidence/runs/r3-r2-reproduced.json). These call the real acquisition path
+(runs.acquire) against PostgreSQL, the way each worker does. Two workers are two threads with their own database
 sessions: the limits are serialised in the database, not in a process.
 """
 
@@ -22,8 +23,6 @@ import pytest
 from tests.security.helpers import sign_in
 
 pytestmark = pytest.mark.security
-
-R2 = pytest.mark.xfail(strict=True, reason="R2: a retried run bypasses the per-user limits")
 
 PLENTY = 1000
 
@@ -79,7 +78,6 @@ def quota():
 
 # -- the bypass ------------------------------------------------------------------------
 
-@R2
 def test_a_retry_after_a_failure_is_counted_against_the_rate(make_identity, quota):
     p = principal(make_identity("exec", can_view_wac=1))
     limits = (1, PLENTY, PLENTY)
@@ -88,7 +86,6 @@ def test_a_retry_after_a_failure_is_counted_against_the_rate(make_identity, quot
         acquire(p, conv, k, limits)                  # the retry is a second attempt
 
 
-@R2
 def test_every_retry_of_a_failing_request_is_counted(make_identity, quota):
     """A provider failing repeatedly: each retry runs the model again."""
     from app.conversation import runs
@@ -101,7 +98,6 @@ def test_every_retry_of_a_failing_request_is_counted(make_identity, quota):
         acquire(p, conv, k, limits)                  # a fourth in the same minute
 
 
-@R2
 def test_a_retry_counts_toward_concurrent_runs(make_identity, quota):
     p = principal(make_identity("exec", can_view_wac=1))
     limits = (PLENTY, PLENTY, 1)
@@ -111,7 +107,6 @@ def test_a_retry_counts_toward_concurrent_runs(make_identity, quota):
         acquire(p, conv, k, limits)
 
 
-@R2
 def test_a_retry_in_another_conversation_is_still_the_same_users_attempt(make_identity, quota):
     """Limits are per user, not per conversation: a failed request in one
     conversation retried while the user is busy in a second is refused."""
@@ -123,7 +118,6 @@ def test_a_retry_in_another_conversation_is_still_the_same_users_attempt(make_id
         acquire(p, first_conv, first_key, limits)    # retrying A is attempt 3
 
 
-@R2
 def test_a_retry_long_after_the_original_is_counted_when_it_runs(make_identity, quota):
     """The rate counts attempts by when they run, not by when the key was
     first used: a retry of an old failure is a new attempt now."""
@@ -138,7 +132,6 @@ def test_a_retry_long_after_the_original_is_counted_when_it_runs(make_identity, 
         acquire(p, conversation(p), key(), limits)   # attempt 3
 
 
-@R2
 def test_a_retry_of_an_abandoned_run_is_counted(make_identity, quota):
     """A worker died mid-run; its lease expired. Reclaiming it runs again."""
     from app.db import owner_transaction
@@ -153,7 +146,6 @@ def test_a_retry_of_an_abandoned_run_is_counted(make_identity, quota):
         acquire(p, conv, k, limits)
 
 
-@R2
 def test_a_retry_of_a_cancelled_run_is_counted(make_identity, quota):
     p = principal(make_identity("exec", can_view_wac=1))
     limits = (1, PLENTY, PLENTY)
@@ -162,7 +154,6 @@ def test_a_retry_of_a_cancelled_run_is_counted(make_identity, quota):
         acquire(p, conv, k, limits)
 
 
-@R2
 def test_deleting_a_conversation_does_not_refund_its_attempts(make_identity, quota):
     """Runs are deleted with their conversation. If the rate were counted
     from runs, deleting conversations would reset it."""
@@ -176,7 +167,6 @@ def test_deleting_a_conversation_does_not_refund_its_attempts(make_identity, quo
         acquire(p, conversation(p), key(), limits)
 
 
-@R2
 def test_two_workers_retrying_cannot_both_take_the_last_slot(make_identity):
     """Two failed requests in two conversations, retried at the same moment
     by two workers (two database sessions) with one concurrent slot left.

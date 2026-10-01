@@ -33,6 +33,7 @@ longer holds is neither continued nor listed, and it is not exported.
 | `app_conv.clarifications` | Questions asked back and their choices | yes, with the conversation | expire after 30 min; deleted with the conversation |
 | `app_conv.feedback` | Ratings, a reason, and an optional comment, on your own answers | yes, with the conversation | with the conversation |
 | `app_conv.runs` | Request records, with the stored outcome an idempotent retry replays | yes, with the conversation | the idempotency period (24 h), then pruned |
+| `app_conv.run_attempts` | When each attempt started, and its run id. No question or answer | no. Deleting a conversation must not refund what it cost against the rate limits | 2 hours, the longest rate window plus a margin |
 | `app_graph` checkpoints | Workflow state, one thread per run | yes, with the conversation | finished threads pruned at once; orphans after 24 h |
 | `app_auth.sessions` | Sign-in state: token hash, times, user agent, address hash | no; `POST /api/logout` ends one | 30 days after expiry or revocation |
 | `app_auth.login_attempts` | Failed and successful attempts, for throttling | no | 30 days |

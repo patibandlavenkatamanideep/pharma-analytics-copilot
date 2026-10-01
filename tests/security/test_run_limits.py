@@ -55,20 +55,21 @@ def test_the_limit_is_per_user(client, make_identity, limits):
 
 def test_the_limit_is_counted_in_the_database_not_in_a_worker(client, make_identity, limits):
     """A second process sharing the database sees the same count. Simulated
-    by recording runs directly, as another worker would."""
-    from app.db import owner_transaction
+    by admitting a request through the acquisition path directly, as another
+    worker would -- not by writing rows by hand, which would bypass the very
+    accounting under test."""
+    from app.auth.policy import principal_for_user_id
+    from app.conversation import runs
+    from app.conversation.state import open_conversation
 
     limits(per_minute=2)
     user = make_identity("exec", can_view_wac=1)
     sign_in(client, user)
-    first = client.post("/api/ask", json=Q).json()
-    with owner_transaction() as cur:
-        cur.execute(
-            "INSERT INTO app_conv.runs (run_id, conversation_id, owner_user_id, payload_hash, "
-            "  scope_fingerprint, base_revision, status, lease_expires_at, expires_at) "
-            "VALUES (%s, %s, %s, 'other-worker', 'x', 0, 'succeeded', now(), "
-            "        now() + interval '1 day')",
-            ("r_other_" + secrets.token_hex(4), first["conversation_id"], user.user_id))
+    assert client.post("/api/ask", json=Q).status_code == 200
+    other_worker = principal_for_user_id(user.user_id)
+    elsewhere = open_conversation(other_worker, None)
+    runs.acquire(other_worker, elsewhere.conversation_id, revision=elsewhere.revision,
+                 request_hash="other-worker", limits=(2, 1000, 1000))
     assert client.post("/api/ask", json=Q).status_code == 429
 
 

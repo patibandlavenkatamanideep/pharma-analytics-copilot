@@ -143,7 +143,7 @@ answer is withheld.
 | 409 | `same_request_running` | This key's request is still running |
 | 409 | `idempotency_key_reused` | This key was used for a different request |
 | 403 | `access_changed` | The stored outcome was computed under access you no longer have |
-| 429 | `rate_limited` | Per-user rate or concurrency limit; honour `Retry-After` |
+| 429 | `rate_limited` | Per-user rate or concurrency limit; honour `Retry-After`. Every attempt that does work counts, including a retry under the same `Idempotency-Key` of a request that did not commit; replaying a committed answer does not |
 | 503 | `overloaded` | The service is at its admission limit -- too many questions in flight in this worker, or the queue for analytical queries is full or its wait ran out. Not an error in the request. Retry with the **same** `Idempotency-Key` after `Retry-After` (the interface does, with jitter): a refusal after planning resumes from the plan instead of planning again |
 | 413 / 415 / 403 | `request_too_large` / `unsupported_media_type` / `cross_origin` | Refused by the request guard |
 | 500 | — | Unexpected; `detail.request_id` identifies the log entry |

@@ -23,6 +23,14 @@ A run is the unit that fixes both:
   retry after a lost response gets the committed answer back. Only a
   committed outcome replays: a failed, conflicted or abandoned run is run
   again under the same key.
+* **Attempts.** Per-user limits apply to every attempt that does work: a new
+  request and a retry of one that did not commit alike. Each admitted
+  attempt is a row in app_conv.run_attempts, written in the transaction that
+  admits it, under a per-user lock, and the rate windows count those rows
+  by when the attempt started. Replaying a committed outcome is not an
+  attempt and costs nothing. (Review of 1 October 2026, R2: the retry path
+  skipped the limits, and the windows counted runs by their first creation,
+  which also let deleting a conversation refund its share.)
 
 No transaction is held across planning or execution. Acquiring a run and
 finishing it are two short transactions; between them the revision check in
@@ -174,9 +182,13 @@ def acquire(
                     # died mid-flight committed nothing, and pinning that to
                     # the key would make a transient failure permanent for
                     # every retry. Reclaim the same row and run again, so the
-                    # key still names exactly one run.
+                    # key still names exactly one run. Running again is work:
+                    # it is admitted and counted exactly like a new request.
                     _reclaim_stale(cur, conversation_id)
                     _refuse_if_busy(cur, conversation_id)
+                    if limits is not None:
+                        _enforce_limits(cur, principal.user_id, *limits)
+                    _record_attempt(cur, principal.user_id, prior["run_id"])
                     cur.execute(
                         "UPDATE app_conv.runs SET status = 'running', base_revision = %s, "
                         "  conversation_id = %s, "
@@ -204,6 +216,7 @@ def acquire(
                 (run_id, conversation_id, principal.user_id, idempotency_key,
                  request_hash, principal.fingerprint(), revision,
                  lease_seconds, retention_seconds))
+            _record_attempt(cur, principal.user_id, run_id)
             return Run(run_id=run_id, conversation_id=conversation_id,
                        base_revision=revision, idempotency_key=idempotency_key,
                        payload_hash=request_hash)
@@ -214,33 +227,54 @@ def acquire(
         raise RunBusy("unknown") from None
 
 
+#: The longest rate window, and how long an attempt row is worth keeping.
+ATTEMPT_RETENTION = "2 hours"
+
+
+def _record_attempt(cur, user_id: str, run_id: str) -> None:
+    """Charge one attempt. In the caller's transaction, so an attempt is
+    recorded if and only if it was admitted."""
+    cur.execute("INSERT INTO app_conv.run_attempts (owner_user_id, run_id) VALUES (%s, %s)",
+                (user_id, run_id))
+
+
 def _enforce_limits(cur, user_id: str, per_minute: int, per_hour: int,
                     concurrent: int) -> None:
-    """Per-user rate and concurrency, from the runs table.
+    """Per-user rate and concurrency, from the database.
 
     In the database rather than in process memory, so the limits hold across
-    every worker and replica; serialised per user so two requests racing for
-    the last slot cannot both take it. A replayed request never reaches
-    here -- returning a stored answer costs nothing worth limiting.
+    every worker and replica; serialised per user (an advisory lock held to
+    the end of the admitting transaction) so two requests racing for the
+    last slot cannot both take it. The rate counts ATTEMPTS by when they
+    started -- a retry of an old failure is an attempt now -- from a ledger
+    that deleting a conversation does not touch. Concurrency counts runs
+    holding a live lease, so a crashed worker's slot frees when its lease
+    expires. A replayed request never reaches here -- returning a stored
+    answer costs nothing worth limiting.
     """
     cur.execute("SELECT pg_advisory_xact_lock(hashtext('quota:' || %s))", (user_id,))
+    cur.execute("DELETE FROM app_conv.run_attempts WHERE owner_user_id = %s "
+                "AND started_at < now() - %s::interval", (user_id, ATTEMPT_RETENTION))
     cur.execute(
-        "SELECT count(*) FILTER (WHERE created_at > now() - interval '1 minute') AS minute, "
-        "       count(*) FILTER (WHERE created_at > now() - interval '1 hour') AS hour, "
-        "       count(*) FILTER (WHERE status = 'running' AND lease_expires_at > now()) AS live "
-        "FROM app_conv.runs WHERE owner_user_id = %s "
-        "  AND (created_at > now() - interval '1 hour' "
-        "       OR (status = 'running' AND lease_expires_at > now()))",
+        "SELECT count(*) FILTER (WHERE started_at > now() - interval '1 minute') AS minute, "
+        "       count(*) AS hour "
+        "FROM app_conv.run_attempts "
+        "WHERE owner_user_id = %s AND started_at > now() - interval '1 hour'",
         (user_id,))
-    row = cur.fetchone()
-    if row["live"] >= concurrent:
+    rate = cur.fetchone()
+    cur.execute(
+        "SELECT count(*) AS live FROM app_conv.runs WHERE owner_user_id = %s "
+        "  AND status = 'running' AND lease_expires_at > now()",
+        (user_id,))
+    live = cur.fetchone()["live"]
+    if live >= concurrent:
         raise QuotaExceeded(
-            f"You already have {row['live']} questions being answered. Wait for one "
+            f"You already have {live} questions being answered. Wait for one "
             f"to finish before asking another.", retry_after=5)
-    if row["minute"] >= per_minute:
+    if rate["minute"] >= per_minute:
         raise QuotaExceeded("Too many questions in the last minute. Try again shortly.",
                             retry_after=60)
-    if row["hour"] >= per_hour:
+    if rate["hour"] >= per_hour:
         raise QuotaExceeded("Too many questions in the last hour. Try again later.",
                             retry_after=900)
 
