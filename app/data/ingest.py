@@ -46,8 +46,10 @@ unchanged here.
 from __future__ import annotations
 
 import bisect
+import dataclasses
 import hashlib
 import json
+import math
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -64,7 +66,10 @@ from app.data.loader import (
 )
 from app.data.manifest import MAPPING_VERSION, LoadReport
 from app.data.schema_contract import require_compatible
-from app.data.sources import SourceBatch, SourceEvent
+from app.data.sources import (
+    MAX_EVENT_VERSION, MAX_IDENTITY_LENGTH, MAX_PACKS_PER_EVENT, MAX_WAC_PER_PACK, Malformed,
+    SourceBatch, SourceEvent, readable_packs, storable,
+)
 from app.db import owner_transaction
 
 # ---------------------------------------------------------------------------
@@ -237,6 +242,8 @@ class IngestOutcome:
     anchor_shift_weeks: int = 0
     anchor_shift_months: int = 0
     rejection_reason: str | None = None
+    #: A stable code for why the batch was rejected (docs/INGESTION.md).
+    rejection_code: str | None = None
     quarantine_reasons: dict[str, int] = field(default_factory=dict)
     pack_delta: Decimal = Decimal(0)
     #: The newest event time applied, for freshness lag.
@@ -253,9 +260,12 @@ class IngestOutcome:
 
 
 class _Rejected(Exception):
-    def __init__(self, reason: str):
+    """The batch is refused whole, before anything is written. `code` is
+    stable; `reason` is for people."""
+
+    def __init__(self, code: str, reason: str):
         super().__init__(reason)
-        self.reason = reason
+        self.code, self.reason = code, reason
 
 
 def _digest(event: SourceEvent) -> str:
@@ -270,21 +280,47 @@ def _decimal(value: float | None) -> Decimal:
 # Validation
 # ---------------------------------------------------------------------------
 
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float, Decimal)) and not isinstance(value, bool)
+
+
 def _field_problem(event: SourceEvent, orgs: set[str], ndcs: set[str],
                    today: date, tz: ZoneInfo) -> str | None:
-    if not event.source_event_id or event.event_version is None or event.event_version < 1:
+    """Why this event cannot be applied, as a stable reason, or None.
+
+    Types are checked before anything is compared: a SourceEvent's
+    annotations are not enforced, and an adapter other than parse_batch may
+    build one from anything. Every reason is a quarantine, never an
+    exception (review of 1 October 2026, R5).
+    """
+    sid, version = event.source_event_id, event.event_version
+    if not isinstance(sid, str) or not sid or len(sid) > MAX_IDENTITY_LENGTH \
+            or any(ord(c) < 32 or ord(c) == 127 for c in sid):
+        return "invalid_identity"
+    if type(version) is not int or not 1 <= version <= MAX_EVENT_VERSION:
         return "invalid_identity"
     if event.kind not in ("upsert", "delete"):
         return "invalid_kind"
     if event.kind == "delete":
+        if event.event_time is not None and not isinstance(event.event_time, datetime):
+            return "invalid_timestamp"
         return None
     if event.event_time is None:
         return "missing_field"
+    if not isinstance(event.event_time, datetime):
+        return "invalid_timestamp"
     if event.event_time.tzinfo is None or event.event_time.utcoffset() is None:
         return "naive_timestamp"
     if event.org_id is None or event.ndc is None or event.data_source is None \
             or event.pack_units is None:
         return "missing_field"
+    if not all(isinstance(v, str) for v in (event.org_id, event.ndc, event.data_source)) \
+            or not _is_number(event.pack_units) \
+            or (event.wac is not None and not _is_number(event.wac)):
+        return "invalid_type"
+    if not math.isfinite(event.pack_units) \
+            or (event.wac is not None and not math.isfinite(event.wac)):
+        return "non_finite_number"
     if event.unit != "packs":
         return "unit_not_packs"
     if event.data_source not in VALID_SOURCES:
@@ -295,8 +331,12 @@ def _field_problem(event: SourceEvent, orgs: set[str], ndcs: set[str],
         return "unknown_product"
     if not event.pack_units > 0:
         return "non_positive_packs"
+    if event.pack_units > MAX_PACKS_PER_EVENT:
+        return "out_of_range"
     if event.wac is None or event.wac < 0:
         return "invalid_price"
+    if event.wac > MAX_WAC_PER_PACK:
+        return "out_of_range"
     if event.data_source == "distributor" and event.wac == 0:
         return "invalid_price"
     if event.data_source == "hub_dispense" and event.wac != 0:
@@ -405,15 +445,17 @@ def _ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome
             except _Rejected as exc:
                 # Facts untouched: _process raises before its first write.
                 outcome.status = "rejected"
-                outcome.rejection_reason = exc.reason
+                outcome.rejection_code, outcome.rejection_reason = exc.code, exc.reason
             _record_batch(cur, batch, outcome, quarantine)
     except Exception as exc:
         # Something failed after writing began -- the transaction rolled back
         # whole, so none of the counts happened. Record the attempt so the
-        # failure is visible, then re-raise.
+        # failure is visible, then re-raise. The exception's type, not its
+        # text: a database error can quote the values it choked on.
         failed = IngestOutcome(batch.source_system, batch.batch_id, status="rejected",
-                               attempt=outcome.attempt,
-                               rejection_reason=f"failed during apply: {exc}")
+                               attempt=outcome.attempt, rejection_code="apply_failed",
+                               rejection_reason=f"failed during apply ({type(exc).__name__}); "
+                                                "nothing was applied")
         with owner_transaction() as cur:
             _record_batch(cur, batch, failed, [])
         raise
@@ -429,14 +471,27 @@ def _ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome
     return outcome
 
 
+def _received(batch: SourceBatch) -> tuple[int, Decimal]:
+    """What arrived, as reconciliation counts it: every record, read or not;
+    each quantity that reads as a finite decimal (sources.readable_packs)."""
+    count = len(batch.events) + len(batch.malformed)
+    packs = sum((readable_packs(e.pack_units) for e in batch.events), Decimal(0)) \
+        + sum((m.packs for m in batch.malformed), Decimal(0))
+    return count, packs
+
+
 def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
-             quarantine: list[tuple[SourceEvent | None, str]], today: date, tz: ZoneInfo,
-             settings: Any) -> None:
+             quarantine: list[tuple[SourceEvent | Malformed | None, str]], today: date,
+             tz: ZoneInfo, settings: Any) -> None:
+    # -- 0. a batch the source boundary could not read is refused whole -----
+    if batch.envelope_error is not None:
+        raise _Rejected(*batch.envelope_error)
+
     # -- 1. reconcile against the source's own control totals ---------------
-    received_count = len(batch.events)
-    received_packs = sum((_decimal(e.pack_units) for e in batch.events), Decimal(0))
+    received_count, received_packs = _received(batch)
     if received_count != batch.declared_count or received_packs != Decimal(batch.declared_pack_units):
         raise _Rejected(
+            "control_totals",
             f"control totals do not reconcile: declared {batch.declared_count} events / "
             f"{batch.declared_pack_units} packs, received {received_count} / {received_packs}")
 
@@ -447,7 +502,8 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
         "WHERE load_state = 'published' ORDER BY published_at DESC LIMIT 1")
     parent = cur.fetchone()
     if parent is None:
-        raise _Rejected("no published dataset to extend; run a full or seed load first")
+        raise _Rejected("no_parent_dataset",
+                        "no published dataset to extend; run a full or seed load first")
     outcome.parent_dataset_id = parent["dataset_id"]
     cur.execute("SELECT wk_offset, period_wk, week_ending_date, mo_offset, period_mo, "
                 "period_qtr FROM app_ref.calendar")
@@ -457,7 +513,8 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
     try:
         convention = detect_convention(weeks)
     except ConventionError as exc:
-        raise _Rejected(f"the published calendar cannot be extended safely: {exc}") from None
+        raise _Rejected("calendar_unextendable",
+                        f"the published calendar cannot be extended safely: {exc}") from None
     calendar = Calendar(weeks, convention)
     anchor_before = calendar.anchor.week_ending
 
@@ -467,6 +524,8 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
     ndcs = {r["ndc"] for r in cur.fetchall()}
 
     # -- 2. validate and place ------------------------------------------------
+    for record in batch.malformed:
+        quarantine.append((record, record.reason))
     candidates: list[tuple[SourceEvent, str, Placement | None]] = []
     for event in batch.events:
         if (problem := _field_problem(event, orgs, ndcs, today, tz)) is not None:
@@ -535,6 +594,7 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
     limit = settings.ingest_max_quarantine_ratio
     if received_count and outcome.quarantined / received_count > limit:
         raise _Rejected(
+            "quality_threshold",
             f"{outcome.quarantined} of {received_count} events failed validation, above the "
             f"{limit:.0%} limit; the feed is treated as broken and nothing is applied")
 
@@ -702,14 +762,14 @@ def _shift_offsets(cur: Any, weeks: int, months: int) -> None:
 
 
 def _record_batch(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
-                  quarantine: list[tuple[SourceEvent | None, str]]) -> None:
-    received_packs = sum((_decimal(e.pack_units) for e in batch.events), Decimal(0))
+                  quarantine: list[tuple[SourceEvent | Malformed | None, str]]) -> None:
+    received_count, received_packs = _received(batch)
     cur.execute(
         "INSERT INTO app_ingest.batches AS b (source_system, batch_id, status, attempts, "
         " declared_count, declared_pack_units, received_count, received_pack_units, "
         " quarantined, applied, corrected, tombstoned, duplicates, late, affected_periods, "
-        " anchor_shift_weeks, rejection_reason, dataset_id) "
-        "VALUES (%s, %s, %s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+        " anchor_shift_weeks, rejection_reason, rejection_code, dataset_id) "
+        "VALUES (%s, %s, %s, 1, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
         "ON CONFLICT (source_system, batch_id) DO UPDATE SET status = EXCLUDED.status, "
         " attempts = b.attempts + 1, last_attempt_at = now(), "
         " declared_count = EXCLUDED.declared_count, "
@@ -722,18 +782,30 @@ def _record_batch(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
         " affected_periods = EXCLUDED.affected_periods, "
         " anchor_shift_weeks = EXCLUDED.anchor_shift_weeks, "
         " rejection_reason = EXCLUDED.rejection_reason, "
+        " rejection_code = EXCLUDED.rejection_code, "
         " dataset_id = COALESCE(EXCLUDED.dataset_id, b.dataset_id)",
         (batch.source_system, batch.batch_id, outcome.status, batch.declared_count,
-         batch.declared_pack_units, len(batch.events), received_packs, outcome.quarantined,
+         batch.declared_pack_units, received_count, received_packs, outcome.quarantined,
          outcome.applied, outcome.corrected, outcome.tombstoned, outcome.duplicates,
          outcome.late, outcome.affected_periods, outcome.anchor_shift_weeks,
-         outcome.rejection_reason, outcome.dataset_id))
-    for event, reason in quarantine:
-        payload = event.payload() if event is not None else {}
+         outcome.rejection_reason, outcome.rejection_code, outcome.dataset_id))
+    for record, reason in quarantine:
+        # Made storable whatever it holds: a payload JSONB cannot take (NaN,
+        # a NUL character) would otherwise fail the batch it describes.
+        if isinstance(record, Malformed):
+            payload, sid, version = record.payload, record.source_event_id, record.event_version
+        elif record is not None:
+            payload = storable(record.payload() if isinstance(record.event_time, (datetime, type(None)))
+                               else dataclasses.asdict(record))
+            sid = storable(record.source_event_id) if record.source_event_id is not None else None
+            sid = str(sid)[:MAX_IDENTITY_LENGTH] if sid is not None else None
+            version = record.event_version if type(record.event_version) is int \
+                and 1 <= record.event_version <= MAX_EVENT_VERSION else None
+        else:
+            payload, sid, version = {}, None, None
         cur.execute(
             "INSERT INTO app_ingest.quarantine (source_system, batch_id, attempt, "
             " source_event_id, event_version, reason, payload) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)",
-            (batch.source_system, batch.batch_id, outcome.attempt,
-             event.source_event_id if event else None,
-             event.event_version if event else None, reason, json.dumps(payload, default=str)))
+            (batch.source_system, batch.batch_id, outcome.attempt, sid, version, reason,
+             json.dumps(storable(payload), allow_nan=False)))

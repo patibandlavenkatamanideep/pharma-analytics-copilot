@@ -27,19 +27,53 @@ PostgreSQL tables in the `app_ingest` schema
 | Field | Meaning |
 |---|---|
 | `source_system` | Which feed the batch came from. Identity is per feed |
-| `source_event_id` | The feed's own id for the sale, stable across corrections |
-| `event_version` | A positive integer. A higher version supersedes a lower one |
+| `source_event_id` | The feed's own id for the sale, stable across corrections. A string of 1 to 256 characters, no control characters |
+| `event_version` | A positive integer, at most 2³¹−1. A JSON integer: `true`, `1.5`, `2.0` and `"1"` are refused, not converted. A fractional version used to be rounded by PostgreSQL, silently changing the identity |
 | `kind` | `upsert` or `delete` |
 | `event_time` | When the sale happened, **with a UTC offset**. A naive timestamp is quarantined, never assumed to be UTC or local time |
 | `org_id`, `ndc` | Must already exist. A batch cannot create organizations or products |
 | `data_source` | `distributor`, `hub_dispense` or `market_data` |
-| `pack_units` | Positive |
+| `pack_units` | A JSON number, finite, positive, at most 1,000,000. A numeric string or a boolean is refused |
 | `unit` | Must be `packs`. Anything else is quarantined, never converted |
-| `wac` | Non-negative. Positive for `distributor`. Zero for `hub_dispense`, which is free drug |
+| `wac` | A JSON number, finite, non-negative, at most 10,000,000 per pack. Positive for `distributor`. Zero for `hub_dispense`, which is free drug |
+
+No other field is accepted. `NaN`, `Infinity` and a number too large for a
+double (such as `1e309`, which Python's JSON reader turns into infinity)
+are refused **before** anything reaches SQL. This matters because the
+`sales` columns are `DOUBLE PRECISION`, which stores `NaN` and `Infinity`.
+Before the fix for review R5 (1 October 2026), a NaN price was published.
 
 A batch also declares **control totals**: how many events it contains and
 the sum of their packs. Every event counts towards the totals, including
-invalid ones.
+invalid ones and records that could not be read. A record's quantity counts
+if it reads as a finite decimal a double can hold (a number, or a numeric
+string such as `"10"`), and as zero otherwise. So totals that include an
+unreadable value do not reconcile.
+
+### Two kinds of failure
+
+`app/data/sources.parse_batch` reads each document strictly and never
+raises for bad input:
+
+| Kind | Effect | Stable codes |
+|---|---|---|
+| **Envelope error** | The whole batch is `rejected` before anything is written, and recorded in `app_ingest.batches.rejection_code` | `malformed_document`: not JSON, not UTF-8, not an object, too deeply nested, or no usable `source_system`/`batch_id`. Recorded under the adapter's source and `unreadable-<digest>`, so resending the same broken file is the same batch. `invalid_envelope`: a missing, mistyped, negative or non-finite control total, an unexpected or duplicated top-level key, `events` not a list, or more than 100,000 events |
+| **Record error** | That event is quarantined with its reason. The rest of the batch goes ahead, subject to the quality threshold | from the reader: `malformed_record` (not an object, or a duplicated key), `unexpected_field`, `invalid_identity`, `invalid_type`, `invalid_timestamp`, `non_finite_number`. From validation: the reasons listed below |
+
+Other rejection codes: `control_totals`, `quality_threshold`,
+`no_parent_dataset`, `calendar_unextendable` and `apply_failed`. The last is
+a failure after writing began: everything rolls back, and the exception's
+type is recorded but not its text, which can quote the refused values.
+
+A quarantined record is stored as it arrived, made storable. JSONB accepts
+neither `NaN` nor a NUL character, and such a payload used to fail the
+batch it described. Non-finite numbers are now stored as their names, NUL
+characters and lone surrogates are replaced, and size and depth are
+bounded.
+
+Adapters other than the JSON reader build `SourceEvent`s directly, and a
+dataclass does not check its annotations. Validation therefore checks
+types and finiteness again before comparing anything.
 
 Each event becomes an ordinary `sales` row. The derived columns are filled
 the way the supplied data fills them, which was checked against the full
@@ -112,11 +146,13 @@ The steps run in this order, and anything that refuses the batch refuses it
 2. **Validation.** Each event is checked against the contract above.
    Failures are written to `app_ingest.quarantine` with a reason, the
    attempt number and the payload. The reasons are `invalid_identity`,
-   `invalid_kind`, `missing_field`, `naive_timestamp`, `unit_not_packs`,
+   `invalid_kind`, `missing_field`, `invalid_type`, `invalid_timestamp`,
+   `naive_timestamp`, `non_finite_number`, `unit_not_packs`,
    `unknown_data_source`, `unknown_organization`, `unknown_product`,
-   `non_positive_packs`, `invalid_price`, `priced_free_drug`,
+   `non_positive_packs`, `out_of_range`, `invalid_price`, `priced_free_drug`,
    `future_event`, `before_history`, `period_convention_ambiguous`,
-   `calendar_conflict` and `conflicting_versions`.
+   `calendar_conflict` and `conflicting_versions`, plus the reader's
+   `malformed_record` and `unexpected_field`.
 3. **Quality threshold.** If more than `PAC_INGEST_MAX_QUARANTINE_RATIO`
    (default 5%) of a batch is quarantined, the batch is `rejected` whole: the
    feed is treated as broken. Below the threshold, the valid events are
@@ -135,8 +171,19 @@ batch. The serving role can read this table and the watermarks, but cannot
 write to either.
 
 If a failure happens after writing has begun, the whole transaction rolls
-back. The attempt is then recorded as `rejected`, with the error, in a
-separate transaction.
+back. The attempt is then recorded as `rejected` with code `apply_failed`,
+in a separate transaction, naming the exception's type.
+
+Tested on PostgreSQL (`tests/integration/test_ingest_contract.py`):
+
+- every envelope error leaves the published data, the ledger and the
+  watermarks exactly as they were;
+- each record error is quarantined with its reason while the rest applies;
+- corrections, deletions and duplicates still apply beside bad records;
+- a rejected batch can be corrected and resent under its id, and an exact
+  replay changes nothing;
+- a valid event digests exactly as the earlier reader made it, so replays
+  of older batches are still duplicates.
 
 ## The calendar: placing a sale in a week and a month
 

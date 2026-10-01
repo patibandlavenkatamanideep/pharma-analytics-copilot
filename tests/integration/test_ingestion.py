@@ -418,9 +418,13 @@ def test_a_failure_after_writing_rolls_back_everything_and_is_recorded(fresh, mo
         run(batch("b1", ev("e1"), ev("e2")))
     assert state() == fresh
     assert q("SELECT count(*) AS n FROM app_ingest.event_ledger")[0]["n"] == 0
-    row = q("SELECT status, applied, rejection_reason FROM app_ingest.batches")[0]
+    row = q("SELECT status, applied, rejection_code, rejection_reason FROM app_ingest.batches")[0]
     assert row["status"] == "rejected" and row["applied"] == 0
-    assert "calendar rebuild failed" in row["rejection_reason"]
+    # A stable code and the exception's type -- not its text, which can quote
+    # the values the database refused (review of 1 October 2026, R5).
+    assert row["rejection_code"] == "apply_failed"
+    assert "RuntimeError" in row["rejection_reason"]
+    assert "calendar rebuild failed" not in row["rejection_reason"]
 
 
 def test_a_full_reload_forgets_the_ledger_so_events_apply_to_the_new_base(fresh):

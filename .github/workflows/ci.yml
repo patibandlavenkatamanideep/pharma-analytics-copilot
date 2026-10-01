@@ -110,10 +110,14 @@ jobs:
 
       # Strict for the same reason as the security suite: without its
       # database every ingestion test skips, and a skip is not a pass.
+      # Includes the input contract and the jobs process's telemetry and
+      # freshness (review of 1 October 2026, R4 and R5).
       - name: Incremental ingestion (strict)
         run: |
           python -m pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py \
-            -q --release-gate --min-tests 55
+            tests/integration/test_ingest_contract.py tests/integration/test_ingest_observability.py \
+            tests/unit/test_ingest_validation.py \
+            -q --release-gate --min-tests 165
 
       - name: Full test suite
         run: python -m pytest tests -q
