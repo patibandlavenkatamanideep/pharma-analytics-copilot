@@ -53,6 +53,21 @@ class Settings(BaseSettings):
     # remainder would present a partial period as a complete one.
     ingest_max_quarantine_ratio: float = 0.05
 
+    # --- telemetry ----------------------------------------------------------------
+    # The release this process is running, reported with every span. Set by
+    # the build to the image's source revision; "dev" means unreleased.
+    release: str = "dev"
+    # An OTLP/HTTP collector's base URL (http://collector:4318). Unset, no
+    # telemetry is exported and recording is a no-op.
+    otel_endpoint: str = ""
+    # Bounds every export call; a slow collector costs at most this, in the
+    # background, never on a request.
+    otel_timeout_s: float = 5.0
+    # The contracted model rates, USD per million tokens. Unset, no cost is
+    # estimated -- a made-up price would read as a measurement.
+    llm_input_usd_per_mtok: float | None = None
+    llm_output_usd_per_mtok: float | None = None
+
     # --- runs -------------------------------------------------------------------
     # How long one request may hold a conversation before another may take
     # it over. Longer than the slowest legitimate request, or a slow answer

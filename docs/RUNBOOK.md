@@ -70,6 +70,10 @@ environment or `.env`. No secret is ever committed.
 | `PAC_MAX_RESULT_ROWS` | `5000` | result cap; the query fetches cap+1 to detect truncation |
 | `PAC_SESSION_TTL_HOURS` | `12` | |
 | `PAC_COOKIE_SECURE` | `true` | set `false` only for local HTTP |
+| `PAC_BUSINESS_TIMEZONE` | `America/New_York` | the day an ingested sale belongs to ([INGESTION.md](INGESTION.md)) |
+| `PAC_INGEST_MAX_QUARANTINE_RATIO` | `0.05` | above this share of invalid events a batch is rejected |
+| `PAC_OTEL_ENDPOINT` | unset | OTLP/HTTP collector; unset exports nothing ([OBSERVABILITY.md](OBSERVABILITY.md)) |
+| `PAC_RELEASE` | `dev` | release identifier reported with telemetry |
 
 ### Enabling the live planner
 

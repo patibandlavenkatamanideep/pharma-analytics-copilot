@@ -178,6 +178,7 @@ app/data/         loading, incremental ingestion, manifest, derived classificati
 app/conversation/ owner-scoped structured follow-up state
 app/llm/          Bedrock planner + deterministic offline planner
 app/pipeline.py   plan → authorize → compile → validate → execute → render → audit
+app/telemetry.py  OpenTelemetry traces and metrics, redacted before export
 app/api/          HTTP surface
 web/              React chat UI, served from the same origin
 migrations/       additive PostgreSQL schema, security policies, measured indexes

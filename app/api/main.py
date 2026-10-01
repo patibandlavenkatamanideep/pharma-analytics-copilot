@@ -11,6 +11,7 @@ and then they see only the statement their own principal was authorized to run.
 from __future__ import annotations
 
 import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
@@ -20,6 +21,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app import telemetry
 from app.api.guard import RequestGuard
 from app.auth import identity
 from app.auth.policy import Principal
@@ -60,6 +62,9 @@ async def lifespan(app: FastAPI):
             raise RuntimeError(problem)
         log.warning("%s (allowed only because PAC_ENVIRONMENT=local)", problem)
 
+    # Exports nothing unless a collector is configured; never fatal.
+    telemetry.configure(settings)
+
     global _pipeline
     _pipeline = Pipeline(build_planner(settings))
 
@@ -84,6 +89,7 @@ async def lifespan(app: FastAPI):
         )
 
     yield
+    telemetry.shutdown()
     close_pools()
 
 
@@ -120,7 +126,23 @@ API_VERSION = "2"
 
 @app.middleware("http")
 async def _api_version(request: Request, call_next):
-    response = await call_next(request)
+    # Outermost, so refusals by the request guard are measured too. Labelled
+    # by route TEMPLATE (/api/runs/{run_id}), never by the path itself.
+    started = time.perf_counter()
+    code = 500
+    template = "unmatched"
+    try:
+        with telemetry.span("http.server", **{"http.request.method": request.method}) as span:
+            response = await call_next(request)
+            code = response.status_code
+            template = getattr(request.scope.get("route"), "path", None) or "unmatched"
+            span.set(**{"http.route": template, "http.response.status_code": code})
+    finally:
+        telemetry.count("pac.http.server.requests", **{
+            "http.route": template, "http.request.method": request.method,
+            "http.response.status_class": telemetry.status_class(code)})
+        telemetry.observe("pac.http.server.duration", (time.perf_counter() - started) * 1000,
+                          **{"http.route": template})
     if request.url.path.startswith("/api/"):
         response.headers["X-API-Version"] = API_VERSION
     return response
@@ -155,13 +177,18 @@ def current_principal(request: Request, response: Response) -> Principal:
     request that used it, with the same absolute expiry.
     """
     token = session_token(request)
-    principal, due = identity.resolve_session(token)
-    if principal is None:
-        raise HTTPException(status_code=401, detail="Not signed in.")
-    if due and token:
-        rotated = identity.rotate(token)
-        if rotated is not None:
-            _set_session_cookie(response, *rotated)
+    with telemetry.span("pac.auth", expected=(HTTPException,)) as span:
+        principal, due = identity.resolve_session(token)
+        if principal is None:
+            span.set(**{"pac.auth.outcome": "absent" if not token else "rejected"})
+            raise HTTPException(status_code=401, detail="Not signed in.")
+        outcome = "ok"
+        if due and token:
+            rotated = identity.rotate(token)
+            if rotated is not None:
+                _set_session_cookie(response, *rotated)
+                outcome = "rotated"
+        span.set(**{"pac.auth.outcome": outcome, "pac.role": principal.role})
     return principal
 
 

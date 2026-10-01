@@ -22,3 +22,10 @@ langgraph-checkpoint-postgres==3.1.2
 # already depends on; pinned here because the OIDC code uses it directly.
 authlib==1.8.0
 httpx2==2.13.1
+# Operational telemetry (app/telemetry.py): OpenTelemetry traces and metrics,
+# exported over OTLP/HTTP only when PAC_OTEL_ENDPOINT is set, through
+# exporters that redact before export. Without an endpoint, recording is a
+# no-op.
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0

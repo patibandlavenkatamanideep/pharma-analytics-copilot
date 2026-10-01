@@ -69,28 +69,33 @@ class TurnState(TypedDict, total=False):
     outcome: str
 
 
-def _resolve(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_resolve(state)
+def _node(name: str, method: str):
+    """A node that delegates to the request's Turn, inside a span.
+
+    The span's parent is taken from the Turn rather than the current
+    context, so it is the request's child whichever thread runs the node.
+    A clarification's interrupt is how await_reply ends, not a failure.
+    """
+    from langgraph.errors import GraphInterrupt
+
+    from app import telemetry
+
+    def node(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
+        turn = runtime.context
+        with telemetry.span(f"pac.{name}", parent=getattr(turn, "otel_parent", None),
+                            expected=(GraphInterrupt,)):
+            return getattr(turn, method)(state)
+
+    node.__name__ = f"_{name}"
+    return node
 
 
-def _record_question(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_record_question(state)
-
-
-def _await_reply(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_await_reply(state)
-
-
-def _plan(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_plan(state)
-
-
-def _check(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_check(state)
-
-
-def _answer(state: TurnState, runtime: Runtime[Any]) -> dict[str, Any]:
-    return runtime.context.node_answer(state)
+_resolve = _node("resolve", "node_resolve")
+_record_question = _node("record_question", "node_record_question")
+_await_reply = _node("await_reply", "node_await_reply")
+_plan = _node("plan", "node_plan")
+_check = _node("check", "node_check")
+_answer = _node("answer", "node_answer")
 
 
 def _route(state: TurnState) -> str:

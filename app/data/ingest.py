@@ -48,6 +48,7 @@ from __future__ import annotations
 import bisect
 import hashlib
 import json
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -55,6 +56,7 @@ from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from app import telemetry
 from app.config import get_settings
 from app.data.loader import (
     VALID_SOURCES, LoadError, _json, _populate_calendar, _validate, publication_lock,
@@ -236,10 +238,13 @@ class IngestOutcome:
     rejection_reason: str | None = None
     quarantine_reasons: dict[str, int] = field(default_factory=dict)
     pack_delta: Decimal = Decimal(0)
+    #: The newest event time applied, for freshness lag.
+    newest_event: datetime | None = None
 
     def as_dict(self) -> dict[str, Any]:
         d = dict(self.__dict__)
         d["pack_delta"] = str(self.pack_delta)
+        d["newest_event"] = self.newest_event.isoformat() if self.newest_event else None
         return d
 
 
@@ -343,6 +348,39 @@ def _fact_params(event: SourceEvent, placement: Placement) -> dict[str, Any]:
 def ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome:
     """Apply one batch. Returns its outcome; a rejected batch is an outcome,
     not an exception -- it is recorded, and nothing it contained is applied."""
+    started = time.perf_counter()
+    source = batch.source_system
+    status = "failed"
+    with telemetry.span("pac.ingest", **{"pac.ingest.source": source}) as span:
+        try:
+            outcome = _ingest(batch, now=now)
+            status = outcome.status
+            span.set(**{"pac.ingest.status": outcome.status,
+                        "pac.ingest.applied": outcome.applied,
+                        "pac.ingest.corrected": outcome.corrected,
+                        "pac.ingest.tombstoned": outcome.tombstoned,
+                        "pac.ingest.duplicates": outcome.duplicates,
+                        "pac.ingest.quarantined": outcome.quarantined,
+                        "pac.ingest.anchor_shift_weeks": outcome.anchor_shift_weeks,
+                        "pac.dataset_id": outcome.dataset_id})
+        finally:
+            telemetry.count("pac.ingest.batches", status=status, source=source)
+            telemetry.observe("pac.ingest.duration", time.perf_counter() - started,
+                              status=status)
+    for kind, n in (("applied", outcome.applied), ("corrected", outcome.corrected),
+                    ("tombstoned", outcome.tombstoned), ("duplicate", outcome.duplicates),
+                    ("quarantined", outcome.quarantined)):
+        if n:
+            telemetry.count("pac.ingest.events", n, outcome=kind, source=source)
+    for reason, n in outcome.quarantine_reasons.items():
+        telemetry.count("pac.ingest.quarantined", n, reason=reason, source=source)
+    if outcome.newest_event is not None:
+        lag = (now or datetime.now(timezone.utc)) - outcome.newest_event
+        telemetry.gauge("pac.ingest.lag", max(lag.total_seconds(), 0.0), source=source)
+    return outcome
+
+
+def _ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome:
     settings = get_settings()
     tz = ZoneInfo(settings.business_timezone)
     today = (now or datetime.now(timezone.utc)).astimezone(tz).date()
@@ -561,6 +599,7 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
         ledger[event.source_event_id] = {"sale_id": sale_id}
 
     outcome.affected_periods = sorted(affected)
+    outcome.newest_event = watermark
     if watermark is not None:
         cur.execute(
             "INSERT INTO app_ingest.watermarks (source_system, watermark, last_batch_id, "

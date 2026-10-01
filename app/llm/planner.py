@@ -24,6 +24,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import ValidationError
 
+from app import telemetry
 from app.analytics.thresholds import prompt_guidance
 from app.analytics.plan import AnalyticalPlan, Dimension, MetricKey
 from app.analytics.registry import get_registry
@@ -400,7 +401,7 @@ class BedrockPlanner:
         attempts: list[PlanningAttempt] = []
 
         deadline = context.deadline_at
-        plan, err, attempt = self._attempt(system, messages, tool, 1, "initial", deadline)
+        plan, err, attempt = self._traced(system, messages, tool, 1, "initial", deadline)
         attempts.append(attempt)
         if plan is not None:
             return self._result(plan, attempts)
@@ -422,7 +423,7 @@ class BedrockPlanner:
                 ),
             },
         ]
-        plan, err2, attempt = self._attempt(system, messages, tool, 2, "repair", deadline)
+        plan, err2, attempt = self._traced(system, messages, tool, 2, "repair", deadline)
         attempts.append(attempt)
         if plan is not None:
             # The first attempt's tokens were spent and are kept. Overwriting
@@ -448,6 +449,38 @@ class BedrockPlanner:
             planner_contract_version=PLANNER_CONTRACT_VERSION,
             attempts=tuple(attempts),
         )
+
+    def _traced(
+        self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],
+        ordinal: int, kind: str, deadline_at: float | None = None,
+    ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
+        """One model call, inside its own span, counted by outcome. Tokens are
+        counted only as the provider reported them; an unreported call is
+        counted as unknown, never as zero."""
+        model = self.model_id
+        with telemetry.span("pac.plan.attempt", **{
+                "pac.attempt": ordinal, "pac.attempt_kind": kind,
+                "pac.model_id": model}) as span:
+            plan, err, attempt = self._attempt(system, messages, tool, ordinal, kind,
+                                               deadline_at)
+            usage = attempt.usage
+            span.set(**{"pac.outcome": attempt.outcome, "pac.usage_known": usage.known,
+                        "pac.tokens.input": usage.input_tokens,
+                        "pac.tokens.output": usage.output_tokens})
+        telemetry.count("pac.llm.attempts", outcome=attempt.outcome, model=model, kind=kind)
+        if not usage.known:
+            telemetry.count("pac.llm.usage_unknown", model=model)
+            return plan, err, attempt
+        for direction, n in (("input", usage.input_tokens), ("output", usage.output_tokens)):
+            if n:
+                telemetry.count("pac.llm.tokens", n, direction=direction, model=model)
+        rate_in = self.settings.llm_input_usd_per_mtok
+        rate_out = self.settings.llm_output_usd_per_mtok
+        if rate_in is not None and rate_out is not None:
+            telemetry.count("pac.llm.cost", ((usage.input_tokens or 0) * rate_in
+                                             + (usage.output_tokens or 0) * rate_out) / 1e6,
+                            model=model)
+        return plan, err, attempt
 
     def _attempt(
         self, system: str, messages: list[dict[str, Any]], tool: dict[str, Any],

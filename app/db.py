@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import atexit
 import logging
+import time
 from contextlib import contextmanager
 from typing import Iterator, Literal
 
@@ -101,6 +102,32 @@ class ScopeBindingError(RuntimeError):
 
 
 @contextmanager
+def _pooled(pool: ConnectionPool, role: str) -> Iterator[psycopg.Connection]:
+    """A pooled connection, with the wait for it measured. A pool that
+    cannot supply one in time is counted before the error propagates --
+    exhaustion is a capacity signal, not only a failed request."""
+    from psycopg_pool import PoolTimeout
+
+    from app import telemetry
+
+    started = time.perf_counter()
+    try:
+        cm = pool.connection()
+        conn = cm.__enter__()
+    except PoolTimeout:
+        telemetry.count("pac.db.pool.timeouts", pool=role)
+        raise
+    telemetry.observe("pac.db.pool.wait", (time.perf_counter() - started) * 1000, pool=role)
+    try:
+        yield conn
+    except BaseException as exc:
+        if not cm.__exit__(type(exc), exc, exc.__traceback__):
+            raise
+    else:
+        cm.__exit__(None, None, None)
+
+
+@contextmanager
 def analytics_transaction(
     *,
     scope_kind: Literal["global", "region", "territory"],
@@ -130,9 +157,10 @@ def analytics_transaction(
         # rather than fall back to global.
         raise ScopeBindingError(f"scope kind {scope_kind!r} requires an assignment")
 
-    pool = get_pool("exec" if wac_authorized else "scoped")
+    role = "exec" if wac_authorized else "scoped"
+    pool = get_pool(role)
 
-    with pool.connection() as conn:
+    with _pooled(pool, role) as conn:
         conn.autocommit = False
         try:
             with conn.cursor() as cur:
@@ -181,7 +209,7 @@ def analytics_transaction(
 @contextmanager
 def auth_transaction() -> Iterator[psycopg.Cursor]:
     """Identity/session/conversation access. Never used for analytical SQL."""
-    with get_pool("auth").connection() as conn:
+    with _pooled(get_pool("auth"), "auth") as conn:
         conn.autocommit = False
         try:
             with conn.cursor() as cur:

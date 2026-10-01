@@ -26,6 +26,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
+from app import telemetry
 from app.analytics.compiler import (
     CohortBinding, Compiler, CompileError, UnsupportedCombination)
 from app.analytics.entities import vocabulary_for
@@ -206,6 +207,11 @@ class Pipeline:
 
     # -- main entry point ----------------------------------------------------
 
+    #: Refusals that are outcomes, not failures, and the status they are
+    #: counted under.
+    _REFUSALS = {"RunBusy": "busy", "IdempotencyConflict": "idempotency_conflict",
+                 "ReplayUnavailable": "access_changed", "QuotaExceeded": "rate_limited"}
+
     def ask(
         self,
         principal: Principal,
@@ -215,10 +221,47 @@ class Pipeline:
         include_sql: bool = False,
         idempotency_key: str | None = None,
     ) -> PipelineResult:
-        """Answer one question. Outside the graph: everything that must not be
-        repeated if a node is replayed -- identifying the request, opening the
-        conversation, taking the run's lease. Inside it: everything else."""
+        """Answer one question, inside the request's span."""
+        started = time.perf_counter()
+        status, persistence = "error", "not_saved"
+        refusals = (runs.RunBusy, runs.IdempotencyConflict, runs.ReplayUnavailable,
+                    runs.QuotaExceeded)
+        with telemetry.span("pac.ask", expected=refusals, **{
+                "pac.role": principal.role, "pac.release": self.settings.release,
+                "pac.registry_version": get_registry().version,
+                "pac.policy_version": POLICY_VERSION,
+                "pac.graph_version": GRAPH_VERSION}) as span:
+            try:
+                result = self._ask(principal, question, conversation_id=conversation_id,
+                                   include_sql=include_sql, idempotency_key=idempotency_key)
+                status, persistence = result.status, result.persistence
+                span.set(**{"pac.status": result.status, "pac.persistence": result.persistence,
+                            "pac.request_id": result.request_id, "pac.run_id": result.run_id,
+                            "pac.replayed": bool((result.payload or {}).get("replayed"))})
+                return result
+            except refusals as exc:
+                status = self._REFUSALS[type(exc).__name__]
+                raise
+            finally:
+                telemetry.count("pac.ask.outcomes", status=status, role=principal.role,
+                                persistence=persistence)
+                telemetry.observe("pac.ask.duration",
+                                  (time.perf_counter() - started) * 1000, status=status)
+
+    def _ask(
+        self,
+        principal: Principal,
+        question: str,
+        *,
+        conversation_id: str | None = None,
+        include_sql: bool = False,
+        idempotency_key: str | None = None,
+    ) -> PipelineResult:
+        """Outside the graph: everything that must not be repeated if a node
+        is replayed -- identifying the request, opening the conversation,
+        taking the run's lease. Inside it: everything else."""
         dataset = self.current_dataset()
+        telemetry.annotate(**{"pac.dataset_id": dataset["dataset_id"]})
         request_hash = runs.payload_hash(question, conversation_id, include_sql)
 
         # A retried request is recognised BEFORE a conversation is opened:
@@ -237,26 +280,27 @@ class Pipeline:
         # Continuation is bound to the dataset and the semantic contracts, not
         # only to who is asking: a refresh or a contract bump makes a carried
         # plan incomparable rather than merely old.
-        state = open_conversation(
-            principal, conversation_id,
-            dataset_id=dataset["dataset_id"],
-            metric_version=get_registry().version,
-            policy_version=POLICY_VERSION,
-        )
+        with telemetry.span("pac.state_load"):
+            state = open_conversation(
+                principal, conversation_id,
+                dataset_id=dataset["dataset_id"],
+                metric_version=get_registry().version,
+                policy_version=POLICY_VERSION,
+            )
 
-        # One live run per conversation, and one committed outcome per key.
-        # Raises RunBusy / IdempotencyConflict / ReplayUnavailable, which the
-        # API maps to 409 or 403.
-        run = runs.acquire(
-            principal, state.conversation_id,
-            revision=state.revision, request_hash=request_hash,
-            idempotency_key=idempotency_key,
-            lease_seconds=self.settings.run_lease_seconds,
-            retention_seconds=self.settings.idempotency_retention_seconds,
-            limits=(self.settings.user_requests_per_minute,
-                    self.settings.user_requests_per_hour,
-                    self.settings.user_concurrent_runs),
-        )
+            # One live run per conversation, and one committed outcome per key.
+            # Raises RunBusy / IdempotencyConflict / ReplayUnavailable, which
+            # the API maps to 409 or 403.
+            run = runs.acquire(
+                principal, state.conversation_id,
+                revision=state.revision, request_hash=request_hash,
+                idempotency_key=idempotency_key,
+                lease_seconds=self.settings.run_lease_seconds,
+                retention_seconds=self.settings.idempotency_retention_seconds,
+                limits=(self.settings.user_requests_per_minute,
+                        self.settings.user_requests_per_hour,
+                        self.settings.user_concurrent_runs),
+            )
         if run.replay is not None:
             replayed = dict(run.replay)
             return PipelineResult(
@@ -269,6 +313,8 @@ class Pipeline:
             )
 
         turn = Turn(self, principal, question, include_sql, dataset, state, run)
+        # Graph nodes parent their spans on this, whichever thread runs them.
+        turn.otel_parent = telemetry.current()
         thread_id, graph_input = self._entry(turn)
         turn.thread_id = thread_id
         config = {"configurable": {"thread_id": thread_id},
@@ -410,7 +456,7 @@ class Pipeline:
         values = [audit.get(c) for c in columns]
         placeholders = ", ".join(["%s"] * len(columns))
         try:
-            with auth_transaction() as cur:
+            with telemetry.span("pac.audit"), auth_transaction() as cur:
                 # Keyed by request: a node replayed after a crash cannot
                 # record the same request twice.
                 cur.execute(
@@ -420,6 +466,7 @@ class Pipeline:
                 )
         except Exception:
             log.warning("failed to write audit row", exc_info=True)
+            telemetry.count("pac.persistence.failures", kind="audit")
 
 
 class Turn:
@@ -442,6 +489,7 @@ class Turn:
         self.state = state
         self.run = run
         self.thread_id = ""
+        self.otel_parent = None
         self.request_id = uuid.uuid4().hex[:16]
         self.started = time.perf_counter()
         self.deadline_at = time.time() + pipe.settings.request_deadline_seconds
@@ -561,7 +609,9 @@ class Turn:
             result.persistence = "saved"
             result.payload = to_payload(result, self.include_sql)
             try:
-                done = finalise(self.principal, self.state, self.run, turn, result.payload)
+                with telemetry.span("pac.finalise", parent=self.otel_parent):
+                    done = finalise(self.principal, self.state, self.run, turn,
+                                    result.payload)
             except Exception:
                 # Stated, not swallowed: the answer is returned, and the
                 # response says it was not saved, so nothing implies the next
@@ -569,6 +619,7 @@ class Turn:
                 log.exception("failed to commit turn for run %s", self.run.run_id)
                 runs.fail(self.run, None)
                 done = Finalised(persisted=False, reason="error")
+                telemetry.count("pac.persistence.failures", kind="turn")
             if done.conflict:
                 # The conversation moved while this was being answered: a
                 # lease expired and another turn committed. The answer was
@@ -723,6 +774,14 @@ class Turn:
         self.timings["plan_ms"] = int((time.perf_counter() - t0) * 1000)
 
         usage = planning.usage.as_dict()
+        telemetry.annotate(**{
+            "pac.provider": planning.provider, "pac.model_id": planning.model_id,
+            "pac.prompt_version": planning.prompt_version,
+            "pac.planner_version": planning.planner_contract_version,
+            "pac.attempts": len(planning.attempts), "pac.repaired": planning.repaired,
+            "pac.tokens.input": usage.get("input_tokens"),
+            "pac.tokens.output": usage.get("output_tokens"),
+            "pac.usage_known": usage.get("known")})
         summary = {
             "provider": planning.provider,
             "model_id": planning.model_id,
@@ -768,6 +827,8 @@ class Turn:
         question = state["effective_question"]
         self.audit["plan_hash"] = plan.fingerprint()
         self.audit.setdefault("turn_kind", self.continuity(question).kind.value)
+        telemetry.annotate(**{"pac.metric": plan.metric.value,
+                              "pac.turn_kind": self.audit["turn_kind"]})
 
         # A plan can be valid, compile cleanly and return a confident number
         # for a DIFFERENT question, and nothing downstream can tell. Checked
@@ -796,7 +857,8 @@ class Turn:
         # Current access, from THIS request's principal. Terminal: a refusal
         # is never retried under different access.
         try:
-            authorize(plan, self.principal)
+            with telemetry.span("pac.policy", expected=(AuthorizationError,)):
+                authorize(plan, self.principal)
         except AuthorizationError as exc:
             self.stage(plan_json, str(exc), "denied")
             self.finish(PipelineResult(
@@ -843,7 +905,8 @@ class Turn:
             return {"route": "end", "outcome": result_status}
 
         try:
-            query = self.pipe.compiler.compile(plan, anchor=self.anchor, cohort=binding)
+            with telemetry.span("pac.compile", expected=(UnsupportedCombination,)):
+                query = self.pipe.compiler.compile(plan, anchor=self.anchor, cohort=binding)
         except UnsupportedCombination as exc:
             # Nothing is broken: the question combines things that have no
             # defined meaning together. Reported as an error, it told the user
@@ -857,7 +920,8 @@ class Turn:
         # Runs on the FINAL text, after every rewrite, and the same text is
         # what executes below.
         try:
-            validate(query.sql, wac_authorized=principal.wac_authorized)
+            with telemetry.span("pac.validate"):
+                validate(query.sql, wac_authorized=principal.wac_authorized)
         except SqlValidationError as exc:
             log.error("compiler produced SQL that failed validation: %s", exc)
             return fail("I could not run that safely, so I stopped before querying.",
@@ -870,20 +934,23 @@ class Turn:
             # read in the same repeatable-read transaction, so the rows are the
             # generation this request planned against -- its calendar, its
             # vocabulary, its anchor -- or the query does not run.
-            with analytics_transaction(
-                scope_kind=principal.scope_kind,
-                scope_value=principal.scope_value,
-                wac_authorized=principal.wac_authorized,
-                expect_generation=self.dataset["dataset_id"],
-            ) as cur:
+            with telemetry.span("pac.sql", expected=(GenerationChanged,)) as sql_span, \
+                    analytics_transaction(
+                        scope_kind=principal.scope_kind,
+                        scope_value=principal.scope_value,
+                        wac_authorized=principal.wac_authorized,
+                        expect_generation=self.dataset["dataset_id"],
+                    ) as cur:
                 cur.execute(query.sql, query.params)
                 rows = cur.fetchall()
+                sql_span.set(**{"pac.row_count": len(rows)})
         except GenerationChanged as exc:
             # A refresh landed while this was being planned. The plan's
             # vocabulary and calendar describe the old data, so it is not run.
             # The run is closed as failed: a retry with the same key runs
             # again, against the new generation.
             log.info("generation changed mid-request (%s)", exc)
+            telemetry.count("pac.db.errors", kind="generation_changed")
             self.finish(PipelineResult(
                 status="refresh", conversation_id=self.state.conversation_id,
                 message=("The data was refreshed while your question was being "
@@ -900,6 +967,8 @@ class Turn:
         except Exception as exc:  # database timeout, cancellation, unavailability
             name = type(exc).__name__
             log.warning("query failed (%s): %s", name, exc)
+            telemetry.count("pac.db.errors", kind="timeout" if (
+                "Timeout" in name or "QueryCanceled" in name) else "unavailable")
             friendly = (
                 "That question took too long to answer. Narrowing it — a shorter time "
                 "period, a specific product, or fewer groupings — will usually work."
@@ -912,13 +981,15 @@ class Turn:
         self.audit["row_count"] = len(rows)
 
         try:
-            answer = render(
-                rows, query, plan,
-                scope_note=scope_note(principal, plan),
-                max_rows=self.pipe.settings.max_result_rows,
-                source_coverage=self.dataset.get("source_coverage") or {},
-                max_bytes=self.pipe.settings.max_result_bytes,
-            )
+            with telemetry.span("pac.render") as render_span:
+                answer = render(
+                    rows, query, plan,
+                    scope_note=scope_note(principal, plan),
+                    max_rows=self.pipe.settings.max_result_rows,
+                    source_coverage=self.dataset.get("source_coverage") or {},
+                    max_bytes=self.pipe.settings.max_result_bytes,
+                )
+                render_span.set(**{"pac.truncated": bool(answer.truncated)})
         except GrainError as exc:
             # The rows are not at the grain the plan declared, so the table
             # would read as more groups than there are. Fails closed.
