@@ -73,7 +73,6 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
     Every failure path raises the same message and does comparable work, so the
     response does not reveal whether an address is registered.
     """
-    settings = get_settings()
     normalized = (email or "").strip().lower()
     ip_hash = _hash_ip(ip)
 
@@ -136,16 +135,8 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
             except AuthorizationError as exc:
                 raise AuthenticationError(str(exc)) from None
 
-            token = secrets.token_urlsafe(TOKEN_BYTES)
-            expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
-            cur.execute(
-                "INSERT INTO app_auth.sessions "
-                "(token_hash, user_id, expires_at, user_agent, ip_hash, "
-                " last_seen_at, rotated_at) "
-                "VALUES (%s, %s, %s, %s, %s, now(), now())",
-                (_token_hash(token), row["user_id"], expires_at,
-                 (user_agent or "")[:300] or None, ip_hash),
-            )
+            token, expires_at = issue_session(cur, row["user_id"],
+                                              user_agent=user_agent, ip_hash=ip_hash)
             # A success clears the budget, so a legitimate user who mistypes twice
             # and then signs in is not held to the failures.
             _record_attempt(cur, normalized, ip_hash, succeeded=True)
@@ -160,6 +151,23 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
         raise
 
     return Session(token=token, user_id=principal.user_id, expires_at=expires_at), principal
+
+
+def issue_session(cur, user_id: str, *, user_agent: str | None,
+                  ip_hash: str | None) -> tuple[str, datetime]:
+    """Open a session for a user whose identity has just been verified --
+    by password or by an identity provider. One implementation, so every
+    sign-in path gets the same expiry, idle and rotation rules."""
+    settings = get_settings()
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
+    cur.execute(
+        "INSERT INTO app_auth.sessions "
+        "(token_hash, user_id, expires_at, user_agent, ip_hash, last_seen_at, rotated_at) "
+        "VALUES (%s, %s, %s, %s, %s, now(), now())",
+        (_token_hash(token), user_id, expires_at, (user_agent or "")[:300] or None, ip_hash),
+    )
+    return token, expires_at
 
 
 def _record_attempt(cur, email: str, ip_hash: str | None, *, succeeded: bool) -> None:

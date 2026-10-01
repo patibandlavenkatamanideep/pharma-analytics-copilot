@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -208,6 +208,64 @@ def login(body: LoginRequest, request: Request, response: Response) -> dict[str,
 
     _set_session_cookie(response, session.token, session.expires_at)
     return {"user": _describe(principal)}
+
+
+# ---------------------------------------------------------------------------
+# Single sign-on (OpenID Connect) -- off unless configured
+# ---------------------------------------------------------------------------
+
+_oidc = None
+
+
+def oidc_provider():
+    """The configured provider, or 404 when SSO is not enabled: an endpoint
+    that exists but cannot work is a puzzle for an operator."""
+    from app.auth.oidc import Provider
+
+    global _oidc
+    if not get_settings().oidc_enabled:
+        raise HTTPException(status_code=404, detail="Single sign-on is not enabled.")
+    if _oidc is None:
+        _oidc = Provider()
+    return _oidc
+
+
+@app.get("/api/auth/methods")
+def auth_methods() -> dict[str, Any]:
+    """Which sign-in methods the sign-in page should offer. Public."""
+    return {"password": True, "oidc": get_settings().oidc_enabled}
+
+
+@app.get("/api/auth/oidc/start")
+def oidc_start(next: str = "/") -> RedirectResponse:
+    begun = oidc_provider().begin(next)
+    return RedirectResponse(begun.authorization_url, status_code=302)
+
+
+@app.get("/api/auth/oidc/callback")
+def oidc_callback(request: Request, code: str = "", state: str = "",
+                  error: str | None = None) -> Response:
+    from app.auth.identity import _hash_ip
+    from app.auth.oidc import OIDCError
+
+    provider = oidc_provider()
+    if error:
+        # The provider declined (the user cancelled, or policy refused). Its
+        # own description is not repeated: it can name internal policy.
+        raise HTTPException(status_code=400, detail={
+            "code": "provider_declined", "message": "Sign-in was not completed."})
+    try:
+        token, expires_at, _principal, target = provider.complete(
+            code=code, state=state,
+            user_agent=request.headers.get("user-agent"),
+            ip_hash=_hash_ip(request.client.host if request.client else None))
+    except OIDCError as exc:
+        status = 403 if exc.code in ("not_linked", "disabled", "no_scope") else 400
+        raise HTTPException(status_code=status,
+                            detail={"code": exc.code, "message": str(exc)}) from None
+    response = RedirectResponse(target, status_code=303)
+    _set_session_cookie(response, token, expires_at)
+    return response
 
 
 @app.post("/api/logout")

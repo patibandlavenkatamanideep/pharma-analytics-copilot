@@ -114,9 +114,9 @@ the browser and model-evaluation suites are in
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
 python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
-python3 -m pytest tests/security -q --release-gate --min-tests 177  # release gate
+python3 -m pytest tests/security -q --release-gate --min-tests 196  # release gate
 
-cd web && npm test                           # 14 jsdom component tests
+cd web && npm test                           # 16 jsdom component tests
 cd web && npm run test:e2e                   # 6 real-browser tests (Playwright)
 
 python3 scripts/run_evals.py                              # regression set
@@ -190,7 +190,7 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 
 ## Status
 
-Verified on the full dataset: ingestion, the authorization boundary (177 tests),
+Verified on the full dataset: ingestion, the authorization boundary (196 tests),
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 

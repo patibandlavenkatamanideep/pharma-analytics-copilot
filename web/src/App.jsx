@@ -43,6 +43,13 @@ function Login({ onSignedIn, notice }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [sso, setSso] = useState(false);
+
+  // Offered only when the server says it is configured; any failure to ask
+  // simply leaves password sign-in, which always works.
+  useEffect(() => {
+    api("/api/auth/methods").then((m) => setSso(Boolean(m?.oidc))).catch(() => {});
+  }, []);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -94,6 +101,11 @@ function Login({ onSignedIn, notice }) {
         <button type="submit" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
+        {sso && (
+          <a className="sso" href="/api/auth/oidc/start">
+            Sign in with single sign-on
+          </a>
+        )}
       </form>
     </div>
   );

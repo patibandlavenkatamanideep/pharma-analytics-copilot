@@ -34,8 +34,13 @@ function makeFetch(script) {
   const asks = [];
   const cancels = [];
   const fetchMock = vi.fn(async (path, options = {}) => {
-    if (path === "/api/me") return respond(200, { user: USER, dataset: { latest_month: "2026-09" } });
+    if (path === "/api/me") {
+      return fetchMock.signedOut
+        ? respond(401, { detail: "Not signed in." })
+        : respond(200, { user: USER, dataset: { latest_month: "2026-09" } });
+    }
     if (path === "/api/logout") return respond(200, { status: "signed out" });
+    if (path === "/api/auth/methods") return respond(200, fetchMock.methods || { password: true, oidc: false });
     if (path === "/api/runs/cancel") {
       cancels.push(JSON.parse(options.body));
       return respond(200, { status: "cancel_requested" });
@@ -172,5 +177,22 @@ describe("API v2 in the interface", () => {
     await renderSignedIn();
     await ask("total volume");
     await screen.findByText(/already answering another question/i);
+  });
+
+  it("offers single sign-on only when the server says it is configured", async () => {
+    global.fetch = makeFetch([]);
+    global.fetch.signedOut = true;
+    global.fetch.methods = { password: true, oidc: true };
+    await act(async () => { render(<App />); });
+    const link = await screen.findByRole("link", { name: /single sign-on/i });
+    expect(link.getAttribute("href")).toBe("/api/auth/oidc/start");
+  });
+
+  it("does not offer single sign-on when it is not configured", async () => {
+    global.fetch = makeFetch([]);
+    global.fetch.signedOut = true;
+    await act(async () => { render(<App />); });
+    await screen.findByRole("button", { name: /sign in/i });
+    expect(screen.queryByRole("link", { name: /single sign-on/i })).toBeNull();
   });
 });

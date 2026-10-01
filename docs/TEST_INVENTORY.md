@@ -27,9 +27,9 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 581 | ✅ pass | `p1d-suite-unit.json` |
 | **Integration** | `pytest tests/integration -q` | 759 | ✅ pass | `p1d-suite-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 177` | 177 | ✅ pass | `r2-suite-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1517** | ✅ pass | `p1d-suite-total.json` |
-| **Browser — component** | `cd web && npm test` | 14 | ✅ pass | `r2-suite-browser-component.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 196` | 196 | ✅ pass | `r2-suite-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1536** | ✅ pass | `p1d-suite-total.json` |
+| **Browser — component** | `cd web && npm test` | 16 | ✅ pass | `r2-suite-browser-component.json` |
 | **Browser — end to end** | `cd web && npm run test:e2e` | 6 | ⚠️ needs a served application | — |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
@@ -90,7 +90,7 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (14, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses).
+**Component tests (16, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured.
 
 They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run
@@ -118,7 +118,7 @@ served and credentials in the environment. They last passed against the
 deployed instance on 2026-09-25. They are not part of the offline gate and
 are not claimed as passing on this revision.
 
-Neither browser suite is counted in the 1517: they do not run in the same
+Neither browser suite is counted in the 1536: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -151,7 +151,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 177`, and fails on a skip in any phase, a
+`--release-gate --min-tests 196`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -168,7 +168,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 177
+python3 -m pytest tests/security -q --release-gate --min-tests 196
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

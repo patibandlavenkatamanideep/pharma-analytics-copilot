@@ -97,6 +97,23 @@ class Settings(BaseSettings):
     # Largest request body accepted, in bytes. A question is at most 1,000
     # characters; nothing the API accepts comes close to this.
     max_request_bytes: int = 65_536
+
+    # --- single sign-on (OpenID Connect) -----------------------------------------
+    # Off unless configured. Local password sign-in is unaffected either way.
+    oidc_enabled: bool = False
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    # Empty for a public client (PKCE only); set for a confidential one.
+    oidc_client_secret: str = ""
+    oidc_redirect_uri: str = ""
+    oidc_scopes: str = "openid email profile"
+    # Asymmetric only: an HMAC algorithm would let anyone holding the public
+    # key forge tokens, and "none" is never acceptable.
+    oidc_algorithms: str = "RS256,ES256"
+    # Off by default. When on, the FIRST sign-in of an unlinked identity is
+    # linked by a provider-verified email; after that (issuer, subject) is the
+    # key and email plays no part.
+    oidc_link_by_verified_email: bool = False
     cookie_secure: bool = True
     cookie_name: str = "pac_session"
 

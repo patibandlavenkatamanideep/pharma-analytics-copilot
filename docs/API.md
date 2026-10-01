@@ -46,6 +46,34 @@ cookie.
 | 401 | — | Wrong email or password, or an account with no usable scope |
 | 429 | — | Too many failed attempts for this email or address |
 
+### GET /api/auth/methods
+
+Public. `{"password": true, "oidc": bool}` — which sign-in methods the
+sign-in page should offer.
+
+### GET /api/auth/oidc/start
+
+Only when single sign-on is configured (`PAC_OIDC_ENABLED`), otherwise
+`404`. Optional `?next=/path` — honoured only if it is a same-site relative
+path. Redirects (`302`) to the provider with `state`, `nonce` and a PKCE
+`S256` challenge; all three are held on the server, not in a cookie.
+
+### GET /api/auth/oidc/callback
+
+The provider's redirect target. Validates the single-use `state`, exchanges
+the code with the PKCE verifier, verifies the ID token (signature against
+the issuer's keys, allowed algorithm, issuer, audience/`azp`, expiry,
+nonce), maps the verified `(issuer, subject)` to an account, sets the
+session cookie and redirects (`303`) to `next`.
+
+| Status | Code | Meaning |
+|---|---|---|
+| 400 | `invalid_state` | Unknown, reused or expired sign-in attempt |
+| 400 | `invalid_token` / `token_rejected` | The token or the code exchange failed verification |
+| 400 | `provider_declined` / `provider_unavailable` | The provider refused or could not be reached |
+| 403 | `not_linked` | A valid identity with no account link here |
+| 403 | `disabled` / `no_scope` | The linked account is disabled or has no usable scope |
+
 ### POST /api/logout
 
 No body. Revokes the session and clears the cookie. Always `200`.
