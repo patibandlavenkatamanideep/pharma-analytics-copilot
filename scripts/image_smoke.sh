@@ -71,6 +71,11 @@ label=$($CLI image inspect --format '{{ index .Config.Labels "org.opencontainers
 [ "$label" = "$RELEASE" ] && pass "image is labelled with commit $RELEASE" || fail "revision label is '$label'"
 size=$($CLI image inspect --format '{{.Size}}' "$TAG")
 pass "image size $(( size / 1000000 )) MB"
+# The identity to compare with whatever is deployed. A registry digest exists
+# only once the image is pushed; until then the image ID is the artifact.
+image_id=$($CLI image inspect --format '{{.Id}}' "$TAG")
+arch=$($CLI image inspect --format '{{.Architecture}}' "$TAG")
+pass "image id $image_id ($arch)"
 
 # -- scan -------------------------------------------------------------------
 # Through a volume rather than a bind mount: a container VM (podman machine,

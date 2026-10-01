@@ -542,3 +542,47 @@ sets is held out with respect to the live model in a strict sense: the prompt
 and the metric registry were changed during development, and both reach it.
 `holdout2` is the closest thing to an unbiased estimate and scored **8/12 on
 its first offline run** before the fixes it prompted.
+
+## Running the next live evaluation (prompt 2.1.0)
+
+Every live result above was measured on earlier prompt text. Prompt 2.1.0
+(fingerprint `5ca5ddf08608fb64`, recorded in every run) has never been run
+against a live model. When credentials and a budget exist, run it in this
+order. Each step is a decision point.
+
+**1. Smoke first, with a hard cap.** `--smoke` runs the first question of
+each family (16 checks on the regression set). A live run refuses to start
+without both caps:
+
+```bash
+python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml \
+    --smoke --max-input-tokens 150000 --max-output-tokens 70000
+```
+
+The budget is checked **before** each question. The next question runs only
+if two more model calls at the per-call ceiling would still fit (8,000
+input, 4,096 output; measured usage is about 4,670 and 160). A call whose
+usage the provider did not report is charged at the ceiling, never as zero.
+A run the budget cuts short lists the questions it skipped and exits
+non-zero, so it can never pass as complete. The caps above are a ceiling,
+not an estimate. Expected spend for the smoke run is roughly 75,000 input
+and 3,000 output tokens, including a repair or two.
+
+**2. The regression sets.** `questions.yaml` (`status: regression`), and
+`holdout.yaml` and `holdout2.yaml` (both `status: spent`: they were run live
+and learned from). They measure whether known behaviour still holds under
+the new prompt. **Their scores are not accuracy on unseen questions** and
+must not be reported as such. For all three, budget about 300,000 input
+and 15,000 output tokens.
+
+**3. A genuine holdout.** This needs questions and expected answers written
+by someone who has not seen the system's development sets. Mark the file
+`status: "holdout"`, run `scripts/freeze_holdout.py <file>`, and commit
+`evals/frozen.json` **before** the first run. The commit is the evidence that
+the expectations predate the answers. `run_evals.py` refuses to run a holdout
+that is not frozen, or whose content changed after freezing. Run it once.
+After anything is learned from it, change its status to `spent`.
+
+Each run's record (`evals/runs/`) carries the provider and model id, the
+prompt version and fingerprint, the question set's status and SHA-256, every
+answer, latency and token usage per question, and the budget charged.

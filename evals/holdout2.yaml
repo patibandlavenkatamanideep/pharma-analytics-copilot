@@ -27,6 +27,10 @@
 version: "2.0.0"
 sealed: "2026-09-25"
 
+# regression | spent | holdout. scripts/run_evals.py refuses to run a
+# "holdout" set that is not frozen (scripts/freeze_holdout.py).
+status: "spent"   # run live 2026-09-25; its answers are known, so a re-run measures regression, not generalisation
+
 questions:
 
   - id: k-01

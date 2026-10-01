@@ -224,8 +224,18 @@ development machine (`evidence/runs/r2-restore-drill.json`):
 | `pg_restore -j 4` | 18.5 s |
 | Restore to ready, every check passed | **22.4 s** |
 
-**RTO** (restore-to-ready) is therefore under a minute at this size on this
-hardware, plus however long it takes to fetch the dump and repoint the app.
+This proves the **procedure**, not a recovery objective. The 22.4 s is a
+restore within one cluster on a developer machine, from a dump already on
+local disk. It does not demonstrate:
+
+- point-in-time recovery;
+- recovery after losing the host or its disk;
+- fetching a backup from off-host storage;
+- re-provisioning roles in a new cluster;
+- repointing a deployment.
+
+A production RTO is the sum of those steps, measured in the target
+environment.
 **RPO** is the interval between backups: a nightly `pg_dump` loses up to a
 day. Anything tighter needs WAL archiving with point-in-time recovery, or a
 managed database that provides it. Neither is configured here, and no RPO

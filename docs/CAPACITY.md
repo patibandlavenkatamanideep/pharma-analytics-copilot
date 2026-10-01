@@ -10,6 +10,13 @@ the full dataset. The authoritative run is
 levels.** No SLO has been set for this product. The targets below are
 proposals to argue with.
 
+**They are offline-pipeline capacity.** The planner here is deterministic
+and makes no model call. These figures say nothing about live-model
+throughput, latency, provider rate limits or cost. They measure everything
+around the model: sessions, policy, compilation, the database, rendering
+and persistence. See [Sensitivity](#sensitivity-a-live-model) for how a
+live model changes them. That needs measuring, not deriving.
+
 ## The profile
 
 | | |
@@ -56,6 +63,20 @@ product, or fewer groupings — will usually work." Nothing failed with an
 internal error or a dropped connection. Cheap and medium questions stayed
 answerable at 32 clients, but slowly: cheap ones at p95 2.5 s.
 
+**This is a capacity boundary.** The 5% timeout rate at 32 clients shows
+where this configuration stops answering everything it admits. Whether
+that is acceptable depends on a service target that has not been set. What
+it should inform:
+
+- **Admission control.** Today the limits are per user (2 concurrent
+  requests, 20 a minute) and the connection pools, which queue. Nothing
+  caps the total number of expensive questions in flight. A global limit,
+  sized from this boundary, would turn timeouts at saturation into an
+  immediate "busy, try again" for the questions over the limit. It is not
+  implemented.
+- **Concurrency per replica.** Size the number of users per replica from
+  the 8-client knee, not from the 32-client figure.
+
 **Variance.** Results at saturation move a lot between runs on this
 machine. Across the runs made, throughput at 8 clients ranged from 12 to
 24 answers a second. The other runs are recorded in
@@ -96,6 +117,27 @@ cost is not established. [INGESTION.md](INGESTION.md#measured-limits)
 describes two refresh problems this profile found and how they were fixed:
 replaced rows not being reclaimed, and the shift scrambling the table's
 order.
+
+## Freshness
+
+How old an answer's data can be is the sum of three delays, and only the
+last is measured here:
+
+1. **Source arrival.** The time from a sale happening to its batch reaching
+   ingestion. This is set by the feed, and no real feed exists yet.
+   `pac.ingest.lag` records it per source once one does
+   ([OBSERVABILITY.md](OBSERVABILITY.md)).
+2. **Batch schedule.** How often batches are run.
+3. **Publication.** Measured above: about 40 s for an in-week batch under
+   load, about 7 minutes for the first batch of a new week under load
+   (124 s idle).
+
+So any promise of freshness has the form "a sale is visible within
+(source delay) + (schedule interval) + 7 minutes". It cannot be shorter than
+the new-week publication time unless that rewrite is scheduled outside
+working hours or removed (see [INGESTION.md](INGESTION.md#measured-limits)).
+`GET /api/me` reports what the data runs through and when it was published,
+so users can see the age of what they are reading.
 
 ## Provisional targets
 

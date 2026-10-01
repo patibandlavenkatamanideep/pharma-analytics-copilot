@@ -426,6 +426,97 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
+# Spend, and which sets may be run
+# ---------------------------------------------------------------------------
+
+FROZEN = ROOT / "evals" / "frozen.json"
+
+
+class Budget:
+    """Tokens a live run may spend, checked BEFORE each question.
+
+    A question can cost two model calls (the plan and one repair), and a call
+    whose usage the provider did not report -- a timeout, a dropped
+    connection -- may still have been billed. So: the next question runs only
+    if two more calls at the ceiling would still fit, and an unreported call
+    is charged AT the ceiling, never as zero. The ceilings are deliberately
+    above what was measured (about 4,670 input / 160 output per question).
+    """
+
+    def __init__(self, max_input: int, max_output: int, *,
+                 input_ceiling: int = 8_000, output_ceiling: int = 4_096):
+        self.max_input, self.max_output = max_input, max_output
+        self.input_ceiling, self.output_ceiling = input_ceiling, output_ceiling
+        self.input = self.output = 0
+        self.unreported_calls = 0
+
+    def can_afford_another(self) -> bool:
+        return (self.input + 2 * self.input_ceiling <= self.max_input
+                and self.output + 2 * self.output_ceiling <= self.max_output)
+
+    def charge(self, planning: dict[str, Any] | None) -> None:
+        attempts = (planning or {}).get("attempts")
+        if not attempts:
+            # Planning failed before reporting what it did: the worst case.
+            self.input += 2 * self.input_ceiling
+            self.output += 2 * self.output_ceiling
+            self.unreported_calls += 2
+            return
+        for attempt in attempts:
+            usage = attempt.get("usage") or {}
+            if usage.get("known"):
+                self.input += usage.get("input_tokens") or 0
+                self.output += usage.get("output_tokens") or 0
+            else:
+                self.input += self.input_ceiling
+                self.output += self.output_ceiling
+                self.unreported_calls += 1
+
+    def as_dict(self) -> dict[str, Any]:
+        return {"max_input_tokens": self.max_input, "max_output_tokens": self.max_output,
+                "charged_input_tokens": self.input, "charged_output_tokens": self.output,
+                "unreported_calls_charged_at_ceiling": self.unreported_calls,
+                "input_ceiling_per_call": self.input_ceiling,
+                "output_ceiling_per_call": self.output_ceiling}
+
+
+def smoke_subset(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The first question of each family: the cheapest run that still touches
+    every kind of behaviour, to try before spending on whole sets."""
+    seen, out = set(), []
+    for q in questions:
+        family = q.get("family") or q["id"]
+        if family not in seen:
+            seen.add(family)
+            out.append(q)
+    return out
+
+
+def file_sha256(path: pathlib.Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def runnable(path: pathlib.Path, spec: dict[str, Any]) -> tuple[bool, str]:
+    """A set declares what it is. A holdout may run only as frozen -- the
+    questions and expected answers exactly as recorded in evals/frozen.json
+    before anyone saw the system's answers. Regression and spent sets run
+    freely; their scores are never quoted as accuracy on unseen questions."""
+    status = spec.get("status")
+    if status in ("regression", "spent"):
+        return True, status
+    if status != "holdout":
+        return False, f"{path.name} has no recognised status (regression | spent | holdout)"
+    frozen = json.loads(FROZEN.read_text()) if FROZEN.exists() else {}
+    entry = frozen.get(path.name)
+    if entry is None:
+        return False, (f"{path.name} is a holdout that has not been frozen; run "
+                       f"scripts/freeze_holdout.py {path} before evaluating it")
+    if entry["sha256"] != file_sha256(path):
+        return False, (f"{path.name} changed after it was frozen on {entry['frozen_at']}; "
+                       f"a changed holdout is a new set and needs a new name")
+    return True, "holdout"
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -437,10 +528,22 @@ def main() -> int:
     ap.add_argument("--tolerance", type=float, default=1e-9)
     ap.add_argument("--family", help="run only one family")
     ap.add_argument("--id", dest="only", help="run only one question id")
+    ap.add_argument("--smoke", action="store_true",
+                    help="only the first question of each family")
+    ap.add_argument("--max-input-tokens", type=int,
+                    help="spend cap; REQUIRED with --provider bedrock")
+    ap.add_argument("--max-output-tokens", type=int,
+                    help="spend cap; REQUIRED with --provider bedrock")
     args = ap.parse_args()
 
     if args.provider == "bedrock":
+        if not (args.max_input_tokens and args.max_output_tokens):
+            print("A live run needs a budget: --max-input-tokens and --max-output-tokens.",
+                  file=sys.stderr)
+            return 2
         print("Running against AWS Bedrock. THIS COSTS MONEY.\n")
+    budget = (Budget(args.max_input_tokens, args.max_output_tokens)
+              if args.provider == "bedrock" else None)
 
     import os
 
@@ -462,7 +565,13 @@ def main() -> int:
 
     questions_path = pathlib.Path(args.questions)
     spec = yaml.safe_load(questions_path.read_text())
+    ok, set_status = runnable(questions_path, spec)
+    if not ok:
+        print(set_status, file=sys.stderr)
+        return 2
     questions = spec["questions"]
+    if args.smoke:
+        questions = smoke_subset(questions)
     if args.family:
         questions = [q for q in questions if q.get("family") == args.family]
     if args.only:
@@ -491,6 +600,9 @@ def main() -> int:
     # this never disturbs credentials that have been issued to anyone.
     principals = {row["role"]: principal_for_user_id(row["user_id"]) for row in rows}
 
+    from app.llm.planner import PROMPT_VERSION
+    from app.llm.prompt_fingerprint import prompt_fingerprint
+
     planner = build_planner()
     pipeline = Pipeline(planner)
     dataset = pipeline.current_dataset()
@@ -500,7 +612,11 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     passed = failed = 0
 
+    not_run: list[str] = []
     for item in questions:
+        if budget is not None and not budget.can_afford_another():
+            not_run.append(item["id"])
+            continue
         principal = principals[item["principal"]]
         turns = item.get("turns") or [{"question": item["question"], "expect": item["expect"]}]
         conversation_id = None
@@ -534,6 +650,8 @@ def main() -> int:
 
             # From the result of THIS request, not from planner state.
             planning = result.planning or {}
+            if budget is not None:
+                budget.charge(result.planning)
             usage = planning.get("usage") or {}
             results.append({
                 "id": label,
@@ -594,6 +712,13 @@ def main() -> int:
         "dataset_id": dataset["dataset_id"],
         "dataset_mode": dataset["load_mode"],
         "question_set_version": spec["version"],
+        "question_set_status": set_status,
+        "question_set_sha256": file_sha256(questions_path),
+        "smoke_subset": args.smoke,
+        "prompt_version": PROMPT_VERSION,
+        "prompt_fingerprint": prompt_fingerprint(),
+        "budget": budget.as_dict() if budget is not None else None,
+        "not_run_budget_exhausted": not_run,
         "metric_version": get_registry().version,
         "policy_version": "1.0.0",
         "total": total, "passed": passed, "failed": failed,
@@ -642,6 +767,15 @@ def main() -> int:
     print(f"\n  {counts['unsupported']} check(s) passed by correctly declining or"
           " clarifying. That is right behaviour,\n  and it is NOT evidence that"
           " the requested figure can be computed.")
+    if budget is not None:
+        b = budget.as_dict()
+        print(f"\n  Spend: {b['charged_input_tokens']:,} input / {b['charged_output_tokens']:,} "
+              f"output tokens charged against {b['max_input_tokens']:,} / "
+              f"{b['max_output_tokens']:,}; {b['unreported_calls_charged_at_ceiling']} "
+              f"unreported call(s) charged at the ceiling.")
+    if not_run:
+        print(f"\n  STOPPED BY BUDGET: {len(not_run)} question(s) not run: {', '.join(not_run)}."
+              "\n  The totals above cover only the questions that ran.")
     print(f"\n  written to {path.relative_to(ROOT)}")
     if args.provider == "offline":
         print(
@@ -651,7 +785,8 @@ def main() -> int:
             "  accuracy and must not be reported as one."
         )
     close_pools()
-    return 0 if failed == 0 else 1
+    # A run the budget cut short is not a pass, however its questions did.
+    return 0 if failed == 0 and not not_run else 1
 
 
 if __name__ == "__main__":

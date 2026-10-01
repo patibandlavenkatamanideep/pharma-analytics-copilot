@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** the fresh-provisioning fix (`post-assessment/production-readiness`),
+**Measured on** the bounded-evaluation change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 642 | ✅ pass | `r2-suite-7b-unit.json` |
+| **Unit** | `pytest tests/unit -q` | 652 | ✅ pass | `r2-image-pytest.json` |
 | **Integration** | `pytest tests/integration -q` | 815 | ✅ pass | `r2-suite-7c-integration.json` |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 364` | 364 | ✅ pass | `r2-provisioning-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1821** | ✅ pass | `r2-provisioning-pytest.json` |
+| **Total (pytest)** | `pytest tests -q` | **1831** | ✅ pass | `r2-image-pytest.json` |
 | **Browser — component** | `cd web && npm test` | 21 | ✅ pass | `r2-final-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -132,7 +132,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1821: they do not run in the same
+Neither browser suite is counted in the 1831: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
