@@ -30,7 +30,7 @@ whether an answer is arithmetically right.
 | **Security** | `pytest tests/security -q --release-gate --min-tests 366` | 366 | ✅ pass | `r2-admission-security.json` |
 | **Total (pytest)** | `pytest tests -q` | **1851** | ✅ pass | `r2-admission-pytest.json` |
 | **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final2-browser.json` |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final3-browser.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
 
 Unit and integration counts are what pytest collects, not what anyone

@@ -9,7 +9,7 @@ belongs in the [Blocked](#blocked-what-needs-an-external-input) or
 | | |
 |---|---|
 | Branch | `post-assessment/production-readiness` |
-| Code measured | `7292f42` |
+| Code measured | `52d773d` |
 | Reviewed baseline | `c8aab5b`: the commit the 30 September 2026 review assessed. `main` still points at it; nothing on this branch is merged or pushed |
 | Versions | metric registry 1.4.0 (`5a39a26aaa68db9e`), policy 1.0.0, schema contract 1.0.0, prompt 2.1.0, planner contract 2.0.0, graph 1.0.0 |
 | Environment | macOS on Apple silicon (10 cores), Python 3.13.2, PostgreSQL 16.14, offline planner; the image built and run with podman 5.7.1 (arm64 VM) |
@@ -27,7 +27,15 @@ The actual image has also been built from the commit and tested end to end
 locally: 22 checks, a clean vulnerability scan, and an Exec and a RAM
 journey on a freshly provisioned database. That test found a defect no
 other test could: a first deployment could not sign anyone in. It is fixed
-in `eebc974`.
+in `eebc974`, and CI's image job now runs the same journeys on the amd64
+image it builds.
+
+Overload is now refused early, explicitly and fairly instead of by
+timeouts (admission control, `01f2303`). Measured: 32 clients went from
+5.2% statement timeouts to none, and at 64 clients the excess is refused in
+82 ms with `Retry-After`. A live evaluation's budget is enforced at every
+model call, repairs included, with SDK retries off while metered
+(`6915a86`). A component suite that shrinks now fails CI (`b422a56`).
 
 The conditions that need an environment are not met. The current prompt
 (2.1.0) has never been evaluated against the live model. Hosted CI has not
@@ -39,7 +47,7 @@ has been agreed. [Next steps](#next-steps-in-order) puts them in order, and
 
 | Category | Meaning here |
 |---|---|
-| **Implemented** | In the code at `7292f42` |
+| **Implemented** | In the code at `52d773d` |
 | **Locally verified** | An executable check passed on this machine, with a record |
 | **Staging verified** | Verified in a deployed environment. **Nothing is**: no staging exists for this branch |
 | **Blocked** | Implemented as far as possible; verification needs an input listed below |
@@ -48,17 +56,17 @@ has been agreed. [Next steps](#next-steps-in-order) puts them in order, and
 
 | Check | Command | Result | Record |
 |---|---|---|---|
-| Full pytest | `pytest tests -q` | **1831 passed**, 0 failed, 0 skipped | `r2-image-pytest.json` |
-| Unit / integration | `pytest tests/unit -q`, `tests/integration -q` | 652 / 815 passed | included in `r2-image-pytest.json` |
-| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 366` | **364 passed**, gate satisfied | `r2-final2-security.json` |
-| Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final2-ingestion.json` |
-| Component (vitest) | `npm ci && npx vitest run` on a clean copy of `web/` | **21 passed** | `r2-final2-component.json`. Run in place it collected nothing: iCloud had evicted the checkout's `node_modules` (see the record) |
-| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final2-browser.json` |
-| **The image** (podman, arm64) | `CONTAINER_CLI=podman scripts/image_smoke.sh` | **22 passed**, trivy: no HIGH/CRITICAL with a fix | `r2-image-smoke.json` |
-| Review ledger | `python3 evidence/probes/review_2026_09_30.py` | **0 reproduced, 20 fixed, 0 open** | `r2-final2-ledger.json` |
-| Offline evaluation: regression set (gate) | `run_evals.py --questions evals/questions.yaml` | 38/38 | `r2-eval-final-questions.json` |
-| Offline evaluation: holdout 1 | same, `holdout.yaml` | 12/12 | `r2-eval-final-holdout.json` |
-| Offline evaluation: holdout 2 | same, `holdout2.yaml` | **11/12**. k-07 is the offline planner's known limitation (it reads "growing or declining month over month" as growth), recorded as a failure | `r2-eval-final-holdout2.json` |
+| Full pytest | `pytest tests -q` | **1851 passed**, 0 failed, 0 skipped | `r2-admission-pytest.json` (`01f2303`; Python unchanged since) |
+| Unit / integration | `pytest tests/unit -q`, `tests/integration -q` | 664 / 821 passed | included in `r2-admission-pytest.json` |
+| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 366` | **366 passed**, gate satisfied | `r2-admission-security.json` |
+| Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final3-ingestion.json` |
+| Component (vitest, gated) | `npm ci`, `vitest run`, then `scripts/check_component_results.py ... 22`, on a clean copy of `web/` | **22 passed**, none skipped, at the floor | `r2-admission-component.json`. Run in place it collected nothing: iCloud had evicted the checkout's `node_modules` (`r2-final2-component.json`) |
+| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final3-browser.json` |
+| **The image** (podman, arm64) | `CONTAINER_CLI=podman scripts/image_smoke.sh` | **22 passed**, trivy: no HIGH/CRITICAL with a fix | `r2-image-smoke.json` (`7848581`; the CI wiring commit after it was also checked with a prebuilt image) |
+| Review ledger | `python3 evidence/probes/review_2026_09_30.py` | **0 reproduced, 20 fixed, 0 open** | `r2-final3-ledger.json` |
+| Offline evaluation: regression set (gate) | `run_evals.py --questions evals/questions.yaml` | 38/38 | `r2-final3-eval-questions.json` |
+| Offline evaluation: holdout 1 (spent) | same, `holdout.yaml` | 12/12 | `r2-final3-eval-holdout.json` |
+| Offline evaluation: holdout 2 (spent) | same, `holdout2.yaml` | **11/12**. k-07 is the offline planner's known limitation (it reads "growing or declining month over month" as growth), recorded as a failure | `r2-final3-eval-holdout2.json` |
 
 **Offline evaluation is not language accuracy.** It exercises the
 compiler, authorization, execution and rendering with a deterministic
@@ -116,6 +124,9 @@ fails without the fix.
 | `pg_stat_user_tables` reported 0 dead rows while 20 were held | Reclaim test | `66e62d2` (counted from VACUUM's own report) |
 | A freshly provisioned database could not sign anyone in: `login_attempts` was granted only on a second migration pass, and its sequence nowhere | Building and testing the actual image | `eebc974`, with a test that provisions in one pass |
 | 11 HIGH vulnerabilities in the image, none of which pip-audit reported: Debian openssl and libpcre2, plus urllib3, msgpack and `pkg_resources` vendored in pip | trivy on the built image | `f81d67f` (security updates applied; pip removed from the runtime image) |
+| A live evaluation could overspend its budget. It checked once per question for two calls, while SDK retries allowed six; a retried call's usage was never counted | Inspection, then boundary tests | `6915a86` (every call metered; SDK retries off while metered) |
+| A component suite that got smaller still passed CI: vitest exits 0 with an `it.skip` | Testing the gate both ways | `b422a56` (floor, no skips, tied to the files) |
+| No admission control: requests queued without bound, and overload arrived as 5 s timeouts (5.2% at 32 clients) | The load profile | `01f2303` (measured in `r2-load-admission.json`) |
 
 ## The brief, phase by phase
 
@@ -347,9 +358,11 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
 
 - **Capacity is offline-pipeline capacity.** 20 answers a second says
   nothing about live-model throughput, latency, rate limits or cost.
-- **The 32-client timeout rate is a boundary**, not a pass or a fail. It
-  should set per-replica concurrency and a global admission limit; no such
-  limit is implemented ([CAPACITY.md](CAPACITY.md)).
+- **The 32-client timeout rate was a boundary**, and the limits are now
+  set from it. With admission control, 32 clients had no timeouts, and the
+  excess at 64 clients was refused in 82 ms with `Retry-After`. The limits
+  are per worker, so a deployment's totals are worker limits × workers ×
+  replicas ([CAPACITY.md](CAPACITY.md#admission-control)).
 - **Freshness** is source arrival delay plus batch schedule plus
   publication. Only publication is measured: about 40 s, or about 7 minutes
   for the first batch of a new week under load.
@@ -362,13 +375,14 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
 
 ## Next steps, in order
 
-| # | Step | Evidence required | State |
-|---|---|---|---|
-| 1 | Build and test the actual image | Builds, starts, passes smoke tests, reviewed vulnerability scan | **Done locally** with podman on arm64 (`r2-image-smoke.json`). Still to do: the same on amd64 in CI |
-| 2 | Run hosted CI on this branch | Every required suite executes with zero mandatory skips | The workflow now runs on `post-assessment/**` pushes and on manual dispatch. Needs this branch pushed |
-| 3 | Evaluate prompt 2.1.0 against the live model | Model id, dataset, prompt fingerprint, results, failures, latency, tokens | The runner is ready: budget-capped, `--smoke` first, fingerprint recorded ([EVALUATION.md](EVALUATION.md#running-the-next-live-evaluation-prompt-210)). Needs credentials and a budget |
-| 4 | Deploy the tested image to staging | Deployed digest = evaluated artifact; authenticated journeys pass | Needs a staging environment. The digest to compare is the one CI pushes, recorded with the run |
-| 5 | Verify operational readiness | SSO, telemetry delivery, permission revocation, backup recovery, failure handling, agreed targets | Implemented and tested locally; each needs its environment or decision (below) |
+| Priority | Work | State |
+|---|---|---|
+| P0 | Concurrency and admission limits: bounded queues, per-user fairness, cancellation, predictable overload responses | **Implemented and measured locally** (`01f2303`, `r2-load-admission.json`) |
+| P0 | Hosted CI, including the amd64 image, fresh provisioning and sign-in | Ready: the workflow runs on `post-assessment/**` pushes and on dispatch. The security suite provisions a database in one pass and signs in. The image job runs the image journeys on a fresh database. **Needs the branch pushed** |
+| P0 | Live evaluation of prompt 2.1.0: smoke, then regression sets, then a frozen independent holdout | Runner ready ([EVALUATION.md](EVALUATION.md#running-the-next-live-evaluation-prompt-210)). **Needs credentials, a budget, and independently written holdout questions** |
+| P1 | Budget enforcement within model attempts | **Implemented, with boundary tests** (`6915a86`) |
+| P1 | Staging: real SSO, telemetry delivery, permission changes, checkpoint recovery, deployed image identity | **Needs a staging environment**, an IdP registration and a collector. The deployed image's digest must match the one CI built and tested |
+| P1 | Agreed service and recovery targets, then the redundancy, backup/PITR, retention and recovery arrangements they require | **Needs decisions** from the product and data owners |
 
 Redundancy, managed PostgreSQL and point-in-time recovery follow from the
 availability and data-loss targets, once those are set. They are not
