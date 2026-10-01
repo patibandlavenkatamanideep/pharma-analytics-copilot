@@ -143,6 +143,34 @@ Tested: `tests/unit/test_admission.py`,
 `tests/integration/test_admission_pipeline.py` and the 503 cases in
 `tests/security/test_failure_responses.py`.
 
+**Measured** with the same profile, on the same machine, with admission on
+at its defaults (`r2-load-admission.json`). Clients honour `Retry-After`
+with jitter, as the interface does.
+
+| Clients | Without admission (`r2-load-profile.json`) | With admission |
+|---:|---|---|
+| 8 | 20.2 answers/s, p95 1.8 s, 0 errors | 24.8 answers/s, p95 1.2 s, 0 errors |
+| 16 | 16.6/s, p95 2.9 s, **0.9% statement timeouts** | 23.0/s, p95 1.6 s, 0 errors |
+| 32 | 16.3/s, p95 4.0 s, **5.2% statement timeouts** | 20.5/s, p95 2.5 s (p99 5.0 s), 0 errors |
+| 64 | not measured | 20.2/s answered, p95 3.2 s; **29% refused** with 503 `overloaded`, p95 82 ms; 1 statement timeout (0.1%) |
+
+What changed:
+
+- **Overload no longer arrives as a timeout.** Below the limits,
+  questions wait their turn and are answered. At 32 clients the queue
+  absorbed everyone. At 64, the excess was refused at once (82 ms) with a
+  retry time. Before admission, it waited and then timed out after
+  5 seconds.
+- **Throughput holds instead of falling.** Without admission, 16 and 32
+  clients answered fewer questions a second than 8 did, because contention
+  slowed everyone. With admission it stays near the 8-client peak.
+- **The single timeout at 64** is an expensive question that took over 5 s
+  even with only 4 queries running per worker. Admission bounds contention;
+  it does not make one question faster.
+
+These are separate runs on a machine whose throughput varies by up to 2x
+between runs, so read the shape, not the exact figures.
+
 ## Freshness
 
 How old an answer's data can be is the sum of three delays, and only the
