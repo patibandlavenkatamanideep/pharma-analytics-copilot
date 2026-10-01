@@ -127,6 +127,15 @@ def test_the_inventory_matches_the_release_gate_floor(collected):
         "the CI floor and the security suite have drifted apart")
 
 
+def test_the_component_floor_is_the_component_suite():
+    """CI fails a component run that executed fewer tests than the floor.
+    The floor must be the number the files define, or a deleted test would
+    pass unnoticed (floor too low) or every run would fail (too high)."""
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    floor = int(re.search(r'PAC_COMPONENT_MIN_TESTS:\s*"(\d+)"', workflow).group(1))
+    assert floor == js_tests("web/src/__tests__")
+
+
 @pytest.mark.parametrize("relative,expected_in_doc", [
     ("web/src/__tests__", "component"),
     ("web/e2e", "end to end"),

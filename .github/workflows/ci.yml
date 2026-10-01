@@ -176,8 +176,17 @@ jobs:
       # The component tests used to exist and never run in CI: this job
       # built the bundle and stopped. They are the only automated check of
       # the identity-isolation logic in the browser.
-      - name: Component tests (vitest, jsdom)
-        run: npm --prefix web test
+      # vitest fails on zero test files, but not on a suite that got smaller
+      # (a deleted file, an it.skip). The floor is maintained like the
+      # security floor, and the unit suite checks it equals the tests defined.
+      - name: Component tests (vitest, jsdom, gated)
+        env:
+          PAC_COMPONENT_MIN_TESTS: "21"
+        run: |
+          npm --prefix web test -- --reporter=default --reporter=json \
+            --outputFile=component-results.json
+          python3 scripts/check_component_results.py web/component-results.json \
+            "$PAC_COMPONENT_MIN_TESTS"
       - run: npm --prefix web run build
 
   # The container image is a deliverable, so it is built on every push rather
