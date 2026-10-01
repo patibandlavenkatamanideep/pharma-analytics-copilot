@@ -195,4 +195,18 @@ describe("API v2 in the interface", () => {
     await screen.findByRole("button", { name: /sign in/i });
     expect(screen.queryByRole("link", { name: /single sign-on/i })).toBeNull();
   });
+
+  it("asks again, with the same key, when the data was refreshed mid-answer", async () => {
+    global.fetch = makeFetch([
+      respond(200, { status: "refresh", conversation_id: "c1", message: "refreshed",
+                     request_id: "r", run_id: "r_1", persistence: "not_saved" }),
+      answered(),
+    ]);
+    await renderSignedIn();
+    await ask("total volume");
+    await screen.findByText("1,234 packs", {}, { timeout: 3000 });
+    const [first, again] = global.fetch.asks;
+    expect(again.key).toEqual(first.key);
+    expect(global.fetch.asks).toHaveLength(2);
+  });
 });

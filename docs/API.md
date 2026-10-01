@@ -99,7 +99,7 @@ Response `200`:
 
 | Field | Always | Meaning |
 |---|---|---|
-| `status` | yes | `answered`, `clarify`, `denied`, `error`, `conflict`, `cancelled` |
+| `status` | yes | `answered`, `clarify`, `denied`, `error`, `conflict`, `cancelled`, `refresh` |
 | `conversation_id` | yes | Continue the conversation by sending it back |
 | `message` | yes | Headline, clarification or refusal text |
 | `request_id` | yes | Correlates with the audit row and logs |
@@ -110,6 +110,11 @@ Response `200`:
 | `answer` | on `answered` | `headline`, `columns`, `rows`, `scope_note`, `period_note`, `warnings`, `notes`, `row_count`, `truncated` |
 | `plan`, `sql` | only with `include_sql` | The typed plan, and the SQL this user was authorised to run |
 | `replayed` | on a replay | `true` when the response is the stored outcome of an earlier request with the same key |
+
+`refresh` means the data was republished while the question was being
+answered: the plan described the old data, so it was not run. Nothing was
+recorded; sending the same request again -- with the same key -- answers on
+the new data. The interface does this once, automatically.
 
 Interpreting `persistence`: only `saved` means the next turn can build on
 this one. `failed` returns the answer but it was not recorded; `conflict`

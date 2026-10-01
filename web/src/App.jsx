@@ -387,12 +387,19 @@ export default function App() {
     });
     const send = async (attempt) => {
       try {
-        return await api("/api/ask", {
+        const res = await api("/api/ask", {
           method: "POST",
           signal: controller.signal,
           headers: { "Idempotency-Key": key },
           body,
         });
+        // The data was republished mid-answer. The server closed the run
+        // without an answer, so the same key runs again -- on the new data.
+        if (res.status === "refresh" && attempt < 1 && !stale()) {
+          await sleep(300);
+          return send(attempt + 1);
+        }
+        return res;
       } catch (err) {
         if (err.name === "AbortError" || stale()) throw err;
         // Safe to resend with the SAME key: the server returns the outcome it

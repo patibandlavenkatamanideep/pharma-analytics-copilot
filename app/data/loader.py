@@ -67,10 +67,19 @@ class LoadError(RuntimeError):
 
 
 def _truncate_business_data(cur: Any) -> None:
-    cur.execute(
-        "TRUNCATE sales, organizations, products, zip_territory, "
-        "app_ref.product_classification, app_ref.calendar RESTART IDENTITY CASCADE"
-    )
+    """Remove the previous snapshot's rows, inside the publication transaction.
+
+    DELETE, not TRUNCATE -- for two reasons, both measured. TRUNCATE takes an
+    ACCESS EXCLUSIVE lock held until commit, so every reader waited for the
+    whole load; and TRUNCATE is not MVCC-safe, so a reader whose snapshot
+    predates it sees the tables EMPTY afterwards rather than seeing the old
+    rows. DELETE leaves concurrent readers on the old snapshot, complete,
+    until the new one commits. The cost is dead tuples, reclaimed by the
+    VACUUM that follows publication.
+    """
+    for table in ("sales", "app_ref.product_classification", "app_ref.calendar",
+                  "organizations", "products", "zip_territory"):
+        cur.execute(f"DELETE FROM {table}")
 
 
 def _copy_csv(cur: Any, table: str, columns: list[str], path: pathlib.Path) -> int:
@@ -514,6 +523,13 @@ def load(mode: str) -> LoadReport:
                 "UPDATE app_meta.dataset_manifest SET load_state = 'superseded' "
                 "WHERE load_state = 'published'"
             )
+            # The generation the query roles can see, flipped in the same
+            # transaction as the facts and the manifest.
+            cur.execute(
+                "INSERT INTO app_ref.generation (singleton, dataset_id, published_at) "
+                "VALUES (TRUE, %s, now()) ON CONFLICT (singleton) DO UPDATE "
+                "SET dataset_id = EXCLUDED.dataset_id, published_at = EXCLUDED.published_at",
+                (dataset_id,))
             cur.execute(
                 "UPDATE app_meta.dataset_manifest SET load_state = 'published', "
                 "published_at = now(), source_hashes = %s::jsonb, "
@@ -538,6 +554,12 @@ def load(mode: str) -> LoadReport:
     # The in-process vocabulary cache describes the snapshot that was live when
     # it was filled. Dropping it here keeps THIS process honest; other
     # processes are covered by the cache being keyed on dataset_id.
+    # Reclaim the previous snapshot's rows now that no reader can need them
+    # for long. Outside the transaction: VACUUM cannot run inside one.
+    with owner_transaction(autocommit=True) as cur:
+        for table in ("sales", "organizations", "products", "zip_territory"):
+            cur.execute(f"VACUUM (ANALYZE) {table}")
+
     from app.analytics.entities import clear_caches
 
     clear_caches()

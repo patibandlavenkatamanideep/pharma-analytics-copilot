@@ -310,7 +310,15 @@ def _():
 
 @check("F6", "a refresh mid-request cannot pair one generation's plan with another's rows")
 def _():
-    return (None, "source-level risk (R3); no probe until the generation contract exists")
+    # Behavioural, against the disposable database: a publish is landed
+    # between planning and execution, an old snapshot is held across a
+    # commit, and readers are timed during an uncommitted publication.
+    import subprocess
+    p = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/security/test_snapshot_consistency.py",
+         "-q", "-p", "no:randomly"], capture_output=True, text=True, cwd=ROOT)
+    tail = (p.stdout.strip().splitlines() or ["no output"])[-1]
+    return (p.returncode != 0, tail)
 
 
 @check("F7a", "planner usage is per-call, not shared instance state")

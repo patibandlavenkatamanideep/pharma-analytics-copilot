@@ -179,11 +179,13 @@ def acquire(
                     _refuse_if_busy(cur, conversation_id)
                     cur.execute(
                         "UPDATE app_conv.runs SET status = 'running', base_revision = %s, "
+                        "  conversation_id = %s, "
                         "  scope_fingerprint = %s, outcome = NULL, turn_seq = NULL, "
-                        "  finished_at = NULL, "
+                        "  finished_at = NULL, cancel_requested_at = NULL, "
                         "  lease_expires_at = now() + make_interval(secs => %s) "
                         "WHERE run_id = %s",
-                        (revision, principal.fingerprint(), lease_seconds, prior["run_id"]))
+                        (revision, conversation_id, principal.fingerprint(),
+                         lease_seconds, prior["run_id"]))
                     return Run(run_id=prior["run_id"], conversation_id=conversation_id,
                                base_revision=revision, idempotency_key=idempotency_key,
                                payload_hash=request_hash)

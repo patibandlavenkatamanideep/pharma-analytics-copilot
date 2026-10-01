@@ -88,6 +88,14 @@ def close_pools() -> None:
 atexit.register(close_pools)
 
 
+class GenerationChanged(RuntimeError):
+    """The published data changed after the request planned against it."""
+
+    def __init__(self, expected: str, found: str | None):
+        self.expected, self.found = expected, found
+        super().__init__(f"planned against {expected}, data is now {found}")
+
+
 class ScopeBindingError(RuntimeError):
     """Raised when a scope could not be bound. Always fails the request closed."""
 
@@ -99,11 +107,19 @@ def analytics_transaction(
     scope_value: str | None,
     wac_authorized: bool,
     settings: Settings | None = None,
+    expect_generation: str | None = None,
 ) -> Iterator[psycopg.Cursor]:
     """A read-only, time-bounded transaction with RLS scope bound.
 
     scope_kind is never taken from the browser or from the language model; it is
     derived server-side from the supplied users table.
+
+    REPEATABLE READ, so every statement in the transaction sees one snapshot.
+    With `expect_generation`, the published generation is read FIRST, in that
+    snapshot, and the transaction refuses to proceed if it is not the one the
+    caller planned against -- so the facts that follow are that generation's
+    facts. Reading the generation earlier, in another transaction, would
+    leave a window for a refresh between the check and the query.
     """
     settings = settings or get_settings()
 
@@ -125,7 +141,7 @@ def analytics_transaction(
                 # the pool hands the connection back, which interacts badly with
                 # a transaction that ended in an error. A statement inside the
                 # transaction is scoped to exactly this transaction.
-                cur.execute("SET TRANSACTION READ ONLY")
+                cur.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
                 # set_config(..., is_local => true) rather than SET LOCAL: it is
                 # the parameterized form, so no value is ever interpolated into
                 # SQL text, and it is equally transaction-scoped -- every setting
@@ -149,6 +165,12 @@ def analytics_transaction(
                         scope_value or "",
                     ),
                 )
+                if expect_generation is not None:
+                    cur.execute("SELECT dataset_id FROM app_ref.generation")
+                    row = cur.fetchone()
+                    found = row["dataset_id"] if row else None
+                    if found != expect_generation:
+                        raise GenerationChanged(expect_generation, found)
                 yield cur
             conn.commit()
         except Exception:

@@ -43,7 +43,8 @@ from app.conversation import runs
 from app.conversation.clarify import choice_from_reply
 from app.conversation.state import (
     Finalised, StagedTurn, finalise, open_conversation)
-from app.db import ScopeBindingError, analytics_transaction, auth_transaction
+from app.db import (
+    GenerationChanged, ScopeBindingError, analytics_transaction, auth_transaction)
 from app.llm.planner import Planner, PlannerError
 from app.analytics.plan import AnalyticalPlan
 from app.graph import (
@@ -863,13 +864,30 @@ class Turn:
         self.guard(state)
         t0 = time.perf_counter()
         try:
+            # One snapshot: the published generation is checked and the facts
+            # read in the same repeatable-read transaction, so the rows are the
+            # generation this request planned against -- its calendar, its
+            # vocabulary, its anchor -- or the query does not run.
             with analytics_transaction(
                 scope_kind=principal.scope_kind,
                 scope_value=principal.scope_value,
                 wac_authorized=principal.wac_authorized,
+                expect_generation=self.dataset["dataset_id"],
             ) as cur:
                 cur.execute(query.sql, query.params)
                 rows = cur.fetchall()
+        except GenerationChanged as exc:
+            # A refresh landed while this was being planned. The plan's
+            # vocabulary and calendar describe the old data, so it is not run.
+            # The run is closed as failed: a retry with the same key runs
+            # again, against the new generation.
+            log.info("generation changed mid-request (%s)", exc)
+            self.finish(PipelineResult(
+                status="refresh", conversation_id=self.state.conversation_id,
+                message=("The data was refreshed while your question was being "
+                         "answered. Asking again will use the latest data."),
+            ), "generation_changed", denial_reason=str(exc)[:200])
+            return {"route": "end", "outcome": "refresh"}
         except ScopeBindingError as exc:
             self.finish(PipelineResult(
                 status="denied", conversation_id=self.state.conversation_id,
