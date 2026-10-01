@@ -1,0 +1,105 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T12:34:51+00:00",
+  "claim": "Failure classification at 16 and 32 concurrent clients on the full dataset: every non-answer is listed with its audit outcome, question class and the message shown.",
+  "application": {
+    "sha": "2fc0070d1df6df2fbc2a47500f19575fe1c7659f",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "Dockerfile",
+      "app/api/main.py",
+      "app/conversation/feedback.py",
+      "app/conversation/privacy.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/RETENTION.md",
+      "evidence/runs/r2-load-failures.json",
+      "evidence/runs/r2-load-profile.json",
+      "migrations/019_feedback.sql",
+      "scripts/failure_sample.py",
+      "scripts/load_test.py",
+      "scripts/restore_drill.py",
+      "tests/security/test_feedback.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-0c5d262a5843",
+    "load_mode": "full",
+    "fingerprint": "73fdd9e992ce09640e7d06b9",
+    "row_counts": {
+      "sales": 2002000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 37,
+      "max_wk": 157,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-10-01",
+      "max_period_mo": "2026-10",
+      "max_period_qtr": "2026-Q4",
+      "max_week_ending": "2026-10-03"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/load_test.py",
+      "--levels",
+      "16,32",
+      "--seconds",
+      "30",
+      "--no-publication"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 67.82
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"database\": \"pharma_analytics_ingestscale\", \"sales_rows\": 2002000, \"workers\": 2, \"pool_max_per_worker\": {\"exec\": 8, \"scoped\": 8, \"auth\": 4, \"graph\": 4}, \"users\": {\"ram\": 6, \"director\": 4, \"exec\": 2}, \"role_mix\": {\"ram\": 0.6, \"director\": 0.3, \"exec\": 0.1}, \"class_mix\": {\"cheap\": 0.45, \"medium\": 0.4, \"expensive\": 0.15}, \"questions\": {\"cheap\": [\"total paid pack units last quarter\", \"paid pack units this month\", \"top 10 accounts by paid pack units last quarter\"], \"medium\": [\"paid pack units by product last 6 months\", \"volume growth by account last quarter\", \"top 20 facilities by paid pack units last 6 months\", \"market share by territory last quarter\"], \"expensive\": [\"paid pack units by month for the last 6 months\", \"paid pack units by facility and month, all time\"]}, \"phases\": [{\"phase\": \"c16\", \"concurrency\": 16, \"wall_s\": 31.9, \"window\": null, \"requests\": 507, \"throughput_rps\": 15.89, \"error_rate\": 0.0099, \"statuses\": {\"answered\": 502, \"error\": 5}, \"client_ms\": {\"n\": 502, \"p50\": 610.9, \"p95\": 2946.9, \"p99\": 3642.6, \"max\": 3898.7}, \"server_total_ms\": {\"n\": 502, \"p50\": 578, \"p95\": 2929, \"p99\": 3628, \"max\": 3885}, \"server_db_ms\": {\"n\": 499, \"p50\": 562, \"p95\": 2963, \"p99\": 3631, \"max\": 3859}, \"client_ms_by_class\": {\"cheap\": {\"n\": 232, \"p50\": 383.5, \"p95\": 1043.6, \"p99\": 1265.0, \"max\": 1326.7}, \"medium\": {\"n\": 207, \"p50\": 777.0, \"p95\": 1859.9, \"p99\": 2189.6, \"max\": 2688.5}, \"expensive\": {\"n\": 63, \"p50\": 2613.8, \"p95\": 3729.6, \"p99\": 3898.7, \"max\": 3898.7}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 5}]}, {\"phase\": \"c32\", \"concurrency\": 32, \"wall_s\": 33.4, \"window\": null, \"requests\": 470, \"throughput_rps\": 14.07, \"error_rate\": 0.0979, \"statuses\": {\"answered\": 424, \"error\": 46}, \"client_ms\": {\"n\": 424, \"p50\": 1276.4, \"p95\": 4719.0, \"p99\": 5556.2, \"max\": 8068.0}, \"server_total_ms\": {\"n\": 424, \"p50\": 1254, \"p95\": 4705, \"p99\": 5538, \"max\": 7992}, \"server_db_ms\": {\"n\": 424, \"p50\": 1237, \"p95\": 4660, \"p99\": 5520, \"max\": 7955}, \"client_ms_by_class\": {\"cheap\": {\"n\": 217, \"p50\": 641.7, \"p95\": 2894.3, \"p99\": 4070.8, \"max\": 4178.1}, \"medium\": {\"n\": 178, \"p50\": 1671.8, \"p95\": 4793.2, \"p99\": 5556.2, \"max\": 5706.4}, \"expensive\": {\"n\": 29, \"p50\": 4310.8, \"p95\": 5613.4, \"p99\": 8068.0, \"max\": 8068.0}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 46}]}], \"db_connections_peak\": {\"manideep\": 1, \"pac_auth_login\": 14, \"pac_owner\": 2, \"pac_scoped_login\": 16, \"pac_exec_login\": 7}, \"db_connections_active_peak\": {\"manideep\": 1, \"pac_auth_login\": 2, \"pac_owner\": 0, \"pac_scoped_login\": 16, \"pac_exec_login\": 7}, \"model_cost\": {\"this_run\": \"offline planner; no model calls\", \"live_tokens_per_question\": {\"input\": 4670, \"output\": 160, \"source\": \"docs/EVALUATION.md, live runs 2026-09-25\"}, \"per_answer\": \"input x PAC_LLM_INPUT_USD_PER_MTOK/1e6 + output x PAC_LLM_OUTPUT_USD_PER_MTOK/1e6; a repaired plan costs two calls\"}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Same machine and offline planner as r2-load-profile.json; quotas lifted.",
+    "Failure counts at this load vary considerably between runs; this record is one run, and docs/CAPACITY.md lists every run made."
+  ]
+}

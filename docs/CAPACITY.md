@@ -1,0 +1,145 @@
+# Capacity
+
+How much load one deployment carries, where it saturates, and what a data
+refresh costs while users are asking questions. The numbers come from
+`scripts/load_test.py`, which anyone can run against a disposable copy of
+the full dataset. The authoritative run is
+`evidence/runs/r2-load-profile.json`.
+
+**These are measurements on one development machine, not agreed service
+levels.** No SLO has been set for this product. The targets below are
+proposals to argue with.
+
+## The profile
+
+| | |
+|---|---|
+| Data | A disposable copy of the full dataset (2,001,000 sales after the run's batches), stored in reporting-period order |
+| Server | The image's shape: uvicorn, 2 workers, the application's own pools (8 exec, 8 scoped, 4 auth and 4 checkpoint connections per worker) |
+| Database | PostgreSQL 16.14, same machine (Apple silicon, 10 cores) |
+| Users | Throwaway: 6 RAMs in the busiest territories, 4 Directors, 2 Execs. Each virtual user signs in once and keeps its session |
+| Role mix | 60% RAM, 30% Director, 10% Exec |
+| Question mix | 45% cheap (one aggregate), 40% medium (rankings, growth, share by territory), 15% expensive (facility by month over all time; dense monthly series under row-level security) |
+| Planner | Offline. **No model latency or cost is included** (see [Sensitivity](#sensitivity-a-live-model)) |
+| Clients | Closed loop with no think time, so a stress test rather than real pacing. Per-user quotas were lifted, because otherwise each virtual user would be held to 20 requests a minute |
+
+## Results
+
+| Concurrent clients | Answers/s | p50 | p95 | p99 | Errors |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 5.5 | 82 ms | 0.80 s | 0.84 s | 0% |
+| 4 | 15.1 | 127 ms | 1.18 s | 1.28 s | 0% |
+| 8 | **20.2** | 188 ms | 1.81 s | 1.89 s | 0% |
+| 16 | 16.6 | 502 ms | 2.91 s | 3.53 s | 0.9% |
+| 32 | 16.3 | 1.19 s | 4.02 s | 6.01 s | 5.2% |
+
+p95 by question class at 8 clients:
+
+| Class | p95 |
+|---|---:|
+| Cheap | 0.24 s |
+| Medium | 0.85 s |
+| Expensive | 1.90 s |
+
+**Where it saturates.** Throughput peaks at about 8 concurrent clients.
+From 16 upwards, all 16 scoped connections (two workers × 8) are active the
+whole time, and requests queue for them. Server-side time accounts for
+almost all of what the client sees, and database time for almost all of
+the server's time. The pool is the backpressure point, by design. The
+database does the work, and the pools keep it from being asked for more
+than it can do at once.
+
+**What fails, and how.** Every error at 16 and 32 clients was the 5-second
+statement timeout on an **expensive** question. The user saw "That question
+took too long to answer. Narrowing it — a shorter time period, a specific
+product, or fewer groupings — will usually work." Nothing failed with an
+internal error or a dropped connection. Cheap and medium questions stayed
+answerable at 32 clients, but slowly: cheap ones at p95 2.5 s.
+
+**Variance.** Results at saturation move a lot between runs on this
+machine. Across the runs made, throughput at 8 clients ranged from 12 to
+24 answers a second. The other runs are recorded in
+`r2-load-profile-before-settle.json`, `r2-load-profile-scrambled-table.json`
+(both on a table an earlier `UPDATE`-based shift had disordered),
+`r2-throughput-*.json` and `r2-load-failures.json`. Read the table above
+as one run's shape, not as a constant.
+
+**Compared with the earlier benchmark.** `docs/EVALUATION.md` reports 32
+answers a second at 8 clients. That benchmark ran in process, without HTTP
+or sessions, over ten lighter question shapes. This profile goes through
+the full HTTP path and includes the two most expensive shapes, so the two
+figures are not in conflict.
+
+## Refreshing data under load
+
+Measured at 8 concurrent clients:
+
+| Publication | Took | Reader p95 during / outside it | Errors | `refresh` answers |
+|---|---:|---:|---:|---:|
+| 500 sales in the latest week | 39.6 s (incl. the 20 s settle) | 2.25 s / 2.20 s | 0.9% | 2 |
+| 500 sales opening a **new** week (every offset rewritten) | 434 s (124 s with no load) | 2.99 s / 1.78 s | 0.5% | 0 |
+
+Two things are shown here:
+
+- **The generation check works under load.** Two requests planned before
+  the in-week publication and executed after it were answered `refresh`
+  rather than with mixed data.
+- **No reader was blocked.** Errors during publication were the same
+  statement timeouts on the expensive class.
+
+A new-week publication is the expensive one, and it happens once a week.
+Schedule the first batch of a new week outside working hours. Immediately
+after it, throughput at 8 clients was 13.0 answers a second, against 20.2
+before. After a pause, in a separate measurement, it was 17.6 against
+19.3. Both are within this machine's run-to-run variance, so a lasting
+cost is not established. [INGESTION.md](INGESTION.md#measured-limits)
+describes two refresh problems this profile found and how they were fixed:
+replaced rows not being reclaimed, and the shift scrambling the table's
+order.
+
+## Provisional targets
+
+These are proposals, not commitments.
+
+| | Proposal | Measured here (8 clients) |
+|---|---|---|
+| p95, cheap and medium questions | < 2 s | 0.24 s / 0.85 s |
+| p95, expensive questions | < 5 s, the statement timeout | 1.90 s |
+| Error rate | < 1%, excluding refusals and clarifications | 0% |
+| Data refresh | Never blocks readers; a new-week batch outside working hours | as measured above |
+
+Rough sizing: a sales organisation where every user asks one question a
+minute at peak generates `users ÷ 60` questions a second. At the 20 a
+second measured here, that is about 1,200 users at that rate per replica,
+before model latency (below). One replica does not provide availability,
+only capacity. See [RUNBOOK.md §9](RUNBOOK.md) for connections and replicas.
+
+## Sensitivity: a live model
+
+The live planner adds one model call per question. The earlier live runs
+measured p50 3.5 s and p95 4.7 s, using about 4,670 input and 160 output
+tokens. A repaired plan costs a second call.
+
+- **Latency:** add the planner's time to every figure above. Planning
+  happens before any database connection is taken, so model latency does
+  not occupy the pools.
+- **Concurrency:** a request waiting on the model holds a worker thread,
+  not a database connection. At 3.3 questions a second (200 users at one a
+  minute) with 5 s of planning, about 17 requests are waiting on the model
+  at once (Little's law). That is well inside the two workers' thread pools
+  and the per-user limit of 2 concurrent requests.
+- **Cost per answer:** `4,670 × input rate + 160 × output rate`, per
+  million tokens, at the contracted rates (`PAC_LLM_INPUT_USD_PER_MTOK`,
+  `PAC_LLM_OUTPUT_USD_PER_MTOK`). With those set, `pac.llm.cost` reports it
+  ([OBSERVABILITY.md](OBSERVABILITY.md)). No rate is assumed here.
+- **Provider limits:** a provider rate limit produces "busy or unreachable"
+  after the SDK's own retries ([API.md](API.md)). The provider's quota, not
+  this system, then bounds throughput.
+
+## Not measured
+
+- The deployed host, a managed database, or more than one replica.
+- Live-model latency under concurrent load, and provider rate limits at
+  volume.
+- Real user pacing, think time and question mix.
+- Long soak: hours of load across several weekly publications.

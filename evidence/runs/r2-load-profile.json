@@ -1,0 +1,110 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:23:23+00:00",
+  "claim": "Load profile on a disposable copy of the full 2,000,000-row dataset stored in period order, with the settled reclaim and the ordered offset shift: two uvicorn workers, a RAM/Director/Exec mix over cheap, medium and expensive questions, concurrency 1 to 32, an in-week and a new-week publication under load, then the same load after publication.",
+  "application": {
+    "sha": "66e62d2b92f1544306f9268922351614d5906407",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "README.md",
+      "app/api/main.py",
+      "app/conversation/feedback.py",
+      "app/conversation/privacy.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RETENTION.md",
+      "docs/RUNBOOK.md",
+      "docs/SUPPLY_CHAIN.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/runs/r2-load-failures.json",
+      "evidence/runs/r2-load-profile-before-settle.json",
+      "evidence/runs/r2-load-profile-scrambled-table.json",
+      "migrations/019_feedback.sql",
+      "scripts/failure_sample.py",
+      "scripts/load_test.py",
+      "scripts/restore_drill.py",
+      "tests/security/test_feedback.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-9779fd427612",
+    "load_mode": "full",
+    "fingerprint": "4fdc682dc1ec8c6dd2c2bba6",
+    "row_counts": {
+      "sales": 2002000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 37,
+      "max_wk": 157,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-10-01",
+      "max_period_mo": "2026-10",
+      "max_period_qtr": "2026-Q4",
+      "max_week_ending": "2026-10-03"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/load_test.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 715.54
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"database\": \"pharma_analytics_ingestscale\", \"sales_rows\": 2001000, \"workers\": 2, \"pool_max_per_worker\": {\"exec\": 8, \"scoped\": 8, \"auth\": 4, \"graph\": 4}, \"users\": {\"ram\": 6, \"director\": 4, \"exec\": 2}, \"role_mix\": {\"ram\": 0.6, \"director\": 0.3, \"exec\": 0.1}, \"class_mix\": {\"cheap\": 0.45, \"medium\": 0.4, \"expensive\": 0.15}, \"questions\": {\"cheap\": [\"total paid pack units last quarter\", \"paid pack units this month\", \"top 10 accounts by paid pack units last quarter\"], \"medium\": [\"paid pack units by product last 6 months\", \"volume growth by account last quarter\", \"top 20 facilities by paid pack units last 6 months\", \"market share by territory last quarter\"], \"expensive\": [\"paid pack units by month for the last 6 months\", \"paid pack units by facility and month, all time\"]}, \"phases\": [{\"phase\": \"c1\", \"concurrency\": 1, \"wall_s\": 30.0, \"window\": null, \"requests\": 166, \"throughput_rps\": 5.53, \"error_rate\": 0.0, \"statuses\": {\"answered\": 166}, \"client_ms\": {\"n\": 166, \"p50\": 81.6, \"p95\": 800.3, \"p99\": 838.8, \"max\": 941.1}, \"server_total_ms\": {\"n\": 166, \"p50\": 71, \"p95\": 790, \"p99\": 828, \"max\": 932}, \"server_db_ms\": {\"n\": 166, \"p50\": 58, \"p95\": 771, \"p99\": 808, \"max\": 908}, \"client_ms_by_class\": {\"cheap\": {\"n\": 83, \"p50\": 56.1, \"p95\": 117.4, \"p99\": 122.4, \"max\": 122.4}, \"medium\": {\"n\": 58, \"p50\": 88.5, \"p95\": 341.4, \"p99\": 530.7, \"max\": 530.7}, \"expensive\": {\"n\": 25, \"p50\": 782.2, \"p95\": 838.8, \"p99\": 941.1, \"max\": 941.1}}, \"failures\": []}, {\"phase\": \"c4\", \"concurrency\": 4, \"wall_s\": 31.1, \"window\": null, \"requests\": 468, \"throughput_rps\": 15.05, \"error_rate\": 0.0, \"statuses\": {\"answered\": 468}, \"client_ms\": {\"n\": 468, \"p50\": 127.1, \"p95\": 1176.0, \"p99\": 1279.6, \"max\": 1394.8}, \"server_total_ms\": {\"n\": 468, \"p50\": 116, \"p95\": 1167, \"p99\": 1271, \"max\": 1386}, \"server_db_ms\": {\"n\": 468, \"p50\": 99, \"p95\": 1146, \"p99\": 1257, \"max\": 1370}, \"client_ms_by_class\": {\"cheap\": {\"n\": 207, \"p50\": 68.9, \"p95\": 161.4, \"p99\": 171.5, \"max\": 182.5}, \"medium\": {\"n\": 190, \"p50\": 143.3, \"p95\": 521.3, \"p99\": 598.1, \"max\": 671.3}, \"expensive\": {\"n\": 71, \"p50\": 914.0, \"p95\": 1318.5, \"p99\": 1394.8, \"max\": 1394.8}}, \"failures\": []}, {\"phase\": \"c8\", \"concurrency\": 8, \"wall_s\": 31.4, \"window\": null, \"requests\": 633, \"throughput_rps\": 20.16, \"error_rate\": 0.0, \"statuses\": {\"answered\": 633}, \"client_ms\": {\"n\": 633, \"p50\": 187.5, \"p95\": 1807.7, \"p99\": 1894.7, \"max\": 1941.1}, \"server_total_ms\": {\"n\": 633, \"p50\": 166, \"p95\": 1777, \"p99\": 1881, \"max\": 1919}, \"server_db_ms\": {\"n\": 633, \"p50\": 148, \"p95\": 1762, \"p99\": 1863, \"max\": 1895}, \"client_ms_by_class\": {\"cheap\": {\"n\": 288, \"p50\": 102.0, \"p95\": 244.0, \"p99\": 304.2, \"max\": 308.7}, \"medium\": {\"n\": 256, \"p50\": 198.0, \"p95\": 852.5, \"p99\": 917.3, \"max\": 930.0}, \"expensive\": {\"n\": 89, \"p50\": 1589.9, \"p95\": 1897.9, \"p99\": 1941.1, \"max\": 1941.1}}, \"failures\": []}, {\"phase\": \"c16\", \"concurrency\": 16, \"wall_s\": 34.3, \"window\": null, \"requests\": 568, \"throughput_rps\": 16.56, \"error_rate\": 0.0088, \"statuses\": {\"answered\": 563, \"error\": 5}, \"client_ms\": {\"n\": 563, \"p50\": 502.1, \"p95\": 2910.0, \"p99\": 3525.3, \"max\": 4938.2}, \"server_total_ms\": {\"n\": 563, \"p50\": 489, \"p95\": 2895, \"p99\": 3505, \"max\": 4880}, \"server_db_ms\": {\"n\": 563, \"p50\": 470, \"p95\": 2876, \"p99\": 3482, \"max\": 4831}, \"client_ms_by_class\": {\"cheap\": {\"n\": 276, \"p50\": 370.8, \"p95\": 774.7, \"p99\": 1043.0, \"max\": 1163.9}, \"medium\": {\"n\": 209, \"p50\": 606.5, \"p95\": 1631.0, \"p99\": 1841.4, \"max\": 1967.9}, \"expensive\": {\"n\": 78, \"p50\": 2692.4, \"p95\": 3552.3, \"p99\": 4938.2, \"max\": 4938.2}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 5}]}, {\"phase\": \"c32\", \"concurrency\": 32, \"wall_s\": 34.2, \"window\": null, \"requests\": 558, \"throughput_rps\": 16.32, \"error_rate\": 0.052, \"statuses\": {\"answered\": 529, \"error\": 29}, \"client_ms\": {\"n\": 529, \"p50\": 1191.6, \"p95\": 4018.0, \"p99\": 6013.1, \"max\": 6899.2}, \"server_total_ms\": {\"n\": 529, \"p50\": 1174, \"p95\": 3977, \"p99\": 5916, \"max\": 6889}, \"server_db_ms\": {\"n\": 529, \"p50\": 1149, \"p95\": 3960, \"p99\": 5727, \"max\": 6876}, \"client_ms_by_class\": {\"cheap\": {\"n\": 249, \"p50\": 802.3, \"p95\": 2540.2, \"p99\": 2906.8, \"max\": 3068.8}, \"medium\": {\"n\": 228, \"p50\": 1354.3, \"p95\": 3176.9, \"p99\": 3746.4, \"max\": 3990.1}, \"expensive\": {\"n\": 52, \"p50\": 4018.0, \"p95\": 6129.2, \"p99\": 6899.2, \"max\": 6899.2}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 29}]}, {\"phase\": \"publish_in_week\", \"concurrency\": 8, \"wall_s\": 61.3, \"window\": {\"start\": 1790860462.541047, \"end\": 1790860502.1286578, \"batch\": \"in_week\", \"publish_s\": 39.6, \"status\": \"published\", \"anchor_shift_weeks\": 0, \"dead_rows_after_reclaim\": {\"sales\": 0, \"app_ref.calendar\": 0}}, \"requests\": 823, \"throughput_rps\": 13.43, \"error_rate\": 0.0085, \"statuses\": {\"answered\": 814, \"error\": 7, \"refresh\": 2}, \"client_ms\": {\"n\": 814, \"p50\": 272.7, \"p95\": 2234.2, \"p99\": 2465.2, \"max\": 2789.3}, \"server_total_ms\": {\"n\": 814, \"p50\": 249, \"p95\": 2197, \"p99\": 2417, \"max\": 2755}, \"server_db_ms\": {\"n\": 814, \"p50\": 220, \"p95\": 2170, \"p99\": 2399, \"max\": 2690}, \"client_ms_by_class\": {\"cheap\": {\"n\": 375, \"p50\": 166.8, \"p95\": 339.4, \"p99\": 448.9, \"max\": 585.2}, \"medium\": {\"n\": 323, \"p50\": 350.8, \"p95\": 1170.7, \"p99\": 1414.3, \"max\": 1624.5}, \"expensive\": {\"n\": 116, \"p50\": 2158.6, \"p95\": 2571.1, \"p99\": 2723.0, \"max\": 2789.3}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 7}], \"during_publication_ms\": {\"n\": 525, \"p50\": 276.9, \"p95\": 2245.7, \"p99\": 2540.8, \"max\": 2723.0}, \"outside_publication_ms\": {\"n\": 289, \"p50\": 266.3, \"p95\": 2196.0, \"p99\": 2351.7, \"max\": 2789.3}, \"refresh_responses\": 2}, {\"phase\": \"publish_new_week\", \"concurrency\": 8, \"wall_s\": 445.0, \"window\": {\"start\": 1790860523.802655, \"end\": 1790860957.501736, \"batch\": \"new_week\", \"publish_s\": 433.7, \"status\": \"published\", \"anchor_shift_weeks\": 1, \"dead_rows_after_reclaim\": {\"sales\": 0, \"app_ref.calendar\": 0}}, \"requests\": 4467, \"throughput_rps\": 10.04, \"error_rate\": 0.0054, \"statuses\": {\"answered\": 4443, \"error\": 24}, \"client_ms\": {\"n\": 4443, \"p50\": 386.2, \"p95\": 2968.9, \"p99\": 3489.4, \"max\": 4507.6}, \"server_total_ms\": {\"n\": 4443, \"p50\": 328, \"p95\": 2915, \"p99\": 3401, \"max\": 4419}, \"server_db_ms\": {\"n\": 4442, \"p50\": 291, \"p95\": 2852, \"p99\": 3343, \"max\": 4295}, \"client_ms_by_class\": {\"cheap\": {\"n\": 2053, \"p50\": 252.3, \"p95\": 495.3, \"p99\": 867.8, \"max\": 1097.4}, \"medium\": {\"n\": 1728, \"p50\": 465.3, \"p95\": 1681.7, \"p99\": 2020.0, \"max\": 2978.3}, \"expensive\": {\"n\": 662, \"p50\": 2487.8, \"p95\": 3517.2, \"p99\": 3904.0, \"max\": 4507.6}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 24}], \"during_publication_ms\": {\"n\": 4279, \"p50\": 391.5, \"p95\": 2992.0, \"p99\": 3494.0, \"max\": 4507.6}, \"outside_publication_ms\": {\"n\": 164, \"p50\": 231.4, \"p95\": 1778.6, \"p99\": 2414.1, \"max\": 2437.8}, \"refresh_responses\": 0}, {\"phase\": \"after_publication\", \"concurrency\": 8, \"wall_s\": 31.3, \"window\": null, \"requests\": 407, \"throughput_rps\": 13.0, \"error_rate\": 0.0, \"statuses\": {\"answered\": 407}, \"client_ms\": {\"n\": 407, \"p50\": 298.6, \"p95\": 2287.6, \"p99\": 2644.3, \"max\": 3057.3}, \"server_total_ms\": {\"n\": 407, \"p50\": 229, \"p95\": 2227, \"p99\": 2544, \"max\": 2947}, \"server_db_ms\": {\"n\": 407, \"p50\": 172, \"p95\": 2172, \"p99\": 2463, \"max\": 2904}, \"client_ms_by_class\": {\"cheap\": {\"n\": 187, \"p50\": 171.7, \"p95\": 310.2, \"p99\": 447.5, \"max\": 487.9}, \"medium\": {\"n\": 165, \"p50\": 413.0, \"p95\": 1240.7, \"p99\": 1426.6, \"max\": 1483.0}, \"expensive\": {\"n\": 55, \"p50\": 2093.5, \"p95\": 2897.5, \"p99\": 3057.3, \"max\": 3057.3}}, \"failures\": []}], \"db_connections_peak\": {\"manideep\": 1, \"pac_auth_login\": 13, \"pac_owner\": 4, \"pac_scoped_login\": 16, \"pac_exec_login\": 5}, \"db_connections_active_peak\": {\"manideep\": 1, \"pac_auth_login\": 4, \"pac_owner\": 3, \"pac_scoped_login\": 16, \"pac_exec_login\": 4}, \"model_cost\": {\"this_run\": \"offline planner; no model calls\", \"live_tokens_per_question\": {\"input\": 4670, \"output\": 160, \"source\": \"docs/EVALUATION.md, live runs 2026-09-25\"}, \"per_answer\": \"input x PAC_LLM_INPUT_USD_PER_MTOK/1e6 + output x PAC_LLM_OUTPUT_USD_PER_MTOK/1e6; a repaired plan costs two calls\"}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Offline planner: no model latency or cost is included; live planning adds a model call per question (about 4,670 input / 160 output tokens measured in earlier live runs).",
+    "One development machine running client, server and PostgreSQL together; the deployed single-host topology and a managed database were not measured.",
+    "Per-user quotas were lifted for the run; with them on, each virtual user would be limited to 20 requests a minute.",
+    "Closed-loop clients with no think time: a stress profile, not a model of real user pacing.",
+    "Results vary between runs at saturation; the other load records in evidence/runs are earlier runs on a table whose order had been scrambled."
+  ]
+}
