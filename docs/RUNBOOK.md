@@ -116,7 +116,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 350
+python3 -m pytest tests/security -q --release-gate --min-tests 354
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,
@@ -145,6 +145,7 @@ enabled on `organizations` and `sales`, that the scoped role cannot read
 | Symptom | Cause | Fix |
 |---|---|---|
 | `no published dataset` | data never loaded, or the load failed | `scripts/load_data.py --mode full`; check `app_meta.dataset_manifest` for a `failed` row |
+| `/ready` says `database unavailable`, API returns `503 database_unavailable` | PostgreSQL unreachable, credentials wrong, or the pool exhausted | the server log names the error class; `pac.db.pool.timeouts` and `pac.db.errors{kind="unavailable"}` separate exhaustion from outage ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | `permission denied to create role` | running migrations as `pac_owner`, which deliberately has no `CREATEROLE` | run `scripts/bootstrap_db.py`; roles are created in its admin phase |
 | `privilege roles missing` | migration 004 ran before bootstrap | run `scripts/bootstrap_db.py` first |
 | A scoped user sees nothing | usually correct — their territory may match no ZIP | check `app_meta.dataset_manifest` warnings for `user_assignment_unmatched`; under seed data 10 of 23 users legitimately resolve to zero rows |

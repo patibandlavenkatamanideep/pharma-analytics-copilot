@@ -23,6 +23,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+
+import psycopg
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -46,7 +48,9 @@ from app.conversation.state import (
     Finalised, StagedTurn, finalise, open_conversation)
 from app.db import (
     GenerationChanged, ScopeBindingError, analytics_transaction, auth_transaction)
-from app.llm.planner import Planner, PlannerError, typed_plan
+from app.llm.planner import (
+    Planner, PlannerError, PlannerOutOfTime, PlannerUnavailable, typed_plan,
+)
 from app.analytics.plan import AnalyticalPlan
 from app.graph import (
     GRAPH_VERSION, RECURSION_LIMIT, build_turn_graph, checkpointer,
@@ -762,6 +766,17 @@ class Turn:
         t0 = time.perf_counter()
         try:
             planning = self.pipe.planner.plan(question, context)
+        except PlannerOutOfTime:
+            # The same outcome as a deadline met between steps.
+            raise DeadlineExceeded() from None
+        except PlannerUnavailable as exc:
+            log.warning("planner unavailable: %s", exc)
+            self.finish(PipelineResult(
+                status="error", conversation_id=self.state.conversation_id,
+                message=("The question service is busy or unreachable right now. "
+                         "Please try again in a moment."),
+            ), "planner_unavailable", denial_reason=str(exc)[:200])
+            return {"route": "end", "outcome": "error"}
         except PlannerError as exc:
             log.warning("planner failed: %s", exc)
             self.finish(PipelineResult(
@@ -969,12 +984,15 @@ class Turn:
         except Exception as exc:  # database timeout, cancellation, unavailability
             name = type(exc).__name__
             log.warning("query failed (%s): %s", name, exc)
-            telemetry.count("pac.db.errors", kind="timeout" if (
-                "Timeout" in name or "QueryCanceled" in name) else "unavailable")
+            # By type, not by name: "PoolTimeout" is no connection, not a
+            # slow query, and telling that user to narrow the question was
+            # wrong advice.
+            slow = isinstance(exc, psycopg.errors.QueryCanceled)
+            telemetry.count("pac.db.errors", kind="timeout" if slow else "unavailable")
             friendly = (
                 "That question took too long to answer. Narrowing it — a shorter time "
                 "period, a specific product, or fewer groupings — will usually work."
-                if "Timeout" in name or "QueryCanceled" in name
+                if slow
                 else "The data service is temporarily unavailable. Please try again."
             )
             return fail(friendly, "db_error", name)

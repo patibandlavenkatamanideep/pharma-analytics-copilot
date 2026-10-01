@@ -11,7 +11,7 @@ reader had no way to tell which one was current.
 matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
-**Measured on** `0a19036` plus the data-rights change (`post-assessment/production-readiness`),
+**Measured on** `4e41107` plus the failure-mode change (`post-assessment/production-readiness`),
 offline provider mode, dataset fingerprint `cba52562c89a4f8fd76c52a3`.
 
 ---
@@ -25,10 +25,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 616 | ✅ pass | `r2-suite-6c-unit.json` |
-| **Integration** | `pytest tests/integration -q` | 802 | ✅ pass | `r2-suite-6c-integration.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 350` | 350 | ✅ pass | `r2-suite-6c-security.json` |
-| **Total (pytest)** | `pytest tests -q` | **1768** | ✅ pass | `r2-suite-6c-total.json` |
+| **Unit** | `pytest tests/unit -q` | 616 | ✅ pass | `r2-suite-7a-unit.json` |
+| **Integration** | `pytest tests/integration -q` | 812 | ✅ pass | `r2-suite-7a-integration.json` |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 354` | 354 | ✅ pass | `r2-suite-7a-security.json` |
+| **Total (pytest)** | `pytest tests -q` | **1782** | ✅ pass | `r2-suite-7a-total.json` |
 | **Browser — component** | `cd web && npm test` | 20 | ✅ pass | `r2-suite-6c-component.json` |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-browser-journeys.json` |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
@@ -42,11 +42,16 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The result-checking integration tests are the other 130, which
-compare against SQL written by hand or against values computed from the
-test's own input (37 of them apply real batches to a disposable database
-in `tests/integration/test_ingestion.py`, and 6 trace real requests in
-`tests/integration/test_telemetry_pipeline.py`). The security count is also the `--min-tests` floor the release
+result. The other 140 do check results or behaviour:
+
+- most compare answers with SQL written by hand;
+- 37 apply real batches to a disposable database
+  (`tests/integration/test_ingestion.py`);
+- 6 trace real requests (`tests/integration/test_telemetry_pipeline.py`);
+- 10 inject provider and database failures
+  (`tests/integration/test_failure_modes.py`).
+
+The security count is also the `--min-tests` floor the release
 gate enforces, so the two cannot drift apart without the gate failing.
 
 ### What each layer does **not** establish
@@ -127,7 +132,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1768: they do not run in the same
+Neither browser suite is counted in the 1782: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -160,7 +165,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 350`, and fails on a skip in any phase, a
+`--release-gate --min-tests 354`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -177,7 +182,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 350
+python3 -m pytest tests/security -q --release-gate --min-tests 354
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

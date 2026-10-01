@@ -16,9 +16,11 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
+import psycopg
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from psycopg_pool import PoolTimeout
 from pydantic import BaseModel, Field
 
 from app import telemetry
@@ -146,6 +148,23 @@ async def _api_version(request: Request, call_next):
     if request.url.path.startswith("/api/"):
         response.headers["X-API-Version"] = API_VERSION
     return response
+
+
+#: Failures of the database itself -- unreachable, or no pooled connection
+#: within the pool timeout. Transient: the answer is "try again", not "this
+#: request is wrong", so 503 with Retry-After rather than 500. Statement
+#: timeouts are not here; the pipeline answers those itself.
+DATABASE_UNAVAILABLE = (psycopg.OperationalError, PoolTimeout)
+
+
+@app.exception_handler(psycopg.OperationalError)
+@app.exception_handler(PoolTimeout)
+async def _database_unavailable(request: Request, exc: Exception) -> JSONResponse:
+    log.warning("database unavailable on %s: %s", request.url.path, type(exc).__name__)
+    telemetry.count("pac.db.errors", kind="unavailable")
+    return JSONResponse(status_code=503, headers={"Retry-After": "5"}, content={
+        "detail": {"code": "database_unavailable",
+                   "message": "The service is temporarily unavailable. Please try again."}})
 
 
 def pipeline() -> Pipeline:
@@ -384,6 +403,8 @@ def ask(
         raise HTTPException(status_code=429, detail={
             "code": "rate_limited", "message": str(exc)},
             headers={"Retry-After": str(exc.retry_after)}) from None
+    except DATABASE_UNAVAILABLE:
+        raise                          # 503, by the handler below
     except Exception:
         # An unhandled failure still has to be investigable. Without an id in
         # the response there is nothing to connect the user's report to the
@@ -496,11 +517,22 @@ def health() -> dict[str, str]:
 
 @app.get("/ready")
 def ready() -> JSONResponse:
-    """Ready only when a published dataset exists and the boundary is intact."""
+    """Ready only when a published dataset exists and the boundary is intact.
+
+    Unauthenticated, so the reason is a fixed phrase, never the exception:
+    a database error names the login role, the host and why authentication
+    failed, and this endpoint used to return it to anyone who asked.
+    """
     try:
         dataset = pipeline().current_dataset()
+    except DATABASE_UNAVAILABLE as exc:
+        log.warning("not ready: database unavailable (%s)", type(exc).__name__)
+        return JSONResponse({"status": "not ready", "reason": "database unavailable"},
+                            status_code=503)
     except Exception as exc:
-        return JSONResponse({"status": "not ready", "reason": str(exc)[:200]}, status_code=503)
+        log.warning("not ready: %s", exc)
+        return JSONResponse({"status": "not ready", "reason": "no published dataset"},
+                            status_code=503)
     return JSONResponse({"status": "ready", "dataset": dataset["dataset_id"]})
 
 

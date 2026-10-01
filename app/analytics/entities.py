@@ -113,13 +113,40 @@ def _product_vocabulary(dataset_id: str) -> tuple[list[str], list[str], list[str
 
 
 def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocabulary:
-    products, subs, cats, specialties = _product_vocabulary(
-        dataset_id or _current_dataset_id())
+    dataset_id = dataset_id or _current_dataset_id()
+    products, subs, cats, specialties = _product_vocabulary(dataset_id)
+    territories, regions, gpos, archetypes, all_territories, all_regions = _scoped_vocabulary(
+        dataset_id, principal.role, principal.scope_kind, principal.scope_value,
+        principal.region_name, principal.territory_name)
 
+    from app.config import get_settings
+
+    return Vocabulary(
+        products=products, subcategories=subs, categories=cats,
+        specialties=specialties,
+        gpos=list(gpos), archetypes=list(archetypes), territories=list(territories),
+        regions=list(regions), all_territories=list(all_territories),
+        all_regions=list(all_regions),
+        company_names=[n.strip() for n in get_settings().company_names.split(",") if n.strip()],
+    )
+
+
+@lru_cache(maxsize=256)
+def _scoped_vocabulary(dataset_id: str, role: str, scope_kind: str, scope_value: str | None,
+                       region_name: str | None, territory_name: str | None
+                       ) -> tuple[tuple[str, ...], ...]:
+    """The geography and organization vocabularies one scope may see.
+
+    Six DISTINCT scans, two of them over organizations under row-level
+    security, used to run on EVERY question. Cached on everything that
+    decides the statements and the rows they can see -- the dataset, the
+    role, the scope and the assignment -- so a refresh or a change of
+    assignment is a different key, never a stale hit.
+    """
     # zip_territory is unrestricted reference data, but the planner is still
     # only offered the geography the principal can act on: suggesting a
     # territory that authorization will refuse produces a worse answer.
-    if principal.role == "exec":
+    if role == "exec":
         territory_sql = "SELECT DISTINCT territory_name FROM zip_territory ORDER BY 1"
         territory_params: tuple[Any, ...] = ()
         region_sql = (
@@ -127,55 +154,47 @@ def vocabulary_for(principal: Principal, dataset_id: str | None = None) -> Vocab
             "WHERE region_name IS NOT NULL ORDER BY 1"
         )
         region_params: tuple[Any, ...] = ()
-    elif principal.role == "director":
+    elif role == "director":
         territory_sql = (
             "SELECT DISTINCT territory_name FROM zip_territory WHERE region_name = %s ORDER BY 1"
         )
-        territory_params = (principal.region_name,)
+        territory_params = (region_name,)
         region_sql = "SELECT %s AS region_name"
-        region_params = (principal.region_name,)
+        region_params = (region_name,)
     else:
         territory_sql = "SELECT %s AS territory_name"
-        territory_params = (principal.territory_name,)
+        territory_params = (territory_name,)
         region_sql = "SELECT NULL AS region_name WHERE false"
         region_params = ()
 
     with analytics_transaction(
-        scope_kind=principal.scope_kind,
-        scope_value=principal.scope_value,
+        scope_kind=scope_kind,
+        scope_value=scope_value,
         wac_authorized=False,
     ) as cur:
         cur.execute(territory_sql, territory_params)
-        territories = [r["territory_name"] for r in cur.fetchall() if r["territory_name"]]
+        territories = tuple(r["territory_name"] for r in cur.fetchall() if r["territory_name"])
         cur.execute(region_sql, region_params)
-        regions = [r["region_name"] for r in cur.fetchall() if r["region_name"]]
+        regions = tuple(r["region_name"] for r in cur.fetchall() if r["region_name"])
         # These come from organizations, so RLS already limits them to scope.
         cur.execute(
             "SELECT DISTINCT gpo_name FROM organizations WHERE gpo_name IS NOT NULL ORDER BY 1"
         )
-        gpos = [r["gpo_name"] for r in cur.fetchall()]
+        gpos = tuple(r["gpo_name"] for r in cur.fetchall())
         cur.execute(
             "SELECT DISTINCT org_archetype FROM organizations "
             "WHERE org_archetype IS NOT NULL ORDER BY 1"
         )
-        archetypes = [r["org_archetype"] for r in cur.fetchall()]
+        archetypes = tuple(r["org_archetype"] for r in cur.fetchall())
         cur.execute("SELECT DISTINCT territory_name FROM zip_territory ORDER BY 1")
-        all_territories = [r["territory_name"] for r in cur.fetchall() if r["territory_name"]]
+        all_territories = tuple(r["territory_name"] for r in cur.fetchall()
+                                if r["territory_name"])
         cur.execute(
             "SELECT DISTINCT region_name FROM zip_territory "
             "WHERE region_name IS NOT NULL ORDER BY 1"
         )
-        all_regions = [r["region_name"] for r in cur.fetchall()]
-
-    from app.config import get_settings
-
-    return Vocabulary(
-        products=products, subcategories=subs, categories=cats,
-        specialties=specialties,
-        gpos=gpos, archetypes=archetypes, territories=territories, regions=regions,
-        all_territories=all_territories, all_regions=all_regions,
-        company_names=[n.strip() for n in get_settings().company_names.split(",") if n.strip()],
-    )
+        all_regions = tuple(r["region_name"] for r in cur.fetchall())
+    return territories, regions, gpos, archetypes, all_territories, all_regions
 
 
 def resolve_accounts(term: str, principal: Principal, *, limit: int = 8) -> list[Candidate]:
@@ -255,6 +274,7 @@ def resolve_products(term: str) -> list[Candidate]:
 
 def clear_caches() -> None:
     _product_vocabulary.cache_clear()
+    _scoped_vocabulary.cache_clear()
     # The account index is keyed on dataset_id too; cleared with the rest so
     # a reload does not hold the previous snapshot's names in memory.
     from app.analytics.mentions import clear_caches as clear_mentions

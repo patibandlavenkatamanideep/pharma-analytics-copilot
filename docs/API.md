@@ -199,5 +199,24 @@ Liveness: `200 {"status": "ok"}` whenever the process serves requests.
 
 ### GET /ready
 
-Readiness: `200` only when a published dataset exists; `503` before the
-first load, so a container is not sent traffic it cannot serve.
+Readiness: `200 {"status": "ready", "dataset": id}` only when a published
+dataset exists and the database answers; otherwise `503` with `reason`
+`no published dataset` or `database unavailable`, so a container is not sent
+traffic it cannot serve. Unauthenticated, so the reason is one of these fixed
+phrases and never the underlying error.
+
+### Failures common to every endpoint
+
+| Status | Code | Meaning |
+|---|---|---|
+| 503 | `database_unavailable` | The database could not be reached, or no connection was free within the pool timeout. Transient; honour `Retry-After` |
+| 500 | — | Unexpected. `detail` is `{"message", "request_id"}` and nothing else; the id identifies the log entry |
+
+Inside `POST /api/ask`, a failure that happens while answering is a `200`
+with `status: "error"` and a message a person can act on:
+- the model is busy or unreachable;
+- the request ran out of time;
+- the query took too long, so narrow the question;
+- the data service is unavailable.
+
+A statement timeout is not a 503: the question can be narrowed.

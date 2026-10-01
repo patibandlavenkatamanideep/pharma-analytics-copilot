@@ -66,6 +66,16 @@ class PlannerError(RuntimeError):
     """The question could not be turned into a plan."""
 
 
+class PlannerOutOfTime(PlannerError):
+    """The request's budget ran out before the model could be asked."""
+
+
+class PlannerUnavailable(PlannerError):
+    """The model could not be reached in time -- a timeout, a rate limit after
+    the SDK's own retries, a connection failure. Not a question the user
+    should rephrase, and not a plan to repair."""
+
+
 # Which filter a frozen cohort belongs in, per the grain it was collected at.
 # A dimension that is not here (a period, for instance) has no cohort: "those
 # same months" is a time window, not a population.
@@ -170,7 +180,8 @@ class PlanningAttempt:
 
     ordinal: int
     kind: Literal["initial", "repair"]
-    outcome: Literal["plan", "invalid_plan", "no_tool_call", "transport_error"]
+    outcome: Literal["plan", "invalid_plan", "no_tool_call", "transport_error",
+                     "out_of_time"]
     usage: TokenUsage = field(default_factory=TokenUsage)
     error: str | None = None
 
@@ -430,6 +441,14 @@ class BedrockPlanner:
         attempts.append(attempt)
         if plan is not None:
             return self._result(plan, attempts)
+        if attempt.outcome == "out_of_time":
+            raise PlannerOutOfTime(err)
+        if attempt.outcome == "transport_error":
+            # Telling the model its plan "failed validation" when it never
+            # answered is false, and a second call to a provider that just
+            # timed out or rate-limited is more of the same. The SDK has
+            # already retried what was retryable within the budget.
+            raise PlannerUnavailable(f"the model could not be reached: {err}")
         if deadline is not None and deadline - time.time() < MIN_ATTEMPT_SECONDS:
             # A repair that cannot finish before the request's deadline is a
             # bill with no answer attached. Reported as what it is.
@@ -450,6 +469,10 @@ class BedrockPlanner:
         ]
         plan, err2, attempt = self._traced(system, messages, tool, 2, "repair", deadline)
         attempts.append(attempt)
+        if attempt.outcome == "out_of_time":
+            raise PlannerOutOfTime(err2)
+        if attempt.outcome == "transport_error":
+            raise PlannerUnavailable(f"the model could not be reached for the repair: {err2}")
         if plan is not None:
             # The first attempt's tokens were spent and are kept. Overwriting
             # them -- which the old last_usage did -- under-reported every
@@ -538,8 +561,10 @@ class BedrockPlanner:
         if deadline_at is not None:
             remaining = deadline_at - time.time()
             if remaining < MIN_ATTEMPT_SECONDS:
+                # Not called at all: nothing was spent, and nothing about the
+                # provider is known. Zero is the measured usage here.
                 message = "request deadline reached before this attempt"
-                return None, message, record("transport_error", TokenUsage(), message)
+                return None, message, record("out_of_time", TokenUsage(0, 0), message)
             timeout = min(float(self.settings.llm_timeout_s), remaining)
             client = self._client.with_options(
                 timeout=timeout,

@@ -75,6 +75,12 @@ class FakeMessages:
 class FakeClient:
     def __init__(self, replies):
         self.messages = FakeMessages(replies)
+        self.options: list[dict[str, Any]] = []
+
+    def with_options(self, **options):
+        """The per-attempt timeout and retry budget, recorded."""
+        self.options.append(options)
+        return self
 
 
 def valid_plan_block(**overrides) -> FakeBlock:
@@ -419,20 +425,23 @@ def test_a_response_with_no_usage_is_unknown_not_zero():
     assert result.usage.as_dict()["known"] is False
 
 
-def test_a_transport_failure_records_unknown_usage_not_zero():
-    """A request that failed in transit may still have reached the provider
-    and been billed."""
+def test_a_transport_failure_ends_planning_without_a_false_repair():
+    """A call that never came back is not an invalid plan. The repair used to
+    tell the model "that plan failed validation" and call again -- false, and
+    a second call to a provider that had just failed. The SDK has already
+    retried what was retryable inside the request's budget; what reaches the
+    planner is final, and the user is told the service is unavailable rather
+    than asked to rephrase."""
+    from app.llm.planner import PlannerUnavailable
+
     planner = make_planner([
         ConnectionError("reset by peer"),
         FakeResponse([valid_plan_block()], FakeUsage(50, 5)),
     ])
-    result = planner.plan("q", context_with("q"))
-
-    assert [a.outcome for a in result.attempts] == ["transport_error", "plan"]
-    assert result.attempts[0].usage.known is False
-    assert "reset by peer" in (result.attempts[0].error or "")
-    # The known part is still reported.
-    assert result.usage.input_tokens == 50
+    with pytest.raises(PlannerUnavailable) as exc:
+        planner.plan("q", context_with("q"))
+    assert "reset by peer" in str(exc.value)
+    assert len(planner._client.messages.requests) == 1
 
 
 def test_a_failed_repair_reports_the_tokens_it_spent():
