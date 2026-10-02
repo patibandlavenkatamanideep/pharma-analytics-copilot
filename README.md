@@ -127,7 +127,7 @@ the browser and model-evaluation suites are in
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
 python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
-python3 -m pytest tests/security -q --release-gate --min-tests 394  # release gate
+python3 -m pytest tests/security -q --release-gate --min-tests 395  # release gate
 
 cd web && npm test                           # jsdom component tests (counts: docs/TEST_INVENTORY.md)
 python3 scripts/browser_journeys.py          # real-browser journeys against a local server

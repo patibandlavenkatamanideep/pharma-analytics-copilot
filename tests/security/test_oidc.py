@@ -402,3 +402,27 @@ def test_an_expired_attempt_is_refused_even_from_the_right_browser(client, idp, 
     r = callback(client, code, state)
     assert r.status_code == 400 and r.json()["detail"]["code"] == "invalid_state"
     assert code in idp.codes, "an expired attempt still redeemed its code"
+
+
+def test_the_previous_releases_attempts_still_insert_and_are_never_completed(client, idp,
+                                                                             make_identity):
+    """Rollback and rolling deploys. The previous release inserts attempts
+    without a binding: that must still work on this schema (a NOT NULL
+    column would break its SSO start), and this release must refuse to
+    complete such an attempt -- before the code is redeemed."""
+    from app.db import owner_transaction
+    user = make_identity("exec", can_view_wac=1)
+    link(user, "sub-legacy")
+    with owner_transaction() as cur:                     # the previous release's insert
+        cur.execute(
+            "INSERT INTO app_auth.oidc_pending (state_hash, nonce, code_verifier, "
+            "  redirect_after, expires_at) "
+            "VALUES (%s, 'n', 'v', '/', now() + make_interval(secs => 600))",
+            (hashlib.sha256(secrets.token_bytes(8)).hexdigest(),))
+    _, code, state = started(client, idp, "sub-legacy")
+    with owner_transaction() as cur:                     # as if that release had started it
+        cur.execute("UPDATE app_auth.oidc_pending SET binding_hash = NULL WHERE state_hash = %s",
+                    (hashlib.sha256(state.encode()).hexdigest(),))
+    r = callback(client, code, state)
+    assert r.status_code == 400 and r.json()["detail"]["code"] == "browser_mismatch"
+    assert code in idp.codes and client.get("/api/me").status_code == 401

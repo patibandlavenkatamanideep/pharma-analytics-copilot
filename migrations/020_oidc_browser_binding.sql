@@ -8,11 +8,14 @@
 -- is exchanged.
 ALTER TABLE app_auth.oidc_pending ADD COLUMN IF NOT EXISTS binding_hash TEXT;
 
--- Attempts begun before this migration have no browser to check against.
--- Each lives ten minutes at most; they are abandoned rather than honoured
--- unbound.
-DELETE FROM app_auth.oidc_pending WHERE binding_hash IS NULL;
-ALTER TABLE app_auth.oidc_pending ALTER COLUMN binding_hash SET NOT NULL;
+-- Nullable on purpose. This release completes an attempt only when the
+-- presented secret's hash EQUALS the stored one, and NULL equals nothing,
+-- so an unbound attempt can only be refused. Meanwhile the previous
+-- release, which does not know this column, can still start sign-ins if
+-- the application is rolled back: NOT NULL with no default would fail every
+-- one of its inserts. (The first draft of this migration set NOT NULL;
+-- databases that applied it are put back.)
+ALTER TABLE app_auth.oidc_pending ALTER COLUMN binding_hash DROP NOT NULL;
 
 -- Several tabs of one browser share a binding; a start looks it up.
 CREATE INDEX IF NOT EXISTS ix_oidc_pending_binding ON app_auth.oidc_pending (binding_hash);
