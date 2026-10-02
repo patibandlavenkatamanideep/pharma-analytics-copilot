@@ -28,7 +28,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 # ---------------------------------------------------------------------------
 # Redaction
@@ -175,13 +175,49 @@ def _dirty_paths() -> list[str]:
 
 
 def _application() -> dict[str, Any]:
+    """Which bytes ran. A commit SHA alone identifies them only when the tree
+    is clean; when it is not, each changed file's digest is recorded too, so
+    a record made on an uncommitted tree still names exactly what was tested
+    (review of 1 October 2026). Release checks use --require-clean."""
     paths = _dirty_paths()
+    digests: dict[str, str | None] = {}
+    for path in paths[:50]:
+        target = ROOT / path
+        digests[path] = (hashlib.sha256(target.read_bytes()).hexdigest()
+                         if target.is_file() else None)          # deleted, or a directory
     return {
         "sha": _git("rev-parse", "HEAD"),
+        "tree": _git("rev-parse", "HEAD^{tree}"),
         "branch": _git("rev-parse", "--abbrev-ref", "HEAD"),
         "worktree_clean": not paths,
         "dirty_paths": paths[:50],
+        "dirty_digests": digests or None,
     }
+
+
+def _image(ref: str | None, cli: str | None) -> dict[str, Any] | None:
+    """The container image a check ran against, as the engine reports it:
+    id, repository digest where it has one, platform and revision label.
+    A tag names whatever was last built; the id names these bytes."""
+    if not ref:
+        return None
+    import os
+    cli = cli or os.environ.get("CONTAINER_CLI") or "podman"
+    try:
+        proc = subprocess.run([cli, "image", "inspect", ref], capture_output=True, text=True,
+                              timeout=60)
+        info = json.loads(proc.stdout)[0] if proc.returncode == 0 else None
+    except Exception:
+        info = None
+    if not info:
+        return {"ref": ref, "inspected_with": cli, "id": None, "digest": None,
+                "platform": None, "revision_label": None}
+    labels = (info.get("Config") or {}).get("Labels") or info.get("Labels") or {}
+    digests = info.get("RepoDigests") or []
+    return {"ref": ref, "inspected_with": cli, "id": info.get("Id"),
+            "digest": info.get("Digest") or (digests[0].split("@", 1)[-1] if digests else None),
+            "platform": f"{info.get('Os')}/{info.get('Architecture')}",
+            "revision_label": labels.get("org.opencontainers.image.revision")}
 
 
 def _versions() -> dict[str, Any]:
@@ -284,6 +320,13 @@ def main() -> int:
                     choices=("passed", "failed", "blocked", "not_run", "not_applicable"),
                     help="override the status; default is derived from the exit code")
     ap.add_argument("--blocked-reason", default=None)
+    ap.add_argument("--require-clean", action="store_true",
+                    help="a release check: refuse to run on an uncommitted tree, and record "
+                         "the refusal as blocked")
+    ap.add_argument("--image", default=None,
+                    help="the container image this check ran against; its id, digest, "
+                         "platform and revision label are recorded")
+    ap.add_argument("--container-cli", default=None, help="podman (default) or docker")
     ap.add_argument("cmd", nargs=argparse.REMAINDER)
     args = ap.parse_args()
 
@@ -293,7 +336,13 @@ def main() -> int:
     exit_code: int | None = None
     duration: float | None = None
     stdout = ""
-    if argv:
+    refused = args.require_clean and bool(_dirty_paths())
+    if refused:
+        args.status = "blocked"
+        args.blocked_reason = ("--require-clean: the working tree has uncommitted changes, so "
+                               "the commit does not identify what would run")
+        print(args.blocked_reason, file=sys.stderr)
+    elif argv:
         import os
         env = {**os.environ, **overrides}
         started = time.monotonic()
@@ -353,6 +402,9 @@ def main() -> int:
         "artifacts": [],
         "limits": args.limit or None,
     }
+    image = _image(args.image, args.container_cli)
+    if image is not None:
+        record["image"] = image
 
     # Scrubbed as a whole, after assembly: the summary line and any captured
     # error come from a child process and are not under this script's
@@ -363,7 +415,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(record, indent=2, default=str) + "\n")
     print(f"\nevidence -> {args.out}  [{status}]")
-    return 0
+    return 2 if refused else 0
 
 
 if __name__ == "__main__":

@@ -144,3 +144,60 @@ def test_a_run_with_no_command_is_not_recorded_as_passed(tmp_path):
         capture_output=True, text=True, cwd=ROOT)
 
     assert json.loads(out.read_text())["outcome"]["status"] == "not_run"
+
+
+# ---------------------------------------------------------------------------
+# Which bytes ran (review of 1 October 2026: a SHA alone does not identify
+# an uncommitted tree)
+# ---------------------------------------------------------------------------
+
+def test_a_record_names_the_tree_it_ran(repo):
+    tree = subprocess.run(["git", "rev-parse", "HEAD^{tree}"], cwd=repo, capture_output=True,
+                          text=True).stdout.strip()
+    app = rec._application()
+    assert app["tree"] == tree and app["dirty_digests"] is None
+
+
+def test_a_dirty_tree_records_each_changed_file_by_digest(repo):
+    import hashlib
+    (repo / "app" / "config.py").write_text("changed\n")
+    (repo / "new.txt").write_text("untracked\n")
+    (repo / "keep.txt").unlink()
+    digests = rec._application()["dirty_digests"]
+    assert digests == {"app/config.py": hashlib.sha256(b"changed\n").hexdigest(),
+                       "new.txt": hashlib.sha256(b"untracked\n").hexdigest(),
+                       "keep.txt": None}
+
+
+def test_digests_survive_the_credential_scrub(repo):
+    (repo / "app" / "config.py").write_text("changed\n")
+    record = rec._scrub({"application": rec._application()})
+    assert all(len(d) == 64 for d in record["application"]["dirty_digests"].values() if d)
+
+
+def test_require_clean_refuses_to_run_a_release_check_on_a_dirty_tree(repo, tmp_path,
+                                                                       monkeypatch):
+    (repo / "app" / "config.py").write_text("changed\n")
+    out, marker = tmp_path / "r.json", tmp_path / "ran"
+    monkeypatch.setattr(sys, "argv", ["record_evidence.py", "--require-clean", "--out", str(out),
+                                      "--", sys.executable, "-c",
+                                      f"open({str(marker)!r}, 'w').close()"])
+    assert rec.main() == 2
+    record = json.loads(out.read_text())
+    assert record["outcome"]["status"] == "blocked" and record["outcome"]["exit_code"] is None
+    assert "uncommitted" in record["outcome"]["blocked_reason"]
+    assert not marker.exists(), "the command ran on a dirty tree"
+
+
+def test_an_image_is_recorded_by_what_the_engine_reports(tmp_path):
+    engine = tmp_path / "engine"
+    engine.write_text("#!/usr/bin/env python3\nimport json\nprint(json.dumps([{"
+                      "'Id': 'sha256:' + 'a' * 64, 'Digest': 'sha256:' + 'b' * 64, "
+                      "'Os': 'linux', 'Architecture': 'amd64', "
+                      "'Config': {'Labels': {'org.opencontainers.image.revision': 'c' * 40}}}]))\n")
+    engine.chmod(0o755)
+    image = rec._image("pharma-analytics-copilot:ci", str(engine))
+    assert image == {"ref": "pharma-analytics-copilot:ci", "inspected_with": str(engine),
+                     "id": "sha256:" + "a" * 64, "digest": "sha256:" + "b" * 64,
+                     "platform": "linux/amd64", "revision_label": "c" * 40}
+    assert rec._image("missing", str(tmp_path / "no-such-engine"))["id"] is None
