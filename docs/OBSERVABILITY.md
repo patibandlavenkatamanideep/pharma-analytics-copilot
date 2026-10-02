@@ -18,6 +18,32 @@ is never allowed to contain. The code is
 Telemetry never stands in for the audit trail. The audit trail does not
 depend on telemetry.
 
+### Audit durability: the current policy, and the decision it needs
+
+**Current policy: best effort.** The audit row is written in its own short
+transaction before the response is sent. If that write fails, because the
+database refuses it or is unreachable at that moment, the answer is **still
+returned**. The failure is logged and counted, and the "Audit loss" alert
+below pages on the first one. A released answer can therefore have no audit
+row. This is pinned by a test, so it cannot change by accident: the
+database refuses the insert, the answer is returned, one failure is
+counted and no row exists
+(`tests/security/test_audit_contract.py::test_the_current_policy_a_failed_audit_write_is_counted_and_the_answer_still_returned`).
+Sampled telemetry does not substitute for the missing row.
+
+**Not decided:** whether that satisfies the audit requirement. The
+assignment asks for access control, not an audit regime. If the product or
+compliance owner requires durable audit evidence for **every released
+answer**, one of these replaces the current policy:
+
+| Option | What changes | Cost |
+|---|---|---|
+| Fail closed | A failed audit write withholds the answer (`503`, retryable under the same idempotency key) | An audit-table problem becomes an outage for answers |
+| One transaction | The audit row is written in the transaction that commits the turn and stores the run's outcome, so either both exist or neither does | Couples the audit write to turn persistence, and needs care for refusals and clarifications, which commit no turn |
+
+Either is a contained change in `Pipeline` / `state.finalise`. The test
+above is the one that would change with it.
+
 ## Configuration
 
 | Variable | Default | Meaning |

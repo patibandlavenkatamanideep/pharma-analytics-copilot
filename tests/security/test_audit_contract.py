@@ -209,3 +209,39 @@ def test_an_answer_records_how_it_was_planned(client, make_identity):
     # Offline planning calls no provider. Zero tokens would be a measurement
     # nobody took, so usage is recorded as unknown.
     assert row["usage_known"] is False
+
+
+def test_the_current_policy_a_failed_audit_write_is_counted_and_the_answer_still_returned(
+        client, make_identity):
+    """Pins the audit policy as it stands, so changing it is a decision
+    rather than an accident (docs/OBSERVABILITY.md, "Audit durability").
+
+    The database itself refuses the audit insert. Today the answer is still
+    returned, the failure is counted for the "Audit loss" page, and no audit
+    row exists for it. If every released answer must have a durable audit
+    record, this test is the one to change: the answer would be withheld
+    (fail closed) or written in one transaction with its audit row."""
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+
+    from app import telemetry
+    from app.db import owner_transaction
+
+    sign_in(client, make_identity("exec", can_view_wac=1))
+    reader = InMemoryMetricReader()
+    telemetry.use(None, MeterProvider(metric_readers=[reader]))
+    with owner_transaction() as cur:
+        cur.execute("REVOKE INSERT ON app_meta.query_audit FROM pac_auth")
+    try:
+        response = client.post("/api/ask", json={"question": "What is our total volume this quarter?"})
+    finally:
+        with owner_transaction() as cur:
+            cur.execute("GRANT INSERT ON app_meta.query_audit TO pac_auth")
+        data = reader.get_metrics_data()
+        telemetry.reset()
+    assert response.status_code == 200 and response.json()["status"] == "answered"
+    assert audit_rows(response.json()["request_id"]) == []
+    failures = [p.value for rm in data.resource_metrics for sm in rm.scope_metrics
+                for m in sm.metrics if m.name == "pac.persistence.failures"
+                for p in m.data.data_points if dict(p.attributes) == {"kind": "audit"}]
+    assert failures == [1]
