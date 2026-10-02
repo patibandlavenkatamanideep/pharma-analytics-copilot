@@ -2,9 +2,10 @@
 
 ### 🔗 Live (historical deployment of the submitted build): **https://44-217-117-172.sslip.io**
 
-> **This branch** (`post-assessment/production-readiness`) is post-submission
-> engineering. The live URL runs an earlier build, and none of this branch
-> is deployed. What this branch establishes, and what it does not, is in
+> **This branch** (`post-assessment/release-risks`, which continues
+> `post-assessment/production-readiness`) is post-submission engineering.
+> The live URL runs an earlier build (commit `7aae7cf`), and none of this
+> branch is deployed. What this branch establishes, and what it does not, is in
 > **[`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md)**. It is not
 > production-ready, and that document says exactly why.
 
@@ -128,8 +129,8 @@ python3 scripts/build_authtest_db.py         # disposable database for the auth 
 python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
 python3 -m pytest tests/security -q --release-gate --min-tests 394  # release gate
 
-cd web && npm test                           # 17 jsdom component tests
-python3 scripts/browser_journeys.py          # 10 real-browser tests against a local server
+cd web && npm test                           # jsdom component tests (counts: docs/TEST_INVENTORY.md)
+python3 scripts/browser_journeys.py          # real-browser journeys against a local server
 
 python3 scripts/run_evals.py                              # regression set
 python3 scripts/run_evals.py --questions evals/holdout.yaml   # held-out set
@@ -227,7 +228,8 @@ an unknown product, `$250,766,926.42` for an Exec and no currency anywhere for
 a RAM.
 
 **Live accuracy, re-measured 2026-09-25 under the repaired judge**, against
-Claude Opus 4.5 on Bedrock:
+Claude Opus 4.5 on Bedrock, on commit `e9a7e75` with an unversioned prompt
+that predates 2.1.0. A re-run on `7e91f9f` scored 37/38, 11/12 and 10/12.
 
 | Set | Behavioural | Answers | Refusals | Unsupported | Incorrect |
 |---|---:|---:|---:|---:|---:|
@@ -251,7 +253,7 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| Live accuracy unmeasured under the repaired judge | Needs paid inference; the previous 37/38 is withdrawn, not restated |
+| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt. Prompt 2.1.0 on this branch has not been run live; it needs credentials and an approved budget ([EVALUATION.md](docs/EVALUATION.md)) |
 | One held-out miss, deliberately not fixed | "Which health systems have the most facilities?" resolves to `paid_pack_units` instead of `facility_count`. Fixing it would turn the held-out set into another development set |
 | Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
 

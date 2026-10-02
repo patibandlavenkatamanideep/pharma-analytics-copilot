@@ -1,7 +1,16 @@
 # Requirement matrix
 
 What the assignment asked for, what the code does, the evidence, and what is
-still missing. Written against commit `e9a7e75`.
+still missing. It describes the code on `post-assessment/release-risks`. The
+commit each current result was measured on is recorded in
+[RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md), and counts are in
+[TEST_INVENTORY.md](TEST_INVENTORY.md).
+
+**Historical** marks a result measured on an earlier build: the submitted
+assessment, or its September 2026 deployment. Each one names the commit,
+prompt and model it was measured with, and none of them is a claim about
+this branch. In particular, nothing on this branch has been deployed, and
+prompt 2.1.0 has not been run against a live model.
 
 Evidence commands assume a loaded database; see [README](../README.md#tests).
 
@@ -11,11 +20,11 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 
 | Requirement | Implemented behavior | Test / evidence | Remaining limitation |
 |---|---|---|---|
-| **1. Chat interface** | React 18 chat served from the same origin as the API. Multi-turn follow-ups patch a typed plan; two-stage loading states; a **New conversation** control; no SQL, schema or configuration exposed | `web/src/__tests__/` 17 jsdom tests; `web/e2e/` 10 Playwright tests in real Chromium against a local server (`scripts/browser_journeys.py`, also in CI) | No streaming responses; no saved-conversation sidebar |
-| **2. NL-to-SQL engine** | The model fills a typed `AnalyticalPlan`; the server compiles parameterised SQL, validates it against an AST allowlist, and executes it read-only with a statement timeout. Aggregations, rankings, thresholds, rolling averages, ratios, period comparisons, multi-table joins | The pytest suite ([counts](TEST_INVENTORY.md)); `scripts/run_evals.py` 38/38 offline, 37/38 live 2026-09-25 | A per-period growth series is not expressible; the combination is refused by name |
+| **1. Chat interface** | React 18 chat served from the same origin as the API. Multi-turn follow-ups patch a typed plan; two-stage loading states; a **New conversation** control; no SQL, schema or configuration exposed | `web/src/__tests__/` jsdom component tests, gated in CI on a minimum count with no skips; `web/e2e/` Playwright journeys in real Chromium against a local server (`scripts/browser_journeys.py`, also in CI). Counts: [TEST_INVENTORY.md](TEST_INVENTORY.md) | No streaming responses; no saved-conversation sidebar |
+| **2. NL-to-SQL engine** | The model fills a typed `AnalyticalPlan`; the server compiles parameterised SQL, validates it against an AST allowlist, and executes it read-only with a statement timeout. Aggregations, rankings, thresholds, rolling averages, ratios, period comparisons, multi-table joins | The pytest suite ([counts](TEST_INVENTORY.md)); `scripts/run_evals.py`: 38/38 with the offline planner on this branch. **Historical:** 37/38 live on 2026-09-25, Claude Opus 4.5 on Bedrock, commit `e9a7e75`, with an unversioned prompt that predates 2.1.0 | A per-period growth series is not expressible; the combination is refused by name |
 | **3. Domain knowledge** | A versioned registry (`app/analytics/metrics.yaml`, v1.4.0) with 14 anchors into the supplied documents, injected into **every** planning request rather than retrieved | `tests/unit/test_registry_contract.py`; `tests/integration/test_coherent_fixture.py` computes each expected value by hand | Anchors are not automatically checked against the documents |
-| **4. Security & access control** | PostgreSQL RLS for rows, column grants for `sales.wac`, separate login roles per privilege level. Scope and pricing re-read from `users` on every request | `tests/security/` passing under `--release-gate` ([counts](TEST_INVENTORY.md)), so a skip fails the build | Single-tenant; no audit UI |
-| **5. Cloud deployment** | AWS EC2, Docker Compose (app + PostgreSQL + Caddy), real Let's Encrypt HTTPS via `sslip.io`, Claude Opus 4.5 on Bedrock, 2,000,000 rows | `infra/smoke.sh` all pass; Playwright suite green against the live URL; `infra/terraform/` validates and plans | Single host, no redundancy; deployed latency under concurrency unmeasured |
+| **4. Security & access control** | PostgreSQL RLS for rows, column grants for `sales.wac`, separate login roles per privilege level. Scope and pricing re-read from `users` on every request | `tests/security/` passing under `--release-gate` ([counts](TEST_INVENTORY.md)), so a skip fails the build | Single-tenant; no audit UI. Audit writes are best effort, a policy that is pinned and awaits a decision ([OBSERVABILITY.md](OBSERVABILITY.md#audit-durability-the-current-policy-and-the-decision-it-needs)) |
+| **5. Cloud deployment** | **Historical:** commit `7aae7cf` was deployed on 2026-09-25 to AWS EC2 with Docker Compose (app, PostgreSQL, Caddy), real Let's Encrypt HTTPS via `sslip.io`, Claude Opus 4.5 on Bedrock and 2,000,000 rows. This branch is not deployed. Its image is built and tested locally ([RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md)) | Historical: `infra/smoke.sh` all passed, and the Playwright suite was green against that live URL. `infra/terraform/` validates and plans | Single host, no redundancy; deployed latency under concurrency unmeasured. Staging for this branch needs an environment, an IdP registration and a collector |
 
 ---
 
@@ -33,6 +42,8 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | Identity switch in the browser | An identity epoch guards every async completion; in-flight requests are aborted and the transcript cleared on any auth change | `identity-isolation.test.jsx` — 6 tests, verified failing against `6c6d632` | — |
 | Disabled credentials | `resolve()` joins credentials and refuses a disabled one; disabling and password rotation both revoke outstanding sessions | `test_session_lifecycle.py` | — |
 | Login abuse | Rate limited per identity **and** per source over 15 minutes; HTTP 429, not 401 | `test_login_throttling.py` | No CAPTCHA or lockout escalation |
+| SSO login CSRF | Each sign-in is bound to the browser that started it: an HttpOnly `__Host-` cookie, checked before the code is exchanged. A callback carried to another browser signs nobody in | `test_oidc.py`, reproduced first (`r3-r1-reproduced.json`) | Tested against an in-process provider. A real IdP is a staging check ([RUNBOOK.md](RUNBOOK.md#enabling-single-sign-on)) |
+| Per-user limits | Every attempt that does work counts, retries included, under a per-user lock across workers. Replaying a committed answer is free | `test_retry_quotas.py`, `test_run_limits.py`, reproduced first (`r3-r2-reproduced.json`) | — |
 | Prompt injection | Structurally impossible to reach a table, column, role or scope — the plan type has no field for any of them | eval `sec-05` | — |
 
 ---
@@ -69,4 +80,4 @@ Evidence commands assume a loaded database; see [README](../README.md#tests).
 | Expected and actual saved | Every run writes plan, SQL, answer, expected vs actual, latency, tokens | `evals/runs/` | — |
 | Categories separated | Business answers / authorization refusals / unsupported / incorrect / failures | `scripts/run_evals.py` | — |
 | No tuned set called held out | Three sets, each labelled | `evals/questions.yaml`, `holdout.yaml` (spent), `holdout2.yaml` | — |
-| Stale accuracy withdrawn and replaced | Re-measured live under the repaired judge: 37/38, 11/12, 11/12 | `evals/runs/*bedrock*`, `docs/EVALUATION.md` | No set is strictly held out with respect to the live model |
+| Stale accuracy withdrawn and replaced | **Historical:** re-measured live under the repaired judge on 2026-09-25 (Claude Opus 4.5, commit `e9a7e75`, unversioned prompt): 37/38, 11/12, 11/12. On `7e91f9f`: 37/38, 11/12, 10/12 | `evals/runs/reference-bedrock-full.json`, `docs/EVALUATION.md` | No set is strictly held out with respect to the live model. Prompt 2.1.0 is unmeasured live; the procedure and spend bounds are in `docs/EVALUATION.md` |

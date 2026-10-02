@@ -79,11 +79,13 @@ gate enforces, so the two cannot drift apart without the gate failing.
 ## Model evaluation, by suite
 
 Separated because they answer different questions and have very different
-standing. Only `holdout2` was ever unseen at the moment it was first run,
+standing. The live column is history: it was measured on an earlier build
+and prompt, and prompt 2.1.0 on this branch has not been run live
+([EVALUATION.md](EVALUATION.md)). Only `holdout2` was ever unseen at the moment it was first run,
 so it is the only figure that is not, to some degree, a measure of work
 done against the questions.
 
-| Suite | Checks | Offline | Live (2026-09-25) | Standing |
+| Suite | Checks | Offline (this branch) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
 |---|---:|---|---|---|
 | `evals/questions.yaml` — regression set | 38 | **38/38** | 37/38 | Developed against. A regression guard, not an accuracy estimate |
 | `evals/holdout.yaml` — held-out set 1 | 12 | **12/12** | 11/12 | Sealed, then run. Fixes were made afterwards, so it is no longer unseen |
