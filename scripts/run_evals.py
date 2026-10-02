@@ -516,6 +516,43 @@ class Budget:
                 "output_bound_method": "the request's max_tokens"}
 
 
+def performance(results: list[dict[str, Any]], *, input_rate: float | None = None,
+                output_rate: float | None = None) -> dict[str, Any]:
+    """Latency, usage and cost over a run, reported apart from correctness.
+
+    Latency: nearest-rank p50 and p95, and the maximum, over every question's
+    wall time, answered or not. Usage: summed only as the provider reported
+    it. Questions whose usage went unreported are counted, never added as
+    zero, so a total with unknowns says so. Cost: only at the configured
+    contract rates (PAC_LLM_INPUT_USD_PER_MTOK / _OUTPUT_), and only for
+    reported usage. With no rates, no cost is shown: an invented price
+    would read as a measurement. A metered run's conservative CHARGED
+    totals are in the budget section."""
+    import math as _math
+
+    latencies = sorted(r["latency_ms"] for r in results if r.get("latency_ms") is not None)
+
+    def rank(p: float) -> int | None:
+        return latencies[max(0, _math.ceil(p * len(latencies)) - 1)] if latencies else None
+
+    live = [r for r in results if r.get("provider") not in (None, "offline")]
+    known = [r for r in live if r.get("usage_known")]
+    tokens_in = sum(r.get("input_tokens") or 0 for r in known)
+    tokens_out = sum(r.get("output_tokens") or 0 for r in known)
+    priced = input_rate is not None and output_rate is not None
+    return {
+        "questions": len(results),
+        "latency_ms": {"p50": rank(0.50), "p95": rank(0.95),
+                       "max": latencies[-1] if latencies else None},
+        "usage": {"input_tokens": tokens_in, "output_tokens": tokens_out,
+                  "questions_with_reported_usage": len(known),
+                  "questions_with_unknown_usage": len(live) - len(known)},
+        "cost_usd": round((tokens_in * input_rate + tokens_out * output_rate) / 1e6, 4)
+        if priced and live else None,
+        "rates_usd_per_mtok": {"input": input_rate, "output": output_rate} if priced else None,
+    }
+
+
 def smoke_subset(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """The first question of each family: the cheapest run that still touches
     every kind of behaviour, to try before spending on whole sets."""
@@ -761,6 +798,9 @@ def main() -> int:
         "metric_version": get_registry().version,
         "policy_version": "1.0.0",
         "total": total, "passed": passed, "failed": failed,
+        "performance": performance(results,
+                                   input_rate=get_settings().llm_input_usd_per_mtok,
+                                   output_rate=get_settings().llm_output_usd_per_mtok),
         "by_category": {
             key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES
         },
@@ -806,6 +846,18 @@ def main() -> int:
     print(f"\n  {counts['unsupported']} check(s) passed by correctly declining or"
           " clarifying. That is right behaviour,\n  and it is NOT evidence that"
           " the requested figure can be computed.")
+    perf = record["performance"]
+    print(f"\n  Latency over {perf['questions']} question(s): p50 "
+          f"{perf['latency_ms']['p50']} ms, p95 {perf['latency_ms']['p95']} ms, "
+          f"max {perf['latency_ms']['max']} ms.")
+    if args.provider != "offline":
+        u = perf["usage"]
+        print(f"  Reported usage: {u['input_tokens']:,} input / {u['output_tokens']:,} output "
+              f"tokens over {u['questions_with_reported_usage']} question(s); "
+              f"{u['questions_with_unknown_usage']} with usage unreported.")
+        print("  Cost: " + (f"${perf['cost_usd']:.4f} at the configured rates" if
+                            perf["cost_usd"] is not None else
+                            "not computed -- no contract rates configured"))
     if budget is not None:
         b = budget.as_dict()
         print(f"\n  Spend: {b['charged_input_tokens']:,} input / {b['charged_output_tokens']:,} "

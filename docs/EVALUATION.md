@@ -626,4 +626,16 @@ After anything is learned from it, change its status to `spent`.
 
 Each run's record (`evals/runs/`) carries the provider and model id, the
 prompt version and fingerprint, the question set's status and SHA-256, every
-answer, latency and token usage per question, and the budget charged.
+answer, latency and token usage per question, and the budget charged. Its
+`by_category` keeps correct answers, correct refusals, correct
+unsupported/clarification outcomes, wrong answers and execution failures
+apart. Its `performance` section, also printed, gives:
+
+- p50, p95 and maximum latency by nearest rank over every question;
+- the input and output tokens the provider reported, with the number of
+  questions whose usage went unreported, which are never counted as zero;
+- cost at the configured contract rates (`PAC_LLM_INPUT_USD_PER_MTOK`,
+  `PAC_LLM_OUTPUT_USD_PER_MTOK`), or none if no rates are set.
+
+A live report should quote all three sections. Correctness alone is not a
+result.

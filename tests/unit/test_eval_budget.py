@@ -341,3 +341,37 @@ def test_the_record_says_how_the_bound_was_computed(ev):
     record = ev.Budget(1, 1).as_dict()
     assert "utf8" in record["input_bound_method"] and "checked" in record["input_bound_method"]
     assert record["output_bound_method"] == "the request's max_tokens"
+
+
+# -- what a live run reports beside correctness -------------------------------------
+
+def row(ms, *, provider="bedrock", known=True, tokens=(4_670, 160)):
+    return {"latency_ms": ms, "provider": provider, "usage_known": known,
+            "input_tokens": tokens[0] if known else None,
+            "output_tokens": tokens[1] if known else None}
+
+
+def test_latency_is_reported_by_nearest_rank_over_every_question(ev):
+    perf = ev.performance([row(ms) for ms in range(100, 2_100, 100)])     # 20 questions
+    assert perf["latency_ms"] == {"p50": 1_000, "p95": 1_900, "max": 2_000}
+
+
+def test_unreported_usage_is_counted_never_added_as_zero(ev):
+    perf = ev.performance([row(900), row(1_100), row(1_000, known=False)])
+    assert perf["usage"] == {"input_tokens": 9_340, "output_tokens": 320,
+                             "questions_with_reported_usage": 2,
+                             "questions_with_unknown_usage": 1}
+
+
+def test_cost_is_shown_only_at_configured_rates(ev):
+    rows = [row(900), row(1_100)]
+    assert ev.performance(rows)["cost_usd"] is None
+    priced = ev.performance(rows, input_rate=5.0, output_rate=25.0)
+    assert priced["cost_usd"] == round((9_340 * 5.0 + 320 * 25.0) / 1e6, 4)
+    assert priced["rates_usd_per_mtok"] == {"input": 5.0, "output": 25.0}
+
+
+def test_an_offline_run_reports_no_usage_or_cost(ev):
+    perf = ev.performance([row(50, provider="offline", known=False)],
+                          input_rate=5.0, output_rate=25.0)
+    assert perf["usage"]["questions_with_unknown_usage"] == 0 and perf["cost_usd"] is None
