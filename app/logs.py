@@ -103,6 +103,12 @@ class JsonFormatter(logging.Formatter):
     def __init__(self, release: str | None = None):
         super().__init__()
         self.release = release or os.environ.get("PAC_RELEASE", "dev")
+        # Python warnings (a library's deprecation notice) otherwise print
+        # straight to stderr as text. Routed through logging they become
+        # records like any other. Here as well as in configure(), because
+        # app/log_config.json builds this formatter before the app is
+        # imported.
+        logging.captureWarnings(True)
 
     def format(self, record: logging.LogRecord) -> str:
         out: dict[str, Any] = {
@@ -146,6 +152,7 @@ def configure(settings=None) -> None:
         settings = get_settings()
     if settings.log_format == "text":
         return
+    logging.captureWarnings(True)
     root = logging.getLogger()
     for handler in list(root.handlers):
         if isinstance(handler, _Handler):

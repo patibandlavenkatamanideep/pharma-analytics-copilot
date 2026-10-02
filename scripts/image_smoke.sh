@@ -18,6 +18,10 @@ set -euo pipefail
 
 CLI=${CONTAINER_CLI:-docker}
 TAG=${PAC_SMOKE_IMAGE:-pharma-analytics-copilot:smoke}
+# The architecture to build and run, e.g. linux/amd64 on an arm64 machine
+# (emulated). Unset: the engine's native platform.
+PLATFORM=${PAC_SMOKE_PLATFORM:-}
+plat=(); [ -n "$PLATFORM" ] && plat=(--platform "$PLATFORM")
 TRIVY_IMAGE=${TRIVY_IMAGE:-docker.io/aquasec/trivy:0.58.1}
 RELEASE=$(git rev-parse HEAD)
 NET=pac-smoke-net DB=pac-smoke-db APP=pac-smoke-app
@@ -69,7 +73,7 @@ if [ -n "${PAC_SMOKE_IMAGE:-}" ]; then
 else
   mkdir -p "$WORK/context"
   git archive "$RELEASE" | tar -x -C "$WORK/context"
-  $CLI build --build-arg PAC_RELEASE="$RELEASE" -t "$TAG" "$WORK/context" > "$WORK/build.log" 2>&1 \
+  $CLI build "${plat[@]}" --build-arg PAC_RELEASE="$RELEASE" -t "$TAG" "$WORK/context" > "$WORK/build.log" 2>&1 \
     || { tail -30 "$WORK/build.log"; fail "image builds"; }
   pass "image builds ($(( $(date +%s) - started )) s)"
 fi
@@ -82,6 +86,9 @@ pass "image size $(( size / 1000000 )) MB"
 image_id=$($CLI image inspect --format '{{.Id}}' "$TAG")
 arch=$($CLI image inspect --format '{{.Architecture}}' "$TAG")
 pass "image id $image_id ($arch)"
+if [ -n "$PLATFORM" ]; then
+  [ "linux/$arch" = "$PLATFORM" ] && pass "image platform is $PLATFORM" || fail "image is linux/$arch, not $PLATFORM"
+fi
 
 # -- scan -------------------------------------------------------------------
 # Through a volume rather than a bind mount: a container VM (podman machine,
@@ -120,12 +127,13 @@ $CLI run -d --name "$DB" --network "$NET" -e POSTGRES_PASSWORD="$SUPER" \
 for _ in $(seq 1 60); do $CLI exec "$DB" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
 
 # -- refusals ---------------------------------------------------------------
-$CLI run --rm --network "$NET" -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline "$TAG" \
+$CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline "$TAG" \
   timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8000 > "$WORK/nodb.log" 2>&1 || true
-grep -qiE "connection refused|boundary" "$WORK/nodb.log" \
+# Logs carry stable reasons, not exception text (app/logs.py).
+grep -qE "database_unreachable|security_boundary_broken" "$WORK/nodb.log" \
   && pass "refuses to serve with no database" || fail "started without a database"
 
-$CLI run --rm --network "$NET" -e PAC_DB_HOST="$DB" \
+$CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
   -e PAC_ADMIN_DSN="postgresql://postgres:$SUPER@$DB:5432/postgres" \
   -e PAC_DB_OWNER_PASSWORD="$OWNER" -e PAC_DB_AUTH_PASSWORD="$AUTH" \
   -e PAC_DB_EXEC_PASSWORD="$EXEC" -e PAC_DB_SCOPED_PASSWORD="$SCOPED" \
@@ -133,13 +141,13 @@ $CLI run --rm --network "$NET" -e PAC_DB_HOST="$DB" \
   && pass "provisions its own database (roles, schema, policies)" \
   || { tail -20 "$WORK/bootstrap.log"; fail "bootstrap from inside the image"; }
 
-$CLI run --rm --network "$NET" "${jobs_env[@]}" "$TAG" \
+$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
   timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8001 > "$WORK/owner.log" 2>&1 || true
-grep -q "OWNER credential" "$WORK/owner.log" \
+grep -q "owner_credential_present" "$WORK/owner.log" \
   && pass "refuses to serve while holding the owner credential" || fail "served with the owner credential"
 
 # -- serving ----------------------------------------------------------------
-$CLI run -d --name "$APP" --network "$NET" -p "127.0.0.1:$PORT:8000" "${app_env[@]}" \
+$CLI run -d "${plat[@]}" --name "$APP" --network "$NET" -p "127.0.0.1:$PORT:8000" "${app_env[@]}" \
   -e PAC_COOKIE_SECURE=false "$TAG" >/dev/null
 for _ in $(seq 1 60); do curl -sf "$BASE/health" >/dev/null && break; sleep 1; done
 release=$(curl -s "$BASE/health" | python3 -c "import json,sys; print(json.load(sys.stdin)['release'])")
@@ -148,17 +156,20 @@ release=$(curl -s "$BASE/health" | python3 -c "import json,sys; print(json.load(
   && pass "not ready before any data is published" || fail "ready with no data"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/")" = "200" ] && pass "UI served from the image" || fail "UI"
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/me")" = "401" ] && pass "unauthenticated /api/me is 401" || fail "/api/me"
+curl -s -D "$WORK/headers.txt" -o /dev/null -H "X-Request-ID: chosen-by-client" "$BASE/api/me"
+grep -qiE "^x-request-id: [0-9a-f]{16}" "$WORK/headers.txt" \
+  && pass "responses carry a server-generated X-Request-ID" || fail "X-Request-ID: $(grep -i x-request-id "$WORK/headers.txt")"
 user=$($CLI exec "$APP" id -un)
 [ "$user" != "root" ] && pass "runs as '$user', not root" || fail "runs as root"
 
 # -- data, through the jobs path --------------------------------------------
-$CLI run --rm --network "$NET" "${jobs_env[@]}" "$TAG" \
+$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
   python scripts/load_data.py --mode seed > "$WORK/load.log" 2>&1 \
   && pass "seed data loaded by a jobs container" || { tail -20 "$WORK/load.log"; fail "load"; }
 for _ in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && break; sleep 1; done
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && pass "ready once a dataset is published" || fail "not ready after load"
 
-$CLI run --rm --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
+$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
 import os
 from app.auth.identity import set_credential
 from app.db import owner_transaction
@@ -202,6 +213,22 @@ python3 -c "import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if b['st
 curl -s -o /dev/null -b "$WORK/ram.jar" -c "$WORK/ram.jar" -X POST "$BASE/api/logout"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$WORK/ram.jar" "$BASE/api/me")" = "401" ] \
   && pass "after sign-out the session no longer works" || fail "session survived sign-out"
+
+# -- logs -------------------------------------------------------------------
+# Every line the app wrote, from uvicorn's first: one JSON object each, no
+# query string, no password, no client address (app/logs.py).
+$CLI logs "$APP" > "$WORK/app.log" 2>&1
+python3 - "$WORK/app.log" "$USERPW" <<'PY' && pass "app logs are sanitised JSON lines ($(wc -l < "$WORK/app.log") lines)" || fail "app logs"
+import json, sys
+lines = [l for l in open(sys.argv[1]).read().splitlines() if l.strip()]
+bad = [l for l in lines if not l.startswith("{")]
+records = [json.loads(l) for l in lines if l.startswith("{")]
+leaks = [l for l in lines if sys.argv[2] in l or "?" in json.dumps([r.get("path") for r in records])]
+assert lines and not bad, bad[:3]
+assert not leaks, "a log line carries a query string or the password"
+assert any(r.get("event") == "http.access" for r in records), "no access lines"
+assert all("client" not in r for r in records)
+PY
 
 # -- stop -------------------------------------------------------------------
 started=$(date +%s)

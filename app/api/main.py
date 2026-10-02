@@ -53,9 +53,17 @@ async def lifespan(app: FastAPI):
 
     # Refuse to serve if the database boundary is not what we think it is. A
     # mis-provisioned deployment fails loudly instead of quietly serving
-    # unrestricted data.
-    problems = verify_runtime_role_safety()
+    # unrestricted data. Each refusal is logged with a stable reason first:
+    # sanitised logs carry no exception text, and an operator still needs
+    # to know why the process would not start.
+    try:
+        problems = verify_runtime_role_safety()
+    except DATABASE_UNAVAILABLE:
+        log.critical("refusing to serve: %s", "database_unreachable", exc_info=True)
+        raise
     if problems:
+        log.critical("refusing to serve: %s (%s problems)", "security_boundary_broken",
+                     len(problems))
         raise RuntimeError("database security boundary is not intact: " + "; ".join(problems))
 
     # The serving process does not need the owner credential: it never
@@ -65,8 +73,10 @@ async def lifespan(app: FastAPI):
     # share one .env) it is a warning.
     for problem in serving_credential_problems(settings):
         if settings.environment == "cloud":
+            log.critical("refusing to serve: %s", "owner_credential_present")
             raise RuntimeError(problem)
-        log.warning("%s (allowed only because PAC_ENVIRONMENT=local)", problem)
+        log.warning("serving with %s (allowed only because PAC_ENVIRONMENT=local)",
+                    "owner_credential_present")
 
     # Exports nothing unless a collector is configured; never fatal.
     telemetry.configure(settings)

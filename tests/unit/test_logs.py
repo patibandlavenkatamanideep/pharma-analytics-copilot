@@ -109,3 +109,23 @@ def test_configuring_twice_does_not_double_lines(monkeypatch):
         for h in list(root.handlers):
             if h not in before:
                 root.removeHandler(h)
+
+
+def test_a_python_warning_becomes_a_record_not_a_stray_line():
+    """In a fresh process: pytest intercepts warnings itself, so this cannot
+    be observed in-process."""
+    import pathlib
+    import subprocess
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    script = ("import logging, warnings\n"
+              "from app.logs import JsonFormatter\n"
+              "h = logging.StreamHandler(); h.setFormatter(JsonFormatter('r1'))\n"
+              "logging.getLogger().addHandler(h)\n"
+              "warnings.warn('something is deprecated', DeprecationWarning)\n")
+    proc = subprocess.run([sys.executable, "-W", "always", "-c", script], cwd=root,
+                          capture_output=True, text=True, timeout=60)
+    lines = [x for x in proc.stderr.splitlines() if x.strip()]
+    assert lines and all(x.startswith("{") for x in lines), proc.stderr
+    out = json.loads(lines[-1])
+    assert out["logger"] == "py.warnings" and out["level"] == "warning"
