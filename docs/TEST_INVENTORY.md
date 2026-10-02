@@ -27,13 +27,13 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 739 | ✅ pass | `r2-admission-pytest.json` |
-| **Integration** | `pytest tests/integration -q` | 883 | ✅ pass | `r2-admission-pytest.json` |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 395` | 395 | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
-| **Total (pytest)** | `pytest tests -q` | **2017** | ✅ pass | see [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md) |
-| **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r2-admission-component.json` |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r2-final3-browser.json` |
-| **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `p1d-eval-*.json` |
+| **Unit** | `pytest tests/unit -q` | 739 | ✅ pass | `r3-final-pytest.json` (`45db088`) |
+| **Integration** | `pytest tests/integration -q` | 883 | ✅ pass | `r3-final-pytest.json` (`45db088`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 395` | 395 | ✅ pass | `r3-final-security.json` (`45db088`) |
+| **Total (pytest)** | `pytest tests -q` | **2017** | ✅ pass | `r3-final-pytest.json` (`45db088`) |
+| **Browser — component** | `cd web && npm test` | 22 | ✅ pass | `r3-final-component.json` (`45db088`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r3-final-browser.json` (`45db088`) |
+| **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r3-final-eval-*.json` (`45db088`, offline) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.

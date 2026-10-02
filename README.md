@@ -41,6 +41,8 @@ DDL, seed data and the generator are unmodified.
 | See a real transcript, including the refusals | [`docs/DEMO.md`](docs/DEMO.md) — generated, not written |
 | Know what was found and fixed in review, and what is still open | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) |
 | **See what this branch has proven, and what is blocked** | [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) |
+| **See how the 1 October review's findings were reproduced and fixed** | [`docs/REVIEW_2026_10_01.md`](docs/REVIEW_2026_10_01.md) |
+| **See what staging must prove before a release** | [`docs/STAGING_VERIFICATION.md`](docs/STAGING_VERIFICATION.md) |
 | Ingest new and corrected sales | [`docs/INGESTION.md`](docs/INGESTION.md) |
 | Observe it: traces, metrics, alerts | [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) |
 | Know what is remembered, for how long, and how to export or delete it | [`docs/RETENTION.md`](docs/RETENTION.md) |

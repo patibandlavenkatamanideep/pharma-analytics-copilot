@@ -8,71 +8,137 @@ belongs in the [Blocked](#blocked-what-needs-an-external-input) or
 
 | | |
 |---|---|
-| Branch | `post-assessment/production-readiness` |
-| Code measured | `52d773d` |
-| Reviewed baseline | `c8aab5b`: the commit the 30 September 2026 review assessed. `main` still points at it; nothing on this branch is merged or pushed |
-| Versions | metric registry 1.4.0 (`5a39a26aaa68db9e`), policy 1.0.0, schema contract 1.0.0, prompt 2.1.0, planner contract 2.0.0, graph 1.0.0 |
-| Environment | macOS on Apple silicon (10 cores), Python 3.13.2, PostgreSQL 16.14, offline planner; the image built and run with podman 5.7.1 (arm64 VM) |
-| Recorded | 2026-09-30 to 2026-10-01 |
+| Branch | `post-assessment/release-risks`, which continues `post-assessment/production-readiness` |
+| Code measured | `45db088` (every gate and the image, from a clean tree; each record was made with `--require-clean`) |
+| Reviewed baselines | `de072e0`: the snapshot the 1 October 2026 review assessed, uploaded as a ZIP and a bundle. `c8aab5b`: the commit the 30 September review assessed; `main` still points at it. Nothing is merged or pushed |
+| Versions | metric registry 1.4.0, policy 1.0.0, schema contract 1.0.0, prompt 2.1.0 (fingerprint `5ca5ddf08608fb64`), planner contract 2.0.0, graph 1.0.0, evidence schema 1.1.0 |
+| Environment | macOS on Apple silicon (10 cores), Python 3.13.2, PostgreSQL 16.14, offline planner. The code is a clone outside iCloud-synced storage, with a venv built from `requirements.lock` with `--require-hashes`, as CI does. The image was built and run with podman 5.7.1 **for linux/amd64**, emulated with Rosetta in an arm64 VM |
+| Databases | Provisioned from scratch for the final commit: `pac_release` (bootstrap, 22 migrations, 2,000,000 sales), plus `pac_release_fixture`, `_authtest` and `_ingesttest`. The fresh-provisioning tests and the image provision their own |
+| Recorded | 2026-10-01 to 2026-10-02 |
 
 ## Verdict
 
-**Not production-ready.** The code-level release conditions are met locally:
+**Not production-ready.** The code-level release conditions are met
+locally, and this round's five findings are each reproduced, fixed and
+pinned:
 
-- all 20 review checks are fixed;
-- every mandatory suite passes, with no skips;
-- the security gate is strict.
+- **R1:** an SSO callback can no longer sign in a browser other than the one
+  that started the sign-in.
+- **R2:** every retry that does work counts against the per-user limits,
+  across workers.
+- **R3:** a live evaluation's spend is checked, before each call, against
+  the request actually sent.
+- **R4:** the ingestion job exports its own telemetry, and a stopped feed
+  becomes visible without another batch.
+- **R5:** malformed and non-finite input is refused or quarantined before
+  SQL. A NaN price could previously be published.
 
-The actual image has also been built from the commit and tested end to end
-locally: 22 checks, a clean vulnerability scan, and an Exec and a RAM
-journey on a freshly provisioned database. That test found a defect no
-other test could: a first deployment could not sign anyone in. It is fixed
-in `eebc974`, and CI's image job now runs the same journeys on the amd64
-image it builds.
+Logs are now sanitised JSON with request correlation. Evidence records
+name the exact bytes they ran on. The release image passes its journeys
+**on linux/amd64**: refusals, fresh provisioning, Exec and RAM sign-in and
+scope, sign-out, logs, a clean stop and a vulnerability scan.
 
-Overload is now refused early, explicitly and fairly instead of by
-timeouts (admission control, `01f2303`). Measured: 32 clients went from
-5.2% statement timeouts to none, and at 64 clients the excess is refused in
-82 ms with `Retry-After`. A live evaluation's budget is enforced at every
-model call, repairs included, with SDK retries off while metered
-(`6915a86`). A component suite that shrinks now fails CI (`b422a56`).
+The conditions that need an environment are not met, and this work could
+not meet them:
 
-The conditions that need an environment are not met. The current prompt
-(2.1.0) has never been evaluated against the live model. Hosted CI has not
-run on this branch. The image was built with podman on arm64, not by CI on
-amd64. Nothing has been deployed or verified in staging. There is no
-redundancy and no point-in-time recovery, and no service level, RTO or RPO
-has been agreed. [Next steps](#next-steps-in-order) puts them in order, and
-[Blocked](#blocked-what-needs-an-external-input) says what each one needs.
+- prompt 2.1.0 has never run against the live model;
+- hosted CI has not run on this branch;
+- the amd64 image was emulated on a developer machine, not built by CI;
+- nothing is deployed or staged;
+- real SSO, collector delivery and alerting are unverified;
+- no SLO, RTO or RPO has been agreed.
+
+[Blocked](#blocked-what-needs-an-external-input) gives the exact input and
+command for each, and [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md)
+gives what staging must prove.
 
 | Category | Meaning here |
 |---|---|
-| **Implemented** | In the code at `52d773d` |
-| **Locally verified** | An executable check passed on this machine, with a record |
+| **Implemented** | In the code at `45db088` |
+| **Locally verified** | An executable check passed on this machine, from a clean commit, with a record |
 | **Staging verified** | Verified in a deployed environment. **Nothing is**: no staging exists for this branch |
 | **Blocked** | Implemented as far as possible; verification needs an input listed below |
 
 ## Mandatory checks on the final code
 
+Every row ran on `45db088` from a clean tree (`--require-clean`), against
+databases provisioned from scratch. Records are in `evidence/runs/`.
+
 | Check | Command | Result | Record |
 |---|---|---|---|
-| Full pytest | `pytest tests -q` | **1851 passed**, 0 failed, 0 skipped | `r2-admission-pytest.json` (`01f2303`; Python unchanged since) |
-| Unit / integration | `pytest tests/unit -q`, `tests/integration -q` | 664 / 821 passed | included in `r2-admission-pytest.json` |
-| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 366` | **366 passed**, gate satisfied | `r2-admission-security.json` |
-| Ingestion (release gate) | `pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py --release-gate --min-tests 58` | 58 passed | `r2-final3-ingestion.json` |
-| Component (vitest, gated) | `npm ci`, `vitest run`, then `scripts/check_component_results.py ... 22`, on a clean copy of `web/` | **22 passed**, none skipped, at the floor | `r2-admission-component.json`. Run in place it collected nothing: iCloud had evicted the checkout's `node_modules` (`r2-final2-component.json`) |
-| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r2-final3-browser.json` |
-| **The image** (podman, arm64) | `CONTAINER_CLI=podman scripts/image_smoke.sh` | **22 passed**, trivy: no HIGH/CRITICAL with a fix | `r2-image-smoke.json` (`7848581`; the CI wiring commit after it was also checked with a prebuilt image) |
-| Review ledger | `python3 evidence/probes/review_2026_09_30.py` | **0 reproduced, 20 fixed, 0 open** | `r2-final3-ledger.json` |
-| Offline evaluation: regression set (gate) | `run_evals.py --questions evals/questions.yaml` | 38/38 | `r2-final3-eval-questions.json` |
-| Offline evaluation: holdout 1 (spent) | same, `holdout.yaml` | 12/12 | `r2-final3-eval-holdout.json` |
-| Offline evaluation: holdout 2 (spent) | same, `holdout2.yaml` | **11/12**. k-07 is the offline planner's known limitation (it reads "growing or declining month over month" as growth), recorded as a failure | `r2-final3-eval-holdout2.json` |
+| Security boundary | `verify_runtime_role_safety()` | intact | `r3-final-boundary.json` |
+| Security (release gate) | `pytest tests/security -q --release-gate --min-tests 395` | **395 passed, gate satisfied** | `r3-final-security.json` |
+| Ingestion (release gate) | `pytest` over the five ingestion files `--release-gate --min-tests 165` | **165 passed, gate satisfied** | `r3-final-ingestion.json` |
+| Full pytest | `pytest tests -q` | **2,017 passed, 0 failed, 0 skipped** | `r3-final-pytest.json` |
+| The release gate itself | `pytest tests/unit/test_release_gate_strict.py tests/unit/test_release_gate.py -q` | 19 passed | `r3-final-release-gate-selftest.json` |
+| Component (vitest, gated) | `npm --prefix web test` with the JSON reporter, then `scripts/check_component_results.py ... 22` | **22 passed, none skipped, at the floor** | `r3-final-component.json` |
+| Browser journeys (Playwright, Chromium) | `python3 scripts/browser_journeys.py` | **10 passed** | `r3-final-browser.json` |
+| Python dependencies | `pip-audit==2.7.3 --require-hashes --disable-pip -r requirements.lock` | no known vulnerabilities | `r3-final-pip-audit.json` |
+| JavaScript dependencies | `npm audit --omit=dev --audit-level=high` | 0 vulnerabilities | `r3-final-npm-audit.json` |
+| Secrets in history | `gitleaks git . --redact` | no leaks in 133 commits | `r3-final-gitleaks.json` |
+| **The image, linux/amd64** | `PAC_SMOKE_PLATFORM=linux/amd64 CONTAINER_CLI=podman scripts/image_smoke.sh` | **25 passed. Built from the commit in 80 s, 312 MB, labelled with it, platform `linux/amd64`. Trivy: no HIGH/CRITICAL with a fix (`r3-final-trivy-amd64.json`). Refuses to serve with no database or with the owner credential; provisions a fresh database; `/health` reports the release; not ready until data is published; an Exec and a RAM sign in and see their own scope; sign-out ends the session; server-generated `X-Request-ID`; every log line sanitised JSON; non-root; clean stop on SIGTERM. Image id `510b970d98fa…`, digest `sha256:d35069faac87…`** | `r3-final-image-amd64.json` (records the image id, digest, platform and revision label) |
+| Offline evaluation: regression set (gate) | `run_evals.py --questions evals/questions.yaml` | 38/38 | `r3-final-eval-questions.json` |
+| Offline evaluation: holdout 1 (spent) | same, `holdout.yaml` | 12/12 | `r3-final-eval-holdout.json` |
+| Offline evaluation: holdout 2 (spent) | same, `holdout2.yaml` | 11/12. k-07 is the offline planner's known limitation: it reads "growing or declining month over month" as growth. Recorded as a failure, and a measurement in CI, not a gate | `r3-final-eval-holdout2.json` |
 
-**Offline evaluation is not language accuracy.** It exercises the
-compiler, authorization, execution and rendering with a deterministic
-planner. The last live-model results (37/38, 11/12, 11/12 on 2026-09-25)
-were measured on earlier prompt text, and are historical
-([EVALUATION.md](EVALUATION.md)).
+**Offline evaluation is not language accuracy.** It exercises the compiler,
+authorization, execution and rendering with a deterministic planner. The
+last live-model results are **historical**: 37/38, 11/12 and 11/12 on
+2026-09-25, Claude Opus 4.5 on Bedrock, commit `e9a7e75`, with an
+unversioned prompt that predates 2.1.0 ([EVALUATION.md](EVALUATION.md)).
+
+## The 1 October review: every finding
+
+Each finding was treated as a hypothesis, so a regression test was
+committed **before** the fix as a strict expected failure. The record of
+that test failing on unmodified code is the reproduction. The same tests
+passing on the fix commit, with no expected-failure marker, is the fix.
+Mutation checks then confirmed that each test notices the fix being undone.
+The working ledger is [REVIEW_2026_10_01.md](REVIEW_2026_10_01.md).
+
+| Finding | Reproduced on unmodified code | Fixed by | Tests now | Remaining limitation |
+|---|---|---|---|---|
+| **R1** OIDC login CSRF | `28299ec`: a browser with no cookies, given another browser's callback, received a session (`303`), and the start set no binding cookie. 4 tests (`r3-r1-reproduced.json`) | `ba91cd6`: each attempt is bound to a 256-bit secret in an HttpOnly `__Host-pac_oidc` cookie (Secure, `SameSite=Lax`, 10 min). Only its hash is stored (migration 020), and it is checked before the code exchange. Two tabs share a binding; a cancel ends the attempt only from its own browser | 31 in `test_oidc.py`, plus SSO on a database provisioned in one pass (`r3-r1-fixed.json`). A mutant that skips the binding check fails the 3 cross-browser tests | Tested against an in-process provider that checks PKCE, nonce, signatures and single use. A real IdP is a staging check ([RUNBOOK.md](RUNBOOK.md#enabling-single-sign-on)) |
+| **R2** retries bypass user limits | `35ee659`: retries of failed, abandoned and cancelled runs were admitted uncounted: repeatedly, across conversations, past the concurrency limit, and by two racing workers. Deleting a conversation refunded its attempts. 9 tests (`r3-r2-reproduced.json`) | `52fa656`: every attempt that does work is admitted under the per-user lock and charged in `app_conv.run_attempts` (migration 021) in the transaction that admits it. Replaying a committed outcome is free. One committed outcome per key is unchanged | 11 in `test_retry_quotas.py` (`r3-r2-fixed.json`). Mutants: no enforcement on retry fails 7; counting runs instead of attempts fails 3 | Workers are threads with their own database sessions. Replicas are a staging check |
+| **R3** evaluation cap exceedable | `0340ec1`: a 16,000 input cap admitted a 43 KB prompt and charged 17,000; the output reservation ignored `max_tokens` in both directions; unreported usage was charged 8,000 for a 43,400-byte prompt; 10M billed tokens did not stop the run. 5 tests (`r3-r3-reproduced.json`) | `c6986a9`: each call reserves the bound of the exact request it sends. Input is UTF-8/NFKC bytes plus a framing allowance; output is the configured `max_tokens`. A request that cannot fit is never sent. Usage above the reservation is a violation that stops the run | 28 in `test_eval_budget.py`, 24 of them on the budget and bound (`r3-r3-fixed.json`). Mutants: a fixed estimate fails 6; ignoring violations fails 1 | **The input bound is not a provider guarantee.** It assumes byte-level tokens and framing within the allowance, and is checked against reported usage on every call. About 24,100–24,200 per first call, roughly 5× the September cost |
+| **R4** ingestion telemetry not wired | `eeac385`: the real ingestion command, with a collector configured, delivered nothing; three silent days after a healthy batch changed no exported value. 2 tests (`r3-r4-reproduced.json`) | `3fe964b`: the jobs command configures telemetry and flushes it in a bounded `finally` after publication. Freshness is read from the persisted watermark at every collection (`pac.ingest.since_success`, `pac.ingest.watermark_age`). `--check-freshness` exits 3 with stable codes. Missed-run, data-not-moving and absent-metric alerts are documented | 9 in `test_ingest_observability.py`, through the real command as a subprocess and a local OTLP receiver (`r3-r4-fixed.json`) | No real collector or alerting backend has received these. A hanging collector costs about 5 s; one not listening, about 2.6 s |
+| **R5** input contract incomplete | `7bbf86d`: a NaN price was **published** into `sales`; `1e309` crashed publication; a string quantity raised `TypeError`; a bad timestamp crashed the adapter; a boolean version failed the batch; version 1.5 was stored as 2; NaN or NUL quarantine payloads failed their batch. 7 tests (`r3-r5-reproduced.json`) | `e512bbb`: a strict reader at the boundary. Envelope errors reject the batch whole with a stable code; record errors quarantine one event with a stable reason. Validation re-checks types, finiteness and bounds for any adapter. Reconciliation counts every record received. Quarantine payloads are made storable. `rejection_code` is recorded (migration 022) | 53 contract tests on PostgreSQL and 45 validation unit tests. The ingestion gate is 165 under `--release-gate` (`r3-r5-fixed.json`). Mutants: no finite check in validation fails 5; the reader passing NaN fails 2 | A real feed's contract and volume are untested. The sanity bounds (1,000,000 packs, $10,000,000 per pack) are judgement, not a specification |
+
+The review's other items:
+
+| Item | What was done | Evidence |
+|---|---|---|
+| Telemetry tests depend on ambient sampling | Reproduced: 7 failures at 1% sampling. Test providers now pin `ALWAYS_ON`; production still follows `OTEL_TRACES_SAMPLER` (`983b868`) | `r3-sampler-reproduced.json`; the suites pass at default and at 1% sampling |
+| Logs unstructured, carrying exception text | Reproduced under uvicorn's own configuration and the real startup: a refused value, traceback text, and an OIDC callback's code and state with the client address (`5aa3b88`). Now one JSON line per record: the template, never the interpolated text; identifier-shaped arguments only; an exception's type, never its message; no query strings or addresses; a server-generated `X-Request-ID` on every line and response, plus the turn's `request_id` and `run_id` (`a9abb94`, `793e2ce`) | `r3-logs-reproduced.json`, `r3-logs-fixed.json`; the image test checks every line the app writes |
+| Audit writes best effort | Not changed, because no stronger contract has been agreed. Documented as a decision with two replacements and their costs, and pinned by a test in which the database refuses the insert (`4337536`) | [OBSERVABILITY.md](OBSERVABILITY.md#audit-durability-the-current-policy-and-the-decision-it-needs) |
+| Documentation states an old release identity | REQUIREMENTS, README and TEST_INVENTORY now label every historical result with its commit, model and prompt. Nothing was erased, and no regression set was relabelled as a holdout (`549660a`) | — |
+| Records from uncommitted trees | Schema 1.1.0: every record names the tree hash, and a dirty tree's files by SHA-256. `--require-clean` refuses a release check on a dirty tree; `--image` records id, digest, platform and revision label (`72f9cc0`). Every final record below was made with `--require-clean` | `tests/unit/test_evidence_record_accuracy.py` |
+| Live run reporting | Each run now reports p50/p95 latency, reported usage (unknowns counted, not zeroed) and cost at configured rates, beside correctness by category (`ccd2b4f`) | `tests/unit/test_eval_budget.py` |
+
+Found while fixing, beyond the review's text:
+
+- **Deleting a conversation refunded its share of the rate limit**, because
+  the rate was counted from runs, which cascade away. Fixed with R2.
+- **A fractional version was silently rounded**, changing an event's
+  identity. Fixed with R5.
+- **Ingestion stored raw exception text in `rejection_reason`**, which the
+  serving role can read. It now records a stable code and the exception's
+  type.
+- **The first draft of migration 021 depended on a second migration
+  pass.** 004's blanket grant added `UPDATE`.
+  `tests/security/test_fresh_provisioning.py` caught it before commit.
+- **`28299ec`'s commit message says plain pytest stays green with its
+  expected failures.** The documented-count guard fails at that commit.
+  The history is not rewritten; the correction is in the ledger.
+- **`scripts/bootstrap_db.py --drop` defaults to dropping
+  `pharma_analytics`** when `PAC_DB_NAME` is unset. Noted, not changed.
+  This round's provisioning went through a guard that refuses that name.
+
+## Earlier rounds
+
+What follows was recorded on earlier commits, for the 30 September review
+and the brief's phases. It still holds unless a section above says
+otherwise. Counts and commits in it are the ones measured then.
 
 ## The 30 September review: every finding
 
@@ -342,13 +408,16 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
   nothing. Undo a published one by sending corrections, or by restoring and
   replaying ([INGESTION.md](INGESTION.md)).
 - **Rollback of the application:** redeploy the previous image by its
-  release SHA. Migrations 010 to 019 add schemas, tables, columns, indexes
-  and grants. The only replacements are on `app_conv.runs`, a table
+  release SHA. Migrations 010 to 022 add schemas, tables, columns, indexes
+  and grants. 020's column is nullable, so the previous release's SSO
+  inserts still work. An attempt that release starts is refused by this
+  one, which fails closed during a rolling deploy. A test runs the previous
+  release's insert statement against the new schema. The only replacements are on `app_conv.runs`, a table
   migration 012 itself created: its idempotency index is redefined (012),
   and its status `CHECK` is widened to allow `cancelled` (015). An older
   image does not depend on either, so it runs on the newer schema. This was
-  checked by reading the migrations, not by running an old image against a
-  new schema.
+  checked by reading the migrations and by that one statement-level test,
+  not by running an old image against a new schema.
 - **Backup and restore:** [RUNBOOK.md §8](RUNBOOK.md). The procedure is
   drilled.
 - **Retention:** `scripts/prune_state.py` in the jobs container
@@ -377,42 +446,70 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
 
 | Priority | Work | State |
 |---|---|---|
-| P0 | Concurrency and admission limits: bounded queues, per-user fairness, cancellation, predictable overload responses | **Implemented and measured locally** (`01f2303`, `r2-load-admission.json`) |
-| P0 | Hosted CI, including the amd64 image, fresh provisioning and sign-in | Ready: the workflow runs on `post-assessment/**` pushes and on dispatch. The security suite provisions a database in one pass and signs in. The image job runs the image journeys on a fresh database. **Needs the branch pushed** |
-| P0 | Live evaluation of prompt 2.1.0: smoke, then regression sets, then a frozen independent holdout | Runner ready ([EVALUATION.md](EVALUATION.md#running-the-next-live-evaluation-prompt-210)). **Needs credentials, a budget, and independently written holdout questions** |
-| P1 | Budget enforcement within model attempts | **Implemented, with boundary tests** (`6915a86`) |
-| P1 | Staging: real SSO, telemetry delivery, permission changes, checkpoint recovery, deployed image identity | **Needs a staging environment**, an IdP registration and a collector. The deployed image's digest must match the one CI built and tested |
-| P1 | Agreed service and recovery targets, then the redundancy, backup/PITR, retention and recovery arrangements they require | **Needs decisions** from the product and data owners |
-
-Redundancy, managed PostgreSQL and point-in-time recovery follow from the
-availability and data-loss targets, once those are set. They are not
-prerequisites for staging. Telemetry delivery needs a collector; the
-instrumentation itself is tested locally.
+| P0 | Hosted CI on the release commit: the test, frontend and supply-chain jobs, and the amd64 image build, scan and fresh-database journeys | **Ready.** The workflow runs on pushes to `post-assessment/**`. Needs authorization to push (below) |
+| P0 | Live evaluation of prompt 2.1.0: a smoke run, the regression sets, then an independently written holdout frozen before use | **Runner ready**, with spend bounded per call (R3) and latency, usage and cost reported beside correctness. Needs credentials, an approved budget and the holdout questions (below) |
+| P1 | Staging: real SSO, collector delivery, permission changes, retries across replicas, restart and checkpoint recovery, ingestion under load, stopped-feed alerts, and rollback and recovery | **Checklist ready** ([STAGING_VERIFICATION.md](STAGING_VERIFICATION.md)). Needs an environment, an IdP registration, a collector and authorization to deploy |
+| P1 | Service and recovery targets: SLOs, RTO, RPO, retention. Then the redundancy and point-in-time recovery they require | **Needs decisions** from the product and data owners |
+| P1 | Audit durability | **Needs a decision.** Best effort is the current policy, pinned by a test. The alternatives are fail-closed or one transaction ([OBSERVABILITY.md](OBSERVABILITY.md#audit-durability-the-current-policy-and-the-decision-it-needs)) |
 
 ## Blocked: what needs an external input
 
-| Verification | Status | Exactly what is needed |
+| Verification | Status | Exactly what is needed, and the command |
 |---|---|---|
-| Live-model evaluation of prompt 2.1.0 (accuracy, latency, usage, cost) | Implemented, budget-capped; blocked | AWS credentials with Bedrock access to `us.anthropic.claude-opus-4-5-20251101-v1:0`, and an approved budget: about 75k input / 3k output tokens for the smoke run, then about 300k / 15k for the three regression sets |
-| A fresh, independent holdout set | Not started | Questions written by someone who has not seen the system's development sets. One written by this work would not be independent |
-| Hosted CI, including the supply-chain job and the amd64 image build and scan | Defined; never run. The workflow runs on this branch and on dispatch | Authorization to push this branch to GitHub |
-| Staging and deployment parity | Nothing deployed | Access to a staging environment, and authorization to deploy this branch there |
-| Single sign-on with a real IdP | Tested against an in-process provider only | An IdP registration: issuer, client id and secret, and the redirect URI registered |
-| Telemetry export and the proposed alerts | Tested with in-memory exporters only | An OTLP collector endpoint and a metrics backend, to set `PAC_OTEL_ENDPOINT` and load the alert rules |
-| Availability: more than one replica, managed PostgreSQL, point-in-time recovery | Prepared in docs; not provisioned | Approval for billable infrastructure, and an availability target |
-| Agreed service levels, RTO, RPO and retention periods | Proposals only | Decisions from the product and data owners |
-| A real ingestion feed | Synthetic and JSON-file sources only | A source system and its batch contract |
+| Hosted CI | Defined; never run on this branch | Authorization to push. Then: `git push origin post-assessment/release-risks` (CI starts on the push), `gh run watch`, and compare the image id and digest that CI built and scanned with any image later deployed |
+| Live evaluation of prompt 2.1.0 | Implemented and budget-bounded; never run | AWS credentials with Bedrock access to `us.anthropic.claude-opus-4-5-20251101-v1:0`, the contracted per-million-token rates, and approved caps. The commands are below |
+| A fresh, independent holdout | Not started | Questions and expected answers written by someone who has not seen the development sets, marked `status: "holdout"`, frozen with `scripts/freeze_holdout.py <file>`, and `evals/frozen.json` committed **before** the first run. Any written by this work would not be independent |
+| Staging and deployment parity | Nothing deployed | A staging environment and authorization to deploy this branch's CI-built image by digest; then [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) |
+| Single sign-on with a real IdP | Tested against an in-process provider only | An IdP client registration: issuer, client id and secret, and the redirect URI. Then [RUNBOOK.md](RUNBOOK.md#enabling-single-sign-on), "Verifying with a real provider" |
+| Telemetry delivery, freshness gauges and alerts | Tested with in-memory exporters and a local OTLP receiver | An OTLP collector and a metrics backend: set `PAC_OTEL_ENDPOINT` in the app and jobs containers, and load the alert rules in [OBSERVABILITY.md](OBSERVABILITY.md#alerts) |
+| Availability: replicas, managed PostgreSQL, point-in-time recovery | Prepared in docs; not provisioned | Approval for billable infrastructure, and the availability target |
+| Service levels, RTO, RPO, retention periods | Proposals only | Decisions from the product and data owners |
+| A real ingestion feed | Synthetic and JSON-file sources only | A source system, its batch contract and its schedule (which sets the missed-run threshold) |
+
+**The live evaluation, in order.** Each step is a decision point, and each
+run's record reports correct answers, refusals, unsupported requests, wrong
+answers and failures separately, with p50 and p95 latency, reported usage
+and cost ([EVALUATION.md](EVALUATION.md)):
+
+```bash
+export PAC_LLM_PROVIDER=bedrock          # with AWS credentials in the environment
+export PAC_LLM_INPUT_USD_PER_MTOK=<rate> PAC_LLM_OUTPUT_USD_PER_MTOK=<rate>
+# 1. Smoke: the first question of each family (16 checks).
+python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml --smoke \
+    --max-input-tokens 150000 --max-output-tokens 70000
+# 2. Regression sets (regression / spent: known behaviour, not unseen accuracy).
+python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml \
+    --max-input-tokens 250000 --max-output-tokens 20000
+python3 scripts/run_evals.py --provider bedrock --questions evals/holdout.yaml \
+    --max-input-tokens 100000 --max-output-tokens 12000
+python3 scripts/run_evals.py --provider bedrock --questions evals/holdout2.yaml \
+    --max-input-tokens 100000 --max-output-tokens 12000
+# 3. The independent holdout, after it is frozen and committed. Run it once.
+python3 scripts/run_evals.py --provider bedrock --questions evals/<holdout>.yaml \
+    --max-input-tokens <expected + 25000> --max-output-tokens <expected + 4096>
+```
+
+The caps allow the expected spend plus one reservation. Each call reserves
+about 24,500 input tokens (the request's bound) and its `max_tokens`
+(4,096) of output, but is charged what it bills. Adjust the later caps from
+the smoke run's reported usage. For scale only: the September live runs
+cost $3.82 for 124 questions at the list price of the time.
 
 ## Not established
 
-- **Language accuracy under prompt 2.1.0.** Any accuracy figure in the
+- **Language accuracy under prompt 2.1.0.** Every accuracy figure in the
   docs is for earlier prompt text.
-- **Behaviour under real user pacing and real question mix**, and over a
-  long soak.
+- **An exact token count before a call.** The evaluation budget's input
+  bound is conservative under stated assumptions, and checked against
+  reported usage. It is not the provider's count.
+- **Anything about a real IdP, a real collector or a real feed.** Each is
+  tested against a faithful local stand-in, not the real thing.
+- **Behaviour across replicas.** Cross-worker limits and recovery are
+  tested with threads and processes sharing one database, not with
+  deployed replicas.
+- **Behaviour under real user pacing and question mix**, and over a long
+  soak.
 - **Recovery into a new cluster** (roles first). It is documented, not
   drilled.
-- **Logs.** They are unstructured and not redacted the way spans are
-  ([OBSERVABILITY.md](OBSERVABILITY.md#not-covered)).
-- **Anything about arbitrary datasets.** The system answers questions
-  about this schema and contract. A different dataset needs a certified
-  mapping.
+- **Anything about arbitrary datasets.** The system answers questions about
+  this schema and contract. A different dataset needs a certified mapping.
