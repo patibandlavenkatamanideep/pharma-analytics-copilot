@@ -101,9 +101,10 @@ def main() -> int:
     elif bool(args.files) == args.synthetic:
         parser.error("give batch files, or --synthetic")
 
-    from app import telemetry
+    from app import logs, telemetry
     from app.db import close_pools
 
+    logs.configure()
     _start_telemetry()
     try:
         if args.check_freshness:

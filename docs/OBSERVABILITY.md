@@ -181,6 +181,35 @@ Tested with a feed that stops after a healthy batch. Moving the persisted
 times back three days, with no new batch, raises the gauge by three days
 and makes the check fail.
 
+## Logs
+
+One JSON object per line on stderr (`app/logs.py`). The image starts
+uvicorn with `app/log_config.json`, so the first line is already JSON. The
+same rules as spans apply: what code wrote is kept; what data or a client
+supplied is not.
+
+| Field | Holds |
+|---|---|
+| `event` | The message **template** as written in code (`"query failed (%s): %s"`), never the interpolated text |
+| `args` | Each argument if it is a number, boolean, null or identifier-shaped text (a route, a model id, a run id), otherwise `"[redacted]"`. An exception, a question, SQL or an address never appears |
+| `error` | The exception's type, its stable `code` if it has one, and the innermost frame in `app/` (`app/pipeline.py:1025`). Never its message or traceback |
+| `http_id` | Generated per HTTP request and returned as `X-Request-ID`. A client cannot choose it |
+| `request_id`, `run_id` | The audit row and run of the turn being served, from the moment the turn starts, including inside graph steps |
+| access lines | `{"event": "http.access", "method", "path", "status"}`, with no query string (an OIDC callback carries its code and state there) and no client address |
+
+`PAC_LOG_FORMAT=text` restores Python's default formatting for local work.
+That formatting prints exception text, so it is not for a shared
+environment.
+
+Tested: `tests/security/test_log_hygiene.py` runs uvicorn's logging
+configuration and the application's real startup in a subprocess, emits
+records shaped like the code's own with a marker in each, and finds no
+marker, no address and no non-JSON line in what the process writes. On the
+unmodified code, all three leaked (`r3-logs-reproduced.json`). The same file
+shows a warning raised inside a graph step carrying the response's
+`X-Request-ID`, `request_id` and `run_id`. `tests/unit/test_logs.py` covers
+the formatter.
+
 ## Alerts
 
 These are proposed rules. They are written in Prometheus form, using the
@@ -211,6 +240,5 @@ SLOs.
 - The deployed host exports nothing until a collector is provisioned and
   `PAC_OTEL_ENDPOINT` is set. No collector exists in this repository's
   compose files, because no requirement names one.
-- Logs are Python `logging`, unstructured and not exported. A few messages
-  include exception text from the database driver. Making logs structured,
-  and redacting them the way spans are redacted, is open.
+- Logs are written to stderr for the platform to collect. Shipping them
+  to a log store is the platform's job, and none is configured here.

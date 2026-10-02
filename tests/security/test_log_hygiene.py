@@ -7,7 +7,8 @@ entity, a database error the value it refused, a traceback all of it -- and
 uvicorn's access log prints the full path, query string included: an OIDC
 callback's code and state are in it, next to the client's address.
 
-The test runs what a deployment runs: uvicorn's own logging configuration,
+The first test reproduced it on the unmodified code
+(evidence/runs/r3-logs-reproduced.json). It runs what a deployment runs: uvicorn's own logging configuration,
 then the application's real startup, then log records shaped like the ones
 the code emits, each carrying a marker that must not come out. Everything
 the process writes to stdout and stderr is inspected.
@@ -28,9 +29,6 @@ from tests.security.conftest import AUTHTEST_DB
 pytestmark = pytest.mark.security
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-
-LOGS = pytest.mark.xfail(strict=True, reason="logs carry exception text, query strings and "
-                                             "client addresses")
 
 SCRIPT = r'''
 import logging, logging.config
@@ -63,7 +61,6 @@ def run_process() -> str:
     return proc.stdout + proc.stderr
 
 
-@LOGS
 def test_the_process_logs_no_exception_text_query_strings_or_addresses(authtest_db):
     out = run_process()
     assert "MARKER" not in out, out[-3000:]
@@ -73,3 +70,54 @@ def test_the_process_logs_no_exception_text_query_strings_or_addresses(authtest_
     assert failure["error"]["type"] == "RuntimeError" and failure["level"] == "error"
     access = next(r for r in lines if r["logger"] == "uvicorn.access")
     assert (access["path"], access["status"]) == ("/api/auth/oidc/callback", 303)
+
+
+# -- correlation, through the real HTTP path -------------------------------------------
+
+def collect():
+    """What the process's log handler would write during the block."""
+    import io
+    import logging
+
+    from app.logs import JsonFormatter
+    buffer = io.StringIO()
+    handler = logging.StreamHandler(buffer)
+    handler.setFormatter(JsonFormatter())
+    return buffer, handler
+
+
+def test_every_response_carries_a_server_generated_request_id(client):
+    first = client.get("/health")
+    second = client.get("/health", headers={"X-Request-ID": "chosen-by-the-client"})
+    ids = {first.headers["X-Request-ID"], second.headers["X-Request-ID"]}
+    assert len(ids) == 2 and "chosen-by-the-client" not in ids
+
+
+def test_a_log_line_names_the_http_request_its_turn_and_run(client, make_identity,
+                                                            monkeypatch):
+    """A warning logged inside the planning node -- a graph step, whichever
+    thread runs it -- carries the response's X-Request-ID, and the audit
+    request id and run id the response reports."""
+    import logging
+
+    from app.llm.planner import OfflinePlanner, PlannerError
+    from tests.security.helpers import sign_in
+
+    def refuse(self, question, context):
+        raise PlannerError("could not plan 'MARKER-question-text'")
+
+    monkeypatch.setattr(OfflinePlanner, "plan", refuse)
+    sign_in(client, make_identity("exec", can_view_wac=1))
+    buffer, handler = collect()
+    root = logging.getLogger()
+    root.addHandler(handler)
+    try:
+        response = client.post("/api/ask", json={"question": "What is our volume?"})
+    finally:
+        root.removeHandler(handler)
+    body = response.json()
+    lines = [json.loads(x) for x in buffer.getvalue().splitlines()]
+    planner = next(r for r in lines if r["event"].startswith("planner failed"))
+    assert planner["http_id"] == response.headers["X-Request-ID"]
+    assert (planner["request_id"], planner["run_id"]) == (body["request_id"], body["run_id"])
+    assert "MARKER" not in buffer.getvalue()

@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from psycopg_pool import PoolTimeout
 from pydantic import BaseModel, Field
 
-from app import admission, telemetry
+from app import admission, logs, telemetry
 from app.api.guard import RequestGuard
 from app.auth import identity
 from app.auth.policy import Principal
@@ -46,6 +46,10 @@ _pipeline: Pipeline | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+    # First, so nothing after it is written unsanitised (app/logs.py).
+    logs.configure(settings)
+    if not _frontend["mounted"]:
+        log.warning("web/dist not built; API only")
 
     # Refuse to serve if the database boundary is not what we think it is. A
     # mis-provisioned deployment fails loudly instead of quietly serving
@@ -179,6 +183,22 @@ async def _api_version(request: Request, call_next):
                           **{"http.route": template})
     if request.url.path.startswith("/api/"):
         response.headers["X-API-Version"] = API_VERSION
+    return response
+
+
+@app.middleware("http")
+async def _correlate(request: Request, call_next):
+    """Outermost: every log line written while serving this request carries
+    its id, and the response returns it as X-Request-ID, so a user's report
+    and an operator's log meet. Generated here -- a client cannot choose it,
+    so it cannot be made to collide with anyone else's."""
+    http_id = uuid.uuid4().hex[:16]
+    token = logs.bind(http_id=http_id)
+    try:
+        response = await call_next(request)
+    finally:
+        logs.unbind(token)
+    response.headers["X-Request-ID"] = http_id
     return response
 
 
@@ -627,15 +647,19 @@ def _conversation_denied(request: Request, exc: ConversationAccessError) -> JSON
     return JSONResponse({"detail": str(exc)}, status_code=status.HTTP_404_NOT_FOUND)
 
 
+_frontend = {"mounted": False}
+
+
 def mount_frontend() -> None:
-    """Serve the built UI from the same origin, so the cookie needs no CORS."""
+    """Serve the built UI from the same origin, so the cookie needs no CORS.
+    Its absence is reported at startup, once logging is configured -- not
+    here, at import, where it would be printed unformatted."""
     import pathlib
 
     dist = pathlib.Path(__file__).resolve().parent.parent.parent / "web" / "dist"
     if dist.is_dir():
         app.mount("/", StaticFiles(directory=str(dist), html=True), name="web")
-    else:
-        log.warning("web/dist not built; API only")
+        _frontend["mounted"] = True
 
 
 mount_frontend()

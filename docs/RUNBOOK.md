@@ -74,6 +74,7 @@ environment or `.env`. No secret is ever committed.
 | `PAC_INGEST_MAX_QUARANTINE_RATIO` | `0.05` | above this share of invalid events a batch is rejected |
 | `PAC_OTEL_ENDPOINT` | unset | OTLP/HTTP collector; unset exports nothing ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | `PAC_RELEASE` | `dev` | release identifier reported with telemetry |
+| `PAC_LOG_FORMAT` / `PAC_LOG_LEVEL` | `json` / `INFO` | one sanitised JSON line per record ([OBSERVABILITY.md](OBSERVABILITY.md#logs)); `text` only for local work |
 | `PAC_ADMISSION_MAX_INFLIGHT_REQUESTS` | `24` | questions in flight per worker; beyond it, 503 `overloaded` at once |
 | `PAC_ADMISSION_QUERY_SLOTS` / `_QUEUE` / `_WAIT_SECONDS` | `4` / `16` / `10` | analytical queries running / waiting per worker, and the longest wait ([CAPACITY.md](CAPACITY.md#admission-control)) |
 | `PAC_CONVERSATION_RETENTION_DAYS`, `PAC_AUDIT_RETENTION_DAYS`, … | 180, 400, … | retention periods, applied by `scripts/prune_state.py` ([RETENTION.md](RETENTION.md)) |
@@ -171,7 +172,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 391
+python3 -m pytest tests/security -q --release-gate --min-tests 393
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

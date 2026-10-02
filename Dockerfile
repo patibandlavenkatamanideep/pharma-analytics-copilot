@@ -76,5 +76,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # longer still (compose: stop_grace_period 75s), and it should stop routing
 # to the container first: new connections are not refused at the instant of
 # the signal.
+#
+# Logs: one sanitised JSON object per line from uvicorn's first line on
+# (app/logs.py) -- no exception text, no query strings, no client addresses.
 CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", \
-     "--timeout-graceful-shutdown", "65"]
+     "--timeout-graceful-shutdown", "65", "--log-config", "app/log_config.json"]

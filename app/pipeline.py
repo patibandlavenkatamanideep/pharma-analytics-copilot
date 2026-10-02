@@ -28,7 +28,7 @@ import psycopg
 from dataclasses import dataclass, field
 from typing import Any
 
-from app import admission, telemetry
+from app import admission, logs, telemetry
 from app.analytics.compiler import (
     CohortBinding, Compiler, CompileError, UnsupportedCombination)
 from app.analytics.entities import vocabulary_for
@@ -323,6 +323,8 @@ class Pipeline:
             )
 
         turn = Turn(self, principal, question, include_sql, dataset, state, run)
+        # Log lines from here on name the audit row and the run they belong to.
+        logs.bind(request_id=turn.request_id, run_id=run.run_id)
         # Graph nodes parent their spans on this, whichever thread runs them.
         turn.otel_parent = telemetry.current()
         thread_id, graph_input = self._entry(turn)

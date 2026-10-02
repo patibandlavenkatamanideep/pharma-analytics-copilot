@@ -20,6 +20,7 @@ include = ["app*"]
 # contained only .py files, so an installed copy raised FileNotFoundError on
 # the first import of the registry. Verified by tests/unit/test_packaging.py.
 [tool.setuptools.package-data]
+"app" = ["log_config.json"]
 "app.analytics" = ["*.yaml"]
 
 [tool.pytest.ini_options]

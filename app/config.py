@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     # Bounds every export call; a slow collector costs at most this, in the
     # background, never on a request.
     otel_timeout_s: float = 5.0
+    # Logs: one sanitised JSON object per line (app/logs.py). "text" is
+    # Python's default formatting, for local work only: it prints exception
+    # text and full request paths.
+    log_format: Literal["json", "text"] = "json"
+    log_level: str = "INFO"
     # The contracted model rates, USD per million tokens. Unset, no cost is
     # estimated -- a made-up price would read as a measurement.
     llm_input_usd_per_mtok: float | None = None
