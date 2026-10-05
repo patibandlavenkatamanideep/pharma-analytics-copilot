@@ -56,6 +56,8 @@ from app.analytics.plan import AnalyticalPlan
 from app.graph import (
     GRAPH_VERSION, RECURSION_LIMIT, build_turn_graph, checkpointer,
     disable_external_tracing)
+from app.graph.serde import CheckpointError
+from app.graph.state import validate_state
 from langgraph.errors import GraphRecursionError
 from langgraph.types import Command, interrupt
 
@@ -327,10 +329,7 @@ class Pipeline:
         logs.bind(request_id=turn.request_id, run_id=run.run_id)
         # Graph nodes parent their spans on this, whichever thread runs them.
         turn.otel_parent = telemetry.current()
-        thread_id, graph_input = self._entry(turn)
-        turn.thread_id = thread_id
-        config = {"configurable": {"thread_id": thread_id},
-                  "recursion_limit": RECURSION_LIMIT}
+        thread_id = self._fresh_thread(turn)
         # durability="sync": each step's checkpoint is written before the next
         # step starts, so a crash loses at most the step in flight. The
         # default writes in the background and can lose a completed step too.
@@ -338,6 +337,12 @@ class Pipeline:
         # 20 requests): 55.3 ms median, against 52.8 ms with background writes
         # and 53.2 ms for the linear pipeline before the graph.
         try:
+            # Loading for resume is part of the leased operation too. A bad
+            # checkpoint must not strand a running lease before invoke starts.
+            thread_id, graph_input = self._entry(turn)
+            turn.thread_id = thread_id
+            config = {"configurable": {"thread_id": thread_id},
+                      "recursion_limit": RECURSION_LIMIT}
             try:
                 out = self.graph.invoke(graph_input, config, context=turn, durability="sync")
             except StaleState:
@@ -347,6 +352,14 @@ class Pipeline:
                 config["configurable"]["thread_id"] = thread_id
                 out = self.graph.invoke(turn.initial_state(), config, context=turn,
                                         durability="sync")
+        except CheckpointError:
+            turn.finish(PipelineResult(
+                status="error", conversation_id=state.conversation_id,
+                message="The saved conversation could not be resumed. Please ask your question again."),
+                "checkpoint_invalid")
+            # Keep the corrupt thread for diagnosis/retention; never silently
+            # restart an untrusted saved plan or replay a completed side effect.
+            return turn.result
         except runs.Cancelled:
             if turn.result is None:
                 turn.finish(PipelineResult(
@@ -432,7 +445,10 @@ class Pipeline:
         return self._thread_for(turn.run.run_id, turn.state.conversation_id)
 
     def _snapshot(self, thread_id: str):
-        return self.graph.get_state({"configurable": {"thread_id": thread_id}})
+        snapshot = self.graph.get_state({"configurable": {"thread_id": thread_id}})
+        if snapshot.values:
+            validate_state(snapshot.values)
+        return snapshot
 
     def _waiting(self, thread_id: str) -> bool:
         snap = self._snapshot(thread_id)
@@ -591,6 +607,7 @@ class Turn:
         """Every node starts here. A checkpoint from another graph version is
         restarted rather than resumed, and a request past its budget stops
         between steps rather than starting a new one."""
+        validate_state(state)
         if state.get("graph_version") != GRAPH_VERSION:
             raise StaleState(state.get("graph_version"))
         if time.time() > self.deadline_at:
@@ -743,6 +760,7 @@ class Turn:
     def node_await_reply(self, state: dict[str, Any]) -> dict[str, Any]:
         """Pause until the user chooses. Nothing before the interrupt, because
         everything before it would run again on resume."""
+        self.guard(state)
         reply = interrupt({"choices": state["asking"]["choices"]})
         subject = normalise(state["asking"]["subject"] or "")
         return {"route": "resolve", "asking": None,

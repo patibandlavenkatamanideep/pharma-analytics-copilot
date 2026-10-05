@@ -1,0 +1,67 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-05T17:25:09+00:00",
+  "claim": "Corrected instrumentation: checkpoint constructor and unreadable-state regressions on unchanged application",
+  "application": {
+    "sha": "58b3d3ec7c87012867ee02e409aad80e5a4c6d9a",
+    "tree": "d41d8e53c59780d351564385e9437dd31aba163f",
+    "branch": "codex/nl2sql-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/runs/r4-checkpoint-reproduced.json",
+      "tests/security/test_checkpoint_loading.py"
+    ],
+    "dirty_digests": {
+      "evidence/runs/r4-checkpoint-reproduced.json": "3f8aab36560eb91bfc7d66de69801d1180e89d49ae9b2f455dc5f04b31495a98",
+      "tests/security/test_checkpoint_loading.py": "7a6ddd09bf8b4e736d2326a2dc5e15f0a0f57022b9ab39fb206737a0ab0241a1"
+    }
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "python",
+      "-m",
+      "pytest",
+      "tests/security/test_checkpoint_loading.py",
+      "-q"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 50.85
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 5
+    },
+    "blocked_reason": null,
+    "summary": "5 failed in 36.49s"
+  },
+  "artifacts": [],
+  "limits": null
+}

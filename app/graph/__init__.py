@@ -35,6 +35,7 @@ def checkpointer():
     from langgraph.checkpoint.postgres import PostgresSaver
 
     from app.db import graph_pool
+    from app.graph.serde import TurnSerializer
 
     class _CurrentPoolSaver(PostgresSaver):
         @property
@@ -45,4 +46,4 @@ def checkpointer():
         def conn(self, _value):
             pass
 
-    return _CurrentPoolSaver(graph_pool())
+    return _CurrentPoolSaver(graph_pool(), serde=TurnSerializer())
