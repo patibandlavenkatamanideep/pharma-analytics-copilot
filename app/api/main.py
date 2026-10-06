@@ -59,11 +59,10 @@ async def lifespan(app: FastAPI):
     try:
         problems = verify_runtime_role_safety()
     except DATABASE_UNAVAILABLE:
-        log.critical("refusing to serve: %s", "database_unreachable", exc_info=True)
+        log.critical("startup.refused", extra={"reason": "database_unreachable"}, exc_info=True)
         raise
     if problems:
-        log.critical("refusing to serve: %s (%s problems)", "security_boundary_broken",
-                     len(problems))
+        log.critical("startup.refused", extra={"reason": "security_boundary_broken"})
         raise RuntimeError("database security boundary is not intact: " + "; ".join(problems))
 
     # The serving process does not need the owner credential: it never
@@ -73,7 +72,7 @@ async def lifespan(app: FastAPI):
     # share one .env) it is a warning.
     for problem in serving_credential_problems(settings):
         if settings.environment == "cloud":
-            log.critical("refusing to serve: %s", "owner_credential_present")
+            log.critical("startup.refused", extra={"reason": "owner_credential_present"})
             raise RuntimeError(problem)
         log.warning("serving with %s (allowed only because PAC_ENVIRONMENT=local)",
                     "owner_credential_present")

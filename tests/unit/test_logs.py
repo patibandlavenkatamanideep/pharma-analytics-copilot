@@ -31,22 +31,22 @@ def line(rec) -> dict:
 def test_the_template_is_kept_and_the_interpolation_never_happens():
     out = line(record("query failed (%s): %s", "sql",
                       RuntimeError("value 'alice@example.com' refused")))
-    assert out["event"] == "query failed (%s): %s"
-    assert out["args"] == ["sql", REDACTED]
+    assert out["event"] == "query.failed"
+    assert "args" not in out
     assert "alice" not in json.dumps(out)
 
 
-def test_only_identifier_shaped_arguments_survive():
+def test_identifier_shaped_arguments_are_not_safe():
     out = line(record("%s %s %s %s %s %s", "us.anthropic.claude-opus-4-5-20251101-v1:0",
                       "/api/runs/r_abc", 42, 1.5, None,
                       "What were Northeast sales for Zenovax?"))
-    assert out["args"] == ["us.anthropic.claude-opus-4-5-20251101-v1:0", "/api/runs/r_abc",
-                           42, 1.5, None, REDACTED]
+    assert "args" not in out
+    assert out["event"] == "log.unclassified"
 
 
 def test_an_email_or_address_is_not_an_identifier():
     out = line(record("%s %s", "alice@example.com", "203.0.113.9:5555 extra"))
-    assert out["args"] == [REDACTED, REDACTED]
+    assert "args" not in out
 
 
 def test_an_exception_contributes_its_type_and_place_not_its_message():
@@ -65,7 +65,7 @@ def test_a_stable_error_code_is_kept():
 def test_a_mapping_argument_is_sanitised_too():
     out = line(record("%(route)s %(question)s", {"route": "/api/ask",
                                                  "question": "Top accounts in Ohio?"}))
-    assert out["args"] == {"route": "/api/ask", "question": REDACTED}
+    assert "args" not in out
 
 
 def test_an_access_line_has_no_query_string_and_no_client_address():

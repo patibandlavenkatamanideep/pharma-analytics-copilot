@@ -14,7 +14,7 @@ on:
   push:
     # main, and the post-assessment branches, so their CI runs without
     # waiting for a pull request.
-    branches: [main, "post-assessment/**"]
+    branches: [main, "post-assessment/**", "production/nl2sql-readiness", "codex/**"]
   pull_request:
   # Run on any branch from the Actions tab or `gh workflow run ci.yml --ref <branch>`.
   workflow_dispatch:
@@ -103,7 +103,7 @@ jobs:
       # collected tests that skip still fail the gate.
       - name: Security suite (release gate, strict)
         env:
-          PAC_SECURITY_MIN_TESTS: "402"
+          PAC_SECURITY_MIN_TESTS: "409"
         run: |
           python -m pytest tests/security -q \
             --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
@@ -117,7 +117,7 @@ jobs:
           python -m pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py \
             tests/integration/test_ingest_contract.py tests/integration/test_ingest_observability.py \
             tests/unit/test_ingest_validation.py \
-            -q --release-gate --min-tests 165
+            -q --release-gate --min-tests 176
 
       - name: Full test suite
         run: python -m pytest tests -q
@@ -278,16 +278,13 @@ jobs:
       # first assertion is that it does NOT come up without a database.
       - name: It refuses to start with no database
         run: |
+          rc=0
           docker run --rm --name pac-nodb \
             -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline \
             pharma-analytics-copilot:ci \
-            timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8000 \
-            > nodb.log 2>&1 && echo "started anyway" || true
-          if grep -qiE "connection refused|boundary" nodb.log; then
-            echo "refused to serve without a database, as designed"
-          else
-            echo "expected a startup refusal; got:"; tail -20 nodb.log; exit 1
-          fi
+            timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8000 \
+            > nodb.log 2>&1 || rc=$?
+          python scripts/assert_startup_refusal.py nodb.log "$rc" database_unreachable
 
       # The image must also contain everything needed to provision, not just to
       # serve. Passwords are supplied as environment variables and --no-env
@@ -329,19 +326,16 @@ jobs:
           PAC_DB_EXEC_PASSWORD: ci-exec-pw
           PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
+          rc=0
           docker run --rm --network host \
             -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
             -e PAC_DB_OWNER_PASSWORD -e PAC_DB_AUTH_PASSWORD \
             -e PAC_DB_EXEC_PASSWORD -e PAC_DB_SCOPED_PASSWORD \
             -e PAC_LLM_PROVIDER=offline \
             pharma-analytics-copilot:ci \
-            timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8001 \
-            > owner.log 2>&1 && echo "started anyway" || true
-          if grep -q "OWNER credential" owner.log; then
-            echo "refused to serve with the owner credential, as designed"
-          else
-            echo "expected a refusal; got:"; tail -20 owner.log; exit 1
-          fi
+            timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8001 \
+            > owner.log 2>&1 || rc=$?
+          python scripts/assert_startup_refusal.py owner.log "$rc" owner_credential_present
 
       - name: Start the container against the database
         env:

@@ -127,10 +127,11 @@ $CLI run -d --name "$DB" --network "$NET" -e POSTGRES_PASSWORD="$SUPER" \
 for _ in $(seq 1 60); do $CLI exec "$DB" pg_isready -U postgres >/dev/null 2>&1 && break; sleep 1; done
 
 # -- refusals ---------------------------------------------------------------
+rc=0
 $CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline "$TAG" \
-  timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8000 > "$WORK/nodb.log" 2>&1 || true
+  timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8000 > "$WORK/nodb.log" 2>&1 || rc=$?
 # Logs carry stable reasons, not exception text (app/logs.py).
-grep -qE "database_unreachable|security_boundary_broken" "$WORK/nodb.log" \
+python3 scripts/assert_startup_refusal.py "$WORK/nodb.log" "$rc" database_unreachable \
   && pass "refuses to serve with no database" || fail "started without a database"
 
 $CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
@@ -141,9 +142,10 @@ $CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
   && pass "provisions its own database (roles, schema, policies)" \
   || { tail -20 "$WORK/bootstrap.log"; fail "bootstrap from inside the image"; }
 
+rc=0
 $CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
-  timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8001 > "$WORK/owner.log" 2>&1 || true
-grep -q "owner_credential_present" "$WORK/owner.log" \
+  timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8001 > "$WORK/owner.log" 2>&1 || rc=$?
+python3 scripts/assert_startup_refusal.py "$WORK/owner.log" "$rc" owner_credential_present \
   && pass "refuses to serve while holding the owner credential" || fail "served with the owner credential"
 
 # -- serving ----------------------------------------------------------------

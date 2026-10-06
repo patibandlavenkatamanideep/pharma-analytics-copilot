@@ -38,6 +38,11 @@ from fastapi.testclient import TestClient
 from app.api.main import app
 
 with TestClient(app):                                # the application's own startup
+    for marker in ("MARKERsecret", "203.0.113.9", "Acme", "opaque-token-MARKER"):
+        logging.getLogger("app.pipeline").warning(marker)
+        logging.getLogger("thirdparty").warning("value %s", marker)
+        logging.getLogger("uvicorn.access").info('%s - "%s %s HTTP/%s" %d',
+            "203.0.113.9", "GET", "/" + marker, "1.1", 404)
     logging.getLogger("app.pipeline").warning(
         "query failed (%s): %s", "sql", RuntimeError("value 'MARKER-cell-value' was refused"))
     try:
@@ -66,9 +71,9 @@ def test_the_process_logs_no_exception_text_query_strings_or_addresses(authtest_
     assert "MARKER" not in out, out[-3000:]
     assert "203.0.113.9" not in out
     lines = [json.loads(line) for line in out.splitlines() if line.strip()]
-    failure = next(r for r in lines if r["event"].startswith("unhandled pipeline failure"))
+    failure = next(r for r in lines if r["event"] == "request.failed")
     assert failure["error"]["type"] == "RuntimeError" and failure["level"] == "error"
-    access = next(r for r in lines if r["logger"] == "uvicorn.access")
+    access = next(r for r in lines if r["event"] == "http.access" and r["status"] == 303)
     assert (access["path"], access["status"]) == ("/api/auth/oidc/callback", 303)
 
 
@@ -117,7 +122,7 @@ def test_a_log_line_names_the_http_request_its_turn_and_run(client, make_identit
         root.removeHandler(handler)
     body = response.json()
     lines = [json.loads(x) for x in buffer.getvalue().splitlines()]
-    planner = next(r for r in lines if r["event"].startswith("planner failed"))
+    planner = next(r for r in lines if r["event"] == "planner.invalid")
     assert planner["http_id"] == response.headers["X-Request-ID"]
     assert (planner["request_id"], planner["run_id"]) == (body["request_id"], body["run_id"])
     assert "MARKER" not in buffer.getvalue()
