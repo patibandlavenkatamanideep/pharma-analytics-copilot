@@ -365,3 +365,32 @@ def test_a_valid_event_digests_exactly_as_the_old_reader_made_it():
             else None
         new = parse_event(json.loads(text, parse_float=__import__("decimal").Decimal))
         assert _digest(new) == _digest(SourceEvent(**old)), raw
+
+
+@pytest.mark.parametrize('field,value', [('declared_count', 2**31),
+    ('declared_pack_units', '1e999999'), ('declared_pack_units', '1e-999999')])
+def test_unstorable_envelope_is_rejected_and_recorded(fresh, field, value):
+    from dataclasses import replace
+    from tests.integration.test_ingestion import batch, ev, run, state
+    outcome = run(replace(batch('bounds', ev('bounds')), **{field: value}))
+    assert outcome.status == 'rejected'
+    assert outcome.rejection_code == 'invalid_envelope'
+    assert state() == fresh
+    assert q("SELECT status FROM app_ingest.batches WHERE batch_id='bounds'")[0]['status'] == 'rejected'
+
+
+def test_mixed_decimal_huge_integer_and_surrogate_batch_is_atomic_and_replayable(fresh, per_record):
+    from decimal import Decimal
+    from tests.integration.test_ingestion import batch, ev, run, state
+    b = batch('edge-mixed', ev('decimal', packs=Decimal('10.5')),
+              ev('huge', packs=10**400), ev('surrogate\ud800'))
+    first = run(b)
+    assert first.status == 'published'
+    assert (first.applied, first.quarantined) == (1, 2)
+    after = state()
+    assert after['rows'] == fresh['rows'] + 1
+    assert after['packs'] == fresh['packs'] + Decimal('10.5')
+    second = run(b)
+    assert second.duplicates == 1 and second.applied == 0
+    assert state() == after
+    assert len(q("SELECT payload FROM app_ingest.quarantine WHERE batch_id='edge-mixed'")) == 4

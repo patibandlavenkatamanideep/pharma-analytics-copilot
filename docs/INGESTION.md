@@ -437,3 +437,19 @@ sales` restores them online in about 40 s, if wanted.
 The offsets stored on each fact are the root cost. Resolving offsets from
 the calendar at query time would remove the rewrite entirely, but it changes
 how the supplied columns are used, so it is recorded here rather than done.
+
+
+## October 6 adapter bounds
+
+Every adapter envelope is checked before database access. Counts must fit signed
+INTEGER; totals are finite, nonnegative and at most 100,000 × 1,000,000 packs,
+with at most 1,000 significant decimal digits and no nonzero exponent below -324.
+Extreme JSON exponents reject the document safely. Huge integers and invalid
+UTF-8 text quarantine the event; the rejection/quarantine identity and payload
+are themselves made storable. Invalid envelope controls are recorded as zero
+with a stable rejection code, not represented as accepted measurements.
+
+Ledger digests for previously accepted int/float JSON values are unchanged.
+Decimal-valued Python adapters, previously unhashable, use the same float JSON
+representation as the JSON adapter. Replays across these adapters therefore
+retain event identity; no ledger migration or silent rehash is performed.

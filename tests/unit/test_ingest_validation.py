@@ -122,3 +122,27 @@ def test_the_reader_keeps_the_values_json_would_have_made():
     assert isinstance(record, SourceEvent)
     assert record.pack_units == 10 and type(record.pack_units) is int
     assert record.wac == 1200.0 and type(record.wac) is float
+
+
+def test_extreme_exponent_document_is_rejected():
+    from app.data.sources import parse_batch
+    assert parse_batch(b'{"n":1e99999999999999999999999999999999}').envelope_error
+
+
+def test_declared_count_must_fit_storage():
+    from app.data.sources import parse_batch
+    raw = b'{"source_system":"x","batch_id":"x","events":[],"declared_count":2147483648,"declared_pack_units":0}'
+    assert parse_batch(raw).envelope_error
+
+
+def test_huge_adapter_integer_is_quarantined():
+    assert problem(event(pack_units=10**400)) == 'non_finite_number'
+
+
+def test_decimal_digest_matches_json_adapter_identity():
+    from app.data.ingest import _digest
+    assert _digest(event(pack_units=Decimal('10.5'))) == _digest(event(pack_units=10.5))
+
+
+def test_surrogate_identity_is_quarantined():
+    assert problem(event(source_event_id='bad\ud800')) == 'invalid_identity'

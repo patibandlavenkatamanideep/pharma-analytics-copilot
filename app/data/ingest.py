@@ -272,6 +272,13 @@ def _digest(event: SourceEvent) -> str:
     return hashlib.sha256(json.dumps(event.payload(), sort_keys=True).encode()).hexdigest()
 
 
+def _report_digest(event: SourceEvent) -> str:
+    try:
+        return _digest(event)
+    except (TypeError, ValueError, OverflowError, AttributeError):
+        return hashlib.sha256(json.dumps(storable(dataclasses.asdict(event)), sort_keys=True).encode()).hexdigest()
+
+
 def _decimal(value: float | None) -> Decimal:
     return Decimal(str(value)) if value is not None else Decimal(0)
 
@@ -295,10 +302,23 @@ def _field_problem(event: SourceEvent, orgs: set[str], ndcs: set[str],
     """
     sid, version = event.source_event_id, event.event_version
     if not isinstance(sid, str) or not sid or len(sid) > MAX_IDENTITY_LENGTH \
-            or any(ord(c) < 32 or ord(c) == 127 for c in sid):
+            or any(ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in sid):
         return "invalid_identity"
     if type(version) is not int or not 1 <= version <= MAX_EVENT_VERSION:
         return "invalid_identity"
+    for value in (event.kind, event.org_id, event.ndc, event.data_source, event.unit):
+        if value is not None and (not isinstance(value, str) or
+                any(ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value)):
+            return "invalid_type"
+    for value in (event.pack_units, event.wac):
+        if value is not None:
+            if not _is_number(value):
+                return "invalid_type"
+            try:
+                if not math.isfinite(value):
+                    return "non_finite_number"
+            except (OverflowError, ValueError):
+                return "non_finite_number"
     if event.kind not in ("upsert", "delete"):
         return "invalid_kind"
     if event.kind == "delete":
@@ -392,6 +412,8 @@ def _fact_params(event: SourceEvent, placement: Placement) -> dict[str, Any]:
 def ingest(batch: SourceBatch, *, now: datetime | None = None) -> IngestOutcome:
     """Apply one batch. Returns its outcome; a rejected batch is an outcome,
     not an exception -- it is recorded, and nothing it contained is applied."""
+    from app.data.sources import normalize_batch
+    batch = normalize_batch(batch)
     started = time.perf_counter()
     source = batch.source_system
     status = "failed"
@@ -476,7 +498,7 @@ def _received(batch: SourceBatch) -> tuple[int, Decimal]:
     each quantity that reads as a finite decimal (sources.readable_packs)."""
     count = len(batch.events) + len(batch.malformed)
     packs = sum((readable_packs(e.pack_units) for e in batch.events), Decimal(0)) \
-        + sum((m.packs for m in batch.malformed), Decimal(0))
+        + sum((readable_packs(m.packs) for m in batch.malformed), Decimal(0))
     return count, packs
 
 
@@ -699,7 +721,7 @@ def _process(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
     report.source_hashes = {k: v for k, v in (parent["source_hashes"] or {}).items()
                             if not k.startswith("batch:")}
     report.source_hashes[f"batch:{batch.source_system}/{batch.batch_id}"] = hashlib.sha256(
-        "".join(_digest(e) for e in batch.events).encode()).hexdigest()
+        "".join(_report_digest(e) for e in batch.events).encode()).hexdigest()
     cur.execute("DELETE FROM app_ref.calendar")
     _populate_calendar(cur, report)
     cur.execute("ANALYZE sales")
@@ -803,6 +825,10 @@ def _record_batch(cur: Any, batch: SourceBatch, outcome: IngestOutcome,
                 and 1 <= record.event_version <= MAX_EVENT_VERSION else None
         else:
             payload, sid, version = {}, None, None
+        sid = str(storable(sid))[:MAX_IDENTITY_LENGTH] if sid is not None else None
+        version = version if type(version) is int and 1 <= version <= MAX_EVENT_VERSION else None
+        from app.data.sources import RECORD_REASONS
+        reason = reason if reason in RECORD_REASONS else "malformed_record"
         cur.execute(
             "INSERT INTO app_ingest.quarantine (source_system, batch_id, attempt, "
             " source_event_id, event_version, reason, payload) "

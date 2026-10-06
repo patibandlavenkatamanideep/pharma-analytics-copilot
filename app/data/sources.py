@@ -60,6 +60,15 @@ MAX_EVENT_VERSION = 2**31 - 1          # the ledger's INTEGER column
 MAX_IDENTITY_LENGTH = 256
 MAX_EVENTS_PER_BATCH = 100_000
 
+RECORD_REASONS = frozenset({
+    "malformed_record", "unexpected_field", "invalid_identity", "invalid_type",
+    "invalid_timestamp", "non_finite_number", "out_of_range", "invalid_kind",
+    "missing_field", "naive_timestamp", "unit_not_packs", "unknown_data_source",
+    "unknown_organization", "unknown_product", "non_positive_packs", "invalid_price",
+    "priced_free_drug", "future_event", "before_history",
+    "period_convention_ambiguous", "calendar_conflict", "conflicting_versions",
+})
+
 
 @dataclass(frozen=True)
 class SourceEvent:
@@ -81,6 +90,9 @@ class SourceEvent:
     def payload(self) -> dict[str, Any]:
         d = asdict(self)
         d["event_time"] = self.event_time.isoformat() if self.event_time else None
+        for name in ("pack_units", "wac"):
+            if isinstance(d[name], Decimal):
+                d[name] = float(d[name])
         return d
 
 
@@ -116,7 +128,7 @@ class SourceBatch:
            **overrides: Any) -> "SourceBatch":
         events = tuple(events)
         totals = {"declared_count": len(events),
-                  "declared_pack_units": sum((Decimal(str(e.pack_units or 0)) for e in events),
+                  "declared_pack_units": sum((readable_packs(e.pack_units) for e in events),
                                              Decimal(0))}
         totals.update(overrides)
         return cls(source_system=source_system, batch_id=batch_id, events=events, **totals)
@@ -137,7 +149,7 @@ ENVELOPE_FIELDS = frozenset({"source_system", "batch_id", "declared_count",
                              "declared_pack_units", "events"})
 _SOURCE_ID = re.compile(r"[A-Za-z0-9_.:-]{1,100}")
 _BATCH_ID = re.compile(r"[A-Za-z0-9_.:-]{1,200}")
-_CONTROL = re.compile(r"[\x00-\x1f\x7f]")
+_CONTROL = re.compile(r"[\x00-\x1f\x7f\ud800-\udfff]")
 
 
 class _NonFinite(str):
@@ -174,11 +186,60 @@ def readable_packs(value: Any) -> Decimal:
         return Decimal(0)
     try:
         number = value if isinstance(value, Decimal) else Decimal(str(value))
-        if not number.is_finite() or not math.isfinite(float(number)):
+        if (not number.is_finite() or not math.isfinite(float(number))
+                or len(number.as_tuple().digits) > 1000
+                or (number and number.adjusted() < -324)):
             return Decimal(0)
     except (InvalidOperation, ValueError, TypeError, OverflowError):
         return Decimal(0)
     return number
+
+
+def valid_total(value: Any) -> bool:
+    try:
+        number = Decimal(str(value))
+        # Control totals are NUMERIC in PostgreSQL, with finite application
+        # bounds matching the largest accepted batch. Prevent extreme exponents.
+        return (number.is_finite() and len(number.as_tuple().digits) <= 1000
+                and (not number or number.adjusted() >= -324)
+                and 0 <= number <= MAX_EVENTS_PER_BATCH * MAX_PACKS_PER_EVENT)
+    except (InvalidOperation, ValueError, TypeError, OverflowError):
+        return False
+
+
+def normalize_batch(batch: SourceBatch) -> SourceBatch:
+    """Enforce the envelope at every adapter boundary, before SQL or telemetry.
+    Rejected envelopes use safe identity/control fields so the rejection itself
+    can be stored. No accepted event's established digest representation changes.
+    """
+    source, bid = batch.source_system, batch.batch_id
+    identity_ok = (isinstance(source, str) and _SOURCE_ID.fullmatch(source)
+                   and isinstance(bid, str) and _BATCH_ID.fullmatch(bid))
+    if not identity_ok:
+        raw = json.dumps(storable([source, bid]), ensure_ascii=True).encode()
+        return SourceBatch("invalid-adapter", "unreadable-" + hashlib.sha256(raw).hexdigest()[:16],
+                           (), 0, Decimal(0), envelope_error=("malformed_document", "invalid batch identity"))
+    if (type(batch.declared_count) is not int or not 0 <= batch.declared_count <= MAX_EVENT_VERSION
+            or not valid_total(batch.declared_pack_units)
+            or not isinstance(batch.events, (list, tuple))
+            or not isinstance(batch.malformed, (list, tuple))
+            or len(batch.events) + len(batch.malformed) > MAX_EVENTS_PER_BATCH
+            or any(not isinstance(e, SourceEvent) for e in batch.events)
+            or any(not isinstance(m, Malformed) for m in batch.malformed)):
+        return SourceBatch(source, bid, (), 0, Decimal(0),
+                           envelope_error=("invalid_envelope", "invalid adapter control fields"))
+    malformed = tuple(dataclasses.replace(m,
+        reason=m.reason if isinstance(m.reason, str) and m.reason in RECORD_REASONS else "malformed_record",
+        payload=storable(m.payload),
+        source_event_id=_text(m.source_event_id)[:MAX_IDENTITY_LENGTH] if isinstance(m.source_event_id, str) else None,
+        event_version=m.event_version if type(m.event_version) is int and 1 <= m.event_version <= MAX_EVENT_VERSION else None,
+        packs=readable_packs(m.packs)) for m in batch.malformed)
+    error = batch.envelope_error
+    if error is not None:
+        code = error[0] if isinstance(error, (tuple, list)) and error else None
+        error = (code if code in ("malformed_document", "invalid_envelope") else "invalid_envelope",
+                 "source envelope rejected")
+    return dataclasses.replace(batch, malformed=malformed, envelope_error=error)
 
 
 def _number(value: Any) -> tuple[Any, str | None]:
@@ -215,6 +276,8 @@ def storable(value: Any, depth: int = 0) -> Any:
     if isinstance(value, _NonFinite):
         return str(value)
     if isinstance(value, int):
+        if value.bit_length() > 4096:
+            return "[integer out of range]"
         return value if abs(value) < 2**63 else str(value)
     if isinstance(value, float):
         return value if math.isfinite(value) else ("NaN" if math.isnan(value)
@@ -280,6 +343,9 @@ def parse_event(raw: Any) -> "SourceEvent | Malformed":
         if problem:
             return bad(problem)
         numbers[name] = value
+    if any(isinstance(raw.get(name), str) and _CONTROL.search(raw[name])
+           for name in ("kind", "org_id", "ndc", "data_source", "unit")):
+        return bad("invalid_type")
     # Fields named explicitly: a record without `kind` is an event with no
     # kind (ingestion's invalid_kind), not a TypeError from the dataclass.
     return SourceEvent(source_event_id=sid, event_version=version, kind=raw.get("kind"),
@@ -294,7 +360,7 @@ def parse_batch(data: bytes, *, default_source: str = "file") -> SourceBatch:
     error, which ingestion records as rejected. One the document cannot
     name is recorded under `default_source` and a digest of its bytes, so
     resending the same broken file is the same rejected batch."""
-    fallback = {"source_system": default_source,
+    fallback = {"source_system": default_source if isinstance(default_source, str) and _SOURCE_ID.fullmatch(default_source) else "file",
                 "batch_id": "unreadable-" + hashlib.sha256(data).hexdigest()[:16]}
 
     def rejected(code: str, detail: str, ident: dict[str, str] = fallback) -> SourceBatch:
@@ -303,7 +369,7 @@ def parse_batch(data: bytes, *, default_source: str = "file") -> SourceBatch:
 
     try:
         doc = _load(data.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError, RecursionError):
+    except (UnicodeDecodeError, ValueError, RecursionError, InvalidOperation, OverflowError):
         return rejected("malformed_document", "the document is not valid UTF-8 JSON")
     if not isinstance(doc, dict):
         return rejected("malformed_document", "the document is not a JSON object")
@@ -317,7 +383,7 @@ def parse_batch(data: bytes, *, default_source: str = "file") -> SourceBatch:
     if set(doc) - ENVELOPE_FIELDS:
         return rejected("invalid_envelope", "unexpected top-level field", ident)
     count = doc.get("declared_count")
-    if type(count) is not int or count < 0:
+    if type(count) is not int or not 0 <= count <= MAX_EVENT_VERSION:
         return rejected("invalid_envelope", "declared_count is not a non-negative integer", ident)
     declared_raw = doc.get("declared_pack_units")
     declared = None
@@ -326,7 +392,7 @@ def parse_batch(data: bytes, *, default_source: str = "file") -> SourceBatch:
             declared = Decimal(str(declared_raw))
         except InvalidOperation:
             declared = None
-    if declared is None or not declared.is_finite() or declared < 0:
+    if not valid_total(declared):
         return rejected("invalid_envelope",
                         "declared_pack_units is not a finite, non-negative number", ident)
     events = doc.get("events")
