@@ -276,3 +276,28 @@ and aggregate audit/feedback queries to concrete panels, explains unavailable
 queue/fallback measurements, and defines the hosted delivery and incident
 checks. It also preserves the distinction between best-effort audit and
 operational telemetry.
+
+
+## October 6 hardening
+
+Logging uses explicit event IDs and a closed startup-reason allowlist. Arbitrary
+messages, arguments, third-party logger names and unknown paths are suppressed.
+Access paths are known route templates. Correlation remains server generated.
+Audit availability remains best effort; this work does not make answer delivery
+conditional on durable audit insertion.
+
+Freshness collection has its own one-connection pool (200 ms acquisition,
+500 ms SQL timeout), separate from serving/authentication capacity. A single
+background reader bounds each collection callback to 100 ms, including driver
+stalls, with no accumulating readers; stale/unavailable samples become absent.
+Shutdown retains the effective `configure()` exporter timeout and waits at most
+twice that timeout plus one second. Pure exporter unit tests inject freshness
+and never need a database.
+
+Set `PAC_OTEL_SOURCE_NAMES` to a comma-separated operator inventory (at most 64
+names, 48 characters each; default `synthetic-distributor`). Other source counters
+aggregate under `other`; freshness gauges for unconfigured sources are absent,
+not combined into a misleading single age. Model metrics admit only the configured
+model, `offline`, or `other`. Unknown source/model values are refused again at
+export. The freshness CLI continues reporting every stored source. Configure and
+alert on missing expected source series before enabling an actual feed.

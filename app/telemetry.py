@@ -99,6 +99,21 @@ _SPAN_NAME = re.compile(r"^(pac|http)\.[a-z_.]{1,40}$")
 REDACTED = "[redacted]"
 
 
+def source_inventory() -> frozenset[str]:
+    from app.config import get_settings
+    return frozenset(name for name in get_settings().otel_source_names.split(",")[:64]
+                     if name and _ENUM_VALUE.fullmatch(name))
+
+
+def metric_inventory(key: str) -> frozenset[str] | None:
+    if key == "source":
+        return source_inventory() | {"other"}
+    if key == "model":
+        from app.config import get_settings
+        return frozenset({get_settings().bedrock_model_id, "offline", "other"})
+    return None
+
+
 def clean(attributes: dict[str, Any] | Any, allowed: frozenset[str] = SPAN_ATTRIBUTES,
           ids: frozenset[str] = _ID_ATTRIBUTES) -> dict[str, Any]:
     """The exportable subset of `attributes`. Unknown names are dropped;
@@ -107,7 +122,10 @@ def clean(attributes: dict[str, Any] | Any, allowed: frozenset[str] = SPAN_ATTRI
     for key, value in dict(attributes or {}).items():
         if key not in allowed or value is None:
             continue
-        if isinstance(value, bool) or isinstance(value, (int, float)):
+        inventory = metric_inventory(key) if allowed is METRIC_LABELS else None
+        if inventory is not None:
+            out[key] = value if isinstance(value, str) and value in inventory else "other"
+        elif isinstance(value, bool) or isinstance(value, (int, float)):
             out[key] = value
         elif isinstance(value, str):
             pattern = _ID_VALUE if key in ids else _ENUM_VALUE
@@ -210,7 +228,12 @@ class RedactingMetricExporter(MetricExporter):
 
 
 def _allowed_point(point) -> bool:
-    return set(point.attributes or {}) <= METRIC_LABELS and all(
+    labels = point.attributes or {}
+    if any(metric_inventory(k) is not None and
+           (not isinstance(v, str) or v not in metric_inventory(k))
+           for k, v in labels.items()):
+        return False
+    return set(labels) <= METRIC_LABELS and all(
         isinstance(v, (str, bool, int, float)) and (not isinstance(v, str)
                                                      or _ENUM_VALUE.match(v))
         for v in (point.attributes or {}).values())
@@ -288,6 +311,7 @@ class _State:
     instruments: dict[str, Any] = field(default_factory=dict)
     providers: list[Any] = field(default_factory=list)
     configured: bool = False
+    shutdown_timeout_s: float = 3.0
 
 
 _state = _State()
@@ -305,6 +329,42 @@ def _make_instruments(meter) -> dict[str, Any]:
 _state.instruments = _make_instruments(metrics.NoOpMeter("pac"))
 
 
+class BoundedFreshness:
+    """At most one reader, with bounded callback latency and short-lived cache.
+
+    Pool acquisition and SQL have their own bounds. This outer deadline also
+    protects metrics from a stalled driver/network; no additional reader is
+    spawned while one is outstanding. Stale samples disappear, never freeze.
+    """
+    def __init__(self, read, timeout_s=0.1):
+        self.read = read
+        self.timeout_s = timeout_s
+        self.lock = threading.Lock()
+        self.worker = None
+        self.value = []
+        self.sampled = 0.0
+
+    def __call__(self):
+        with self.lock:
+            if time.monotonic() - self.sampled < 1:
+                return self.value
+            if self.worker is None or not self.worker.is_alive():
+                def collect():
+                    try:
+                        value = self.read()
+                    except Exception:
+                        value = []
+                        log.warning("freshness could not be read (%s); not reported this time", "unavailable")
+                    with self.lock:
+                        self.value, self.sampled = value, time.monotonic()
+                self.worker = threading.Thread(target=collect, name="pac-freshness", daemon=True)
+                self.worker.start()
+            worker = self.worker
+        worker.join(self.timeout_s)
+        with self.lock:
+            return self.value if time.monotonic() - self.sampled < 1 else []
+
+
 def _observe(attribute: str, read):
     def callback(_options):
         from opentelemetry.metrics import Observation
@@ -316,7 +376,8 @@ def _observe(attribute: str, read):
             log.warning("freshness could not be read (%s); not reported this time",
                         type(exc).__name__)
             return []
-        return [Observation(getattr(f, attribute), {"source": f.source}) for f in found]
+        return [Observation(getattr(f, attribute), {"source": f.source}) for f in found
+                if f.source in source_inventory()]
     return callback
 
 
@@ -339,7 +400,7 @@ def reset() -> None:
     _state.configured = False
 
 
-def configure(settings) -> None:
+def configure(settings, *, freshness_reader=None) -> None:
     """Install exporters to the configured OTLP/HTTP collector, if any.
 
     Spans: a BatchSpanProcessor with a bounded queue -- a span that finds the
@@ -373,7 +434,8 @@ def configure(settings) -> None:
             export_timeout_millis=settings.otel_timeout_s * 1000)])
     from app.data import freshness
 
-    use(tracer_provider, meter_provider, freshness=freshness.read)
+    use(tracer_provider, meter_provider, freshness=BoundedFreshness(freshness_reader or freshness.read))
+    _state.shutdown_timeout_s = 2 * settings.otel_timeout_s + 1
     _state.providers = [tracer_provider, meter_provider]
     _state.configured = True
     log.info("telemetry exporting to %s", base)
@@ -389,8 +451,7 @@ def shutdown(timeout_s: float | None = None) -> None:
     providers, _state.providers = _state.providers, []
     if providers:
         if timeout_s is None:
-            from app.config import get_settings
-            timeout_s = 2 * get_settings().otel_timeout_s + 1
+            timeout_s = _state.shutdown_timeout_s
 
         def stop():
             for provider in providers:

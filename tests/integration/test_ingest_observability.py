@@ -113,7 +113,7 @@ def ingest_cli(*args: str, endpoint: str | None, timeout: float = 90):
     # The span this test looks for must be sampled whatever the environment
     # says; the command itself follows OTEL_TRACES_SAMPLER, as production does.
     env = {**os.environ, "PAC_DB_NAME": INGEST_DB, "PYTHONPATH": str(ROOT),
-           "PAC_OTEL_TIMEOUT_S": "2", "OTEL_TRACES_SAMPLER": "always_on"}
+           "PAC_OTEL_TIMEOUT_S": "2", "PAC_OTEL_SOURCE_NAMES": SOURCE, "OTEL_TRACES_SAMPLER": "always_on"}
     env.pop("OTEL_TRACES_SAMPLER_ARG", None)
     env.pop("PAC_OTEL_ENDPOINT", None)
     if endpoint:
@@ -144,7 +144,7 @@ def test_the_ingest_command_exports_its_metrics_and_span_to_the_collector(fresh,
 # -- a stopped feed is visible ---------------------------------------------------------
 
 @pytest.fixture
-def exported():
+def exported(monkeypatch):
     """This process's telemetry, read back in memory."""
     from opentelemetry.sdk.metrics import MeterProvider
     from opentelemetry.sdk.metrics.export import InMemoryMetricReader
@@ -153,6 +153,8 @@ def exported():
 
     from app.data import freshness
 
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "otel_source_names", SOURCE)
     reader = InMemoryMetricReader()
     # As configure() installs it in the API and jobs processes: freshness is
     # read at every collection.
@@ -289,3 +291,45 @@ def test_an_unreadable_freshness_is_absent_not_an_error(fresh, monkeypatch):
         assert "pac.ingest.since_success" not in gauges_for(reader, SOURCE)
     finally:
         telemetry.reset()
+
+
+def test_freshness_pool_exhaustion_does_not_borrow_serving_capacity(ingest_env):
+    from app.data.freshness import read
+    from app.db import freshness_pool, auth_transaction
+    from psycopg_pool import PoolTimeout
+    pool = freshness_pool()
+    # Warm once, then deliberately hold the sole collection connection.
+    read()
+    with pool.connection() as _held:
+        started = time.perf_counter()
+        with pytest.raises(PoolTimeout):
+            read()
+        assert time.perf_counter() - started < 1
+        with auth_transaction() as cur:
+            cur.execute('SELECT 1 AS n')
+            assert cur.fetchone()['n'] == 1
+
+
+def test_database_outage_leaves_unrelated_metrics_collectable(ingest_env, monkeypatch):
+    from app import telemetry
+    from app.config import get_settings
+    from app.db import close_pools
+    from app.data.freshness import read
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import InMemoryMetricReader
+    close_pools()
+    monkeypatch.setattr(get_settings(), 'db_port', 1)
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader], shutdown_on_exit=False)
+    try:
+        telemetry.use(meter_provider=provider, freshness=telemetry.BoundedFreshness(read))
+        telemetry.count('pac.ask.outcomes', status='answered', role='exec')
+        started = time.perf_counter()
+        data = reader.get_metrics_data()
+        assert time.perf_counter() - started < 1
+        names = {m.name for rm in data.resource_metrics for sm in rm.scope_metrics for m in sm.metrics}
+        assert 'pac.ask.outcomes' in names
+    finally:
+        telemetry.reset()
+        provider.shutdown()
+        close_pools()

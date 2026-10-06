@@ -73,6 +73,24 @@ def graph_pool() -> ConnectionPool:
     return _POOLS["graph"]
 
 
+def freshness_pool() -> ConnectionPool:
+    """One isolated read connection: collection cannot consume serving slots."""
+    if "freshness" not in _POOLS:
+        _POOLS["freshness"] = ConnectionPool(
+            get_settings().dsn("auth"), min_size=0, max_size=1, timeout=0.2,
+            kwargs={"row_factory": dict_row, "connect_timeout": 1,
+                    "options": "-c statement_timeout=500 -c default_transaction_read_only=on"},
+            open=True)
+    return _POOLS["freshness"]
+
+
+@contextmanager
+def freshness_transaction():
+    with freshness_pool().connection(timeout=0.2) as conn:
+        with conn.cursor() as cur:
+            yield cur
+
+
 def close_pools() -> None:
     for pool in _POOLS.values():
         try:
@@ -102,7 +120,7 @@ class ScopeBindingError(RuntimeError):
 
 
 @contextmanager
-def _pooled(pool: ConnectionPool, role: str) -> Iterator[psycopg.Connection]:
+def _pooled(pool: ConnectionPool, role: str, timeout: float | None = None) -> Iterator[psycopg.Connection]:
     """A pooled connection, with the wait for it measured. A pool that
     cannot supply one in time is counted before the error propagates --
     exhaustion is a capacity signal, not only a failed request."""
@@ -112,7 +130,7 @@ def _pooled(pool: ConnectionPool, role: str) -> Iterator[psycopg.Connection]:
 
     started = time.perf_counter()
     try:
-        cm = pool.connection()
+        cm = pool.connection(timeout=timeout)
         conn = cm.__enter__()
     except PoolTimeout:
         telemetry.count("pac.db.pool.timeouts", pool=role)
@@ -207,9 +225,9 @@ def analytics_transaction(
 
 
 @contextmanager
-def auth_transaction() -> Iterator[psycopg.Cursor]:
+def auth_transaction(*, timeout: float | None = None) -> Iterator[psycopg.Cursor]:
     """Identity/session/conversation access. Never used for analytical SQL."""
-    with _pooled(get_pool("auth"), "auth") as conn:
+    with _pooled(get_pool("auth"), "auth", timeout) as conn:
         conn.autocommit = False
         try:
             with conn.cursor() as cur:
@@ -271,7 +289,7 @@ def verify_runtime_role_safety() -> list[str]:
     # Over the auth connection, not the owner one: everything consulted below
     # lives in pg_catalog and is readable by any role, so the serving process
     # never needs owner credentials. Ingestion still does, and keeps them.
-    with auth_transaction() as cur:
+    with auth_transaction(timeout=3) as cur:
         cur.execute(
             "SELECT rolname FROM pg_roles WHERE rolname = ANY(%s)",
             (list(connecting.values()),),

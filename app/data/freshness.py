@@ -63,9 +63,9 @@ def read(transaction: Callable[[], Any] | None = None) -> list[SourceFreshness]:
     """Every source that has ever delivered an accepted batch. A short
     statement timeout: this runs on a metrics thread and must not hang it."""
     if transaction is None:
-        from app.db import auth_transaction as transaction
+        from app.db import freshness_transaction as transaction
     with transaction() as cur:
-        cur.execute("SET LOCAL statement_timeout = '2s'")
+        cur.execute("SET LOCAL statement_timeout = '500ms'")
         cur.execute("SELECT source_system, watermark, last_batch_at, now() AS checked_at "
                     "FROM app_ingest.watermarks ORDER BY source_system")
         rows = cur.fetchall()

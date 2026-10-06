@@ -217,7 +217,7 @@ def test_a_stalled_collector_never_holds_up_the_code_being_traced():
 def test_an_unreachable_collector_is_survivable_end_to_end():
     settings = SimpleNamespace(otel_endpoint="http://127.0.0.1:9", otel_timeout_s=0.5,
                                release="test")
-    telemetry.configure(settings)
+    telemetry.configure(settings, freshness_reader=lambda: [])
     try:
         for _ in range(50):
             with telemetry.span("pac.ask", **{"pac.status": "answered"}):
@@ -251,6 +251,8 @@ def test_each_model_call_is_a_span_and_tokens_are_counted_as_reported(spans, mon
                                 input={"metric": "not_a_metric"})], FakeUsage(300, 30)),
         FakeResponse([valid_plan_block()], FakeUsage(100, 10)),
     ])
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "bedrock_model_id", planner.model_id)
     monkeypatch.setattr(planner.settings, "llm_input_usd_per_mtok", 3.0)
     monkeypatch.setattr(planner.settings, "llm_output_usd_per_mtok", 15.0)
     planner.plan("top accounts", context_with("top accounts"))
@@ -303,3 +305,44 @@ def test_these_tests_do_not_depend_on_the_ambient_sampler(monkeypatch):
     assert [s.name for s in memory.get_finished_spans()] == ["pac.check"]
     assert not TracerProvider().sampler.should_sample(None, 1, "x").decision.is_sampled(), \
         "an unpinned provider follows the environment, as production does"
+
+
+def test_freshness_callback_has_a_complete_deadline_and_only_one_worker():
+    import threading
+    gate = threading.Event()
+    calls = []
+    def stuck():
+        calls.append(1)
+        gate.wait(2)
+        return []
+    reader = telemetry.BoundedFreshness(stuck, timeout_s=0.02)
+    try:
+        started = time.perf_counter()
+        assert reader() == reader() == reader() == []
+        assert time.perf_counter() - started < 0.2
+        assert len(calls) == 1
+    finally:
+        gate.set()
+        reader.worker.join(1)
+
+
+def test_shutdown_retains_the_effective_configuration(monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), 'otel_timeout_s', 60)
+    telemetry.configure(SimpleNamespace(otel_endpoint='http://127.0.0.1:9',
+                        otel_timeout_s=0.01, release='test'), freshness_reader=lambda: [])
+    assert telemetry._state.shutdown_timeout_s == 1.02
+    telemetry.shutdown()
+
+
+def test_source_and_model_metric_cardinality_use_operator_inventories(spans, monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), 'otel_source_names', 'feed-a,feed-b')
+    for i in range(100):
+        telemetry.count('pac.ingest.batches', status='published', source=f'SECRET-{i}')
+        telemetry.count('pac.llm.attempts', outcome='plan', model=f'SECRET-{i}')
+    telemetry.count('pac.ingest.batches', status='published', source='feed-a')
+    labels = points(spans.reader)
+    assert len(labels) == 3
+    assert 'SECRET' not in str(labels)
+    assert {p.get('source') for _, p in labels if 'source' in p} == {'other', 'feed-a'}

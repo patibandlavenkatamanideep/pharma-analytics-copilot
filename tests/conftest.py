@@ -45,12 +45,28 @@ def _database_available() -> tuple[bool, str]:
         return False, f"database unavailable: {type(exc).__name__}"
 
 
-DB_OK, DB_REASON = _database_available()
+# Database discovery is lazy. Importing/collecting pure unit tests must never
+# acquire a connection. Release-gate still fails every skipped DB requirement.
+needs_db = pytest.mark.usefixtures("_require_database")
+needs_full = pytest.mark.usefixtures("_require_full_dataset")
 
-needs_db = pytest.mark.skipif(not DB_OK, reason=f"needs a loaded database: {DB_REASON}")
-needs_full = pytest.mark.skipif(
-    DB_REASON != "full", reason="needs the full dataset (scripts/load_data.py --mode full)"
-)
+
+@pytest.fixture(scope="session")
+def _database_status():
+    return _database_available()
+
+
+@pytest.fixture(scope="session")
+def _require_database(_database_status):
+    ok, reason = _database_status
+    if not ok:
+        pytest.skip(f"needs a loaded database: {reason}")
+
+
+@pytest.fixture(scope="session")
+def _require_full_dataset(_require_database, _database_status):
+    if _database_status[1] != "full":
+        pytest.skip("needs the full dataset (scripts/load_data.py --mode full)")
 
 
 @pytest.fixture(scope="session")

@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     # Bounds every export call; a slow collector costs at most this, in the
     # background, never on a request.
     otel_timeout_s: float = 5.0
+    # Comma-separated operator inventory; at most 64 source metric series.
+    otel_source_names: str = "synthetic-distributor"
     # Logs: one sanitised JSON object per line (app/logs.py). "text" is
     # Python's default formatting, for local work only: it prints exception
     # text and full request paths.
