@@ -51,7 +51,8 @@ As an administrator:
 1. Move a RAM to another territory (`users.territory_name`). Their next
    question is answered for the new territory. Their earlier conversations
    are withheld, not shown under the old scope.
-2. Remove a Director's `can_view_wac`. No answer, cell, note or SQL shows a
+2. Start with an Exec whose `can_view_wac=1` and verify a priced answer.
+   Remove that Exec's `can_view_wac`. No answer, cell, note or SQL shows a
    price on their next question, and replaying an earlier priced answer is
    refused (`403 access_changed`).
 3. Disable an account. Its live sessions stop working on the next request,
@@ -140,9 +141,11 @@ finds that request's lines, including its `request_id` and `run_id`.
 
 ## 10. Rollback and recovery, against agreed targets
 
-1. Roll back to the previous image digest. Migrations are additive, so the
-   previous image runs on the migrated schema. Confirm with the previous
-   release's own image journeys.
+1. Select a reviewed image with browser-bound OIDC and restrictive checkpoint
+   decoding; verify its own journeys on the migrated schema before routing
+   traffic. Additive migrations alone do not establish rollback safety. If
+   identity safety is uncertain, use the SSO-disable procedure in RUNBOOK.md
+   and a verified password administrator rather than a vulnerable old image.
 2. Restore the latest backup into a **new cluster**, with roles first
    ([RUNBOOK.md §8](RUNBOOK.md)). Repoint staging at it, and time the
    whole procedure from the decision to restore to `/ready`.

@@ -12,7 +12,7 @@ matching what pytest collects, and fails if another document reintroduces a
 total of its own.
 
 **Counts** are what pytest collects at the current commit of
-`codex/nl2sql-readiness`; the runs that establish each result, with
+`codex/release-defects-oct06`; the runs that establish each result, with
 their commit and tree state, are listed in
 [RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md).
 
@@ -27,12 +27,12 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 739 | ✅ pass | `r3-final-pytest.json` (`45db088`) |
-| **Integration** | `pytest tests/integration -q` | 884 | pending current gate | `r3-final-pytest.json` (`45db088`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 402` | 402 | pending current gate | historical baseline: `r3-final-security.json` (`45db088`) |
-| **Total (pytest)** | `pytest tests -q` | **2025** | pending current gate | `r3-final-pytest.json` (`45db088`) |
+| **Unit** | `pytest tests/unit -q` | 760 | pending final candidate | historical baseline: `r3-final-pytest.json` (`45db088`) |
+| **Integration** | `pytest tests/integration -q` | 892 | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pending current gate | historical baseline: `r3-final-security.json` (`45db088`) |
+| **Total (pytest)** | `pytest tests -q` | **2061** | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
 | **Browser — component** | `cd web && npm test` | 27 | pending current gate | `r3-final-component.json` (`45db088`) |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | ✅ pass | `r3-final-browser.json` (`45db088`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pending final candidate | `r3-final-browser.json` (`45db088`) |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r3-final-eval-*.json` (`45db088`, offline) |
 
 Unit and integration counts are what pytest collects, not what anyone
@@ -44,16 +44,16 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 211 do check results or behaviour:
+result. The other 220 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
   (`tests/integration/test_ingestion.py`);
 - 6 trace real requests (`tests/integration/test_telemetry_pipeline.py`);
-- 53 feed malformed and non-finite JSON through the real batch adapter
+- 57 feed malformed and non-finite JSON through the real batch adapter
   into PostgreSQL, including envelope rejection that leaves published data
   intact, replay, and corrections beside bad records (`tests/integration/test_ingest_contract.py`);
-- 9 run the real ingestion command against a local OTLP receiver, a
+- 11 run the real ingestion command against a local OTLP receiver, a
   hanging one and none, and check freshness after a feed stops
   (`tests/integration/test_ingest_observability.py`);
 - 11 inject provider and database failures, or an exhausted spend
@@ -177,7 +177,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 402`, and fails on a skip in any phase, a
+`--release-gate --min-tests 409`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -194,7 +194,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 402
+python3 -m pytest tests/security -q --release-gate --min-tests 409
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

@@ -103,6 +103,18 @@ dated releases; bare IDs return
 
 Off by default. Password sign-in is unaffected either way.
 
+Emergency SSO disable: set `PAC_OIDC_ENABLED=false` on every serving replica,
+roll the unchanged reviewed image/configuration, and verify `/api/auth/methods`
+no longer offers SSO and the OIDC start/callback endpoints refuse it. Keep a
+separately verified password administrator available before this change. Disabling
+new SSO does not revoke already issued sessions: revoke affected users' sessions
+through the existing administrator procedure when responding to an identity
+incident. Do not roll back to a pre-browser-binding image: it reintroduces the
+login-CSRF defect. Preserve migrations 020–022 and checkpoint tables; verify any
+rollback candidate against the migrated schema and restrictive checkpoint loader
+before routing traffic. No older image is approved by this document alone.
+
+
 | Variable | Purpose |
 |---|---|
 | `PAC_OIDC_ENABLED` | `true` to offer SSO |
@@ -172,7 +184,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 402
+python3 -m pytest tests/security -q --release-gate --min-tests 409
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

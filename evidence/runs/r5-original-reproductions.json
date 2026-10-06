@@ -1,0 +1,48 @@
+{
+  "baseline_commit": "76298b6",
+  "method": "git archive baseline; new regression tests copied in; locked existing local Python environment; no model calls",
+  "unit_probes": {
+    "failed": 8,
+    "passed": 0,
+    "deselected": 100
+  },
+  "logging_probe": {
+    "failed": 1,
+    "passed": 0,
+    "deselected": 2
+  },
+  "telemetry_probe": "Original unreachable collector test raises AssertionError at unchanged elapsed < 10 seconds without a database",
+  "startup": [
+    {
+      "reason": "database_unreachable",
+      "returncode": 3,
+      "seconds": 30.86,
+      "old_grep_matched": false,
+      "structured_reasons": [
+        "database_unreachable"
+      ]
+    },
+    {
+      "reason": "owner_credential_present",
+      "returncode": 3,
+      "seconds": 0.77,
+      "old_grep_matched": false,
+      "structured_reasons": [
+        "owner_credential_present"
+      ]
+    }
+  ],
+  "original_logs": {
+    "r5-reproduced.log": "49c8dc29e08a83e9b66dce87cfdb152c1f559dcea3a03c236fd6a7a25061f503",
+    "r5-logging-reproduced.log": "6905a495e15bf6c967001077ad5350fdece1e41cd44e9f366c4e77a7aac22dae",
+    "r5-telemetry-reproduced.log": "afbb7853f9a45729dad00833b4a45f4ebc113441f6747dea79a8a3d1f36c5b13",
+    "r5-ci-reproduced.json": "6ce2a3518b348a9393c04dfda1a331c84d10d9759d19a063aefe7653cec97943"
+  },
+  "probe_sha256": {
+    "tests/unit/test_ingest_validation.py": "7414537590533435205b3813810c378aee86fdd17c6c6f1584e032752e7fd97d",
+    "tests/unit/test_eval_budget.py": "7ce9c6622edfa9207703e873ca6cb250edc3aa8de3f2cd6cb2200381baf3fa89",
+    "tests/unit/test_live_adapter_contract.py": "ce126558d012845e418df0905d70d354871afb89d8885c04ab998439ae35c6e0",
+    "tests/security/test_log_hygiene.py": "2775257caeb6456d63651d44d65f91a76ee67430e6a0d61cf265169a9af5104a"
+  },
+  "checkpoint_original": "evidence/runs/r4-checkpoint-reproduced.json, baseline 58b3d3e"
+}
