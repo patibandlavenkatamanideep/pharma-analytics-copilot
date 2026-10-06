@@ -268,3 +268,11 @@ SLOs.
   compose files, because no requirement names one.
 - Logs are written to stderr for the platform to collect. Shipping them
   to a log store is the platform's job, and none is configured here.
+
+## Dashboard and feedback acceptance
+
+[OPERATIONS_DASHBOARD.md](OPERATIONS_DASHBOARD.md) maps the existing metrics
+and aggregate audit/feedback queries to concrete panels, explains unavailable
+queue/fallback measurements, and defines the hosted delivery and incident
+checks. It also preserves the distinction between best-effort audit and
+operational telemetry.

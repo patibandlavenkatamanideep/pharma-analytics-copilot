@@ -28,6 +28,9 @@ class Answer:
     notes: list[str] = field(default_factory=list)
     row_count: int = 0
     truncated: bool = False
+    unit: str = ""
+    dimensions: list[str] = field(default_factory=list)
+    data_through: str | None = None
 
 
 def format_value(value: Any, unit: str) -> str:
@@ -270,6 +273,8 @@ def render(
         notes=list(query.notes),
         row_count=len(rows),
         truncated=truncated,
+        unit=query.unit,
+        dimensions=[d.value for d in plan.dimensions],
     )
 
 

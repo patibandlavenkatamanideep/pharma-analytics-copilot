@@ -160,6 +160,9 @@ def to_payload(result: PipelineResult, include_sql: bool) -> dict[str, Any]:
             "notes": a.notes,
             "row_count": a.row_count,
             "truncated": a.truncated,
+            "unit": a.unit,
+            "dimensions": a.dimensions,
+            "data_through": a.data_through,
         }
     return payload
 
@@ -1076,6 +1079,9 @@ class Turn:
             return fail("That result did not pass an internal consistency check, so "
                         "it is not being shown. This has been logged.",
                         "grain_error", str(exc), staged=True)
+        # Bind freshness to the answer's snapshot, not a later /api/me refresh.
+        through = self.anchor.get("max_txn")
+        answer.data_through = str(through) if through is not None else None
         if self.state.reset_reason:
             answer.notes.insert(0, self.state.reset_reason)
         if plan.interpretation:

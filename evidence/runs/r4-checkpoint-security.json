@@ -1,0 +1,64 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-05T17:30:10+00:00",
+  "claim": "Security gate including checkpoint tampering on isolated PostgreSQL",
+  "application": {
+    "sha": "fabb9c0cb9a1b86d137bca754262cd075b9b2186",
+    "tree": "3e3fb35af07fdac0e678a041ef48a8b98081d250",
+    "branch": "codex/nl2sql-readiness",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "python",
+      "-m",
+      "pytest",
+      "tests/security",
+      "-q",
+      "--release-gate",
+      "--min-tests",
+      "402"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 52.66
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 402
+    },
+    "blocked_reason": null,
+    "summary": "402 passed in 52.02s"
+  },
+  "artifacts": [],
+  "limits": null
+}

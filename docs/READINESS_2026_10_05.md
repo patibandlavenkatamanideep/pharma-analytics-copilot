@@ -58,13 +58,13 @@ formulas, the typed planner contract and audit availability policy are unchanged
 | Capability | Implementation / regression coverage | Remaining boundary |
 |---|---|---|
 | Orchestration and clarification | `app/graph/turn.py`, `app/pipeline.py`; `test_turn_graph.py`, `test_graph_durability.py`, `test_checkpoint_loading.py` | Real replica termination/recovery in staging |
-| Conversation ownership, scope, version, cohort and concurrency | `app/conversation/`, `app/analytics/continuity.py`; `test_conversation_reliability.py`, graph and security suites | Replica routing, restarts and refresh under deployment load |
+| Conversation ownership, scope, version, cohort and concurrency | `app/conversation/`, `app/conversation/continuity.py`; `test_conversation_reliability.py`, graph and security suites | Replica routing, restarts and refresh under deployment load |
 | Identity and database authorization | `app/auth/`, OIDC migration 020, policy/compiler and RLS; `tests/security/` including R1 regressions | Real IdP registration, MFA and key rotation |
 | Per-user quotas and operational bounds | `app/conversation/runs.py`, migration 021, `app/admission.py`, planner deadlines; `test_retry_quotas.py`, `test_run_limits.py`, admission suites | Shared database quotas are deployment-wide; admission slots are per process. Size workers × replicas against real model latency |
 | Ingestion replay/correction/quarantine | `app/data/sources.py`, `app/data/ingest.py`, migration 022; ingestion contract/calendar/observability suites | Real retained source batches and scheduler. Feed event identity is separate from entity resolution and HTTP idempotency |
 | Typed plans and analytics semantics | `app/analytics/`, `app/llm/planner.py`; unit/integration/security suites and offline evaluation | Offline planner is not evidence of language accuracy |
 | Evaluation | `scripts/run_evals.py`, freeze tooling and `app/llm/token_bound.py`; budget tests | New frozen unseen holdout, secure credentials, rates and explicit spend cap for prompt 2.1.0 |
-| Observability and feedback | `app/telemetry.py`, `app/logging.py`, `/api/feedback`; telemetry/log/ingestion and audit tests | Hosted OTLP receiver, metrics backend, dashboard and incident drill |
+| Observability and feedback | `app/telemetry.py`, `app/logs.py`, `/api/feedback`; telemetry/log/ingestion and audit tests | Hosted OTLP receiver, metrics backend, dashboard and incident drill |
 | Release operations | Actual Dockerfile/compose configuration, `.github/workflows/ci.yml`, image smoke and evidence recorder | Hosted CI, staging image digest, real OIDC/model/feed, multi-replica load, managed backups/PITR, agreed SLO/RTO/RPO and retention |
 
 ## Audit decision (not changed)
@@ -88,3 +88,24 @@ its committed outcome exist. Restore storage and retry; the key must produce
 one outcome without duplicated side effects. Verify permission changes before
 replay, plus an alert on every refused audit write. This stronger contract
 requires an explicit product decision before implementation.
+
+## Result visualizations and operations
+
+The existing React output was inspected in local Chromium with synthetic
+responses: a chat, authorized result table, scope/period notes and header
+freshness, with no chart. `web/src/ResultChart.jsx` now adds a zero-based bar
+comparison for one-dimensional returned results, including chronological
+reporting periods. It supports negative values, preserves missing observations
+as unavailable, labels metric/unit/period and answer-snapshot freshness, and
+keeps the accessible table. A maximum of twelve returned rows is charted with
+an explicit disclosure; larger or multi-dimensional results keep their table.
+There is no chart fetch, extra query, client-side aggregation or new dependency.
+Legacy saved answers without chart metadata retain their table. Metadata is
+saved in the existing outcome so replay cannot relabel an old answer with a
+newer dataset's freshness. The source table schemas are unchanged.
+
+`OPERATIONS_DASHBOARD.md` defines the existing metrics and feedback review
+panels and staging acceptance. Instantaneous queue occupancy and automatic
+fallback success are not implemented measurements; refusal/wait metrics and
+the configured offline mode are labelled accurately. Telemetry failure
+isolation remains covered by the existing exporter and integration suites.

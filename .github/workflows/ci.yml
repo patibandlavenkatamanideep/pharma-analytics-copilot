@@ -185,7 +185,7 @@ jobs:
       # security floor, and the unit suite checks it equals the tests defined.
       - name: Component tests (vitest, jsdom, gated)
         env:
-          PAC_COMPONENT_MIN_TESTS: "22"
+          PAC_COMPONENT_MIN_TESTS: "27"
         run: |
           npm --prefix web test -- --reporter=default --reporter=json \
             --outputFile=component-results.json

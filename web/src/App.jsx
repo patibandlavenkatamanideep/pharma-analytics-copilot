@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import ResultChart from "./ResultChart.jsx";
 
 const api = async (path, options = {}) => {
   const { headers: extra, ...rest } = options;
@@ -130,10 +131,11 @@ function ResultTable({ answer }) {
   return (
     <div className="table-wrap">
       <table>
+        <caption className="sr-only">{answer.columns?.at(-1)} — {answer.period_note}</caption>
         <thead>
           <tr>
             {dimensionKeys.map((k, i) => (
-              <th key={k}>{answer.columns[i] || "group"}</th>
+              <th key={k} scope="col">{answer.columns[i] || "group"}</th>
             ))}
             {hasChange && <th className="num">current</th>}
             {hasChange && <th className="num">prior</th>}
@@ -271,6 +273,7 @@ function Turn({ turn, onChoose }) {
           </p>
         )}
 
+        {answer && <ResultChart answer={answer} />}
         {answer && <ResultTable answer={answer} />}
 
         {answer && (
