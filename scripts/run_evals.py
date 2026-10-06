@@ -472,7 +472,7 @@ class Budget:
 
     def reserve(self, input_tokens: int, output_tokens: int) -> bool:
         """May a call that can bill up to this much be sent?"""
-        if (self.input + input_tokens <= self.max_input
+        if (not self.violated and self.input + input_tokens <= self.max_input
                 and self.output + output_tokens <= self.max_output):
             self.largest_reservation = (max(self.largest_reservation[0], input_tokens),
                                         max(self.largest_reservation[1], output_tokens))
@@ -483,12 +483,13 @@ class Budget:
     def record_call(self, usage: Any, reserved: tuple[int, int]) -> None:
         self.calls += 1
         reserved_input, reserved_output = reserved
-        if getattr(usage, "known", False):
-            charged_input, charged_output = usage.input_tokens or 0, usage.output_tokens or 0
-            if charged_input > reserved_input or charged_output > reserved_output:
-                self.bound_violations += 1
-        else:
-            charged_input, charged_output = reserved_input, reserved_output
+        reported_input = getattr(usage, "input_tokens", None)
+        reported_output = getattr(usage, "output_tokens", None)
+        charged_input = reported_input if reported_input is not None else reserved_input
+        charged_output = reported_output if reported_output is not None else reserved_output
+        if charged_input > reserved_input or charged_output > reserved_output:
+            self.bound_violations += 1
+        if reported_input is None or reported_output is None:
             self.unreported_calls += 1
         self.input += charged_input
         self.output += charged_output
@@ -499,7 +500,7 @@ class Budget:
 
     def can_afford_another(self) -> bool:
         largest_input, largest_output = self.largest_reservation
-        return (self.input + 2 * largest_input <= self.max_input
+        return (not self.violated and self.input + 2 * largest_input <= self.max_input
                 and self.output + 2 * largest_output <= self.max_output)
 
     def as_dict(self) -> dict[str, Any]:
@@ -537,8 +538,8 @@ def performance(results: list[dict[str, Any]], *, input_rate: float | None = Non
 
     live = [r for r in results if r.get("provider") not in (None, "offline")]
     known = [r for r in live if r.get("usage_known")]
-    tokens_in = sum(r.get("input_tokens") or 0 for r in known)
-    tokens_out = sum(r.get("output_tokens") or 0 for r in known)
+    tokens_in = sum(r.get("input_tokens") or 0 for r in live)
+    tokens_out = sum(r.get("output_tokens") or 0 for r in live)
     priced = input_rate is not None and output_rate is not None
     return {
         "questions": len(results),
@@ -701,6 +702,9 @@ def main() -> int:
         previous = None
 
         for index, turn in enumerate(turns):
+            if budget is not None and (budget.violated or not budget.can_afford_another()):
+                not_run.extend(f"{item['id']}.{i + 1}" for i in range(index, len(turns)))
+                break
             started = time.perf_counter()
             result = pipeline.ask(
                 principal, turn["question"],
@@ -773,6 +777,8 @@ def main() -> int:
                 "usage_known": usage.get("known"),
                 "provider": planning.get("provider"),
                 "planner_attempts": len(planning.get("attempts") or []),
+                "attempts": planning.get("attempts") or [],
+                "unknown_usage_calls": planning.get("unknown_usage_calls", 0),
                 "planner_repaired": planning.get("repaired"),
             })
             previous = result

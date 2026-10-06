@@ -131,7 +131,7 @@ def test_the_refusal_is_in_the_audit_trail(one_slot, exec_user):
         cur.execute("SELECT status, denial_reason FROM app_meta.query_audit "
                     "WHERE user_id = %s ORDER BY created_at DESC LIMIT 1", (exec_user.user_id,))
         row = cur.fetchone()
-    assert row["status"] == "overloaded" and "queue_full" in row["denial_reason"]
+    assert row["status"] == "overloaded" and row["denial_reason"] == "admission_overloaded"
 
 
 def test_a_cancel_ends_the_wait(one_slot, exec_user):

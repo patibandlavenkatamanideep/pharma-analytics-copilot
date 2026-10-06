@@ -117,3 +117,32 @@ def test_unreadable_paused_state_is_refused_and_releases_run(
         assert cur.fetchone()["status"] == "failed"
     # A new question is possible immediately; a damaged load cannot leave a lease busy.
     assert ask(client, "Total volume this quarter", first["conversation_id"]).json()["status"] == "answered"
+
+
+@pytest.mark.parametrize('channel', ['__interrupt__', 'chosen'])
+def test_tampered_pending_writes_refuse_without_execution_or_history_deletion(
+        client, make_identity, twins, monkeypatch, channel):
+    from app.db import owner_transaction
+    sign_in(client, make_identity('exec', can_view_wac=1))
+    first = ask(client, 'What was the volume for Pactest Graph Twin last quarter?').json()
+    thread = pending_thread(first['conversation_id'])
+    with owner_transaction() as cur:
+        cur.execute('SELECT checkpoint_id FROM app_graph.checkpoints WHERE thread_id=%s ORDER BY checkpoint_id DESC LIMIT 1', (thread,))
+        cid = cur.fetchone()['checkpoint_id']
+        cur.execute('INSERT INTO app_graph.checkpoint_writes (thread_id, checkpoint_ns, checkpoint_id, task_id, idx, channel, type, blob) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)',
+                    (thread, '', cid, 'tamper-probe', 999, channel, 'msgpack', constructor_blob()))
+    restart()
+    seen = []
+    original = print
+    def marker(*args, **kwargs):
+        if args == ('CHECKPOINT_CONSTRUCTOR_CALLED',):
+            seen.append(args)
+        else:
+            original(*args, **kwargs)
+    monkeypatch.setattr('builtins.print', marker)
+    body = ask(client, 'the second one', first['conversation_id'], key='tampered-write').json()
+    assert body['status'] == 'error' and not body.get('answer')
+    assert seen == []
+    with owner_transaction() as cur:
+        cur.execute('SELECT count(*) AS n FROM app_graph.checkpoint_writes WHERE thread_id=%s', (thread,))
+        assert cur.fetchone()['n'] > 0

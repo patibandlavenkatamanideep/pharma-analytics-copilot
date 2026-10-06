@@ -245,3 +245,56 @@ def test_the_current_policy_a_failed_audit_write_is_counted_and_the_answer_still
                 for m in sm.metrics if m.name == "pac.persistence.failures"
                 for p in m.data.data_points if dict(p.attributes) == {"kind": "audit"}]
     assert failures == [1]
+
+
+@pytest.mark.parametrize('transport', [False, True])
+def test_failed_model_usage_reconciles_request_audit_and_evaluation(client, make_identity, monkeypatch, transport):
+    import importlib.util
+    from pathlib import Path
+    import app.api.main as api
+    from tests.unit.test_live_adapter_contract import make_planner, FakeResponse, FakeBlock, FakeUsage
+    user = make_identity('exec', can_view_wac=1)
+    from app.auth.policy import principal_for_user_id
+    replies = [ConnectionError('SECRET_PROVIDER')] if transport else [
+        FakeResponse([FakeBlock(type='tool_use', name='emit_plan', input={'metric': 'SECRET_METRIC'})],
+                     FakeUsage(1234, 12))] * 2
+    monkeypatch.setattr(api.pipeline(), 'planner', make_planner(replies))
+    body = vars(api.pipeline().ask(principal_for_user_id(user.user_id), 'Total volume this quarter'))
+    summary = body['planning']
+    row = audit_rows(body['request_id'])[0]
+    assert body['status'] == 'error'
+    assert row['planner_attempts'] == len(summary['attempts']) == (1 if transport else 2)
+    assert row['input_tokens'] == summary['usage']['input_tokens'] == (None if transport else 2468)
+    assert row['output_tokens'] == summary['usage']['output_tokens'] == (None if transport else 24)
+    assert row['usage_known'] is (not transport)
+    assert 'SECRET' not in str(summary) and 'SECRET' not in str(row)
+    spec = importlib.util.spec_from_file_location('eval_accounting', Path('scripts/run_evals.py'))
+    ev = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ev)
+    perf = ev.performance([{'provider': summary['provider'], 'usage_known': row['usage_known'],
+                           'input_tokens': row['input_tokens'], 'output_tokens': row['output_tokens']}])
+    assert perf['usage']['input_tokens'] == (0 if transport else 2468)
+    assert perf['usage']['questions_with_unknown_usage'] == int(transport)
+
+
+def test_cancel_after_model_call_preserves_usage_in_failed_outcome(client, make_identity, monkeypatch):
+    import app.api.main as api
+    from app.auth.policy import principal_for_user_id
+    from app.conversation import runs
+    from app.pipeline import Turn
+    from tests.unit.test_live_adapter_contract import make_planner, FakeResponse, FakeUsage, valid_plan_block
+    user = make_identity('exec', can_view_wac=1)
+    monkeypatch.setattr(api.pipeline(), 'planner', make_planner([
+        FakeResponse([valid_plan_block()], FakeUsage(1234, 12))]))
+    original = Turn.node_plan
+    def cancel_after(self, state):
+        out = original(self, state)
+        runs.request_cancel(self.principal, run_id=self.run.run_id)
+        return out
+    monkeypatch.setattr(Turn, 'node_plan', cancel_after)
+    result = api.pipeline().ask(principal_for_user_id(user.user_id), 'Top 5 accounts last quarter')
+    assert result.status == 'cancelled'
+    assert result.planning['usage']['input_tokens'] == 1234
+    row = audit_rows(result.request_id)[0]
+    assert row['input_tokens'] == 1234 and row['output_tokens'] == 12
+    assert row['status'] == 'cancelled'

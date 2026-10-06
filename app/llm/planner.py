@@ -173,6 +173,10 @@ class TokenUsage:
     def known(self) -> bool:
         return self.input_tokens is not None or self.output_tokens is not None
 
+    @property
+    def complete(self) -> bool:
+        return self.input_tokens is not None and self.output_tokens is not None
+
     def __add__(self, other: "TokenUsage") -> "TokenUsage":
         if not self.known:
             return other
@@ -196,9 +200,12 @@ class PlanningAttempt:
     ordinal: int
     kind: Literal["initial", "repair"]
     outcome: Literal["plan", "invalid_plan", "no_tool_call", "transport_error",
-                     "out_of_time"]
+                     "out_of_time", "budget_refused"]
     usage: TokenUsage = field(default_factory=TokenUsage)
     error: str | None = None
+    called: bool = True
+    reserved: tuple[int, int] | None = None
+    charged: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -212,7 +219,7 @@ class PlanningResult:
     attempt's usage, so the tokens that were actually spent went unreported.
     """
 
-    plan: AnalyticalPlan
+    plan: AnalyticalPlan | None
     provider: str
     model_id: str | None
     prompt_version: str
@@ -226,6 +233,26 @@ class PlanningResult:
         for attempt in self.attempts:
             total = total + attempt.usage
         return total
+
+    def summary(self) -> dict[str, Any]:
+        calls = [a for a in self.attempts if a.called]
+        usage = self.usage.as_dict()
+        usage["known"] = bool(calls) and all(a.usage.complete for a in calls)
+        return {
+            "provider": self.provider, "model_id": self.model_id,
+            "prompt_version": self.prompt_version,
+            "planner_contract_version": self.planner_contract_version,
+            "usage": usage, "repaired": self.repaired,
+            "calls": len(calls),
+            "unknown_usage_calls": sum(not a.usage.complete for a in calls),
+            "attempts": [{"ordinal": a.ordinal, "kind": a.kind, "outcome": a.outcome,
+                          "usage": a.usage.as_dict(), "error": a.outcome if a.error else None,
+                          "called": a.called, "reserved": list(a.reserved) if a.reserved else None,
+                          "charged": list(a.charged) if a.charged else None,
+                          "usage_state": "no_call" if not a.called else
+                              "reported" if a.usage.complete else "partial" if a.usage.known else "unknown"}
+                         for a in self.attempts],
+        }
 
     @property
     def repaired(self) -> bool:
@@ -434,7 +461,7 @@ class BedrockPlanner:
         self._client = Client(
             aws_region=self.settings.bedrock_region,
             timeout=self.settings.llm_timeout_s,
-            max_retries=2,
+            max_retries=0,
         )
         log.info(
             "bedrock planner: model=%s endpoint=%s",
@@ -442,6 +469,16 @@ class BedrockPlanner:
         )
 
     def plan(self, question: str, context: PlanningContext) -> PlanningResult:
+        attempts: list[PlanningAttempt] = []
+        try:
+            return self._plan(question, context, attempts)
+        except BaseException as exc:
+            attempts.extend(getattr(exc, "attempts", ()))
+            exc.planning = self._result(None, attempts).summary()
+            raise
+
+    def _plan(self, question: str, context: PlanningContext,
+              attempts: list[PlanningAttempt]) -> PlanningResult:
         system = build_system_prompt(context)
         tool = {
             "name": "emit_plan",
@@ -449,8 +486,6 @@ class BedrockPlanner:
             "input_schema": _plan_tool_schema(),
         }
         messages: list[dict[str, Any]] = [{"role": "user", "content": question}]
-        attempts: list[PlanningAttempt] = []
-
         deadline = context.deadline_at
         spend = context.spend
         plan, err, attempt = self._traced(system, messages, tool, 1, "initial", deadline, spend)
@@ -503,7 +538,7 @@ class BedrockPlanner:
             f"(tokens spent: {spent.as_dict()})"
         )
 
-    def _result(self, plan: AnalyticalPlan,
+    def _result(self, plan: AnalyticalPlan | None,
                 attempts: list[PlanningAttempt]) -> PlanningResult:
         return PlanningResult(
             plan=plan,
@@ -534,9 +569,12 @@ class BedrockPlanner:
             reserved = (token_bound.input_upper_bound(request),
                         token_bound.output_upper_bound(request))
             if not spend.reserve(*reserved):
-                raise PlannerBudgetExhausted(
+                exc = PlannerBudgetExhausted(
                     f"the spend limit does not cover model call {ordinal} ({kind}), which "
                     f"can bill up to {reserved[0]:,} input and {reserved[1]:,} output tokens")
+                exc.attempts = [PlanningAttempt(ordinal, kind, "budget_refused",
+                    TokenUsage(0, 0), "budget_refused", called=False, reserved=reserved)]
+                raise exc
         with telemetry.span("pac.plan.attempt", **{
                 "pac.attempt": ordinal, "pac.attempt_kind": kind,
                 "pac.model_id": model}) as span:
@@ -546,19 +584,15 @@ class BedrockPlanner:
             span.set(**{"pac.outcome": attempt.outcome, "pac.usage_known": usage.known,
                         "pac.tokens.input": usage.input_tokens,
                         "pac.tokens.output": usage.output_tokens})
-        if spend is not None:
+        if spend is not None and attempt.called:
+            from dataclasses import replace
             spend.record_call(usage, reserved)
-            if spend.violated:
-                # The bound was wrong for this call. Carrying on would spend
-                # against a cap that can no longer be kept.
-                raise PlannerBudgetExhausted(
-                    f"model call {ordinal} billed more than its preflight bound "
-                    f"({usage.input_tokens} input / {usage.output_tokens} output against "
-                    f"{reserved[0]:,} / {reserved[1]:,}); the metered run is stopped")
+            charged = (usage.input_tokens if usage.input_tokens is not None else reserved[0],
+                       usage.output_tokens if usage.output_tokens is not None else reserved[1])
+            attempt = replace(attempt, reserved=reserved, charged=charged)
         telemetry.count("pac.llm.attempts", outcome=attempt.outcome, model=model, kind=kind)
-        if not usage.known:
+        if attempt.called and not usage.complete:
             telemetry.count("pac.llm.usage_unknown", model=model)
-            return plan, err, attempt
         for direction, n in (("input", usage.input_tokens), ("output", usage.output_tokens)):
             if n:
                 telemetry.count("pac.llm.tokens", n, direction=direction, model=model)
@@ -568,6 +602,10 @@ class BedrockPlanner:
             telemetry.count("pac.llm.cost", ((usage.input_tokens or 0) * rate_in
                                              + (usage.output_tokens or 0) * rate_out) / 1e6,
                             model=model)
+        if spend is not None and spend.violated:
+            exc = PlannerBudgetExhausted("model usage exceeded its preflight bound")
+            exc.attempts = [attempt]
+            raise exc
         return plan, err, attempt
 
     def _request(self, system: str, messages: list[dict[str, Any]],
@@ -596,13 +634,12 @@ class BedrockPlanner:
     ) -> tuple[AnalyticalPlan | None, str, PlanningAttempt]:
         def record(outcome: str, usage: TokenUsage, error: str | None) -> PlanningAttempt:
             return PlanningAttempt(ordinal=ordinal, kind=kind, outcome=outcome,
-                                   usage=usage, error=error)
+                                   usage=usage, error=outcome if error else None,
+                                   called=outcome != "out_of_time")
 
-        # One retry layer, bounded by the request. The SDK's own retries
-        # (max_retries=2) around each of two attempts, each with the full
-        # client timeout, compounded to six timeouts for one question -- with
-        # no limit above them. Each attempt now gets what is left of the
-        # request's budget, and SDK retries only when that covers them.
+        # No hidden SDK retries: one recorded attempt is one transport call.
+        # The caller may retry through the durable run contract, with usage
+        # or unknown usage recorded for each subsequent call.
         client = self._client
         if deadline_at is not None:
             remaining = deadline_at - time.time()
@@ -614,8 +651,8 @@ class BedrockPlanner:
             timeout = min(float(self.settings.llm_timeout_s), remaining)
             client = self._client.with_options(
                 timeout=timeout,
-                max_retries=0 if metered else (2 if remaining >= 3 * timeout else 0))
-        elif metered:
+                max_retries=0)
+        else:
             client = self._client.with_options(max_retries=0)
         try:
             response = client.messages.create(**request)
@@ -623,7 +660,7 @@ class BedrockPlanner:
             # A transport failure spent an unknown number of tokens: the
             # request may have reached the provider. Recorded as unknown,
             # never as zero.
-            message = f"{type(exc).__name__}: {exc}"
+            message = "provider_transport_error"
             return None, message, record("transport_error", TokenUsage(), message)
 
         raw = getattr(response, "usage", None)
@@ -804,7 +841,7 @@ class OfflinePlanner:
             model_id=None,
             prompt_version=PROMPT_VERSION,
             planner_contract_version=PLANNER_CONTRACT_VERSION,
-            attempts=(PlanningAttempt(ordinal=1, kind="initial", outcome="plan"),),
+            attempts=(PlanningAttempt(ordinal=1, kind="initial", outcome="plan", called=False),),
         )
 
     # -- pieces --------------------------------------------------------------

@@ -349,12 +349,9 @@ class Pipeline:
             try:
                 out = self.graph.invoke(graph_input, config, context=turn, durability="sync")
             except StaleState:
-                # Written by a different graph version: not resumed, restarted.
-                self._forget(thread_id)
-                turn.thread_id = thread_id = self._fresh_thread(turn)
-                config["configurable"]["thread_id"] = thread_id
-                out = self.graph.invoke(turn.initial_state(), config, context=turn,
-                                        durability="sync")
+                # Retain the old checkpoint. An incompatible workflow is an
+                # explicit refusal, never a silent deletion and replan.
+                raise CheckpointError("Saved workflow version is unsupported") from None
         except CheckpointError:
             turn.finish(PipelineResult(
                 status="error", conversation_id=state.conversation_id,
@@ -803,24 +800,28 @@ class Turn:
         t0 = time.perf_counter()
         try:
             planning = self.pipe.planner.plan(question, context)
-        except PlannerOutOfTime:
+        except PlannerOutOfTime as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
             # The same outcome as a deadline met between steps.
             raise DeadlineExceeded() from None
         except PlannerBudgetExhausted as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
             self.finish(PipelineResult(
                 status="error", conversation_id=self.state.conversation_id,
                 message="Not run: the evaluation's spend limit is exhausted.",
-            ), "budget_exhausted", denial_reason=str(exc)[:200])
+            ), "budget_exhausted", denial_reason="budget_exhausted")
             return {"route": "end", "outcome": "error"}
         except PlannerUnavailable as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
             log.warning("planner unavailable: %s", exc)
             self.finish(PipelineResult(
                 status="error", conversation_id=self.state.conversation_id,
                 message=("The question service is busy or unreachable right now. "
                          "Please try again in a moment."),
-            ), "planner_unavailable", denial_reason=str(exc)[:200])
+            ), "planner_unavailable", denial_reason="provider_transport_error")
             return {"route": "end", "outcome": "error"}
         except PlannerError as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
             log.warning("planner failed: %s", exc)
             self.finish(PipelineResult(
                 status="error", conversation_id=self.state.conversation_id,
@@ -829,7 +830,7 @@ class Turn:
                     "product or account, and the time period — for example "
                     "'top 10 accounts by pack units last quarter'."
                 ),
-            ), "planner_error", denial_reason=str(exc)[:200])
+            ), "planner_error", denial_reason="planner_failure")
             return {"route": "end", "outcome": "error"}
         self.timings["plan_ms"] = int((time.perf_counter() - t0) * 1000)
 
@@ -842,19 +843,8 @@ class Turn:
             "pac.tokens.input": usage.get("input_tokens"),
             "pac.tokens.output": usage.get("output_tokens"),
             "pac.usage_known": usage.get("known")})
-        summary = {
-            "provider": planning.provider,
-            "model_id": planning.model_id,
-            "prompt_version": planning.prompt_version,
-            "planner_contract_version": planning.planner_contract_version,
-            "attempts": [
-                {"ordinal": a.ordinal, "kind": a.kind, "outcome": a.outcome,
-                 "usage": a.usage.as_dict(), "error": a.error}
-                for a in planning.attempts
-            ],
-            "usage": usage,
-            "repaired": planning.repaired,
-        }
+        summary = planning.summary()
+        self._adopt_planning({"planning": summary})
         # Checkpointed with the plan, so a run resumed after a crash reports
         # the planning it did not have to repeat.
         return {"route": "check", "plan": planning.plan.model_dump(mode="json"),
@@ -868,6 +858,16 @@ class Turn:
         if not summary or self.planning_summary is not None:
             return
         self.planning_summary = summary
+        telemetry.annotate(**{
+            "pac.provider": summary.get("provider"), "pac.model_id": summary.get("model_id"),
+            "pac.prompt_version": summary.get("prompt_version"),
+            "pac.planner_version": summary.get("planner_contract_version"),
+            "pac.attempts": len(summary.get("attempts") or []),
+            "pac.repaired": summary.get("repaired"),
+            "pac.tokens.input": (summary.get("usage") or {}).get("input_tokens"),
+            "pac.tokens.output": (summary.get("usage") or {}).get("output_tokens"),
+            "pac.usage_known": (summary.get("usage") or {}).get("known"),
+        })
         usage = summary.get("usage") or {}
         # Written whether or not usage is known, so the audit distinguishes
         # "no tokens reported" from "this field was never populated".
@@ -924,7 +924,7 @@ class Turn:
             self.finish(PipelineResult(
                 status="denied", conversation_id=self.state.conversation_id,
                 message=str(exc), alternative=exc.alternative, plan=plan_json,
-            ), "denied", denial_reason=str(exc)[:200])
+            ), "denied", denial_reason="policy_denied")
             return {"route": "end", "outcome": "denied"}
         return {"route": "answer", "disclosures": [g.message() for g in gaps]}
 
@@ -1015,7 +1015,7 @@ class Turn:
             # Recorded, then raised: the API answers 503 with Retry-After,
             # and the run is closed as failed with its checkpoint kept, so a
             # retry with the same key resumes here without planning again.
-            self.audit.update(status="overloaded", denial_reason=str(exc)[:200])
+            self.audit.update(status="overloaded", denial_reason="admission_overloaded")
             self.pipe._write_audit(self.audit)
             runs.fail(self.run, None)
             raise
@@ -1034,14 +1034,14 @@ class Turn:
                 status="refresh", conversation_id=self.state.conversation_id,
                 message=("The data was refreshed while your question was being "
                          "answered. Asking again will use the latest data."),
-            ), "generation_changed", denial_reason=str(exc)[:200])
+            ), "generation_changed", denial_reason="generation_changed")
             return {"route": "end", "outcome": "refresh"}
         except ScopeBindingError as exc:
             self.finish(PipelineResult(
                 status="denied", conversation_id=self.state.conversation_id,
                 message=("Your account does not have a usable data scope, so no "
                          "data can be shown."),
-            ), "scope_error", denial_reason=str(exc)[:200])
+            ), "scope_error", denial_reason="scope_error")
             return {"route": "end", "outcome": "denied"}
         except Exception as exc:  # database timeout, cancellation, unavailability
             name = type(exc).__name__

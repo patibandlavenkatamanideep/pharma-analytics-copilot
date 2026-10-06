@@ -213,11 +213,10 @@ def test_a_run_that_dies_after_planning_resumes_without_planning_again(
     assert len(planned) == 1, "the retry planned again instead of resuming"
 
 
-def test_a_checkpoint_from_another_graph_version_is_restarted(client, make_identity, monkeypatch):
+def test_a_checkpoint_from_another_graph_version_is_retained_and_refused(client, make_identity, monkeypatch):
     """The first state this request writes is stamped with an older graph
     version -- as a thread checkpointed before a deploy would be. The node
-    guard refuses to resume it, the thread is discarded, and the question is
-    answered on a fresh thread under the current version."""
+    guard refuses to resume it and retains it for an explicit migration."""
     import app.pipeline as pipeline_module
 
     sign_in(client, make_identity("exec", can_view_wac=1))
@@ -235,7 +234,10 @@ def test_a_checkpoint_from_another_graph_version_is_restarted(client, make_ident
     r = ask(client, "What is our total volume this quarter?")
 
     assert stamped["older"] == 1, "the stale state was never written"
-    assert r.status_code == 200 and r.json()["status"] == "answered", r.text
+    assert r.status_code == 200 and r.json()["status"] == "error", r.text
+    body = r.json()
+    thread = pipeline_module.Pipeline._thread_for(body["run_id"], body["conversation_id"])
+    assert checkpoint_rows(thread) > 0
 
 
 def test_the_request_deadline_stops_a_run_between_steps(client, make_identity, monkeypatch):

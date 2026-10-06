@@ -639,3 +639,22 @@ apart. Its `performance` section, also printed, gives:
 
 A live report should quote all three sections. Correctness alone is not a
 result.
+
+
+## October 6 accounting changes (pending final candidate evidence)
+
+A violated bound is terminal both at scheduling and at the final call reservation.
+Remaining turns and questions are listed as not run; an incomplete run fails.
+Every outcome carries structured attempts, including failed plans, unavailable
+transports, cancellation after a call, deadlines and budget refusals. Metadata
+separates `no_call`, `unknown`, `partial` and `reported` usage from conservative
+budget charges. Reported portions remain counted when another attempt or token
+direction is unknown. Raw provider errors and validation text are never exported
+in this metadata. The prompt remains 2.1.0 and its fingerprint is unchanged.
+
+Hidden SDK transport retries are disabled in both metered and serving modes so
+one attempt means one transport call. The bounded invalid-plan repair remains;
+users can retry failed requests through the existing durable run/idempotency path.
+A crash after transport but before persistence can still lose usage evidence;
+provider invoice reconciliation remains necessary under best-effort audit. The
+UTF-8/NFKC input reservation remains an assumption, not a provider token guarantee.

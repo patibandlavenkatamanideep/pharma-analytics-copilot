@@ -88,7 +88,8 @@ def test_a_failed_request_is_still_audited(exec_user):
 
     assert after == before + 1
     assert row["status"] == "planner_error"
-    assert "provider exploded" in (row["denial_reason"] or "")
+    assert row["denial_reason"] == "planner_failure"
+    assert "provider exploded" not in str(row)
 
 
 # ---------------------------------------------------------------------------

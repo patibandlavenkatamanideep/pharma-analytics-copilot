@@ -369,7 +369,8 @@ def test_a_transport_exception_propagates_as_a_planner_error():
     planner = make_planner([RuntimeError("connection reset")])
     with pytest.raises(Exception) as exc:
         planner.plan("q", context_with("q"))
-    assert "connection reset" in str(exc.value) or exc.type.__name__ == "PlannerError"
+    assert "provider_transport_error" in str(exc.value)
+    assert "connection reset" not in str(exc.value)
 
 
 def test_a_tool_call_under_another_name_is_not_accepted():
@@ -440,7 +441,8 @@ def test_a_transport_failure_ends_planning_without_a_false_repair():
     ])
     with pytest.raises(PlannerUnavailable) as exc:
         planner.plan("q", context_with("q"))
-    assert "reset by peer" in str(exc.value)
+    assert "provider_transport_error" in str(exc.value)
+    assert "reset by peer" not in str(exc.value)
     assert len(planner._client.messages.requests) == 1
 
 
@@ -490,3 +492,28 @@ def test_a_planning_result_cannot_be_mutated_after_the_fact():
     result = planner.plan("q", context_with("q"))
     with pytest.raises(Exception):
         result.provider = "something else"      # type: ignore[misc]
+
+
+def test_failed_attempts_keep_reported_usage_without_provider_text():
+    from app.llm.planner import PlannerError
+    planner = make_planner([FakeResponse([FakeBlock(type='tool_use', name='emit_plan',
+        input={'metric': 'MARKER_SECRET'})], FakeUsage(1234, 12))] * 2)
+    with pytest.raises(PlannerError) as exc:
+        planner.plan('q', context_with('q'))
+    summary = exc.value.planning
+    assert summary['usage'] == {'input_tokens': 2468, 'output_tokens': 24, 'known': True}
+    assert summary['provider'] == 'bedrock'
+    assert len(summary['attempts']) == 2
+    assert summary['unknown_usage_calls'] == 0
+    assert 'MARKER' not in str(summary)
+
+
+def test_transport_failure_is_unknown_usage_not_no_call():
+    from app.llm.planner import PlannerUnavailable
+    planner = make_planner([ConnectionError('MARKER_SECRET')])
+    with pytest.raises(PlannerUnavailable) as exc:
+        planner.plan('q', context_with('q'))
+    summary = exc.value.planning
+    assert summary['calls'] == summary['unknown_usage_calls'] == 1
+    assert not summary['usage']['known']
+    assert 'MARKER' not in str(summary)

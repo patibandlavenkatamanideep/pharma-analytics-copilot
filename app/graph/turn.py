@@ -38,7 +38,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.runtime import Runtime
 
 #: Bumped when TurnState's shape or meaning changes. A thread checkpointed
-#: under another version is not resumed; it is restarted.
+#: under another version is retained and refused until explicitly migrated.
 GRAPH_VERSION = "1.0.0"
 
 #: Transitions per invocation. A turn is at most resolve, ask, wait, resolve,

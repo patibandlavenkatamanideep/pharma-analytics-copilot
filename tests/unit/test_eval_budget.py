@@ -141,7 +141,7 @@ def test_a_repair_the_budget_cannot_cover_is_never_made(ev):
     assert (budget.calls, budget.input, budget.refused_calls) == (1, 4_670, 1)
 
 
-def test_sdk_retries_are_off_while_metered_and_kept_otherwise(ev):
+def test_sdk_retries_are_off_so_every_transport_is_accounted(ev):
     import time as _time
     from tests.unit.test_live_adapter_contract import FakeResponse, context_with, valid_plan_block
 
@@ -156,7 +156,7 @@ def test_sdk_retries_are_off_while_metered_and_kept_otherwise(ev):
     ctx = context_with("top accounts")
     ctx.deadline_at = _time.time() + 120
     unmetered.plan("top accounts", ctx)
-    assert unmetered._client.options[0]["max_retries"] == 2
+    assert unmetered._client.options[0]["max_retries"] == 0
 
 
 def test_the_smoke_subset_is_one_question_per_family(ev):
@@ -375,3 +375,27 @@ def test_an_offline_run_reports_no_usage_or_cost(ev):
     perf = ev.performance([row(50, provider="offline", known=False)],
                           input_rate=5.0, output_rate=25.0)
     assert perf["usage"]["questions_with_unknown_usage"] == 0 and perf["cost_usd"] is None
+
+
+def test_a_bound_violation_is_terminal_across_turns_and_retries(ev):
+    from app.llm.planner import PlannerBudgetExhausted
+    from tests.unit.test_live_adapter_contract import (
+        FakeResponse, FakeUsage, context_with, valid_plan_block,
+    )
+    planner = planner_with([FakeResponse([valid_plan_block()], FakeUsage(10**7, 24))] * 3)
+    ctx = context_with('top accounts')
+    ctx.spend = ev.Budget(10**9, 10**9)
+    for question in ('first turn', 'next turn', 'retry'):
+        with pytest.raises(PlannerBudgetExhausted):
+            planner.plan(question, ctx)
+    assert len(planner._client.messages.requests) == 1
+    assert ctx.spend.calls == 1
+    assert ctx.spend.input == 10**7
+    assert not ctx.spend.can_afford_another()
+
+
+def test_partial_usage_reserves_the_unreported_direction(ev):
+    from app.llm.planner import TokenUsage
+    budget = ev.Budget(1000, 1000)
+    budget.record_call(TokenUsage(42, None), (100, 200))
+    assert (budget.input, budget.output, budget.unreported_calls) == (42, 200, 1)
