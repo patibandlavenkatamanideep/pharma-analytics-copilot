@@ -134,6 +134,24 @@ def test_the_recorded_exit_code_is_the_child_s(tmp_path):
     assert record["outcome"]["status"] == "failed"
 
 
+def test_counts_come_from_pytests_summary_line_not_from_log_noise(tmp_path):
+    """A library's log line after the summary -- "pool.py:680 error ...
+    port 62692 failed" -- was counted as 680 errors and 62692 failures, and
+    became the record's summary."""
+    out = tmp_path / "r.json"
+    child = ("import sys\n"
+             "print('FAILED tests/x.py::test_a')\n"
+             "print('6 failed, 2 passed, 3 warnings in 1.25s')\n"
+             "print(\"WARNING psycopg.pool:pool.py:680 error connecting in 'pool-3': \"\n"
+             "      \"port 62692 failed\", file=sys.stderr)\n"
+             "sys.exit(1)\n")
+    subprocess.run([sys.executable, str(RECORDER), "--out", str(out), "--",
+                    sys.executable, "-c", child], capture_output=True, text=True, cwd=ROOT)
+    outcome = json.loads(out.read_text())["outcome"]
+    assert outcome["counts"] == {"failed": 6, "passed": 2}
+    assert outcome["summary"] == "6 failed, 2 passed, 3 warnings in 1.25s"
+
+
 def test_a_run_with_no_command_is_not_recorded_as_passed(tmp_path):
     """Recording a claim without running anything must not produce a green
     record; 'not_run' is the honest status."""

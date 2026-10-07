@@ -305,6 +305,19 @@ def _postgres_version() -> str | None:
         return None
 
 
+#: pytest's closing line -- "3 failed, 9 passed, 2 warnings in 1.81s", with or
+#: without its ===== frame. Counts are read from this line alone: anywhere
+#: else in the output, "pool.py:680 error" or "port 62692 failed" in a
+#: library's log line would be counted as results.
+_PYTEST_SUMMARY = re.compile(r"^=*\s*(\d+ [a-z]+(?:, \d+ [a-z]+)*) in [0-9.]+s\b.*$")
+
+
+def _pytest_summary(output: str) -> str | None:
+    found = [line.strip() for line in output.splitlines()
+             if _PYTEST_SUMMARY.match(line.strip())]
+    return found[-1] if found else None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--claim", default=None, help="the sentence this run is evidence for")
@@ -361,8 +374,10 @@ def main() -> int:
     else:
         status = "passed" if exit_code == 0 else "failed"
 
+    summary = _pytest_summary(stdout)
     counts: dict[str, int] | None = None
-    m = re.findall(r"(\d+) (passed|failed|skipped|error|errors|xfailed|xpassed)", stdout)
+    m = re.findall(r"(\d+) (passed|failed|skipped|error|errors|xfailed|xpassed)\b",
+                   summary or "")
     if m:
         counts = {}
         for n, kind in m:
@@ -397,7 +412,7 @@ def main() -> int:
             "exit_code": exit_code,
             "counts": counts,
             "blocked_reason": args.blocked_reason,
-            "summary": (stdout.strip().splitlines() or [None])[-1],
+            "summary": summary or (stdout.strip().splitlines() or [None])[-1],
         },
         "artifacts": [],
         "limits": args.limit or None,
