@@ -74,7 +74,8 @@
         "tests/integration/test_ingest_observability.py",
         "tests/unit/test_ingest_validation.py",
         "tests/unit/test_ingest_calendar.py",
-        "tests/integration/test_calendar_publication.py"
+        "tests/integration/test_calendar_publication.py",
+        "tests/integration/test_calendar_convention_at_load.py"
       ]
     },
     "observability": {
