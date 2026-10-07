@@ -110,6 +110,9 @@ def test_onboarding_reconciles_every_event_and_the_total(profile):
     assert rec["every_event_reconciled"], [e for e in profile["report"]["events"] if not e["reconciled"]]
     assert rec["categories_cover_every_event"] and rec["totals_reconcile"], rec
     assert rec["anchor_after"] > rec["anchor_before"], "the sale after the base data moved the anchor"
+    [manifest] = sql("SELECT source_coverage FROM app_meta.dataset_manifest "
+                     "WHERE load_state = 'published'")
+    assert manifest["source_coverage"]["calendar"]["extendable"] is True
     assert profile["report"]["real_data"] is False
 
 

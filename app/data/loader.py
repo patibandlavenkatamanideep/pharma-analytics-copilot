@@ -606,6 +606,39 @@ def _validate(cur: Any, report: LoadReport) -> None:
     cur.execute("SELECT data_source, count(*) AS n FROM sales GROUP BY 1 ORDER BY 1")
     report.source_coverage["rows_by_source"] = {r["data_source"]: r["n"] for r in cur.fetchall()}
     _classification_coverage(cur, report)
+    _calendar_extensibility(cur, report)
+
+
+def _calendar_extensibility(cur: Any, report: LoadReport) -> None:
+    """Whether incremental ingestion can add a week to this calendar, by the
+    check ingestion itself runs before it does (app/data/ingest.py).
+
+    A dataset whose labels follow no convention a new week could share --
+    the supplied generator's calendar-year week labels across an ISO week-53
+    year end -- loads and answers questions, and refuses its first batch.
+    Said here, at load, rather than discovered then (qualification of
+    7 October 2026, step 4). Not a refusal: the snapshot itself is sound.
+    """
+    from datetime import date
+
+    from app.data.ingest import CalendarWeek, ConventionError, detect_convention
+
+    cur.execute("SELECT wk_offset, period_wk, week_ending_date, mo_offset, period_mo, "
+                "period_qtr FROM app_ref.calendar")
+    weeks = [CalendarWeek(r["wk_offset"], r["period_wk"], date.fromisoformat(r["week_ending_date"]),
+                          r["mo_offset"], r["period_mo"], r["period_qtr"])
+             for r in cur.fetchall()]
+    try:
+        convention = detect_convention(weeks)
+    except ConventionError as exc:
+        report.source_coverage["calendar"] = {"extendable": False, "reason": str(exc)}
+        report.warn("calendar_not_extendable",
+                    f"incremental ingestion cannot add a week to this calendar: {exc}; "
+                    "reload with labels that follow one convention before ingesting")
+        return
+    report.source_coverage["calendar"] = {
+        "extendable": True, "week_ending_weekday": convention.week_ending_weekday,
+        "month_rules": list(convention.month_rules)}
 
 
 # ---------------------------------------------------------------------------

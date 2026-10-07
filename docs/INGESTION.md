@@ -195,8 +195,11 @@ published calendar already follows:
 - **Week ending.** Every published week ends on the same weekday. The full
   dataset ends weeks on Saturday and the seed on Sunday. A sale belongs to
   the week ending on or after its business day.
-- **Week label.** The ISO week of the week-ending date. Both datasets
-  follow this.
+- **Week label.** The ISO week of the week-ending date, ISO year included.
+  Both supplied datasets follow this because neither reaches a year end in
+  ISO week 53; `schema/generate_data.py` labels a week with its Saturday's
+  *calendar* year, so a history across such a year end (Saturday
+  2021-01-02 labelled `2021-W53` instead of `2020-W53`) fits no rule.
 - **Month.** One of two rules: the month of the week-ending date (the full
   dataset), or the month that holds most of the week's days (the seed). A
   rule is used only if *every* published week agrees with it. If both rules
@@ -207,6 +210,11 @@ published calendar already follows:
 If the published calendar fits no rule, the batch is refused with the
 reason. Examples are mixed weekdays, a label that is not the ISO week, a
 month carrying two offsets, or offsets that do not fall as weeks get later.
+The load runs the same check on the calendar it publishes and records the
+result in the manifest (`source_coverage.calendar`: `extendable`, and the
+weekday and month rule, or the reason). A calendar that cannot be extended
+still loads -- its rows answer questions -- with a `calendar_not_extendable`
+warning, so the refusal is known before the first batch is sent.
 
 A sale in a week the calendar **already has** takes that week's published
 labels and offsets. An increment never relabels history.

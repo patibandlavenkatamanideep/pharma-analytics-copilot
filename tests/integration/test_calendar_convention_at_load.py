@@ -89,9 +89,6 @@ def loaded(tmp_path_factory):
         clear_caches()
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "the bulk load accepts week labels incremental ingestion cannot extend, and says "
-    "nothing; the first batch is refused"))
 def test_the_load_says_the_calendar_cannot_be_extended_and_why(loaded):
     report = loaded["report"]
     codes = {w["code"]: w for w in report.warnings}
