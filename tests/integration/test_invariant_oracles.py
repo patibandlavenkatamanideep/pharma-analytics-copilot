@@ -84,15 +84,11 @@ def test_the_340b_share_divides_by_all_volume_in_the_same_population(anchor):
     assert any(0 < float(r["value"]) < 1 for r in rows), "a real proportion, not 0 or 1 everywhere"
 
 
-RATIO_POPULATION = pytest.mark.xfail(
-    strict=True, reason="qualification 2026-10-07: segment-share numerator and denominator "
-                        "covered different subcategories when the market was inferred")
 OUR_MARKETS = "p.market_subcategory IN (SELECT market_subcategory FROM products WHERE brand_flag = 1)"
 MARKET = "s.data_source = 'market_data' AND s.mo_offset IN (0, 1, 2)"
 GENERIC = "p.brand_flag = 0 AND upper(p.drug_name) LIKE '%% GENERIC'"
 
 
-@RATIO_POPULATION
 def test_generic_segment_share_by_subcategory_uses_one_population_on_both_sides(anchor):
     """docs/market_classification.md: the numerator keeps the segment (generic,
     by the documented ' GENERIC' name rule), the denominator is the whole
@@ -107,10 +103,12 @@ def test_generic_segment_share_by_subcategory_uses_one_population_on_both_sides(
         f"sum(s.pack_units * p.unit_conversion_factor) FILTER (WHERE {GENERIC}) AS n, "
         f"sum(s.pack_units * p.unit_conversion_factor) AS d "
         f"FROM sales s JOIN products p ON p.ndc = s.ndc WHERE {MARKET} AND {OUR_MARKETS} GROUP BY 1")}
-    got = {r["dim0_label"]: r for r in rows}
+    got = {r["dim0_id"]: r for r in rows}
     for row in rows:
         assert row["numerator"] is None or row["denominator"] is not None, \
-            f"{row['dim0_label']}: a numerator with no denominator"
+            f"{row['dim0_id']}: a numerator with no denominator"
+        assert row["dim0_label"] == row["dim0_id"], \
+            f"{row['dim0_id']}: listed without its own label"
     assert set(got) <= set(expected), f"rows outside our markets: {set(got) - set(expected)}"
     with_generics = {k: v for k, v in expected.items() if v[0]}
     assert with_generics, "our markets have generic volume"
@@ -118,7 +116,6 @@ def test_generic_segment_share_by_subcategory_uses_one_population_on_both_sides(
         assert close(got[sub]["value"], num / den), (sub, got[sub]["value"], num / den)
 
 
-@RATIO_POPULATION
 def test_the_total_generic_share_of_our_markets_divides_like_by_like(anchor):
     _, rows = run({"metric": "market_segment_share", "filters": {"classifications": ["generic"]},
                    "time": R3M}, anchor)

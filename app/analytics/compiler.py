@@ -442,6 +442,7 @@ class Compiler:
         extra_clauses: list[str] | None = None,
         extra_params: list[Any] | None = None,
         org_side: bool = True,
+        join_labels: bool = False,
     ) -> tuple[str, list[Any], set[str]]:
         """One pre-aggregated component.
 
@@ -468,6 +469,12 @@ class Compiler:
             needs.update(ds.needs)
             select_parts.append(f"{ds.id_expr} AS jk{j}")
             group_parts.append(ds.id_expr)
+            if join_labels:
+                # A denominator-only row (a market with no segment or company
+                # volume) is still listed; without its own label it was shown
+                # as "(none)" instead of its name.
+                select_parts.append(f"{ds.label_expr} AS jk{j}_label")
+                group_parts.append(ds.label_expr)
 
         kind = spec.get("kind")
         if kind in ("count_distinct", "count_structural"):
@@ -1005,6 +1012,8 @@ class Compiler:
 
         den_extra_clauses: list[str] = []
         den_extra_params: list[Any] = []
+        # The market inferred from our own products, when none was named.
+        inferred_market: tuple[str, list[Any]] | None = None
         if subcategory_scoped:
             # A3: the denominator covers EVERY market_data row in the same market
             # subcategory as the numerator's products -- never narrowed to the
@@ -1031,10 +1040,11 @@ class Compiler:
                 if f.ndcs:
                     sub_clauses.append("ndc = ANY(%s)")
                     sub_params.append(list(f.ndcs))
-                den_extra_clauses.append(
+                inferred_market = (
                     "p.market_subcategory IN (SELECT DISTINCT market_subcategory FROM products"
-                    f" WHERE {' AND '.join(sub_clauses)})"
-                )
+                    f" WHERE {' AND '.join(sub_clauses)})",
+                    sub_params)
+                den_extra_clauses.append(inferred_market[0])
                 den_extra_params += sub_params
 
         # What the denominator is a proportion OF is declared by the metric,
@@ -1071,12 +1081,22 @@ class Compiler:
         else:
             den_filters = plan.filters
 
+        # Both sides cover one population. A numerator of our own volume lies
+        # inside the inferred market by construction; a numerator of market
+        # volume across all brands (a segment share) does not, and has to be
+        # held to the same market -- otherwise generic volume from markets we
+        # do not compete in was divided by the volume of markets we do
+        # (qualification of 7 October 2026: 59.67% reported for 26.43%).
+        num_market = (inferred_market if inferred_market is not None
+                      and not self.registry.get(num_key).get("company_only") else None)
         num_sql, num_params, num_needs = self._leaf_select(
-            num_key, num_filters, window, dims=requested, join_dims=num_join_dims
+            num_key, num_filters, window, dims=requested, join_dims=num_join_dims,
+            extra_clauses=[num_market[0]] if num_market else None,
+            extra_params=list(num_market[1]) if num_market else None,
         )
         den_sql, den_params, den_needs = self._leaf_select(
             den_key, den_filters, window,
-            dims=[], join_dims=den_dims,
+            dims=[], join_dims=den_dims, join_labels=not bridged,
             extra_clauses=den_extra_clauses, extra_params=den_extra_params,
         )
 
@@ -1103,7 +1123,8 @@ class Compiler:
                     f"n.dim{i}_id AS dim{i}_id, n.dim{i}_label AS dim{i}_label"
                     if bridged else
                     f"COALESCE(n.dim{i}_id, d.jk{den_dims.index(requested[i])}) AS dim{i}_id, "
-                    f"n.dim{i}_label AS dim{i}_label"
+                    f"COALESCE(n.dim{i}_label, d.jk{den_dims.index(requested[i])}_label) "
+                    f"AS dim{i}_label"
                     for i in range(len(requested))
                 )
             else:
@@ -1134,6 +1155,12 @@ class Compiler:
             notes.append(
                 "Share is measured against the whole market subcategory each product "
                 "competes in, not against that product alone."
+            )
+        if num_market:
+            notes.append(
+                "No market was named, so the market is the subcategories our own "
+                "products compete in; both the segment and the whole are measured "
+                "within them. Name a market to measure another."
             )
 
         return CompiledQuery(
