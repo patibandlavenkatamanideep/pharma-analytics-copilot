@@ -536,7 +536,8 @@ def performance(results: list[dict[str, Any]], *, input_rate: float | None = Non
     def rank(p: float) -> int | None:
         return latencies[max(0, _math.ceil(p * len(latencies)) - 1)] if latencies else None
 
-    live = [r for r in results if r.get("provider") not in (None, "offline")]
+    live = [r for r in results if r.get("provider") not in (None, "offline")
+            and r.get("model_calls", 1) > 0]
     known = [r for r in live if r.get("usage_known")]
     tokens_in = sum(r.get("input_tokens") or 0 for r in live)
     tokens_out = sum(r.get("output_tokens") or 0 for r in live)
@@ -779,6 +780,7 @@ def main() -> int:
                 "planner_attempts": len(planning.get("attempts") or []),
                 "attempts": planning.get("attempts") or [],
                 "unknown_usage_calls": planning.get("unknown_usage_calls", 0),
+                "model_calls": planning.get("calls", len(planning.get("attempts") or [])),
                 "planner_repaired": planning.get("repaired"),
             })
             previous = result

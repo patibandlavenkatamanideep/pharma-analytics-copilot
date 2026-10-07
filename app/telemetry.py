@@ -270,7 +270,7 @@ INSTRUMENTS: dict[str, tuple[str, str, str]] = {
     "pac.ask.outcomes": ("counter", "{request}", "Questions by outcome, role and persistence"),
     "pac.ask.duration": ("histogram", "ms", "Question latency by outcome"),
     "pac.stage.duration": ("histogram", "ms", "Latency of each request stage"),
-    "pac.llm.attempts": ("counter", "{attempt}", "Model calls by outcome"),
+    "pac.llm.attempts": ("counter", "{attempt}", "Planning attempts by outcome, including pre-call refusals"),
     "pac.llm.tokens": ("counter", "{token}", "Provider-reported tokens"),
     "pac.llm.usage_unknown": ("counter", "{attempt}", "Model calls whose usage was not reported"),
     "pac.llm.cost": ("counter", "USD", "Estimated model cost at the configured rates"),

@@ -572,6 +572,7 @@ class BedrockPlanner:
                 exc = PlannerBudgetExhausted(
                     f"the spend limit does not cover model call {ordinal} ({kind}), which "
                     f"can bill up to {reserved[0]:,} input and {reserved[1]:,} output tokens")
+                telemetry.count("pac.llm.attempts", outcome="budget_refused", model=model, kind=kind)
                 exc.attempts = [PlanningAttempt(ordinal, kind, "budget_refused",
                     TokenUsage(0, 0), "budget_refused", called=False, reserved=reserved)]
                 raise exc

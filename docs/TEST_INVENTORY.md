@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 760 | pending final candidate | historical baseline: `r3-final-pytest.json` (`45db088`) |
+| **Unit** | `pytest tests/unit -q` | 761 | pending final candidate | historical baseline: `r3-final-pytest.json` (`45db088`) |
 | **Integration** | `pytest tests/integration -q` | 892 | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pending current gate | historical baseline: `r3-final-security.json` (`45db088`) |
-| **Total (pytest)** | `pytest tests -q` | **2061** | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
+| **Total (pytest)** | `pytest tests -q` | **2062** | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
 | **Browser — component** | `cd web && npm test` | 27 | pending current gate | `r3-final-component.json` (`45db088`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pending final candidate | `r3-final-browser.json` (`45db088`) |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r3-final-eval-*.json` (`45db088`, offline) |

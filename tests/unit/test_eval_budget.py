@@ -399,3 +399,10 @@ def test_partial_usage_reserves_the_unreported_direction(ev):
     budget = ev.Budget(1000, 1000)
     budget.record_call(TokenUsage(42, None), (100, 200))
     assert (budget.input, budget.output, budget.unreported_calls) == (42, 200, 1)
+
+
+def test_pre_call_refusal_is_not_reported_as_unknown_transport_usage(ev):
+    refused = {**row(1, known=False), 'model_calls': 0}
+    perf = ev.performance([refused])
+    assert perf['usage']['questions_with_unknown_usage'] == 0
+    assert perf['cost_usd'] is None
