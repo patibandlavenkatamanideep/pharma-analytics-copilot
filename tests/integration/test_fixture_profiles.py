@@ -351,3 +351,37 @@ def csv_rows(path):
     import csv
     with path.open() as fh:
         return list(csv.DictReader(fh))
+
+
+def test_the_readiness_report_states_what_this_profile_lacks(profile):
+    """Each section against the profile's own construction, measured here in
+    SQL or read from the generator's manifest -- not from the report's code."""
+    from app.data.readiness import build
+    from app.db import owner_transaction
+
+    with owner_transaction() as cur:
+        report = build(cur, real_data=False, onboarding=profile["report"])
+    s = report["sections"]
+    assert report["real_data"] is False and report["overall"] == "attention"
+    assert s["periods"]["status"] == "ready", s["periods"]
+    uncovered = {r["period_mo"] for r in sql(
+        "SELECT period_mo FROM app_ref.calendar GROUP BY 1 "
+        "HAVING NOT bool_and('market_data' = ANY(sources))")}
+    missing = s["totals_and_overlap"]["evidence"]["months_missing_a_source"]
+    assert uncovered and {m for m, srcs in missing.items() if "market_data" in srcs} == uncovered
+    unknown = list(profile["manifest"]["expected_classification"].values()).count("unknown")
+    assert s["classifications"]["status"] == "attention"
+    assert s["classifications"]["evidence"]["classification"]["unknown_products"] == unknown
+    [unmapped] = sql("SELECT count(*) AS n FROM organizations o LEFT JOIN zip_territory z "
+                     "ON z.zip = o.zip WHERE z.zip IS NULL")
+    assert s["hierarchy"]["evidence"]["organizations_without_territory"] == unmapped["n"] > 0
+    assert s["hierarchy"]["status"] == "attention"
+    assert s["territory_access"]["evidence"]["scoped_users_with_empty_scope"] == []
+    [ledger] = s["correction_identity"]["evidence"]["ledger"]
+    assert s["correction_identity"]["status"] == "ready"
+    assert ledger["corrected"] >= 1 and ledger["tombstoned"] >= 1
+    # The generator prices each NDC within +/-5%: a narrow band, as A8 reads WAC.
+    for band in s["money"]["evidence"]["wac_per_pack_by_ndc"]:
+        assert band["p90"] / band["p10"] < 1.12, band
+    assert s["money"]["status"] == "attention", "an interpretation the data cannot prove"
+    assert all(t["provisional"] for t in report["thresholds"].values())

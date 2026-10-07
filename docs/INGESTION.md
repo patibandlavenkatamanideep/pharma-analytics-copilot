@@ -37,6 +37,10 @@ PostgreSQL tables in the `app_ingest` schema
 | `unit` | Must be `packs`. Anything else is quarantined, never converted |
 | `wac` | A JSON number, finite, non-negative, at most 10,000,000 per pack. Positive for `distributor`. Zero for `hub_dispense`, which is free drug |
 
+The numeric bounds here, the batch size and the quarantine threshold are provisional:
+engineering bounds no plausible sale reaches, not values measured from a feed
+([REAL_FEED_ACCEPTANCE.md](REAL_FEED_ACCEPTANCE.md#contract-thresholds-in-force-provisional)).
+
 No other field is accepted. `NaN`, `Infinity` and a number too large for a
 double (such as `1e309`, which Python's JSON reader turns into infinity)
 are refused **before** anything reaches SQL. This matters because the

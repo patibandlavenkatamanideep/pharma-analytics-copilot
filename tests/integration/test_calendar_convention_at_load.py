@@ -106,3 +106,16 @@ def test_ingestion_then_refuses_for_the_reason_the_load_gave(loaded):
     [batch] = list(JsonBatchFiles([first]).batches())
     outcome = ingest(batch).as_dict()
     assert outcome["status"] == "rejected" and outcome["rejection_code"] == "calendar_unextendable", outcome
+
+
+def test_the_readiness_report_says_periods_are_blocked(loaded):
+    """Read-only: the CLI against the same database, and its exit status."""
+    out = loaded["dir"] / "readiness.json"
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "readiness_report.py"), "--db", DB,
+                        "--real-data", "no", "--out", str(out)],
+                       env={**os.environ, "PYTHONPATH": str(ROOT)}, capture_output=True, text=True)
+    assert r.returncode == 1, r.stdout + r.stderr[-2000:]
+    report = json.loads(out.read_text())
+    assert report["overall"] == "blocked" and report["real_data"] is False
+    periods = report["sections"]["periods"]
+    assert periods["status"] == "blocked" and "2021-W53" in periods["notes"][0], periods
