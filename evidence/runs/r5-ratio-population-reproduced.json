@@ -1,0 +1,87 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T18:37:59+00:00",
+  "claim": "The market segment share mixes populations when the market is inferred (expected outcome: failed): a subcategory outside our markets has a numerator and no denominator, and the total divides all generic volume by our markets' volume",
+  "application": {
+    "sha": "14ce17eb84b8addc39512965f2da7b02cc0ea004",
+    "tree": "73753db6d436a01637838666b698408da364acd4",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.2.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-94491ffd38f6",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration/test_invariant_oracles.py",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.46
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 2,
+      "passed": 4
+    },
+    "blocked_reason": null,
+    "summary": "2 failed, 4 passed in 2.08s"
+  },
+  "artifacts": [],
+  "limits": null
+}

@@ -251,6 +251,22 @@
           "baseline": "1b59504"
         }
       ]
+    },
+    {
+      "id": "segment-share-population",
+      "title": "With an inferred market, a segment share's numerator covered all markets and its denominator only ours (59.67% reported for 26.43%); denominator-only rows lost their label",
+      "fix_commits": [
+        "eb3ba13"
+      ],
+      "regression_files": [
+        "tests/integration/test_invariant_oracles.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ratio-population-reproduced.json",
+          "baseline": "14ce17e"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
