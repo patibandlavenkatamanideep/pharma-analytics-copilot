@@ -255,20 +255,22 @@ SLOs.
 
 | Alert | Expression | For | Why |
 |---|---|---|---|
-| Slow answers | `histogram_quantile(0.95, sum by (le) (rate(pac_ask_duration_milliseconds_bucket[10m]))) > 10000` | 10m | p95 above 10 s |
-| Errors | `sum(rate(pac_ask_outcomes_total{status="error"}[10m])) / sum(rate(pac_ask_outcomes_total[10m])) > 0.05` | 10m | More than 5% of questions fail |
-| Model failing | `sum(rate(pac_llm_attempts_total{outcome!="plan"}[15m])) / sum(rate(pac_llm_attempts_total[15m])) > 0.2` | 15m | Transport errors or invalid plans |
-| Usage not reported | `rate(pac_llm_usage_unknown_total[1h]) > 0` | 1h | Spend is not being measured |
-| Pool saturation | `histogram_quantile(0.95, sum by (le, pool) (rate(pac_db_pool_wait_milliseconds_bucket[5m]))) > 500` | 5m | Requests queue for connections |
-| Pool exhausted | `increase(pac_db_pool_timeouts_total[5m]) > 0` | — | A request found no connection |
-| Database errors | `increase(pac_db_errors_total{kind="unavailable"}[5m]) > 0` | — | Database unreachable |
-| Audit loss | `increase(pac_persistence_failures_total{kind="audit"}[5m]) > 0` | — | A request went unaudited. Page |
-| Turns not saved | `increase(pac_persistence_failures_total{kind="turn"}[15m]) > 3` | — | Conversations not being recorded |
-| Missed ingestion run | `max by (source) (pac_ingest_since_success_seconds) > 93600` | 15m | No accepted batch for 26 hours (a daily feed plus a margin; set to the feed's schedule) |
-| Data not moving | `max by (source) (pac_ingest_watermark_age_seconds) > 259200` | 1h | Newest applied event older than three days, even if batches arrive |
-| Freshness not reported | `absent_over_time(pac_ingest_since_success_seconds[30m])` | — | No process is reporting freshness: the API is down, the collector is not receiving, or the database cannot be read. Without this, the two alerts above would go quiet exactly when they are needed |
-| Batch rejected | `increase(pac_ingest_batches_total{status="rejected"}[1h]) > 0` | — | A feed delivered a broken batch |
-| Quarantine rising | `sum(increase(pac_ingest_quarantined_total[1d])) > 100` | — | Feed quality degrading |
+| `SlowAnswers` | `histogram_quantile(0.95, sum by (le) (rate(pac_ask_duration_milliseconds_bucket[10m]))) > 10000` | 10m | p95 answer time above 10 s |
+| `Errors` | `sum(rate(pac_ask_outcomes_total{status="error"}[10m])) / sum(rate(pac_ask_outcomes_total[10m])) > 0.05` | 10m | More than 5% of questions fail |
+| `QueryTimeouts` | `sum(rate(pac_db_errors_total{kind="timeout"}[10m])) / sum(rate(pac_ask_outcomes_total[10m])) > 0.02` | 10m | More than 2% of questions end in a statement timeout |
+| `ModelFailing` | `sum(rate(pac_llm_attempts_total{outcome!="plan"}[15m])) / sum(rate(pac_llm_attempts_total[15m])) > 0.2` | 15m | Transport errors or invalid plans |
+| `UsageNotReported` | `sum(rate(pac_llm_usage_unknown_total[1h])) > 0` | 1h | Model spend is not being measured |
+| `PoolSaturation` | `histogram_quantile(0.95, sum by (le, pool) (rate(pac_db_pool_wait_milliseconds_bucket[5m]))) > 500` | 5m | Requests queue for connections |
+| `PoolExhausted` | `sum(increase(pac_db_pool_timeouts_total[5m])) > 0` | — | A request found no connection |
+| `DatabaseErrors` | `sum(increase(pac_db_errors_total{kind="unavailable"}[5m])) > 0` | — | Database unreachable |
+| `AuditLoss` | `sum(increase(pac_persistence_failures_total{kind="audit"}[5m])) > 0` | — | A request went unaudited |
+| `TurnsNotSaved` | `sum(increase(pac_persistence_failures_total{kind="turn"}[15m])) > 3` | — | Conversations not being recorded |
+| `MissedIngestionRun` | `max by (source) (pac_ingest_since_success_seconds) > 93600` | 15m | No accepted batch for 26 hours; set to the feed's schedule |
+| `DataNotMoving` | `max by (source) (pac_ingest_watermark_age_seconds) > 259200` | 1h | Newest applied event older than three days |
+| `FreshnessNotReported` | `absent_over_time(pac_ingest_since_success_seconds[30m])` | — | No process is reporting freshness |
+| `BatchRejected` | `sum(increase(pac_ingest_batches_total{status="rejected"}[1h])) > 0` | — | A feed delivered a broken batch |
+| `QuarantineRising` | `sum(increase(pac_ingest_quarantined_total[1d])) > 100` | — | Feed quality degrading |
+| `TelemetryPipelineDown` | `up{job="otel-collector"} == 0` | 5m | Prometheus cannot scrape the collector: every metric and alert above is blind |
 
 ## Not covered
 

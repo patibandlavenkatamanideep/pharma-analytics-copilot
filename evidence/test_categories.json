@@ -89,7 +89,8 @@
         "tests/unit/test_logs.py",
         "tests/unit/test_log_allowlist.py",
         "tests/unit/test_log_registry.py",
-        "tests/unit/test_telemetry_identity.py"
+        "tests/unit/test_telemetry_identity.py",
+        "tests/unit/test_alert_rules.py"
       ]
     },
     "evaluation_harness": {

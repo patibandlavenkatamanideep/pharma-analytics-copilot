@@ -1,0 +1,19 @@
+# Prometheus for the application's metrics, scraped from the collector's
+# Prometheus exporter, with the alert rules in alerts.yml. The local drill
+# (scripts/ops_drill.py) writes its own copy with local addresses and the
+# drill's shortened windows; the rules are otherwise the same.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: otel-collector
+    # Keep the job and instance the collector derives from each process's
+    # resource (service.name, service.instance.id), so two processes stay
+    # two series rather than becoming the collector's.
+    honor_labels: true
+    static_configs:
+      - targets: ["otel-collector:8889"]

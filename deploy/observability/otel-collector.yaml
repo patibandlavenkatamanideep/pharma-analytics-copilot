@@ -1,0 +1,48 @@
+# OpenTelemetry Collector (contrib distribution) for the application's OTLP
+# export. Point PAC_OTEL_ENDPOINT at the OTLP/HTTP receiver.
+#
+# Metrics leave as a Prometheus scrape endpoint. Traces and metrics are also
+# written as JSON lines when PAC_OTEL_FILE_DIR is set: the local drill
+# (scripts/ops_drill.py) scans them for anything that must never be exported.
+# Every address and path comes from the environment, with these defaults.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: ${env:PAC_OTEL_RECEIVER:-127.0.0.1:4318}
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: ${env:PAC_OTEL_LIMIT_MIB:-256}
+    spike_limit_mib: 64
+  batch:
+    timeout: 1s
+
+exporters:
+  prometheus:
+    endpoint: ${env:PAC_OTEL_PROMETHEUS:-127.0.0.1:8889}
+    # A series not updated for this long is dropped from the scrape, so a
+    # process that stops exporting shows as absent instead of frozen at its
+    # last value. Longer than the application's 15 s export interval.
+    metric_expiration: ${env:PAC_OTEL_METRIC_EXPIRATION:-2m}
+    resource_to_telemetry_conversion:
+      enabled: false
+  file/traces:
+    path: ${env:PAC_OTEL_FILE_DIR:-/tmp}/traces.jsonl
+  file/metrics:
+    path: ${env:PAC_OTEL_FILE_DIR:-/tmp}/metrics.jsonl
+
+service:
+  telemetry:
+    metrics:
+      level: none
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [file/traces]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus, file/metrics]
