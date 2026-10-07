@@ -267,6 +267,22 @@
           "baseline": "14ce17e"
         }
       ]
+    },
+    {
+      "id": "territory-name-scope",
+      "title": "A geography reusing a territory or region name loaded, and scope -- bound by name -- widened to both",
+      "fix_commits": [
+        "fa02451"
+      ],
+      "regression_files": [
+        "tests/integration/test_fixture_profiles.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-territory-name-reproduced.json",
+          "baseline": "51cf05e"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
