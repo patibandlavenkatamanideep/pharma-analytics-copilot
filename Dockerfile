@@ -3,7 +3,7 @@
 # needs no CORS exemption.
 
 # ---------- stage 1: frontend ----------
-FROM node:20-slim AS web
+FROM node:24-slim AS web
 WORKDIR /build
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund
