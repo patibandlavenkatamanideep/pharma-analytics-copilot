@@ -30,7 +30,12 @@ jobs:
           POSTGRES_PASSWORD: ci-postgres
           POSTGRES_DB: postgres
         ports: ["5432:5432"]
+        # Docker gives a container 64 MB of /dev/shm. PostgreSQL's parallel
+        # VACUUM after a full load asks for more ("could not resize shared
+        # memory segment ... No space left on device"), and parallel queries
+        # use the same memory. compose.yaml sets the same size.
         options: >-
+          --shm-size=512m
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s --health-timeout 3s --health-retries 20
 
@@ -239,7 +244,12 @@ jobs:
           POSTGRES_PASSWORD: ci-postgres
           POSTGRES_DB: postgres
         ports: ["5432:5432"]
+        # Docker gives a container 64 MB of /dev/shm. PostgreSQL's parallel
+        # VACUUM after a full load asks for more ("could not resize shared
+        # memory segment ... No space left on device"), and parallel queries
+        # use the same memory. compose.yaml sets the same size.
         options: >-
+          --shm-size=512m
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s --health-timeout 3s --health-retries 20
 

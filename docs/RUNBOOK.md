@@ -214,6 +214,7 @@ enabled on `organizations` and `sales`, that the scoped role cannot read
 |---|---|---|
 | `no published dataset` | data never loaded, or the load failed | `scripts/load_data.py --mode full`; check `app_meta.dataset_manifest` for a `failed` row |
 | `/ready` says `database unavailable`, API returns `503 database_unavailable` | PostgreSQL unreachable, credentials wrong, or the pool exhausted | the server log names the error class; `pac.db.pool.timeouts` and `pac.db.errors{kind="unavailable"}` separate exhaustion from outage ([OBSERVABILITY.md](OBSERVABILITY.md)) |
+| `could not resize shared memory segment ... No space left on device` during a load or a large query | PostgreSQL runs in a container with Docker's default 64 MB of `/dev/shm`; parallel VACUUM and parallel queries need more | give the container more shared memory: `shm_size: 512mb` (as `compose.yaml` does) or `--shm-size=512m` |
 | `permission denied to create role` | running migrations as `pac_owner`, which deliberately has no `CREATEROLE` | run `scripts/bootstrap_db.py`; roles are created in its admin phase |
 | `privilege roles missing` | migration 004 ran before bootstrap | run `scripts/bootstrap_db.py` first |
 | A scoped user sees nothing | usually correct — their territory may match no ZIP | check `app_meta.dataset_manifest` warnings for `user_assignment_unmatched`; under seed data 10 of 23 users legitimately resolve to zero rows |

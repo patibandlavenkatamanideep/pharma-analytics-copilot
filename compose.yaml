@@ -12,6 +12,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?set POSTGRES_SUPERUSER_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Docker's default 64 MB of /dev/shm is too small: the parallel VACUUM
+    # after a full load fails with "could not resize shared memory segment
+    # ... No space left on device", and parallel queries use the same memory.
+    shm_size: 512mb
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-postgres}"]
       interval: 5s
