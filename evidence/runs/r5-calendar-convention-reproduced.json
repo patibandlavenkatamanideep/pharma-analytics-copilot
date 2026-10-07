@@ -1,0 +1,91 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T21:15:37+00:00",
+  "claim": "On unmodified code, a dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loads with no calendar warning, and its first ingested batch is rejected as calendar_unextendable",
+  "application": {
+    "sha": "b7aa31e608c0897f2a1df93e9c80ba24e7ccb60c",
+    "tree": "5fd154b2bcd5d98c15314bd6739b78d2960f2e0b",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-384570d0fcfa",
+    "load_mode": "full",
+    "fingerprint": "95a614849e042f4f95f7343d",
+    "row_counts": {
+      "sales": 2969,
+      "users": 4,
+      "products": 10,
+      "organizations": 42,
+      "zip_territory": 12
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2021-03-19",
+      "max_period_mo": "2021-03",
+      "max_period_qtr": "2021-Q1",
+      "max_week_ending": "2021-03-20"
+    },
+    "database": "pac_release_profile_weeklabels"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "tests/integration/test_calendar_convention_at_load.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_PROFILE_DB_PREFIX": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 1.16
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1,
+      "passed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 1 passed in 0.85s"
+  },
+  "artifacts": [],
+  "limits": [
+    "synthetic profile data relabelled; the supplied dataset itself never reaches such a week"
+  ]
+}

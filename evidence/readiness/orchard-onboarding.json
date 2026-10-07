@@ -1,0 +1,1470 @@
+{
+ "profile": "orchard",
+ "seed": 20261007,
+ "contracts": {
+  "schema_contract": "1.0.0",
+  "mapping": "1.0.0",
+  "classification_rule": "2.0.0"
+ },
+ "real_data": false,
+ "load": {
+  "dataset_id": "full-7907130f51ef",
+  "row_counts": {
+   "organizations": 42,
+   "products": 10,
+   "zip_territory": 12,
+   "sales": 2969,
+   "users": 4
+  },
+  "warnings": [
+   "products_of_unknown_classification",
+   "equivalents_formula_conflict",
+   "market_share_exceeds_one",
+   "organizations_without_territory",
+   "period_month_differs_from_transaction_month",
+   "duplicate_organization_names"
+  ]
+ },
+ "batches": [
+  {
+   "source_system": "orchard-feed",
+   "batch_id": "orchard-b1",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-8f9b4638f960",
+   "parent_dataset_id": "full-7907130f51ef",
+   "applied": 61,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 6,
+   "quarantined": 3,
+   "affected_periods": [
+    "2021-02",
+    "2021-03"
+   ],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {
+    "invalid_identity": 1,
+    "non_positive_packs": 1,
+    "unknown_organization": 1
+   },
+   "pack_delta": "480.0",
+   "newest_event": "2021-03-18T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  },
+  {
+   "source_system": "orchard-feed",
+   "batch_id": "orchard-b2",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-2d09278f35a5",
+   "parent_dataset_id": "full-8f9b4638f960",
+   "applied": 0,
+   "corrected": 1,
+   "tombstoned": 2,
+   "duplicates": 1,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [
+    "2021-03"
+   ],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {},
+   "pack_delta": "-4.0",
+   "newest_event": "2021-03-18T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  },
+  {
+   "source_system": "orchard-feed",
+   "batch_id": "orchard-b3",
+   "status": "no_change",
+   "attempt": 1,
+   "dataset_id": null,
+   "parent_dataset_id": "full-2d09278f35a5",
+   "applied": 0,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 1,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {},
+   "pack_delta": "0",
+   "newest_event": null,
+   "dead_rows_after_reclaim": {}
+  },
+  {
+   "source_system": "orchard-feed",
+   "batch_id": "orchard-b4",
+   "status": "rejected",
+   "attempt": 1,
+   "dataset_id": null,
+   "parent_dataset_id": null,
+   "applied": 0,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": "control totals do not reconcile: declared 4 events / 30.0 packs, received 3 / 30.0",
+   "rejection_code": "control_totals",
+   "quarantine_reasons": {},
+   "pack_delta": "0",
+   "newest_event": null,
+   "dead_rows_after_reclaim": {}
+  },
+  {
+   "source_system": "orchard-feed",
+   "batch_id": "orchard-b5",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-30ed574cc870",
+   "parent_dataset_id": "full-2d09278f35a5",
+   "applied": 25,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 0,
+   "quarantined": 1,
+   "affected_periods": [
+    "2021-03"
+   ],
+   "anchor_shift_weeks": 1,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {
+    "conflicting_versions": 1
+   },
+   "pack_delta": "100.0",
+   "newest_event": "2021-03-25T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  }
+ ],
+ "batch_log": {
+  "orchard-b1": {
+   "batch_id": "orchard-b1",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 64
+  },
+  "orchard-b2": {
+   "batch_id": "orchard-b2",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 4
+  },
+  "orchard-b3": {
+   "batch_id": "orchard-b3",
+   "status": "no_change",
+   "rejection_code": null,
+   "received_count": 1
+  },
+  "orchard-b4": {
+   "batch_id": "orchard-b4",
+   "status": "rejected",
+   "rejection_code": "control_totals",
+   "received_count": 3
+  },
+  "orchard-b5": {
+   "batch_id": "orchard-b5",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 26
+  }
+ },
+ "events": [
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e000",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e001",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e002",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e003",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e004",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e005",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e006",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e007",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e008",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e009",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e010",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e011",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e012",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e013",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e014",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e015",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e016",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e017",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e018",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e019",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e020",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e021",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e022",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e023",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e024",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e025",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e026",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e027",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e028",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e029",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e030",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e031",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e032",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e033",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e034",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e035",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e036",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e037",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e038",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e039",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e040",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e041",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e042",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e043",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e044",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e045",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e046",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e047",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e048",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e049",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e050",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e051",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e052",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e053",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e054",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e055",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e056",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e057",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e058",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-e059",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-twin",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-neg",
+   "event_version": 1,
+   "outcome": "quarantined:non_positive_packs",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "",
+   "event_version": 1,
+   "outcome": "quarantined:invalid_identity",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "orchard-noorg",
+   "event_version": 1,
+   "outcome": "quarantined:unknown_organization",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "orchard-e002",
+   "event_version": 2,
+   "outcome": "correction",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "orchard-e000",
+   "event_version": 1,
+   "outcome": "duplicate",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "orchard-e003",
+   "event_version": 2,
+   "outcome": "tombstone",
+   "packs_delta": -8.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "orchard-early-delete",
+   "event_version": 2,
+   "outcome": "tombstone_without_sale",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b3",
+   "source_event_id": "orchard-early-delete",
+   "event_version": 1,
+   "outcome": "duplicate",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "orchard-rejected-0",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "orchard-rejected-1",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "orchard-rejected-2",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f000",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f001",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f002",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f003",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f004",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f005",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f006",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f007",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f008",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f009",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f010",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f011",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f012",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f013",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f014",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f015",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f016",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f017",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f018",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f019",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f020",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f021",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f022",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f023",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-f024",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "orchard-e005",
+   "event_version": 1,
+   "outcome": "quarantined:conflicting_versions",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  }
+ ],
+ "reconciliation": {
+  "events_expected": 98,
+  "events_received_by_batches": 98,
+  "by_category": {
+   "accepted": 89,
+   "quarantined": 4,
+   "ignored_replay": 2,
+   "rejected": 3
+  },
+  "every_event_reconciled": true,
+  "categories_cover_every_event": true,
+  "base_total_packs": "33095",
+  "final_total_packs": "33671",
+  "expected_delta": "576.0",
+  "observed_delta": "576",
+  "totals_reconcile": true,
+  "anchor_before": "2021-03-20",
+  "anchor_after": "2021-03-27"
+ }
+}

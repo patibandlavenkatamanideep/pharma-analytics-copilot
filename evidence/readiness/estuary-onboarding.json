@@ -1,0 +1,1469 @@
+{
+ "profile": "estuary",
+ "seed": 31415926,
+ "contracts": {
+  "schema_contract": "1.0.0",
+  "mapping": "1.0.0",
+  "classification_rule": "2.0.0"
+ },
+ "real_data": false,
+ "load": {
+  "dataset_id": "full-3a6b1e0aa77f",
+  "row_counts": {
+   "organizations": 89,
+   "products": 5,
+   "zip_territory": 18,
+   "sales": 2171,
+   "users": 4
+  },
+  "warnings": [
+   "products_of_unknown_classification",
+   "equivalents_formula_conflict",
+   "organizations_without_territory",
+   "period_month_differs_from_transaction_month",
+   "duplicate_organization_names"
+  ]
+ },
+ "batches": [
+  {
+   "source_system": "estuary-feed",
+   "batch_id": "estuary-b1",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-7247591f73b6",
+   "parent_dataset_id": "full-3a6b1e0aa77f",
+   "applied": 61,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 6,
+   "quarantined": 3,
+   "affected_periods": [
+    "2026-06"
+   ],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {
+    "invalid_identity": 1,
+    "non_positive_packs": 1,
+    "unknown_organization": 1
+   },
+   "pack_delta": "480.0",
+   "newest_event": "2026-06-25T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  },
+  {
+   "source_system": "estuary-feed",
+   "batch_id": "estuary-b2",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-fea6f900376f",
+   "parent_dataset_id": "full-7247591f73b6",
+   "applied": 0,
+   "corrected": 1,
+   "tombstoned": 2,
+   "duplicates": 1,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [
+    "2026-06"
+   ],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {},
+   "pack_delta": "-4.0",
+   "newest_event": "2026-06-25T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  },
+  {
+   "source_system": "estuary-feed",
+   "batch_id": "estuary-b3",
+   "status": "no_change",
+   "attempt": 1,
+   "dataset_id": null,
+   "parent_dataset_id": "full-fea6f900376f",
+   "applied": 0,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 1,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {},
+   "pack_delta": "0",
+   "newest_event": null,
+   "dead_rows_after_reclaim": {}
+  },
+  {
+   "source_system": "estuary-feed",
+   "batch_id": "estuary-b4",
+   "status": "rejected",
+   "attempt": 1,
+   "dataset_id": null,
+   "parent_dataset_id": null,
+   "applied": 0,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 0,
+   "quarantined": 0,
+   "affected_periods": [],
+   "anchor_shift_weeks": 0,
+   "anchor_shift_months": 0,
+   "rejection_reason": "control totals do not reconcile: declared 4 events / 30.0 packs, received 3 / 30.0",
+   "rejection_code": "control_totals",
+   "quarantine_reasons": {},
+   "pack_delta": "0",
+   "newest_event": null,
+   "dead_rows_after_reclaim": {}
+  },
+  {
+   "source_system": "estuary-feed",
+   "batch_id": "estuary-b5",
+   "status": "published",
+   "attempt": 1,
+   "dataset_id": "full-f30459ee885a",
+   "parent_dataset_id": "full-fea6f900376f",
+   "applied": 25,
+   "corrected": 0,
+   "tombstoned": 0,
+   "duplicates": 0,
+   "late": 0,
+   "quarantined": 1,
+   "affected_periods": [
+    "2026-06",
+    "2026-07"
+   ],
+   "anchor_shift_weeks": 1,
+   "anchor_shift_months": 1,
+   "rejection_reason": null,
+   "rejection_code": null,
+   "quarantine_reasons": {
+    "conflicting_versions": 1
+   },
+   "pack_delta": "100.0",
+   "newest_event": "2026-07-02T14:00:00-05:00",
+   "dead_rows_after_reclaim": {
+    "sales": 0,
+    "app_ref.calendar": 0
+   }
+  }
+ ],
+ "batch_log": {
+  "estuary-b1": {
+   "batch_id": "estuary-b1",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 64
+  },
+  "estuary-b2": {
+   "batch_id": "estuary-b2",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 4
+  },
+  "estuary-b3": {
+   "batch_id": "estuary-b3",
+   "status": "no_change",
+   "rejection_code": null,
+   "received_count": 1
+  },
+  "estuary-b4": {
+   "batch_id": "estuary-b4",
+   "status": "rejected",
+   "rejection_code": "control_totals",
+   "received_count": 3
+  },
+  "estuary-b5": {
+   "batch_id": "estuary-b5",
+   "status": "published",
+   "rejection_code": null,
+   "received_count": 26
+  }
+ },
+ "events": [
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e000",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e001",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e002",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e003",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e004",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e005",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e006",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e007",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e008",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e009",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e010",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e011",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e012",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e013",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e014",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e015",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e016",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e017",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e018",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e019",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e020",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e021",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e022",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e023",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e024",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e025",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e026",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e027",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e028",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e029",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e030",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e031",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e032",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e033",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e034",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e035",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e036",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e037",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e038",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e039",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e040",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e041",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e042",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e043",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e044",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e045",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e046",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e047",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e048",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e049",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e050",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e051",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e052",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e053",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 9.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 9.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e054",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 10.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e055",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 11.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e056",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 5.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e057",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e058",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 7.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 7.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-e059",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 8.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 8.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-twin",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 6.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 6.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-neg",
+   "event_version": 1,
+   "outcome": "quarantined:non_positive_packs",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "",
+   "event_version": 1,
+   "outcome": "quarantined:invalid_identity",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b1",
+   "source_event_id": "estuary-noorg",
+   "event_version": 1,
+   "outcome": "quarantined:unknown_organization",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "estuary-e002",
+   "event_version": 2,
+   "outcome": "correction",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": false,
+    "pack_units": 11.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "estuary-e000",
+   "event_version": 1,
+   "outcome": "duplicate",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 5.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "estuary-e003",
+   "event_version": 2,
+   "outcome": "tombstone",
+   "packs_delta": -8.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b2",
+   "source_event_id": "estuary-early-delete",
+   "event_version": 2,
+   "outcome": "tombstone_without_sale",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b3",
+   "source_event_id": "estuary-early-delete",
+   "event_version": 1,
+   "outcome": "duplicate",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 2,
+    "tombstoned": true,
+    "pack_units": null
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "estuary-rejected-0",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "estuary-rejected-1",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b4",
+   "source_event_id": "estuary-rejected-2",
+   "event_version": 1,
+   "outcome": "rejected:control_totals",
+   "packs_delta": 0.0,
+   "observed": null,
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f000",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f001",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f002",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f003",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f004",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f005",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f006",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f007",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f008",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f009",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f010",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f011",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f012",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f013",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f014",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f015",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f016",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f017",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f018",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f019",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f020",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f021",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f022",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f023",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-f024",
+   "event_version": 1,
+   "outcome": "insert",
+   "packs_delta": 4.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 4.0
+   },
+   "reconciled": true
+  },
+  {
+   "batch_id": "b5",
+   "source_event_id": "estuary-e005",
+   "event_version": 1,
+   "outcome": "quarantined:conflicting_versions",
+   "packs_delta": 0.0,
+   "observed": {
+    "event_version": 1,
+    "tombstoned": false,
+    "pack_units": 10.0
+   },
+   "reconciled": true
+  }
+ ],
+ "reconciliation": {
+  "events_expected": 98,
+  "events_received_by_batches": 98,
+  "by_category": {
+   "accepted": 89,
+   "quarantined": 4,
+   "ignored_replay": 2,
+   "rejected": 3
+  },
+  "every_event_reconciled": true,
+  "categories_cover_every_event": true,
+  "base_total_packs": "16515",
+  "final_total_packs": "17091",
+  "expected_delta": "576.0",
+  "observed_delta": "576",
+  "totals_reconcile": true,
+  "anchor_before": "2026-06-27",
+  "anchor_after": "2026-07-04"
+ }
+}

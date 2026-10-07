@@ -1,0 +1,93 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T20:54:10+00:00",
+  "claim": "On unmodified code (f26e8a8), products no source flag or mapping classifies are reported as branded competitors or generics on both fixture profiles, the orchard Anti-IL branded-competitor share reads 50.2% where 27.2% is known and 23.0% is of unknown class, and the manifest names no classification authority",
+  "application": {
+    "sha": "f26e8a82557b72b76ac8a656c43ec062c282a3c6",
+    "tree": "5838ecde384f634253c672f16610881818ae74fc",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.2.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-94491ffd38f6",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "tests/unit/test_semantics.py::test_a_name_alone_does_not_make_a_branded_competitor",
+      "tests/integration/test_classification_authority.py",
+      "tests/integration/test_fixture_profiles.py::test_a_product_nothing_classifies_stays_unknown",
+      "tests/integration/test_fixture_profiles.py::test_a_segment_share_counts_unknown_volume_in_no_segment_and_bounds_it"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_PROFILE_DB_PREFIX": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 3.32
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 7
+    },
+    "blocked_reason": null,
+    "summary": "7 failed in 2.86s"
+  },
+  "artifacts": [],
+  "limits": [
+    "fixture profiles are synthetic; no real feed or customer mapping was used"
+  ]
+}

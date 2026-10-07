@@ -283,6 +283,41 @@
           "baseline": "51cf05e"
         }
       ]
+    },
+    {
+      "id": "classification-by-elimination",
+      "title": "Classification rule 1.0.0 read the generator's name suffixes and made every other brand_flag 0 product a branded competitor; on unseen data a segment share reported its upper bound (50.2%) as the share (27.2% known, 23.0% of unknown class)",
+      "fix_commits": [
+        "3cc4b14"
+      ],
+      "regression_files": [
+        "tests/integration/test_fixture_profiles.py",
+        "tests/integration/test_classification_authority.py",
+        "tests/unit/test_classification_mapping.py",
+        "tests/unit/test_semantics.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-classification-reproduced.json",
+          "baseline": "f26e8a8"
+        }
+      ]
+    },
+    {
+      "id": "calendar-not-extendable-at-load",
+      "title": "A dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loaded silently, and its first batch was rejected",
+      "fix_commits": [
+        "2cc7bd9"
+      ],
+      "regression_files": [
+        "tests/integration/test_calendar_convention_at_load.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-calendar-convention-reproduced.json",
+          "baseline": "b7aa31e"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

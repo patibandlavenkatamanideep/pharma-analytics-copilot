@@ -178,3 +178,65 @@ correction in [EVALUATION.md](EVALUATION.md); `holdout2.yaml` has no overlap.
 **Residual.** No independent author has written a set; nothing has been run against
 a live model under prompt 2.2.0. The runner names one user per role, so an Exec
 without pricing cannot appear in a question set. Profiles are synthetic.
+
+## Step 4 — real-data contract
+
+**Classification authority.** Classes did not come from an authoritative
+mapping: rule 1.0.0 read the generator's ' GENERIC' / ' BIOSIMILAR' name
+suffixes and made every other `brand_flag = 0` product a branded competitor by
+elimination, on any dataset. Reproduced on the fixture profiles (`f26e8a8`,
+`r5-classification-reproduced.json`, 7 failed): orchard's products of unknown
+class became branded competitors, and the branded-competitor share of its
+Anti-IL market read **50.2%** where 27.2% is known and 23.0% is of unknown
+class; estuary, which ships no mapping, had every competitor classified by name.
+
+*Changed* (implemented, locally verified; `3cc4b14`, `r5-classification-fixed.json`).
+Rule 2.0.0: `brand_flag = 1` is ours (authority: source); any other class comes
+from a versioned mapping (authority: mapping; version and SHA-256 recorded per
+product), else `unknown`. The supplied dataset's mapping
+(`app/data/classification_supplied.json`) is curated from the tables of
+`docs/market_classification.md`; all 40 supplied products keep their class and
+none is unknown. A contradicting, duplicated or invalid mapping refuses the load.
+The manifest records classes, authorities and mappings (`source_coverage.classification`).
+Metric-specific availability: only `market_segment_share` reads a class
+other than ours; it now carries the market volume of unknown class and states
+the share as the range it allows, has no share for a market whose volume is
+all of unknown class (unavailable, not 0%), and treats a fully classified market
+without the segment as a known zero. Other metrics are unaffected. Orchard now
+reads 27.21% to 50.22%; estuary 0.00% to 69.33%. Metric registry 1.5.0, so
+prompt 2.3.0 (fingerprint `5dd66431f2ba8230`; instructions unchanged). Eight
+mutants, each caught (`evidence/probes/classification_mutants.sh`).
+
+**Calendar convention at load.** A dataset whose week labels follow the
+supplied generator's calendar-year convention across an ISO week-53 year end
+loaded silently and refused its first batch (`b7aa31e`,
+`r5-calendar-convention-reproduced.json`). The load now runs ingestion's own
+convention check and records `source_coverage.calendar`; such a calendar still
+loads, with a `calendar_not_extendable` warning (`2cc7bd9`,
+`r5-calendar-convention-fixed.json`). The supplied dataset: extendable
+(Saturday weeks, week-ending month).
+
+**Readiness report** (implemented, locally verified; `00c192e`,
+`r5-readiness-reports.json`, reports in `evidence/readiness/`).
+`scripts/readiness_report.py` reports, per published dataset, identifiers,
+periods, source totals and months lacking a source, units, money, classes,
+hierarchy, territory access, cadence and correction identity, each `ready`,
+`attention`, `blocked` or `not_measured` with its evidence, and the contract
+thresholds, all marked provisional. Supplied data: attention (competitor-only
+market source; WAC interpretation A8 needs the owner), cadence and correction
+identity not measured (no batch ingested). Both profiles: attention (unknown
+classes, months without market data, unmapped facilities), every event
+reconciled. The relabelled week-53 dataset: blocked (periods).
+
+**Ledger semantics** were already covered by the profiles' 98-event series
+(replays, equal-valued distinct sales, a correction, tombstones in and out of
+order, a conflicting version, refused records, a batch rejected whole, an anchor
+move), each event reconciled against the ledger, quarantine and batch log.
+**Real-feed acceptance**: [REAL_FEED_ACCEPTANCE.md](REAL_FEED_ACCEPTANCE.md),
+twelve items with what is verified and what each needs from a feed or its owner.
+
+**Residual.** No real feed, customer mapping or identity-provider claims have
+been used; every item that needs them is marked blocked in the checklist. The
+supplied mapping is only as good as the document it was curated from. The
+evidence index lists five fixes after the measured candidate (`7950e71`) as not
+yet verified on a candidate; step 8 measures the final one.

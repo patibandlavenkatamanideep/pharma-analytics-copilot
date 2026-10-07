@@ -9,30 +9,33 @@ detail file, git or the code.
 | | SHA | Tree |
 |---|---|---|
 | Executable candidate (what the records measured) | `7950e71304ec1c6da7985f6fa9ec41a2b154da6f` | `f9eaf48ad0180532f0c82ec7f6b8939e80125067` |
-| HEAD (`codex/release-defects-oct06`, clean: False) | `69c62de959a988305463be4b0219db7e88b1bcde` | `981b86a810611a9c7c49c57d0a7782af2e799ef7` |
+| HEAD (`codex/release-defects-oct06`, clean: False) | `00c192e8b1cccc5a720a7efbb2ea7e95eae80134` | `87484f59687bab697011d89f54c21913bf069782` |
 
 Changed between the candidate and HEAD:
 
+- **application and build** (24): `app/analytics/compiler.py`, `app/analytics/metrics.yaml`, `app/analytics/plan.py`, `app/analytics/render.py`, `app/analytics/validator.py`, `app/data/classification.py`, `app/data/classification_supplied.json`, `app/data/loader.py` …
 - **deployment configuration** (1): `compose.yaml`
-- **documentation** (4): `docs/RELEASE_EVIDENCE.md`, `docs/REVIEW_2026_10_06.md`, `docs/RUNBOOK.md`, `docs/TEST_INVENTORY.md`
-- **evidence data** (22): `evidence/runs/r5-ci-shm-fixed.json`, `evidence/runs/r5-ci-shm-reproduced.json`, `evidence/runs/r5-final-boundary.json`, `evidence/runs/r5-final-browser.json`, `evidence/runs/r5-final-component.detail.json`, `evidence/runs/r5-final-component.json`, `evidence/runs/r5-final-eval-holdout.detail.json`, `evidence/runs/r5-final-eval-holdout.json` …
-- **probe tooling** (1): `evidence/probes/shm_full_load.sh`
+- **documentation** (17): `docs/API.md`, `docs/ASSUMPTIONS.md`, `docs/COVERAGE_BY_INVARIANT.md`, `docs/DATA_QUALITY.md`, `docs/EVALUATION.md`, `docs/EVIDENCE_INDEX.md`, `docs/INGESTION.md`, `docs/PRODUCTION_UPGRADE.md` …
+- **evaluation sets** (1): `evals/packet/oracle_schema.json`
+- **evidence data** (54): `evidence/external.json`, `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-ci-shm-fixed.json`, `evidence/runs/r5-ci-shm-reproduced.json`, `evidence/runs/r5-final-boundary.json`, `evidence/runs/r5-final-browser.json`, `evidence/runs/r5-final-component.detail.json` …
+- **probe tooling** (5): `evidence/probes/readiness_reports.sh`, `evidence/probes/replay_on_baseline.sh`, `evidence/probes/sanitize_junit.py`, `evidence/probes/shm_full_load.sh`, `evidence/probes/startup_refusal_on_baseline.py`
+- **test code** (16): `tests/integration/test_calendar_convention_at_load.py`, `tests/integration/test_classification_authority.py`, `tests/integration/test_fixture_profiles.py`, `tests/integration/test_invariant_oracles.py`, `tests/integration/test_period_over_period_fixture.py`, `tests/integration/test_period_over_period_pipeline.py`, `tests/integration/test_readiness_report.py`, `tests/unit/test_classification_mapping.py` …
 - **workflow** (1): `.github/workflows/ci.yml`
 
-**Needs evidence beyond the candidate's records:** deployment configuration, workflow. See the external runs below for what covered them.
+**Needs evidence beyond the candidate's records:** application and build, deployment configuration, evaluation sets, test code, workflow. See the external runs below for what covered them.
 
 ## Versions
 
 | Contract | Version |
 |---|---|
-| metric_registry | `1.4.0` |
+| metric_registry | `1.5.0` |
 | policy | `1.0.0` |
 | schema_contract | `1.0.0` |
 | mapping | `1.0.0` |
-| classification_rule | `1.0.0` |
-| prompt | `2.1.0` |
-| prompt_fingerprint | `5ca5ddf08608fb64` |
-| planner_contract | `2.0.0` |
+| classification_rule | `2.0.0` |
+| prompt | `2.3.0` |
+| prompt_fingerprint | `5dd66431f2ba8230` |
+| planner_contract | `2.1.0` |
 | graph | `1.0.0` |
 
 ## Records for the candidate
@@ -159,6 +162,46 @@ CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load p
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `9519f28`: `r5-ci-shm-reproduced.json` — failed — psycopg.errors.DiskFull: could not resize shared memory segm
 
+### k07-period-over-period
+
+A supplied sample question (growth month over month) could not be planned; the refusal named the grain by its code.
+
+- Fix: `fce6b93` (NOT IN CANDIDATE)
+- Regression on the candidate: `test_period_over_period.py` (0, NOT ALL PASS), `test_period_over_period_fixture.py` (0, NOT ALL PASS), `test_period_over_period_pipeline.py` (0, NOT ALL PASS)
+- Reproduction on `1b59504`: `r5-k07-reproduced.json` — failed — 25 failed in 0.23s
+
+### segment-share-population
+
+With an inferred market, a segment share's numerator covered all markets and its denominator only ours (59.67% reported for 26.43%); denominator-only rows lost their label.
+
+- Fix: `eb3ba13` (NOT IN CANDIDATE)
+- Regression on the candidate: `test_invariant_oracles.py` (0, NOT ALL PASS)
+- Reproduction on `14ce17e`: `r5-ratio-population-reproduced.json` — failed — 2 failed, 4 passed in 2.08s
+
+### territory-name-scope
+
+A geography reusing a territory or region name loaded, and scope -- bound by name -- widened to both.
+
+- Fix: `fa02451` (NOT IN CANDIDATE)
+- Regression on the candidate: `test_fixture_profiles.py` (0, NOT ALL PASS)
+- Reproduction on `51cf05e`: `r5-territory-name-reproduced.json` — failed — 2 failed, 18 deselected in 2.82s
+
+### classification-by-elimination
+
+Classification rule 1.0.0 read the generator's name suffixes and made every other brand_flag 0 product a branded competitor; on unseen data a segment share reported its upper bound (50.2%) as the share (27.2% known, 23.0% of unknown class).
+
+- Fix: `3cc4b14` (NOT IN CANDIDATE)
+- Regression on the candidate: `test_fixture_profiles.py` (0, NOT ALL PASS), `test_classification_authority.py` (0, NOT ALL PASS), `test_classification_mapping.py` (0, NOT ALL PASS), `test_semantics.py` (0, NOT ALL PASS)
+- Reproduction on `f26e8a8`: `r5-classification-reproduced.json` — failed — 7 failed in 2.86s
+
+### calendar-not-extendable-at-load
+
+A dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loaded silently, and its first batch was rejected.
+
+- Fix: `2cc7bd9` (NOT IN CANDIDATE)
+- Regression on the candidate: `test_calendar_convention_at_load.py` (0, NOT ALL PASS)
+- Reproduction on `b7aa31e`: `r5-calendar-convention-reproduced.json` — failed — 1 failed, 1 passed in 0.85s
+
 ## Externally verified (hosted)
 
 - Run [37650229833](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833) on `eb65af3`: **failure** — image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed
@@ -176,7 +219,11 @@ CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load p
 
 ## Unresolved problems
 
-- none
+- k07-period-over-period: fix commit fce6b93 is after the candidate and nothing verifies it
+- segment-share-population: fix commit eb3ba13 is after the candidate and nothing verifies it
+- territory-name-scope: fix commit fa02451 is after the candidate and nothing verifies it
+- classification-by-elimination: fix commit 3cc4b14 is after the candidate and nothing verifies it
+- calendar-not-extendable-at-load: fix commit 2cc7bd9 is after the candidate and nothing verifies it
 
 Interface failures (ImportError, AttributeError, collection failure) mean the baseline
 lacked something the test calls; behavioural failures are wrong results or crashes. The

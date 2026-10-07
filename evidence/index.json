@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-07T18:14:33+00:00",
+ "generated_at": "2026-10-07T21:25:15+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "69c62de959a988305463be4b0219db7e88b1bcde",
-   "tree": "981b86a810611a9c7c49c57d0a7782af2e799ef7",
+   "sha": "00c192e8b1cccc5a720a7efbb2ea7e95eae80134",
+   "tree": "87484f59687bab697011d89f54c21913bf069782",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": false
   },
@@ -15,16 +15,61 @@
   },
   "delta_candidate_to_head": {
    "by_class": {
+    "application and build": [
+     "app/analytics/compiler.py",
+     "app/analytics/metrics.yaml",
+     "app/analytics/plan.py",
+     "app/analytics/render.py",
+     "app/analytics/validator.py",
+     "app/data/classification.py",
+     "app/data/classification_supplied.json",
+     "app/data/loader.py",
+     "app/data/readiness.py",
+     "app/llm/planner.py",
+     "evidence/invariants.json",
+     "migrations/023_classification_authority.sql",
+     "pyproject.toml",
+     "scripts/build_profile_db.py",
+     "scripts/check_question_set.py",
+     "scripts/coverage_report.py",
+     "scripts/evidence_index.py",
+     "scripts/fixture_profile.py",
+     "scripts/load_data.py",
+     "scripts/readiness_report.py",
+     "web/src/App.jsx",
+     "web/src/ResultChart.jsx",
+     "web/src/__tests__/result-chart.test.jsx",
+     "web/src/__tests__/result-table.test.jsx"
+    ],
     "deployment configuration": [
      "compose.yaml"
     ],
     "documentation": [
+     "docs/API.md",
+     "docs/ASSUMPTIONS.md",
+     "docs/COVERAGE_BY_INVARIANT.md",
+     "docs/DATA_QUALITY.md",
+     "docs/EVALUATION.md",
+     "docs/EVIDENCE_INDEX.md",
+     "docs/INGESTION.md",
+     "docs/PRODUCTION_UPGRADE.md",
+     "docs/QUALIFICATION_2026_10_07.md",
+     "docs/REAL_FEED_ACCEPTANCE.md",
      "docs/RELEASE_EVIDENCE.md",
      "docs/REVIEW_2026_10_06.md",
      "docs/RUNBOOK.md",
-     "docs/TEST_INVENTORY.md"
+     "docs/TEST_INVENTORY.md",
+     "evals/packet/AUTHORING.md",
+     "evals/packet/CONTAMINATION_LOG.md",
+     "evals/packet/PROTOCOL.md"
+    ],
+    "evaluation sets": [
+     "evals/packet/oracle_schema.json"
     ],
     "evidence data": [
+     "evidence/external.json",
+     "evidence/index.json",
+     "evidence/ledger.json",
      "evidence/runs/r5-ci-shm-fixed.json",
      "evidence/runs/r5-ci-shm-reproduced.json",
      "evidence/runs/r5-final-boundary.json",
@@ -46,30 +91,84 @@
      "evidence/runs/r5-final-release-gate-selftest.json",
      "evidence/runs/r5-final-security.json",
      "evidence/runs/r5-final-unit-nodb.json",
-     "evidence/runs/r5-final-web-build.json"
+     "evidence/runs/r5-final-web-build.json",
+     "evidence/runs/r5-k07-eval-holdout.detail.json",
+     "evidence/runs/r5-k07-eval-holdout.json",
+     "evidence/runs/r5-k07-eval-holdout2.detail.json",
+     "evidence/runs/r5-k07-eval-holdout2.json",
+     "evidence/runs/r5-k07-eval-questions.detail.json",
+     "evidence/runs/r5-k07-eval-questions.json",
+     "evidence/runs/r5-k07-fixed.json",
+     "evidence/runs/r5-k07-reproduced.json",
+     "evidence/runs/r5-profiles-fixed.json",
+     "evidence/runs/r5-ratio-population-fixed.json",
+     "evidence/runs/r5-ratio-population-reproduced.json",
+     "evidence/runs/r5-replay-ci-startup-behaviour.json",
+     "evidence/runs/r5-replay-ci-startup-behaviour.result.json",
+     "evidence/runs/r5-replay-ci-startup-refusal.json",
+     "evidence/runs/r5-replay-ci-startup-refusal.junit.xml",
+     "evidence/runs/r5-replay-eval-budget-terminal.json",
+     "evidence/runs/r5-replay-eval-budget-terminal.junit.xml",
+     "evidence/runs/r5-replay-evidence-recorder-counts.json",
+     "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml",
+     "evidence/runs/r5-replay-failed-attempt-accounting.json",
+     "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml",
+     "evidence/runs/r5-replay-ingestion-boundaries.json",
+     "evidence/runs/r5-replay-ingestion-boundaries.junit.xml",
+     "evidence/runs/r5-replay-log-allowlist.json",
+     "evidence/runs/r5-replay-log-allowlist.junit.xml",
+     "evidence/runs/r5-replay-telemetry-outage-bounds.json",
+     "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml",
+     "evidence/runs/r5-territory-name-reproduced.json",
+     "evidence/test_categories.json"
     ],
     "probe tooling": [
-     "evidence/probes/shm_full_load.sh"
+     "evidence/probes/readiness_reports.sh",
+     "evidence/probes/replay_on_baseline.sh",
+     "evidence/probes/sanitize_junit.py",
+     "evidence/probes/shm_full_load.sh",
+     "evidence/probes/startup_refusal_on_baseline.py"
+    ],
+    "test code": [
+     "tests/integration/test_calendar_convention_at_load.py",
+     "tests/integration/test_classification_authority.py",
+     "tests/integration/test_fixture_profiles.py",
+     "tests/integration/test_invariant_oracles.py",
+     "tests/integration/test_period_over_period_fixture.py",
+     "tests/integration/test_period_over_period_pipeline.py",
+     "tests/integration/test_readiness_report.py",
+     "tests/unit/test_classification_mapping.py",
+     "tests/unit/test_eval_judge.py",
+     "tests/unit/test_evidence_index.py",
+     "tests/unit/test_invariant_coverage.py",
+     "tests/unit/test_period_over_period.py",
+     "tests/unit/test_prompt_version.py",
+     "tests/unit/test_question_set_check.py",
+     "tests/unit/test_segment_share.py",
+     "tests/unit/test_semantics.py"
     ],
     "workflow": [
      ".github/workflows/ci.yml"
     ]
    },
    "classes_needing_evidence": [
+    "application and build",
     "deployment configuration",
+    "evaluation sets",
+    "test code",
     "workflow"
    ]
   }
  },
  "versions": {
-  "metric_registry": "1.4.0",
+  "metric_registry": "1.5.0",
   "policy": "1.0.0",
   "schema_contract": "1.0.0",
   "mapping": "1.0.0",
-  "classification_rule": "1.0.0",
-  "prompt": "2.1.0",
-  "prompt_fingerprint": "5ca5ddf08608fb64",
-  "planner_contract": "2.0.0",
+  "classification_rule": "2.0.0",
+  "prompt": "2.3.0",
+  "prompt_fingerprint": "5dd66431f2ba8230",
+  "planner_contract": "2.1.0",
   "graph": "1.0.0"
  },
  "datasets": [
@@ -919,6 +1018,218 @@
     }
    ],
    "verified_by": "hosted_ci:37651718276"
+  },
+  {
+   "id": "k07-period-over-period",
+   "title": "A supplied sample question (growth month over month) could not be planned; the refusal named the grain by its code",
+   "fix_commits": [
+    {
+     "commit": "fce6b93",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_period_over_period.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_period_over_period_fixture.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_period_over_period_pipeline.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-k07-reproduced.json",
+     "baseline": "1b59504",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 25
+     },
+     "summary": "25 failed in 0.23s",
+     "measured": "1b59504364c3",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "segment-share-population",
+   "title": "With an inferred market, a segment share's numerator covered all markets and its denominator only ours (59.67% reported for 26.43%); denominator-only rows lost their label",
+   "fix_commits": [
+    {
+     "commit": "eb3ba13",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_invariant_oracles.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-ratio-population-reproduced.json",
+     "baseline": "14ce17e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 2,
+      "passed": 4
+     },
+     "summary": "2 failed, 4 passed in 2.08s",
+     "measured": "14ce17eb84b8",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "territory-name-scope",
+   "title": "A geography reusing a territory or region name loaded, and scope -- bound by name -- widened to both",
+   "fix_commits": [
+    {
+     "commit": "fa02451",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_fixture_profiles.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-territory-name-reproduced.json",
+     "baseline": "51cf05e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 2
+     },
+     "summary": "2 failed, 18 deselected in 2.82s",
+     "measured": "51cf05e214d7",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "classification-by-elimination",
+   "title": "Classification rule 1.0.0 read the generator's name suffixes and made every other brand_flag 0 product a branded competitor; on unseen data a segment share reported its upper bound (50.2%) as the share (27.2% known, 23.0% of unknown class)",
+   "fix_commits": [
+    {
+     "commit": "3cc4b14",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_fixture_profiles.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_classification_authority.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_classification_mapping.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_semantics.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-classification-reproduced.json",
+     "baseline": "f26e8a8",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 7
+     },
+     "summary": "7 failed in 2.86s",
+     "measured": "f26e8a82557b",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "calendar-not-extendable-at-load",
+   "title": "A dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loaded silently, and its first batch was rejected",
+   "fix_commits": [
+    {
+     "commit": "2cc7bd9",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_calendar_convention_at_load.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-calendar-convention-reproduced.json",
+     "baseline": "b7aa31e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1,
+      "passed": 1
+     },
+     "summary": "1 failed, 1 passed in 0.85s",
+     "measured": "b7aa31e608c0",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
   }
  ],
  "external": {
@@ -968,5 +1279,11 @@
   "r5-original-reproductions.json hashes r5-telemetry-reproduced.log, which is not preserved",
   "r5-original-reproductions.json hashes r5-ci-reproduced.json, which is not preserved"
  ],
- "problems": []
+ "problems": [
+  "k07-period-over-period: fix commit fce6b93 is after the candidate and nothing verifies it",
+  "segment-share-population: fix commit eb3ba13 is after the candidate and nothing verifies it",
+  "territory-name-scope: fix commit fa02451 is after the candidate and nothing verifies it",
+  "classification-by-elimination: fix commit 3cc4b14 is after the candidate and nothing verifies it",
+  "calendar-not-extendable-at-load: fix commit 2cc7bd9 is after the candidate and nothing verifies it"
+ ]
 }
