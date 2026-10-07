@@ -16,7 +16,9 @@ everything else, deterministically from its seed:
 * source omissions (market data absent for whole months) and a covered month
   in which one product sold nothing;
 * products whose true classification is unknown -- not a generic, biosimilar or
-  company brand by any documented rule;
+  company brand by any documented rule -- and a customer's classification
+  mapping (product_classification.json) that names only the products it knows;
+  the other profile ships no mapping at all;
 * a hierarchy with facilities under parents without a grandparent, standalone
   facilities, an unmapped ZIP and an inactive facility;
 * an ingestion series with replays, equal-valued distinct events, a correction,
@@ -26,10 +28,13 @@ everything else, deterministically from its seed:
   sale in a week after the base data, which moves the reporting anchor.
 
 Writes organizations.csv, products.csv, zip_territory.csv, sales.csv (the
-loader's inputs), users.json, batches/*.json (ingestion), and manifest.json:
-the profile's parameters, seed, generator and contract versions, the expected
-classification of each product, the expected outcome of every ingestion event,
-and each file's SHA-256. Nothing here is a real customer's data.
+loader's inputs), product_classification.json when the profile has a mapping,
+users.json, batches/*.json (ingestion), and manifest.json: the profile's
+parameters, seed, generator and contract versions, each product's true
+classification and the classification the system should report (the truth
+where the source or the mapping states it, otherwise unknown), the expected
+outcome of every ingestion event, and each file's SHA-256. Nothing here is a
+real customer's data.
 """
 
 from __future__ import annotations
@@ -44,7 +49,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-GENERATOR_VERSION = "1.0.0"
+GENERATOR_VERSION = "1.1.0"
 
 ORG_FIELDS = ["org_id", "org_name", "org_type", "org_status", "org_archetype", "specialty",
               "address_line1", "city", "state", "zip", "parent_org_id", "parent_org_name",
@@ -109,6 +114,9 @@ PROFILES: dict[str, dict] = {
              1.0, 50.0, 0.0, "branded_competitor"),
         ],
         # market data absent in these weeks (whole months: no market coverage)
+        # The customer's classification mapping names every product it knows;
+        # the products of unknown class are absent from it.
+        "classification_mapping": True,
         "market_gap_weeks": list(range(9, 18)),
         # a covered month in which this product sold nothing (distributor)
         "silent_product": ("70707-0300-01", list(range(4, 9))),
@@ -142,6 +150,8 @@ PROFILES: dict[str, dict] = {
             ("66666-0102-01", "QUENTRA", "solunarin", "100MG", 0, "Oncology", "Kinase",
              1.0, 100.0, 0.0, "unknown"),
         ],
+        # No classification mapping: nothing but brand_flag says what a product is.
+        "classification_mapping": False,
         "market_gap_weeks": [4, 5, 6, 7],
         "silent_product": ("55555-0025-01", [8, 9, 10, 11]),
         "hub_products": [],
@@ -367,6 +377,19 @@ def batches(name: str, p: dict, orgs: list[dict], weeks: list[dict]) -> tuple[li
     return docs, expected
 
 
+def mapping(profile: str, p: dict) -> dict | None:
+    """The customer's classification mapping, keyed as a customer would key
+    it: by drug name within a market subcategory. Products whose class the
+    customer does not know are left out, not guessed."""
+    if not p.get("classification_mapping"):
+        return None
+    entries = {(x[1], x[6]): x[10] for x in p["products"] if x[10] != "unknown"}
+    return {"mapping": f"{profile}-customer", "version": "1.0.0",
+            "authority": "fixture profile (synthetic): the profile's declared classes",
+            "entries": [{"drug_name": name, "market_subcategory": sub, "classification": cls}
+                        for (name, sub), cls in sorted(entries.items())]}
+
+
 def write(out: pathlib.Path, profile: str) -> dict:
     p = PROFILES[profile]
     rng = random.Random(p["seed"])
@@ -384,6 +407,9 @@ def write(out: pathlib.Path, profile: str) -> dict:
             writer = csv.DictWriter(fh, fieldnames=fields)
             writer.writeheader()
             writer.writerows(rows)
+    mapped = mapping(profile, p)
+    if mapped is not None:
+        (out / "product_classification.json").write_text(json.dumps(mapped, indent=1))
     (out / "users.json").write_text(json.dumps(users(p, sale_rows, orgs, zips), indent=1))
     docs, expected = batches(profile, p, orgs, weeks)
     (out / "batches").mkdir(exist_ok=True)
@@ -404,6 +430,13 @@ def write(out: pathlib.Path, profile: str) -> dict:
         "rows": {"organizations": len(orgs), "products": len(products), "zip_territory": len(zips),
                  "sales": len(sale_rows)},
         "true_classification": {x[0]: x[10] for x in p["products"]},
+        "classification_mapping": None if mapped is None else "product_classification.json",
+        # What the system should report: the source's brand_flag, else the
+        # mapping, else unknown -- never a guess from the name.
+        "expected_classification": {
+            x[0]: ("company_brand" if x[4] == 1 else
+                   x[10] if mapped is not None and x[10] != "unknown" else "unknown")
+            for x in p["products"]},
         "market_gap_weeks": p["market_gap_weeks"], "silent_product": p["silent_product"],
         "expected_ingestion": expected,
         "files": {str(x.relative_to(out)): hashlib.sha256(x.read_bytes()).hexdigest() for x in files},

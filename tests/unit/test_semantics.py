@@ -249,3 +249,12 @@ def test_whole_pack_counts_have_no_spurious_decimals():
 def test_competitor_is_not_the_same_as_generic(name, brand_flag, expected):
     classification, _ = classify(name, brand_flag)
     assert classification == expected
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "classification rule 1.0.0: with nothing to say what a product is, brand_flag 0 "
+    "and no name suffix make it a branded competitor"))
+@pytest.mark.parametrize("name", ["PRAXOLONE", "TAXOTERE"])
+def test_a_name_alone_does_not_make_a_branded_competitor(name):
+    classification, _ = classify(name, 0)
+    assert classification == "unknown"

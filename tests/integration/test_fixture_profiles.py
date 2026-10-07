@@ -225,3 +225,54 @@ def test_a_reused_territory_name_is_refused_at_load(profile, tmp_path):
     (data / "zip_territory.csv").write_text("\n".join(renamed) + "\n")
     with pytest.raises(LoadError, match="territory name"):
         load("full", generated_dir=data)
+
+
+ELIMINATION = ("classification rule 1.0.0 classes a product by elimination: brand_flag 0 "
+               "and no generic or biosimilar name suffix makes it a branded competitor, "
+               "whatever it is, and no mapping can say otherwise")
+
+
+@pytest.mark.xfail(strict=True, reason=ELIMINATION)
+def test_a_product_nothing_classifies_stays_unknown(profile):
+    """The source's brand_flag says what is ours; the dataset's mapping says
+    what the rest are. A product neither names is unknown -- not a branded
+    competitor because its name lacks a suffix the supplied data happened to
+    use. Orchard ships a mapping without its unknown products; estuary ships
+    none."""
+    expected = profile["manifest"]["expected_classification"]
+    got = {r["ndc"]: r["classification"] for r in sql(
+        "SELECT ndc, classification FROM app_ref.product_classification")}
+    assert "unknown" in expected.values()
+    assert got == expected, {n: (got.get(n), c) for n, c in expected.items() if got.get(n) != c}
+
+
+@pytest.mark.xfail(strict=True, reason=ELIMINATION)
+def test_a_segment_share_counts_unknown_volume_in_no_segment_and_bounds_it(profile):
+    """Branded-competitor share of each of our markets. The segment is the
+    products known to be branded competitors; volume of unknown class is in
+    the market and in no segment, and the answer carries it, so the share
+    can be stated as the range that volume allows. A market whose volume is
+    all of unknown class has no share to report."""
+    expected = profile["manifest"]["expected_classification"]
+    rows = run({"metric": "market_segment_share", "dimensions": ["market_subcategory"],
+                "filters": {"classifications": ["branded_competitor"]}, "time": ALL})
+    want: dict[str, dict[str, float]] = {}
+    for r in sql("SELECT p.market_subcategory AS sub, p.ndc, "
+                 "sum(s.pack_units * p.unit_conversion_factor) AS v FROM sales s "
+                 "JOIN products p ON p.ndc = s.ndc WHERE s.data_source = 'market_data' "
+                 "AND p.market_subcategory IN (SELECT market_subcategory FROM products "
+                 "WHERE brand_flag = 1) GROUP BY 1, 2"):
+        w = want.setdefault(r["sub"], {"n": 0.0, "u": 0.0, "d": 0.0})
+        w["d"] += float(r["v"])
+        w["n"] += float(r["v"]) if expected[r["ndc"]] == "branded_competitor" else 0.0
+        w["u"] += float(r["v"]) if expected[r["ndc"]] == "unknown" else 0.0
+    assert any(w["u"] for w in want.values()), "the profile has market volume of unknown class"
+    got = {r["dim0_id"]: r for r in rows}
+    for sub, w in want.items():
+        row = got[sub]
+        if w["u"] >= w["d"]:
+            assert row["value"] is None and row["value_upper"] is None, (sub, row)
+            continue
+        assert close(row["value"], w["n"] / w["d"]), (sub, row, w)
+        assert close(row["unclassified"], w["u"]), (sub, row, w)
+        assert close(row["value_upper"], (w["n"] + w["u"]) / w["d"]), (sub, row, w)

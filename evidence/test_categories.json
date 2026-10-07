@@ -21,7 +21,8 @@
         "tests/integration/test_period_over_period_fixture.py",
         "tests/integration/test_period_over_period_pipeline.py",
         "tests/integration/test_invariant_oracles.py",
-        "tests/integration/test_fixture_profiles.py"
+        "tests/integration/test_fixture_profiles.py",
+        "tests/integration/test_classification_authority.py"
       ]
     },
     "authorization_security": {
