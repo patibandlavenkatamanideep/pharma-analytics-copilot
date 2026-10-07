@@ -8,6 +8,8 @@ cd "$(dirname "$0")/../.."
 PY=${PY:-python3}
 T=(tests/unit/test_semantics.py tests/unit/test_classification_mapping.py tests/unit/test_segment_share.py
    tests/integration/test_classification_authority.py tests/integration/test_fixture_profiles.py)
+caught=0
+total=0
 mut() {
   local name=$1 file=$2 old=$3 new=$4
   python3 - "$file" "$old" "$new" <<'EOF'
@@ -19,6 +21,8 @@ EOF
   local out
   out=$($PY -m pytest -q -p no:cacheprovider "${T[@]}" 2>&1 | tail -1)
   git checkout -q -- "$file"
+  total=$((total + 1))
+  case "$out" in *failed*) caught=$((caught + 1));; esac
   echo "$name: $out"
 }
 mut "elimination restored" app/data/classification.py \
@@ -50,4 +54,6 @@ mut "calendar check reads one week" app/data/loader.py \
   '        convention = detect_convention(weeks[:1])
     except ConventionError as exc:
         report.source_coverage["calendar"]'
-echo "clean: $(git status --porcelain | wc -l | tr -d ' ')"
+dirty=$(git status --porcelain | wc -l | tr -d ' ')
+echo "mutants: $caught of $total caught; files left modified: $dirty"
+[ "$caught" -eq "$total" ] && [ "$dirty" -eq 0 ]
