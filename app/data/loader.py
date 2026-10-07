@@ -335,6 +335,25 @@ def _validate(cur: Any, report: LoadReport) -> None:
     if unknown:
         fatal.append(f"unknown data_source values: {sorted(unknown)}")
 
+    # Scope binds by NAME: row-level security compares z.territory_name and
+    # z.region_name with the user's assignment (migrations/004_security.sql).
+    # One territory name for two territories -- or a region name for two
+    # regions -- would let a user assigned that name see both. Refused by
+    # name, never published (qualification of 7 October 2026: a fixture
+    # profile reusing a name loaded, and its RAM saw two territories).
+    cur.execute("SELECT territory_name, count(DISTINCT territory_number) AS numbers, "
+                "count(DISTINCT region_number) AS regions FROM zip_territory "
+                "GROUP BY territory_name HAVING count(DISTINCT territory_number) > 1 "
+                "OR count(DISTINCT region_number) > 1 ORDER BY 1")
+    if reused := [r["territory_name"] for r in cur.fetchall()]:
+        fatal.append(f"territory name used for more than one territory or region: {reused[:5]}; "
+                     "scope is bound by territory name, so each must be unique")
+    cur.execute("SELECT region_name FROM zip_territory GROUP BY region_name "
+                "HAVING count(DISTINCT region_number) > 1 ORDER BY 1")
+    if reused := [r["region_name"] for r in cur.fetchall()]:
+        fatal.append(f"region name used for more than one region: {reused[:5]}; "
+                     "scope is bound by region name, so each must be unique")
+
     if fatal:
         raise LoadError("; ".join(fatal))
 

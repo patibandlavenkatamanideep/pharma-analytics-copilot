@@ -208,7 +208,6 @@ def test_each_month_against_the_one_before_matches_the_oracle(profile):
         prior = value
 
 
-@pytest.mark.xfail(strict=True, reason="qualification 2026-10-07: a reused territory name loads")
 def test_a_reused_territory_name_is_refused_at_load(profile, tmp_path):
     """Scope binds by territory name (migrations/004_security.sql). A feed that
     reuses one name for two territories would let a RAM assigned that name
