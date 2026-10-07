@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 import time
 
@@ -25,11 +26,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=("seed", "full"), required=True)
     ap.add_argument("--json", action="store_true", help="print the manifest as JSON")
+    ap.add_argument("--generated-dir", type=pathlib.Path, default=None,
+                    help="same-schema CSVs to load instead of schema/generated (full mode)")
     args = ap.parse_args()
 
     started = time.time()
     try:
-        report = load(args.mode)
+        report = load(args.mode, generated_dir=args.generated_dir)
     except SchemaIncompatible as exc:
         # Already a fully formed, user-facing explanation naming what differs.
         print(f"\nLOAD REFUSED\n\n{exc}\n", file=sys.stderr)

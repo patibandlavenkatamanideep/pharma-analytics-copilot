@@ -171,12 +171,12 @@ def _copy_csv(cur: Any, table: str, columns: list[str], path: pathlib.Path) -> i
     return cur.fetchone()["n"]
 
 
-def _load_full(cur: Any, report: LoadReport) -> None:
+def _load_full(cur: Any, report: LoadReport, directory: pathlib.Path = GENERATED) -> None:
     files = {
-        "organizations": (GENERATED / "organizations.csv", ORG_COLS),
-        "products": (GENERATED / "products.csv", PRODUCT_COLS),
-        "zip_territory": (GENERATED / "zip_territory.csv", ZIP_COLS),
-        "sales": (GENERATED / "sales.csv", SALES_COLS),
+        "organizations": (directory / "organizations.csv", ORG_COLS),
+        "products": (directory / "products.csv", PRODUCT_COLS),
+        "zip_territory": (directory / "zip_territory.csv", ZIP_COLS),
+        "sales": (directory / "sales.csv", SALES_COLS),
     }
     missing = [str(p) for p, _ in files.values() if not p.exists()]
     if missing:
@@ -526,7 +526,10 @@ def _validate(cur: Any, report: LoadReport) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def load(mode: str) -> LoadReport:
+def load(mode: str, *, generated_dir: pathlib.Path | None = None) -> LoadReport:
+    """Load and publish a snapshot. `generated_dir` points a full load at
+    same-schema CSVs other than schema/generated -- a fixture profile
+    (scripts/fixture_profile.py); its file hashes are recorded as usual."""
     if mode not in ("seed", "full"):
         raise LoadError(f"unknown load mode {mode!r}")
 
@@ -562,7 +565,7 @@ def load(mode: str) -> LoadReport:
                 )
             _truncate_business_data(cur)
             if mode == "full":
-                _load_full(cur, report)
+                _load_full(cur, report, generated_dir or GENERATED)
             else:
                 _load_seed(cur, report)
             _bootstrap_users(cur, report)

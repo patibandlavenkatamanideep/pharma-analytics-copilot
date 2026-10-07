@@ -20,7 +20,8 @@
         "tests/integration/test_full_cohort.py",
         "tests/integration/test_period_over_period_fixture.py",
         "tests/integration/test_period_over_period_pipeline.py",
-        "tests/integration/test_invariant_oracles.py"
+        "tests/integration/test_invariant_oracles.py",
+        "tests/integration/test_fixture_profiles.py"
       ]
     },
     "authorization_security": {
