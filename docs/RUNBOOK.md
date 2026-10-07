@@ -345,14 +345,15 @@ themselves expire ([RETENTION.md](RETENTION.md)).
 | scoped | `pac_scoped_login` | 8 |
 | auth | `pac_auth_login` | 4 |
 | graph (checkpoints) | `pac_auth_login` | 4 |
-| **per worker** | | **24** |
+| freshness (opened only when a collector is configured; `app/db.py` `freshness_pool`) | `pac_auth_login` | 1 |
+| **per worker** | | **25** |
 
-The image runs 2 workers, so one replica uses up to **48**. The jobs
+The image runs 2 workers, so one replica uses up to **50**. The jobs
 container (owner pool, max 4) runs alongside on demand. PostgreSQL's default
 `max_connections` is 100, which is therefore **one replica plus jobs**.
 Before adding replicas, either raise `max_connections` or put PgBouncer in
 transaction mode in front. Budget at least
-`replicas × workers × 24 + 4 + superuser_reserved_connections`. The scoped
+`replicas × workers × 25 + 4 + superuser_reserved_connections`. The scoped
 and exec pools are where requests queue under load (see
 [CAPACITY.md](CAPACITY.md)). Their size is the backpressure point. In the
 load profile, all 16 scoped connections were active from 16 clients
