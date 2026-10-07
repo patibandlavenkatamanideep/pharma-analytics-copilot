@@ -1,0 +1,4 @@
+# Public Python base-image GPG fingerprint in historical Trivy image metadata.
+# Exact historical findings only; no file-wide or rule-wide exemption.
+58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:50
+58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:201
