@@ -6,6 +6,9 @@
 set -u
 cd "$(dirname "$0")/../.."
 PY=${PY:-python3}
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "refusing: uncommitted changes would be reverted by git checkout"; exit 2
+fi
 T=(tests/unit/test_semantics.py tests/unit/test_classification_mapping.py tests/unit/test_segment_share.py
    tests/integration/test_classification_authority.py tests/integration/test_fixture_profiles.py)
 caught=0
