@@ -233,6 +233,24 @@
       ],
       "verified_by": "hosted_ci:37651718276",
       "note": "fixed after the executable candidate 7950e71; a workflow/deployment change with no application code"
+    },
+    {
+      "id": "k07-period-over-period",
+      "title": "A supplied sample question (growth month over month) could not be planned; the refusal named the grain by its code",
+      "fix_commits": [
+        "fce6b93"
+      ],
+      "regression_files": [
+        "tests/unit/test_period_over_period.py",
+        "tests/integration/test_period_over_period_fixture.py",
+        "tests/integration/test_period_over_period_pipeline.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-k07-reproduced.json",
+          "baseline": "1b59504"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
