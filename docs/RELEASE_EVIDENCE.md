@@ -1,6 +1,83 @@
 # Release evidence
 
-## Current local candidate — 7 October 2026
+## Current local candidate — 7 October 2026 (`7950e71`)
+
+**Not production-ready.** The seven release defects are corrected and
+regression-tested locally, and every local gate passes on the candidate
+below. Hosted CI runs when the branch is pushed (authorized on 7 October);
+its result is recorded in [REVIEW_2026_10_06.md](REVIEW_2026_10_06.md) once
+known. Nothing has been published, deployed or sent to a paid model.
+
+`7950e71` is `a05237b` (the candidate measured first, section below) plus
+four changes, each ported from the parallel branch
+`post-assessment/release-risks`, which corrected the same review findings
+independently:
+
+- **The evidence recorder counted results from anywhere in a run's output**
+  (`cb8f00b`). A library's log line printed after pytest's summary ("pool.py:680
+  error ... port 62692 failed") was recorded as 680 errors and 62,692
+  failures. Counts now come from pytest's summary line alone. Every pytest
+  record on this branch had parsed correctly; non-pytest commands now record
+  `counts: null`.
+- **Four log calls fell to `log.unclassified` or `log.external`** (`7526e69`):
+  three telemetry debug messages and the ingestion job's telemetry warning.
+  Nothing leaked, but the events lost their meaning. They are registered,
+  and `tests/unit/test_log_registry.py` fails if any log call in `app/` or
+  `scripts/` is not.
+- **14 behavioural tests** (`a85c91b`): 7 log-leak cases with markers (an
+  opaque token, a one-word entity, a preformatted error, a plain address, a
+  third-party logger, uvicorn's access path, the collector address) and 7
+  real-outage telemetry cases (closed port, silent server, held pool, locked
+  table, an outage during a collection, a silent collector, a silent
+  collector with no database). On the reviewed code `58b3d3e`: 12 failed and
+  2 passed (`r5-port-reproduced.json`; the tree there was `58b3d3e` plus the
+  added files, recorded by digest).
+- **The connection budget counts the freshness pool** (`7950e71`): 25 per
+  worker, 50 per two-worker replica.
+
+| Identity | Value |
+|---|---|
+| Branch | `codex/release-defects-oct06` |
+| Exact candidate measured | `7950e71304ec1c6da7985f6fa9ec41a2b154da6f` (tree `f9eaf48`) |
+| Environment | macOS arm64; Python 3.13.2; PostgreSQL 16.14; Node 24.19.0 (official build, SHA-256 checked) for the frontend; offline planner |
+| Databases | `pac_release` provisioned from scratch for this candidate (bootstrap, migrations, 2,000,000 sales); `pac_release_fixture`, `_authtest`, `_ingesttest` |
+| Records | `r5-final-*.json`, each made with `--require-clean` on the candidate; the image record names the detached worktree's branch as `HEAD` |
+
+| Suite / check | Pass | Fail | Skip | Evidence record |
+|---|---:|---:|---:|---|
+| Security boundary (`verify_runtime_role_safety`) | intact | — | — | `r5-final-boundary.json` |
+| Full Python suite | 2078 | 0 | 0 | `r5-final-pytest.json` |
+| Security release gate, strict floor 409 | 409 | 0 | 0 | `r5-final-security.json` |
+| Ingestion release gate, strict floor 176 | 176 | 0 | 0 | `r5-final-ingestion.json` |
+| The whole unit suite with no PostgreSQL reachable | 770 | 0 | 0 | `r5-final-unit-nodb.json` |
+| The release gate's own tests | 19 | 0 | 0 | `r5-final-release-gate-selftest.json` |
+| Components, Node 24, strict floor 27 | 27 | 0 | 0 | `r5-final-component.json`, `.detail.json` |
+| Frontend production build, Node 24 | pass | — | — | `r5-final-web-build.json` |
+| Browser journeys, Chromium, real local app | 10 | 0 | 0 | `r5-final-browser.json` |
+| Offline regression questions (gate) | 38 | 0 | 0 | `r5-final-eval-questions.json`, `.detail.json` |
+| Offline holdout 1 (spent) | 12 | 0 | 0 | `r5-final-eval-holdout.json`, `.detail.json` |
+| Offline holdout 2 (spent; measurement) | 11 | 1 | 0 | `r5-final-eval-holdout2.json`, `.detail.json`. k-07 is the offline planner's known limitation |
+| pip-audit 2.7.3 / production npm audit | pass | — | — | `r5-final-pip-audit.json`, `r5-final-npm-audit.json` |
+| Gitleaks 8.30.1, full history | pass | — | — | `r5-final-gitleaks.json`; `.gitleaksignore` lists exactly two findings, the public CPython release key fingerprint in a historical trivy report |
+| Image journeys, linux/amd64 | 25 | 0 | 0 | `r5-final-image-amd64.json` |
+
+The image, built from the candidate with podman on an arm64 Mac under amd64
+emulation: `linux/amd64`, 302 MB, revision label `7950e71304ec…`, image ID
+`390a629596b886f42c2ed61039facffad8c552bc7493766b32fcbd18e0b4ec0e`, digest
+`sha256:73494114edd00a0925c7ae7a53b6c4a149bfb198f5e646c663d6c1669a8f5afc`.
+Trivy found no HIGH or CRITICAL vulnerability with a fix. It refused to
+serve with no database and with the owner credential; provisioned a fresh
+database; reported its release; signed in an Exec (priced answer) and a RAM
+(no currency anywhere); ended a session on sign-out; wrote only sanitised
+JSON log lines; and stopped cleanly on SIGTERM. It was not published, built
+by hosted CI or run in staging.
+
+Offline results measure deterministic compilation, authorization, execution
+and rendering; 61/62 is not a live-model accuracy estimate. The full suite
+includes 672 EXPLAIN compatibility cases, which do not establish numerical
+correctness.
+
+### Earlier candidate `a05237b` (measured first, 7 October)
 
 **Not production-ready.** All seven requested release defects are implemented
 and locally regression-tested. The known offline `holdout2/k-07` mismatch remains
