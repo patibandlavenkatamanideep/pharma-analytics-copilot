@@ -333,3 +333,30 @@ def test_database_outage_leaves_unrelated_metrics_collectable(ingest_env, monkey
         telemetry.reset()
         provider.shutdown()
         close_pools()
+
+
+# -- a rejected batch is visible for as long as it matters --------------------------------
+#
+# Qualification of 7 October 2026, step 6 (scripts/ops_drill.py). The
+# BatchRejected and QuarantineRising alerts watched counters that only the
+# one-shot jobs process records: exported once, at a value with no earlier
+# sample -- so increase() over them is zero -- and expired when the process
+# is gone. The drill rejected a batch and the alert never fired.
+
+@pytest.mark.xfail(strict=True, reason=(
+    "rejections and quarantines are counted only by the one-shot jobs process; no "
+    "serving process reports them"))
+def test_a_rejected_batch_is_reported_by_a_serving_process_until_the_feed_recovers(
+        fresh, exported):
+    from tests.integration.test_ingestion import filler
+
+    assert run(batch("ok-1", ev("ok-1"))).status == "published"
+    assert run(batch("bad-1", ev("bad-1"), declared_count=5)).status == "rejected"
+    assert run(batch("bad-2", ev("bad-2"), declared_count=7)).status == "rejected"
+    assert gauges_for(exported, SOURCE)["pac.ingest.rejected_since_success"] == 2
+    # Thirty good events and one the contract refuses: published, one quarantined.
+    published = run(batch("ok-2", *filler("ok2", 30), ev("ok2-bad", pack_units=0)))
+    assert published.status == "published"
+    gauges = gauges_for(exported, SOURCE)
+    assert gauges["pac.ingest.rejected_since_success"] == 0
+    assert gauges["pac.ingest.quarantined_last_day"] == 1

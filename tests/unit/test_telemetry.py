@@ -346,3 +346,69 @@ def test_source_and_model_metric_cardinality_use_operator_inventories(spans, mon
     assert len(labels) == 3
     assert 'SECRET' not in str(labels)
     assert {p.get('source') for _, p in labels if 'source' in p} == {'other', 'feed-a'}
+
+
+# ---------------------------------------------------------------------------
+# What the local drill found (qualification of 7 October 2026, step 6)
+# ---------------------------------------------------------------------------
+
+def _points(reader) -> dict[tuple[str, tuple], float]:
+    data = reader.get_metrics_data()
+    out = {}
+    for rm in data.resource_metrics if data else []:
+        for sm in rm.scope_metrics:
+            for metric in sm.metrics:
+                for point in metric.data.data_points:
+                    out[(metric.name, tuple(sorted((point.attributes or {}).items())))] = \
+                        getattr(point, "value", None)
+    return out
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "a counter series appears at its first increment, already at 1; increase() needs an "
+    "earlier sample, so the first audit loss, database error or pool timeout never pages"))
+def test_the_counters_single_event_alerts_watch_start_at_zero():
+    reader = InMemoryMetricReader()
+    telemetry.use(None, MeterProvider(metric_readers=[reader]))
+    try:
+        points = _points(reader)
+    finally:
+        telemetry.reset()
+    for name, key, values in (("pac.persistence.failures", "kind", ("audit", "turn")),
+                              ("pac.db.errors", "kind", ("timeout", "unavailable",
+                                                         "generation_changed")),
+                              ("pac.db.pool.timeouts", "pool", ("exec", "scoped", "auth"))):
+        for value in values:
+            assert points.get((name, ((key, value),))) == 0, (name, value)
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "the OTLP exporters report an unreachable collector by returning FAILURE, not by "
+    "raising; the wrappers log only exceptions, so an outage leaves no line in the log"))
+def test_an_export_the_collector_did_not_accept_is_logged(caplog):
+    from opentelemetry.sdk.metrics.export import MetricExporter, MetricExportResult, MetricsData
+    from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult
+
+    from app.telemetry import RedactingMetricExporter
+
+    class RefusingMetrics(MetricExporter):
+        def export(self, metrics_data, timeout_millis=10_000, **kwargs):
+            return MetricExportResult.FAILURE
+
+        def force_flush(self, timeout_millis=10_000):
+            return True
+
+        def shutdown(self, timeout_millis=30_000, **kwargs):
+            pass
+
+    class RefusingSpans(SpanExporter):
+        def export(self, spans):
+            return SpanExportResult.FAILURE
+
+    caplog.set_level("WARNING", logger="app.telemetry")
+    assert RedactingMetricExporter(RefusingMetrics()).export(
+        MetricsData(resource_metrics=[])) == MetricExportResult.FAILURE
+    assert RedactingSpanExporter(RefusingSpans()).export([]) == SpanExportResult.FAILURE
+    messages = [r.msg for r in caplog.records]
+    assert "metric export failed (%s); interval dropped" in messages
+    assert "telemetry export failed (%s); %d spans dropped" in messages
