@@ -278,5 +278,5 @@ Both mutant probes now refuse a tree with uncommitted changes.
 
 **Residual.** Which mode a deployment uses is the owner's decision. Strict mode
 turns an audit-storage problem into an answer outage. Refusals before a run starts
-are in telemetry only. Worker death was simulated in-process tree against one local
+are in telemetry only. Worker death was simulated as a child process against one local
 PostgreSQL, not across containers (step 6).
