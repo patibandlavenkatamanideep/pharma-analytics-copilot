@@ -13,7 +13,7 @@ is never allowed to contain. The code is
 | Where | PostgreSQL: `app_meta.query_audit`, `app_conv.runs`, sessions, login attempts | OpenTelemetry traces and metrics, sent to an OTLP collector |
 | Delivery | Written in a transaction; the audit row is keyed by request id, so a replayed step cannot write it twice | Exported in the background through a bounded queue; dropped when the collector is slow or down |
 | Contents | Chosen column by column: hashes, codes, counts, versions, timings | Allowlisted attribute names, short scalar values |
-| If it fails | A failed audit write is logged and counted (`pac.persistence.failures{kind="audit"}`); the answer is still returned. A failed turn commit returns the answer marked `persistence: failed` | Spans and points are lost. The request is unaffected. That loss is not a security event |
+| If it fails | Default (best effort): a failed audit write is logged and counted (`pac.persistence.failures{kind="audit"}`); the answer is still returned. A failed turn commit returns the answer marked `persistence: failed`. Under `PAC_AUDIT_MODE=strict` the answer is withheld instead ([AUDIT_DECISION.md](AUDIT_DECISION.md)) | Spans and points are lost. The request is unaffected. That loss is not a security event |
 
 Telemetry never stands in for the audit trail. The audit trail does not
 depend on telemetry.
@@ -30,6 +30,15 @@ database refuses the insert, the answer is returned, one failure is
 counted and no row exists
 (`tests/security/test_audit_contract.py::test_the_current_policy_a_failed_audit_write_is_counted_and_the_answer_still_returned`).
 Sampled telemetry does not substitute for the missing row.
+
+**Since 7 October 2026** a strict mode exists and is opt-in
+(`PAC_AUDIT_MODE=strict`): the audit row commits with the turn and the run's
+outcome, an answer whose row cannot be committed is withheld, and a replay is
+recorded before it is returned. The default is unchanged. What each mode does
+under refused inserts, outages, worker death, lost responses, duplicates,
+expired leases, revoked access and cancellation:
+[AUDIT_DECISION.md](AUDIT_DECISION.md). The text below is the decision as it
+stood before.
 
 **Not decided:** whether that satisfies the audit requirement. The
 assignment asks for access control, not an audit regime. If the product or

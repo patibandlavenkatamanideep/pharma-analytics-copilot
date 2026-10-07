@@ -36,14 +36,15 @@ QUESTION = "What is our total volume this quarter?"
 
 
 @pytest.fixture(params=["best_effort", "strict"])
-def mode(request, monkeypatch):
+def mode(request, monkeypatch, client):
+    """`client` starts the application, so api.pipeline() exists."""
     import app.api.main as api
     monkeypatch.setattr(api.pipeline().settings, "audit_mode", request.param)
     return request.param
 
 
 @pytest.fixture
-def strict(monkeypatch):
+def strict(monkeypatch, client):
     import app.api.main as api
     monkeypatch.setattr(api.pipeline().settings, "audit_mode", "strict")
     return api.pipeline()
@@ -403,3 +404,43 @@ def test_a_cancel_that_arrives_during_the_commit_is_too_late(make_identity, mode
     assert [r["status"] for r in audit_for(run["run_id"])] == ["answered"]
     replay = api.pipeline().ask(principal(user), QUESTION, idempotency_key=k)
     assert replay.payload["replayed"] is True
+
+
+def test_an_uncertain_commit_acknowledgement(make_identity, mode, monkeypatch):
+    """The transaction commits and the connection is lost before the
+    acknowledgement arrives, so the application sees an error for a commit
+    that happened. Strict withholds the answer, although its audit row and
+    outcome exist -- recorded and not released is the safe direction -- and
+    the retry under the key releases it as a recorded replay. runs.fail
+    never reopens a committed run, so the key cannot commit twice."""
+    import psycopg
+
+    import app.api.main as api
+    import app.pipeline as P
+    from app.pipeline import AuditUnavailable
+
+    user = make_identity("exec", can_view_wac=1)
+    k = key()
+    real = P.finalise
+
+    def commit_then_lose_ack(*args, **kwargs):
+        real(*args, **kwargs)
+        raise psycopg.OperationalError("simulated: connection lost after COMMIT was sent")
+
+    monkeypatch.setattr(P, "finalise", commit_then_lose_ack)
+    if mode == "strict":
+        with pytest.raises(AuditUnavailable):
+            api.pipeline().ask(principal(user), QUESTION, idempotency_key=k)
+    else:
+        released = api.pipeline().ask(principal(user), QUESTION, idempotency_key=k)
+        assert released.status == "answered" and released.persistence == "failed"
+    monkeypatch.setattr(P, "finalise", real)
+    run = run_for(user.user_id, k)
+    assert run["status"] == "succeeded" and run["outcome"] is not None
+    assert [r["status"] for r in audit_for(run["run_id"])] == ["answered"]
+
+    retry = api.pipeline().ask(principal(user), QUESTION, idempotency_key=k)
+    assert retry.payload["replayed"] is True
+    expected = ["answered", "replayed"] if mode == "strict" else ["answered"]
+    assert [r["status"] for r in audit_for(run["run_id"])] == expected
+    assert turns(run["conversation_id"]) == 1, "the key committed once"

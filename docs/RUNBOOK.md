@@ -72,6 +72,7 @@ environment or `.env`. No secret is ever committed.
 | `PAC_COOKIE_SECURE` | `true` | set `false` only for local HTTP |
 | `PAC_BUSINESS_TIMEZONE` | `America/New_York` | the day an ingested sale belongs to ([INGESTION.md](INGESTION.md)) |
 | `PAC_INGEST_MAX_QUARANTINE_RATIO` | `0.05` | above this share of invalid events a batch is rejected |
+| `PAC_AUDIT_MODE` | `best_effort` | `strict` commits each answer's audit row with the turn and withholds (503 `audit_unavailable`) an answer or replay that cannot be recorded; see [AUDIT_DECISION.md](AUDIT_DECISION.md) |
 | `PAC_OTEL_ENDPOINT` | unset | OTLP/HTTP collector; unset exports nothing ([OBSERVABILITY.md](OBSERVABILITY.md)) |
 | `PAC_RELEASE` | `dev` | release identifier reported with telemetry |
 | `PAC_LOG_FORMAT` / `PAC_LOG_LEVEL` | `json` / `INFO` | one sanitised JSON line per record ([OBSERVABILITY.md](OBSERVABILITY.md#logs)); `text` only for local work |
@@ -184,7 +185,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 431
+python3 -m pytest tests/security -q --release-gate --min-tests 433
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

@@ -29,8 +29,8 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 822 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Integration** | `pytest tests/integration -q` | 956 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 431` | 431 | pass, strict gate | `r5-final-security.json` (`7950e71`) |
-| **Total (pytest)** | `pytest tests -q` | **2209** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 433` | 433 | pass, strict gate | `r5-final-security.json` (`7950e71`) |
+| **Total (pytest)** | `pytest tests -q` | **2211** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-final-component.json` (`7950e71`, 30 tests); 32 to be recorded on this pass's final candidate |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-final-browser.json` (`7950e71`) |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r5-final-eval-*.json` (`7950e71`, offline) |
@@ -179,7 +179,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 431`, and fails on a skip in any phase, a
+`--release-gate --min-tests 433`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -195,7 +195,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 431
+python3 -m pytest tests/security -q --release-gate --min-tests 433
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

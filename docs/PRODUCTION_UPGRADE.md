@@ -127,7 +127,7 @@ Three categories, deliberately separated.
 | **R4** | No original-data onboarding path. `load_data.py` accepts `seed`/`full` only, reads fixed generated paths, requires exact CSV headers, and loads while holding `TRUNCATE` locks. | `app/data/loader.py` |
 | **R5** | Turn concurrency is protected at insertion, not across read→plan→answer. The advisory lock is taken inside `record_turn`, after planning. Two continuations can plan against the same stale parent. | `app/conversation/state.py` |
 | **R6** | Per-statement timeout, no request-wide budget. Provider SDK retries plus plan repair can compound beyond any single limit. | `app/db.py`, `app/pipeline.py` |
-| **R7** | Audit and conversation writes are best-effort — failures are logged and suppressed. | `app/pipeline.py` |
+| **R7** | Audit and conversation writes are best-effort — failures are logged and suppressed. *7 October 2026: still the default; `PAC_AUDIT_MODE=strict` commits the audit row with the turn and withholds an unrecorded answer ([AUDIT_DECISION.md](AUDIT_DECISION.md)).* | `app/pipeline.py` |
 | **R8** ✅ | *Fixed in Phase 1D.* DSN built by raw string interpolation; a password containing `@`, `:`, `/` or `#` produces a malformed or misrouted URL. | `app/config.py:68` |
 | **R9** | Observability is logs, aggregate timings and audit rows. No tracing, no metrics, no correlation across phases. | — |
 

@@ -345,7 +345,7 @@ throughout: **never produce a number that did not come from the database.**
 |---|---|---|
 | Provider returns an invalid plan twice | Useful error naming what to try; provider internals not leaked to the user | ✅ |
 | Provider timeout / unreachable | Propagates to a safe 500 rather than being swallowed into an answer | ✅ |
-| Any failed request | Still written to the audit trail, with status and reason | ✅ |
+| A failed request that reached the pipeline | Written to the audit trail with status and reason, best effort: a failed audit write is counted, not retried, and refusals before a run starts are counted in telemetry only ([AUDIT_DECISION.md](AUDIT_DECISION.md)) | ✅ |
 | Query exceeds the 5 s budget | Cancelled; advice to narrow, no partial result | ✅ |
 | Database unavailable | Reported; response contains no fabricated figure | ✅ |
 | No matching rows | "No data reported" — explicitly *not* a confirmed zero | ✅ |
