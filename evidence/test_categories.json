@@ -88,7 +88,8 @@
         "tests/integration/test_telemetry_outages.py",
         "tests/unit/test_logs.py",
         "tests/unit/test_log_allowlist.py",
-        "tests/unit/test_log_registry.py"
+        "tests/unit/test_log_registry.py",
+        "tests/unit/test_telemetry_identity.py"
       ]
     },
     "evaluation_harness": {
