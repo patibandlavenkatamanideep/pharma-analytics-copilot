@@ -1,0 +1,40 @@
+{
+  "description": "Verification that ran outside this machine. Each entry is a run anyone with access can open; the index does not re-check it.",
+  "hosted_ci": [
+    {
+      "run_id": 37650229833,
+      "commit": "eb65af3c465b1172de40b7f3a70817ee3cdf95ca",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833",
+      "note": "image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed"
+    },
+    {
+      "run_id": 37650599310,
+      "commit": "9519f281ae2f47957b4127ac25bad5333f956a02",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650599310",
+      "note": "test job failed loading the full dataset (shared memory); image, frontend and supply-chain passed"
+    },
+    {
+      "run_id": 37651718276,
+      "commit": "7bca4ca78a20a33000b6c9fcfabd78e27552a43f",
+      "conclusion": "success",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37651718276",
+      "note": "all four jobs; application code of 7950e71; image built natively on linux/amd64, sha256:dc31d26e33be1562b4eeec41d4a4fbcd096c7133082cd0080513855b7f2511ee (image ID reported by the image test)"
+    },
+    {
+      "run_id": 37653591687,
+      "commit": "69c62de959a988305463be4b0219db7e88b1bcde",
+      "conclusion": "success",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687",
+      "note": "all four jobs; documentation-only change over 7bca4ca"
+    }
+  ],
+  "not_externally_verified": [
+    "a live model under prompt 2.1.0",
+    "a real OIDC identity provider",
+    "a real source feed",
+    "staging, deployed replicas, a real telemetry backend and alerting",
+    "a published registry image (CI builds the image; nothing is pushed to a registry)"
+  ]
+}

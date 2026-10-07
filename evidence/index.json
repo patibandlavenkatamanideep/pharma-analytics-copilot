@@ -1,0 +1,972 @@
+{
+ "generated_at": "2026-10-07T18:14:33+00:00",
+ "generator": "scripts/evidence_index.py",
+ "identity": {
+  "head": {
+   "sha": "69c62de959a988305463be4b0219db7e88b1bcde",
+   "tree": "981b86a810611a9c7c49c57d0a7782af2e799ef7",
+   "branch": "codex/release-defects-oct06",
+   "worktree_clean": false
+  },
+  "candidate": {
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "tree": "f9eaf48ad0180532f0c82ec7f6b8939e80125067",
+   "is_ancestor_of_head": true
+  },
+  "delta_candidate_to_head": {
+   "by_class": {
+    "deployment configuration": [
+     "compose.yaml"
+    ],
+    "documentation": [
+     "docs/RELEASE_EVIDENCE.md",
+     "docs/REVIEW_2026_10_06.md",
+     "docs/RUNBOOK.md",
+     "docs/TEST_INVENTORY.md"
+    ],
+    "evidence data": [
+     "evidence/runs/r5-ci-shm-fixed.json",
+     "evidence/runs/r5-ci-shm-reproduced.json",
+     "evidence/runs/r5-final-boundary.json",
+     "evidence/runs/r5-final-browser.json",
+     "evidence/runs/r5-final-component.detail.json",
+     "evidence/runs/r5-final-component.json",
+     "evidence/runs/r5-final-eval-holdout.detail.json",
+     "evidence/runs/r5-final-eval-holdout.json",
+     "evidence/runs/r5-final-eval-holdout2.detail.json",
+     "evidence/runs/r5-final-eval-holdout2.json",
+     "evidence/runs/r5-final-eval-questions.detail.json",
+     "evidence/runs/r5-final-eval-questions.json",
+     "evidence/runs/r5-final-gitleaks.json",
+     "evidence/runs/r5-final-image-amd64.json",
+     "evidence/runs/r5-final-ingestion.json",
+     "evidence/runs/r5-final-npm-audit.json",
+     "evidence/runs/r5-final-pip-audit.json",
+     "evidence/runs/r5-final-pytest.json",
+     "evidence/runs/r5-final-release-gate-selftest.json",
+     "evidence/runs/r5-final-security.json",
+     "evidence/runs/r5-final-unit-nodb.json",
+     "evidence/runs/r5-final-web-build.json"
+    ],
+    "probe tooling": [
+     "evidence/probes/shm_full_load.sh"
+    ],
+    "workflow": [
+     ".github/workflows/ci.yml"
+    ]
+   },
+   "classes_needing_evidence": [
+    "deployment configuration",
+    "workflow"
+   ]
+  }
+ },
+ "versions": {
+  "metric_registry": "1.4.0",
+  "policy": "1.0.0",
+  "schema_contract": "1.0.0",
+  "mapping": "1.0.0",
+  "classification_rule": "1.0.0",
+  "prompt": "2.1.0",
+  "prompt_fingerprint": "5ca5ddf08608fb64",
+  "planner_contract": "2.0.0",
+  "graph": "1.0.0"
+ },
+ "datasets": [
+  {
+   "dataset_id": "full-94491ffd38f6",
+   "load_mode": "full",
+   "fingerprint": "cba52562c89a4f8fd76c52a3",
+   "database": "pac_release"
+  },
+  {
+   "dataset_id": "seed-fa99907f4fe9",
+   "load_mode": "seed",
+   "fingerprint": "a29d02f0c9b24ea00e05f664",
+   "database": "pac_release_authtest"
+  }
+ ],
+ "images": [
+  {
+   "file": "r5-final-image-amd64.json",
+   "ref": "pharma-analytics-copilot:smoke",
+   "inspected_with": "podman",
+   "id": "390a629596b886f42c2ed61039facffad8c552bc7493766b32fcbd18e0b4ec0e",
+   "digest": "sha256:73494114edd00a0925c7ae7a53b6c4a149bfb198f5e646c663d6c1669a8f5afc",
+   "platform": "linux/amd64",
+   "revision_label": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
+  }
+ ],
+ "records": [
+  {
+   "file": "evidence/runs/r5-final-boundary.json",
+   "claim": "The database security boundary is intact on the freshly provisioned release database",
+   "status": "passed",
+   "counts": null,
+   "summary": "boundary intact",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:00:43+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-browser.json",
+   "claim": "The browser journeys pass in real Chromium against a local server",
+   "status": "passed",
+   "counts": null,
+   "summary": "  10 passed (4.9s)",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:39+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-component.json",
+   "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed",
+   "status": "passed",
+   "counts": null,
+   "summary": "component gate satisfied: 27 passed, none skipped (floor 27)",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:30+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-eval-holdout.json",
+   "claim": "Held-out set 1, offline planner (measurement, spent set)",
+   "status": "passed",
+   "counts": null,
+   "summary": "  accuracy and must not be reported as one.",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:13+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-eval-holdout2.json",
+   "claim": "Held-out set 2, offline planner (measurement, spent set)",
+   "status": "failed",
+   "counts": null,
+   "summary": "  accuracy and must not be reported as one.",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:16+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-eval-questions.json",
+   "claim": "Regression set, offline planner (a gate; not natural-language accuracy)",
+   "status": "passed",
+   "counts": null,
+   "summary": "  accuracy and must not be reported as one.",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:10+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-gitleaks.json",
+   "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
+   "status": "passed",
+   "counts": null,
+   "summary": "\u001b[90m12:05PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:47+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-image-amd64.json",
+   "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
+   "status": "passed",
+   "counts": null,
+   "summary": "{\"release\": \"7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"checks\": [\"PASS: image builds (79 s)\", \"PASS: image is labelled with commit 7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"PASS: image size 302 MB\", \"PASS: image id 390a629596b886f42c2ed61039facffad8c552bc7493766b32fcbd18e0b4ec0e (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release 7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 25, \"failed\": 0}",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": [
+    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
+    "seed data, not the full dataset; offline planner"
+   ],
+   "recorded_at": "2026-10-07T16:10:08+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-ingestion.json",
+   "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
+   "status": "passed",
+   "counts": {
+    "passed": 176
+   },
+   "summary": "176 passed in 18.37s",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:01:37+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-npm-audit.json",
+   "claim": "No high or critical vulnerability in the production JavaScript dependencies",
+   "status": "passed",
+   "counts": null,
+   "summary": "found 0 vulnerabilities",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:46+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-pip-audit.json",
+   "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)",
+   "status": "passed",
+   "counts": null,
+   "summary": "No known vulnerabilities found",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:45+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-pytest.json",
+   "claim": "The full pytest suite passes",
+   "status": "passed",
+   "counts": {
+    "passed": 2078
+   },
+   "summary": "2078 passed, 5 warnings in 119.10s (0:01:59)",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:03:47+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-release-gate-selftest.json",
+   "claim": "The release gate itself rejects unverified runs",
+   "status": "passed",
+   "counts": {
+    "passed": 19
+   },
+   "summary": "19 passed, 5 warnings in 4.83s",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:01+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-security.json",
+   "claim": "The security suite passes under the strict release gate at its CI floor",
+   "status": "passed",
+   "counts": {
+    "passed": 409
+   },
+   "summary": "409 passed in 33.33s",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:01:18+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-unit-nodb.json",
+   "claim": "With no PostgreSQL reachable, the whole unit suite passes",
+   "status": "passed",
+   "counts": {
+    "passed": 770
+   },
+   "summary": "770 passed, 5 warnings in 27.52s",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:04:26+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-final-web-build.json",
+   "claim": "The production frontend builds on Node 24 from the locked install",
+   "status": "passed",
+   "counts": null,
+   "summary": "\u2713 built in 231ms",
+   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "worktree_clean": true,
+   "limits": null,
+   "recorded_at": "2026-10-07T16:05:31+00:00",
+   "measures_candidate": true
+  }
+ ],
+ "tests": {
+  "junit": null
+ },
+ "evaluations": [
+  {
+   "set": "r5-final-eval-holdout.detail.json",
+   "question_set_status": "spent",
+   "question_set_sha256": "ab96e7f04dc6fa332a0a5c6fd183a5319fb7e7e338d1fdd45eb1ebbebc4c1917",
+   "provider": "offline",
+   "measures_nl_accuracy": false,
+   "prompt_version": "2.1.0",
+   "dataset_id": "full-94491ffd38f6",
+   "total": 12,
+   "passed": 12,
+   "failed": 0,
+   "failures": [],
+   "by_category": {
+    "answer": 11,
+    "refusal": 1,
+    "unsupported": 0,
+    "wrong": 0,
+    "failure": 0
+   },
+   "detail_consistent": true
+  },
+  {
+   "set": "r5-final-eval-holdout2.detail.json",
+   "question_set_status": "spent",
+   "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
+   "provider": "offline",
+   "measures_nl_accuracy": false,
+   "prompt_version": "2.1.0",
+   "dataset_id": "full-94491ffd38f6",
+   "total": 12,
+   "passed": 11,
+   "failed": 1,
+   "failures": [
+    {
+     "id": "k-07",
+     "category": "wrong",
+     "reason": "plan.metric = 'volume_growth', expected 'paid_pack_units'"
+    }
+   ],
+   "by_category": {
+    "answer": 10,
+    "refusal": 0,
+    "unsupported": 1,
+    "wrong": 1,
+    "failure": 0
+   },
+   "detail_consistent": true
+  },
+  {
+   "set": "r5-final-eval-questions.detail.json",
+   "question_set_status": "regression",
+   "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
+   "provider": "offline",
+   "measures_nl_accuracy": false,
+   "prompt_version": "2.1.0",
+   "dataset_id": "full-94491ffd38f6",
+   "total": 38,
+   "passed": 38,
+   "failed": 0,
+   "failures": [],
+   "by_category": {
+    "answer": 34,
+    "refusal": 3,
+    "unsupported": 1,
+    "wrong": 0,
+    "failure": 0
+   },
+   "detail_consistent": true
+  }
+ ],
+ "defects": [
+  {
+   "id": "checkpoint-safety",
+   "title": "Checkpoint bytes could run constructors through the runtime factory; a graph-version mismatch silently discarded a checkpoint",
+   "fix_commits": [
+    {
+     "commit": "fabb9c0",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    },
+    {
+     "commit": "0e582c7",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/security/test_checkpoint_loading.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/security/test_graph_durability.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/security/test_conversation_reliability.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r4-checkpoint-reproduced.json",
+     "baseline": "58b3d3e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 5
+     },
+     "summary": "5 failed in 36.49s",
+     "measured": "58b3d3ec7c87",
+     "worktree_clean": false,
+     "dirty_files": 2
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "ci-startup-refusal",
+   "title": "CI's startup-refusal checks grepped for text the sanitised logs no longer print; the no-database refusal took 30.9 s against a 25 s timeout",
+   "fix_commits": [
+    {
+     "commit": "b189650",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    },
+    {
+     "commit": "5290ec0",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_startup_refusal.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/security/test_startup_refusal.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-ci-startup-behaviour.json",
+     "baseline": "76298b6",
+     "kind": "probe",
+     "status": "failed",
+     "summary": "baseline 76298b6: no_database: exit 124 after 25.02 s, baseline grep matched False; owner_credential: exit 3 after 0.78 s, baseline grep matched False",
+     "measured": "76298b648634",
+     "result": "evidence/runs/r5-replay-ci-startup-behaviour.result.json"
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-ci-startup-refusal.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "error": 2
+     },
+     "summary": "2 errors in 0.02s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "interface": 2
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "eval-budget-terminal",
+   "title": "A violated evaluation budget was not terminal across turns",
+   "fix_commits": [
+    {
+     "commit": "0e582c7",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_eval_terminal.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_eval_budget.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-eval-budget-terminal.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 6,
+      "passed": 27
+     },
+     "summary": "6 failed, 27 passed in 1.03s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "behavioural": 6
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "failed-attempt-accounting",
+   "title": "Failed planning attempts lost their usage; transport failure had no planning summary",
+   "fix_commits": [
+    {
+     "commit": "0e582c7",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    },
+    {
+     "commit": "b872a71",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_live_adapter_contract.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/security/test_audit_contract.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_eval_budget.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-failed-attempt-accounting.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 11,
+      "passed": 65
+     },
+     "summary": "11 failed, 65 passed in 1.53s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "behavioural": 9,
+      "interface": 2
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "ingestion-boundaries",
+   "title": "Numbers, sizes and text past the reader's, digest's or columns' limits crashed ingestion",
+   "fix_commits": [
+    {
+     "commit": "ad10165",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_ingest_validation.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_ingest_contract.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-ingestion-boundaries.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 9,
+      "passed": 98
+     },
+     "summary": "9 failed, 98 passed in 2.08s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "behavioural": 9
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "log-allowlist",
+   "title": "Structured logs kept identifier-shaped tokens, entities, addresses, preformatted messages and access paths",
+   "fix_commits": [
+    {
+     "commit": "b189650",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    },
+    {
+     "commit": "7526e69",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_logs.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/security/test_log_hygiene.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_log_allowlist.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/unit/test_log_registry.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-port-reproduced.json",
+     "baseline": "58b3d3e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 12,
+      "passed": 2
+     },
+     "summary": "12 failed, 2 passed in 185.30s (0:03:05)",
+     "measured": "58b3d3ec7c87",
+     "worktree_clean": false,
+     "dirty_files": 3
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-log-allowlist.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 13,
+      "passed": 8,
+      "error": 1
+     },
+     "summary": "13 failed, 8 passed, 1 error in 1.22s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "interface": 1,
+      "behavioural": 13
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "telemetry-outage-bounds",
+   "title": "The freshness read waited on the serving pool during an outage; shutdown ignored the configure() timeout",
+   "fix_commits": [
+    {
+     "commit": "5290ec0",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_telemetry.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_ingest_observability.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    },
+    {
+     "file": "tests/integration/test_telemetry_outages.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-original-reproductions.json",
+     "baseline": "76298b6",
+     "kind": "summary",
+     "status": "summary only (hand-assembled; not a command record)"
+    },
+    {
+     "artifact": "evidence/runs/r5-port-reproduced.json",
+     "baseline": "58b3d3e",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 12,
+      "passed": 2
+     },
+     "summary": "12 failed, 2 passed in 185.30s (0:03:05)",
+     "measured": "58b3d3ec7c87",
+     "worktree_clean": false,
+     "dirty_files": 3
+    },
+    {
+     "artifact": "evidence/runs/r5-replay-telemetry-outage-bounds.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 11,
+      "passed": 24,
+      "error": 1
+     },
+     "summary": "11 failed, 24 passed, 1 error in 194.92s (0:03:14)",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 22,
+     "failures_by_kind": {
+      "behavioural": 8,
+      "interface": 4
+     }
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "evidence-recorder-counts",
+   "title": "The evidence recorder counted results from any output line",
+   "fix_commits": [
+    {
+     "commit": "cb8f00b",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_evidence_record_accuracy.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-replay-evidence-recorder-counts.json",
+     "baseline": "76298b6",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "error": 680,
+      "failed": 1,
+      "passed": 15
+     },
+     "summary": "1 failed, 15 passed in 2.96s",
+     "measured": "76298b648634",
+     "worktree_clean": false,
+     "dirty_files": 21,
+     "failures_by_kind": {
+      "behavioural": 1
+     },
+     "note": "recorded with the baseline's own recorder, so its counts field shows the defect (error: 680); the summary line is pytest's"
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "ci-trivy-action-tag",
+   "title": "CI's image job could not start: trivy-action@0.28.0 no longer resolves",
+   "fix_commits": [
+    {
+     "commit": "9519f28",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [],
+   "reproductions": [
+    {
+     "artifact": "hosted-ci:37650229833",
+     "baseline": "eb65af3",
+     "kind": "hosted-ci-run",
+     "status": "see evidence/external.json"
+    }
+   ],
+   "verified_by": "hosted_ci:37651718276"
+  },
+  {
+   "id": "ci-postgres-shared-memory",
+   "title": "CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load parallel VACUUM failed",
+   "fix_commits": [
+    {
+     "commit": "7bca4ca",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-ci-shm-reproduced.json",
+     "baseline": "9519f28",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "psycopg.errors.DiskFull: could not resize shared memory segment \"/PostgreSQL.1186316902\" to 67145536 bytes: No space left on device",
+     "measured": "9519f281ae2f",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": "hosted_ci:37651718276"
+  }
+ ],
+ "external": {
+  "description": "Verification that ran outside this machine. Each entry is a run anyone with access can open; the index does not re-check it.",
+  "hosted_ci": [
+   {
+    "run_id": 37650229833,
+    "commit": "eb65af3c465b1172de40b7f3a70817ee3cdf95ca",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833",
+    "note": "image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed"
+   },
+   {
+    "run_id": 37650599310,
+    "commit": "9519f281ae2f47957b4127ac25bad5333f956a02",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650599310",
+    "note": "test job failed loading the full dataset (shared memory); image, frontend and supply-chain passed"
+   },
+   {
+    "run_id": 37651718276,
+    "commit": "7bca4ca78a20a33000b6c9fcfabd78e27552a43f",
+    "conclusion": "success",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37651718276",
+    "note": "all four jobs; application code of 7950e71; image built natively on linux/amd64, sha256:dc31d26e33be1562b4eeec41d4a4fbcd096c7133082cd0080513855b7f2511ee (image ID reported by the image test)"
+   },
+   {
+    "run_id": 37653591687,
+    "commit": "69c62de959a988305463be4b0219db7e88b1bcde",
+    "conclusion": "success",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687",
+    "note": "all four jobs; documentation-only change over 7bca4ca"
+   }
+  ],
+  "not_externally_verified": [
+   "a live model under prompt 2.1.0",
+   "a real OIDC identity provider",
+   "a real source feed",
+   "staging, deployed replicas, a real telemetry backend and alerting",
+   "a published registry image (CI builds the image; nothing is pushed to a registry)"
+  ]
+ },
+ "missing": [
+  "full-suite JUnit for the candidate (not given)",
+  "r5-original-reproductions.json hashes r5-reproduced.log, which is not preserved",
+  "r5-original-reproductions.json hashes r5-logging-reproduced.log, which is not preserved",
+  "r5-original-reproductions.json hashes r5-telemetry-reproduced.log, which is not preserved",
+  "r5-original-reproductions.json hashes r5-ci-reproduced.json, which is not preserved"
+ ],
+ "problems": []
+}

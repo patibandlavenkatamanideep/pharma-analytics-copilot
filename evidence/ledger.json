@@ -1,0 +1,239 @@
+{
+  "description": "The release defects of this round, as data. scripts/evidence_index.py checks every reference: that each fix commit exists and is an ancestor of the candidate, each regression file exists and is collected, and each reproduction artifact exists, parses and failed on code without the fix. Prose in docs/REVIEW_2026_10_06.md explains; this file is what is checked.",
+  "baselines": {
+    "58b3d3e": "the reviewed snapshot (application code 45db088)",
+    "76298b6": "codex/nl2sql-readiness, where codex/release-defects-oct06 began"
+  },
+  "defects": [
+    {
+      "id": "checkpoint-safety",
+      "title": "Checkpoint bytes could run constructors through the runtime factory; a graph-version mismatch silently discarded a checkpoint",
+      "fix_commits": [
+        "fabb9c0",
+        "0e582c7"
+      ],
+      "regression_files": [
+        "tests/security/test_checkpoint_loading.py",
+        "tests/security/test_graph_durability.py",
+        "tests/security/test_conversation_reliability.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r4-checkpoint-reproduced.json",
+          "baseline": "58b3d3e"
+        }
+      ]
+    },
+    {
+      "id": "ci-startup-refusal",
+      "title": "CI's startup-refusal checks grepped for text the sanitised logs no longer print; the no-database refusal took 30.9 s against a 25 s timeout",
+      "fix_commits": [
+        "b189650",
+        "5290ec0"
+      ],
+      "regression_files": [
+        "tests/unit/test_startup_refusal.py",
+        "tests/security/test_startup_refusal.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ci-startup-behaviour.json",
+          "baseline": "76298b6",
+          "kind": "probe",
+          "result": "evidence/runs/r5-replay-ci-startup-behaviour.result.json"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ci-startup-refusal.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-ci-startup-refusal.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "eval-budget-terminal",
+      "title": "A violated evaluation budget was not terminal across turns",
+      "fix_commits": [
+        "0e582c7"
+      ],
+      "regression_files": [
+        "tests/integration/test_eval_terminal.py",
+        "tests/unit/test_eval_budget.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-eval-budget-terminal.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-eval-budget-terminal.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "failed-attempt-accounting",
+      "title": "Failed planning attempts lost their usage; transport failure had no planning summary",
+      "fix_commits": [
+        "0e582c7",
+        "b872a71"
+      ],
+      "regression_files": [
+        "tests/unit/test_live_adapter_contract.py",
+        "tests/security/test_audit_contract.py",
+        "tests/unit/test_eval_budget.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-failed-attempt-accounting.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "ingestion-boundaries",
+      "title": "Numbers, sizes and text past the reader's, digest's or columns' limits crashed ingestion",
+      "fix_commits": [
+        "ad10165"
+      ],
+      "regression_files": [
+        "tests/unit/test_ingest_validation.py",
+        "tests/integration/test_ingest_contract.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ingestion-boundaries.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-ingestion-boundaries.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "log-allowlist",
+      "title": "Structured logs kept identifier-shaped tokens, entities, addresses, preformatted messages and access paths",
+      "fix_commits": [
+        "b189650",
+        "7526e69"
+      ],
+      "regression_files": [
+        "tests/unit/test_logs.py",
+        "tests/security/test_log_hygiene.py",
+        "tests/unit/test_log_allowlist.py",
+        "tests/unit/test_log_registry.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-port-reproduced.json",
+          "baseline": "58b3d3e"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-log-allowlist.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-log-allowlist.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "telemetry-outage-bounds",
+      "title": "The freshness read waited on the serving pool during an outage; shutdown ignored the configure() timeout",
+      "fix_commits": [
+        "5290ec0"
+      ],
+      "regression_files": [
+        "tests/unit/test_telemetry.py",
+        "tests/integration/test_ingest_observability.py",
+        "tests/integration/test_telemetry_outages.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-port-reproduced.json",
+          "baseline": "58b3d3e"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-telemetry-outage-bounds.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "evidence-recorder-counts",
+      "title": "The evidence recorder counted results from any output line",
+      "fix_commits": [
+        "cb8f00b"
+      ],
+      "regression_files": [
+        "tests/unit/test_evidence_record_accuracy.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-replay-evidence-recorder-counts.json",
+          "junit": "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml",
+          "baseline": "76298b6",
+          "note": "recorded with the baseline's own recorder, so its counts field shows the defect (error: 680); the summary line is pytest's"
+        }
+      ]
+    },
+    {
+      "id": "ci-trivy-action-tag",
+      "title": "CI's image job could not start: trivy-action@0.28.0 no longer resolves",
+      "fix_commits": [
+        "9519f28"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37650229833",
+          "baseline": "eb65af3",
+          "kind": "hosted-ci-run"
+        }
+      ],
+      "verified_by": "hosted_ci:37651718276",
+      "note": "fixed after the executable candidate 7950e71; a workflow/deployment change with no application code"
+    },
+    {
+      "id": "ci-postgres-shared-memory",
+      "title": "CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load parallel VACUUM failed",
+      "fix_commits": [
+        "7bca4ca"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ci-shm-reproduced.json",
+          "baseline": "9519f28"
+        }
+      ],
+      "verified_by": "hosted_ci:37651718276",
+      "note": "fixed after the executable candidate 7950e71; a workflow/deployment change with no application code"
+    }
+  ],
+  "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
+}

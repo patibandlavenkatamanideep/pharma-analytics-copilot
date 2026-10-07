@@ -1,0 +1,143 @@
+{
+  "description": "What each test file establishes, so a test count is never read as more than it is. Every collected test file must appear exactly once; scripts/evidence_index.py lists any that do not. Categories are by what the assertions check, not by directory.",
+  "categories": {
+    "planning_explain": {
+      "meaning": "Compiles a plan, passes the SQL validator and is PLANNED by PostgreSQL (EXPLAIN). No result value is checked: this establishes that combinations reach the database without error, not that any number is right.",
+      "files": [
+        "tests/integration/test_compatibility_matrix.py"
+      ]
+    },
+    "numerical_oracle": {
+      "meaning": "Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler.",
+      "files": [
+        "tests/integration/test_metrics.py",
+        "tests/integration/test_coherent_fixture.py",
+        "tests/integration/test_calendar_series.py",
+        "tests/integration/test_calendar_coverage_fixture.py",
+        "tests/integration/test_structural_counts.py",
+        "tests/integration/test_structural_geography.py",
+        "tests/integration/test_threshold_boundaries.py",
+        "tests/integration/test_full_cohort.py"
+      ]
+    },
+    "authorization_security": {
+      "meaning": "Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL.",
+      "files": [
+        "tests/security/test_access_control.py",
+        "tests/security/test_pricing_matrix.py",
+        "tests/security/test_privilege_boundary.py",
+        "tests/security/test_entity_scope.py",
+        "tests/security/test_session_authorization.py",
+        "tests/security/test_session_lifecycle.py",
+        "tests/security/test_session_policy.py",
+        "tests/security/test_oidc.py",
+        "tests/security/test_login_throttling.py",
+        "tests/security/test_request_guard.py",
+        "tests/security/test_prompt_injection.py",
+        "tests/security/test_data_rights.py",
+        "tests/security/test_feedback.py",
+        "tests/security/test_api_contract.py",
+        "tests/security/test_serving_credentials.py",
+        "tests/security/test_fresh_provisioning.py",
+        "tests/security/test_snapshot_consistency.py",
+        "tests/security/test_failure_responses.py",
+        "tests/security/test_run_limits.py",
+        "tests/security/test_retry_quotas.py",
+        "tests/security/test_log_hygiene.py",
+        "tests/security/test_startup_refusal.py",
+        "tests/security/test_checkpoint_loading.py"
+      ]
+    },
+    "durability_recovery_concurrency": {
+      "meaning": "Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas.",
+      "files": [
+        "tests/security/test_graph_durability.py",
+        "tests/security/test_conversation_reliability.py",
+        "tests/security/test_turn_concurrency.py",
+        "tests/security/test_audit_contract.py",
+        "tests/integration/test_failure_handling.py",
+        "tests/integration/test_failure_modes.py",
+        "tests/integration/test_admission_pipeline.py",
+        "tests/integration/test_snapshot_publication.py"
+      ]
+    },
+    "ingestion_contract": {
+      "meaning": "Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only.",
+      "files": [
+        "tests/integration/test_ingestion.py",
+        "tests/integration/test_ingest_contract.py",
+        "tests/integration/test_ingest_observability.py",
+        "tests/unit/test_ingest_validation.py",
+        "tests/unit/test_ingest_calendar.py",
+        "tests/integration/test_calendar_publication.py"
+      ]
+    },
+    "observability": {
+      "meaning": "Spans, metrics, log allowlisting and telemetry bounds, with in-memory exporters, a local receiver and simulated outages.",
+      "files": [
+        "tests/unit/test_telemetry.py",
+        "tests/integration/test_telemetry_pipeline.py",
+        "tests/integration/test_telemetry_outages.py",
+        "tests/unit/test_logs.py",
+        "tests/unit/test_log_allowlist.py",
+        "tests/unit/test_log_registry.py"
+      ]
+    },
+    "evaluation_harness": {
+      "meaning": "The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called.",
+      "files": [
+        "tests/unit/test_eval_budget.py",
+        "tests/unit/test_eval_judge.py",
+        "tests/unit/test_live_adapter_contract.py",
+        "tests/integration/test_eval_terminal.py",
+        "tests/unit/test_prompt_version.py"
+      ]
+    },
+    "planning_semantics_unit": {
+      "meaning": "Deterministic plan, intent, entity, semantics, threshold, cohort and answer-shape logic without a database.",
+      "files": [
+        "tests/unit/test_semantics.py",
+        "tests/unit/test_threshold_semantics.py",
+        "tests/unit/test_thresholds.py",
+        "tests/unit/test_compatibility_rules.py",
+        "tests/unit/test_answer_shape.py",
+        "tests/unit/test_cohort_completeness.py",
+        "tests/unit/test_cohort_typing.py",
+        "tests/unit/test_comparison_grain.py",
+        "tests/unit/test_declared_grain.py",
+        "tests/unit/test_dense_series_rules.py",
+        "tests/unit/test_entity_fidelity.py",
+        "tests/unit/test_intent_fidelity.py",
+        "tests/unit/test_mentions.py",
+        "tests/unit/test_proportion_units.py",
+        "tests/unit/test_quality_warnings.py",
+        "tests/unit/test_registry_contract.py",
+        "tests/unit/test_segment_share.py",
+        "tests/unit/test_specialty_and_periods.py",
+        "tests/unit/test_turn_graph.py",
+        "tests/unit/test_admission.py"
+      ]
+    },
+    "rendering": {
+      "meaning": "What the response carries for display (chart metadata), from authorized rows.",
+      "files": [
+        "tests/integration/test_chart_metadata.py"
+      ]
+    },
+    "release_tooling": {
+      "meaning": "The release gate, evidence records, documented counts, packaging, configuration encoding and the startup-refusal checker. Establishes the verification machinery, not product behaviour.",
+      "files": [
+        "tests/unit/test_documented_counts.py",
+        "tests/unit/test_evidence_record_accuracy.py",
+        "tests/unit/test_evidence_redaction.py",
+        "tests/unit/test_release_gate.py",
+        "tests/unit/test_release_gate_strict.py",
+        "tests/unit/test_api_contract_doc.py",
+        "tests/unit/test_packaging_and_limits.py",
+        "tests/unit/test_dsn_encoding.py",
+        "tests/unit/test_startup_refusal.py",
+        "tests/unit/test_evidence_index.py"
+      ]
+    }
+  }
+}
