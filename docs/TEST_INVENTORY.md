@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 791 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Unit** | `pytest tests/unit -q` | 802 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Integration** | `pytest tests/integration -q` | 935 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pass, strict gate | `r5-final-security.json` (`7950e71`) |
-| **Total (pytest)** | `pytest tests -q` | **2135** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Total (pytest)** | `pytest tests -q` | **2146** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Browser — component** | `cd web && npm test` | 30 | pass, strict gate | `r5-final-component.json` (`7950e71`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-final-browser.json` (`7950e71`) |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r5-final-eval-*.json` (`7950e71`, offline) |

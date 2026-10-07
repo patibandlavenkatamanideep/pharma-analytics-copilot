@@ -94,7 +94,8 @@
         "tests/unit/test_eval_judge.py",
         "tests/unit/test_live_adapter_contract.py",
         "tests/integration/test_eval_terminal.py",
-        "tests/unit/test_prompt_version.py"
+        "tests/unit/test_prompt_version.py",
+        "tests/unit/test_question_set_check.py"
       ]
     },
     "planning_semantics_unit": {
@@ -141,7 +142,8 @@
         "tests/unit/test_packaging_and_limits.py",
         "tests/unit/test_dsn_encoding.py",
         "tests/unit/test_startup_refusal.py",
-        "tests/unit/test_evidence_index.py"
+        "tests/unit/test_evidence_index.py",
+        "tests/unit/test_invariant_coverage.py"
       ]
     }
   }

@@ -726,3 +726,24 @@ Reproduction: `r5-k07-reproduced.json` (25 failed on unmodified code).
 result, not a held-out estimate, and no oracle was changed: k-07's oracle was
 right. The oracle checks the plan's metric and dimensions only; the numbers
 behind the answer are checked by the tests above, not by the evaluation.
+
+## Correction, 7 October 2026: `holdout.yaml` was not fully held out
+
+`scripts/check_question_set.py` (the overlap check for new sets) found that 4 of
+`holdout.yaml`'s 12 questions are word for word the same as regression questions
+written a day earlier, and a fifth is a near-duplicate:
+
+| `holdout.yaml` | Same question as (`questions.yaml`) | Regression question added | Holdout created |
+|---|---|---|---|
+| h-05 | gpo-01 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-07 | src-02 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-08 | acc-03 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-09 | geo-01 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-03 (near-duplicate) | hier-02 | | |
+
+So at most 7 of holdout 1's 12 questions were unseen when it was first run, and
+every score reported for it -- historical and current -- says less about
+generalisation than its label suggested. The figures are not changed; they stand
+as what was measured, with this note. The set was already `spent`. `holdout2.yaml`
+has no identical or near-duplicate question in either development set. The
+contamination log in `evals/packet/` records this.

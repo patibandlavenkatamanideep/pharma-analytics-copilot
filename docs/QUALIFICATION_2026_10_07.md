@@ -119,3 +119,62 @@ oracle checks the plan only; numbers are checked by the tests. Two-window
 `volume_growth` still divides by a negative prior window without special handling
 (A20; needs owner agreement to change). Per-week normalisation of uneven months is
 disclosed, not applied.
+
+## Step 3 — numerical and unseen-data evaluation
+
+**Coverage by invariant** (implemented, locally verified). `evidence/invariants.json`
+maps 19 business invariants to the tests that check each against an independent
+oracle; [COVERAGE_BY_INVARIANT.md](COVERAGE_BY_INVARIANT.md) is rendered from it and
+`tests/unit/test_invariant_coverage.py` fails on a dangling reference or a stale
+report. EXPLAIN-only planning cases, offline evaluations, the live-adapter fake and
+the (never run) live provider are listed separately as not numerical. One gap stays
+open: no test compares an answer's values across a republication.
+
+**New oracles, and what they found.** Revenue values, the 340B share, the segment
+share and quarter and week series had been executed but never compared with a number
+worked out another way (`tests/integration/test_invariant_oracles.py`). The segment
+share was wrong: with no market named, its numerator covered every market and its
+denominator only ours, so the generic share of our markets read **59.67% instead of
+26.43%**, and a market outside ours showed a numerator with a blank share; rows from
+the denominator side alone also lost their labels. Reproduced (`14ce17e`,
+`r5-ratio-population-reproduced.json`), fixed (`eb3ba13`); two mutants caught.
+
+**Fixture profiles** (implemented, locally verified). `scripts/fixture_profile.py`
+generates two deterministic same-schema datasets unlike the supplied one -- names,
+id formats, skew, cardinality, market-data gaps, a silent month, unknown
+classifications, partial hierarchies, an ISO week-53 history -- with a 98-event
+ingestion series (replays, equal-valued distinct sales, a correction, tombstones in
+and out of order, a conflicting version, refused records, a rejected batch, an
+anchor move). Seed, generator and contract versions, true classifications, expected
+event outcomes and file hashes are in each manifest. `scripts/build_profile_db.py`
+builds one through the ordinary bootstrap, load and ingestion with its own users and
+writes a reconciliation report: on both profiles every event reconciles and totals
+move by exactly the applied changes. `tests/integration/test_fixture_profiles.py`:
+20 checks on both profiles for Exec, director and RAM (nonempty scopes).
+
+Building the profiles found two defects:
+
+- **Scope widened by a reused territory name.** Scope binds by name; a geography
+  reusing one name for two territories loaded, and a RAM assigned it saw both.
+  Reproduced (`51cf05e`), refused at load (`fa02451`).
+- **Week labels across a week-53 year end.** The supplied generator labels weeks with
+  the Saturday's calendar year; the bulk load accepts that and ingestion then refuses
+  to extend the calendar. Recorded here; the loader check is part of step 4.
+
+**Judge.** Five more adversarial cases: every wrong shape for k-07 still fails; the
+monthly series passes with or without the per-month change.
+
+**Blinded evaluation packet** (`evals/packet/`, implemented; not yet used): an
+authoring guide that lists what an independent author may and may not read, an
+oracle schema matching the judge, a contamination log, and a run protocol fixed in
+advance (versions, budget, one run unless N is chosen first, categories reported
+separately, Wilson intervals, slices, latency, known and unknown usage).
+`scripts/check_question_set.py` checks a new set's schema and its overlap with the
+development sets. Run on the existing sets, it found that **`holdout.yaml` was never
+fully held out**: 4 of its 12 questions are identical to regression questions added
+the day before, and one more is a near-duplicate. Its figures are kept, with a
+correction in [EVALUATION.md](EVALUATION.md); `holdout2.yaml` has no overlap.
+
+**Residual.** No independent author has written a set; nothing has been run against
+a live model under prompt 2.2.0. The runner names one user per role, so an Exec
+without pricing cannot appear in a question set. Profiles are synthetic.

@@ -442,3 +442,35 @@ def test_a_pass_on_an_errored_request_is_a_judge_defect_not_a_category():
     pass, so 38/38 could sit beside a non-zero failure count."""
     with pytest.raises(runner.SpecificationError):
         runner.categorise({"type": "nonempty"}, FakeResult(status="error"), True)
+
+
+# ---------------------------------------------------------------------------
+# k-07 (holdout2): each month against the one before it
+# ---------------------------------------------------------------------------
+
+K07 = {"type": "plan", "plan": {"metric": "paid_pack_units", "dimensions": ["period_mo"]}}
+
+
+@pytest.mark.parametrize("status,plan", [
+    # What the system did before the fix: two-window growth by month, refused.
+    ("clarify", {"metric": "volume_growth", "dimensions": ["period_mo"]}),
+    # Two-window growth with no breakdown answers a different question.
+    ("answered", {"metric": "volume_growth", "dimensions": []}),
+    # The right metric over the wrong grain.
+    ("answered", {"metric": "paid_pack_units", "dimensions": ["period_qtr"]}),
+    ("answered", {"metric": "paid_pack_units", "dimensions": []}),
+])
+def test_k07_still_fails_every_wrong_shape(status, plan):
+    answer = FakeAnswer(headline="x", row_count=3) if status == "answered" else None
+    ok, _ = verdict(K07, FakeResult(status=status, plan=plan, answer=answer))
+    assert not ok
+
+
+def test_k07_passes_the_monthly_series_with_or_without_each_months_change():
+    """The oracle is the monthly series; the change against the previous
+    month refines it and does not change what the oracle checks."""
+    for extra in ({}, {"period_over_period": True}):
+        ok, _ = verdict(K07, FakeResult(status="answered", answer=FakeAnswer(headline="x", row_count=3),
+                                        plan={"metric": "paid_pack_units", "dimensions": ["period_mo"],
+                                              **extra}))
+        assert ok
