@@ -162,6 +162,14 @@ PERIOD_COLUMN: dict[Dimension, str] = {
 }
 
 
+#: A period grain as a word, for messages.
+GRAIN_WORD = {
+    Dimension.period_mo: "month",
+    Dimension.period_qtr: "quarter",
+    Dimension.period_wk: "week",
+}
+
+
 def needs_dense_series(plan: AnalyticalPlan) -> bool:
     """Should this answer include the periods that have no rows?
 
@@ -179,7 +187,11 @@ def needs_dense_series(plan: AnalyticalPlan) -> bool:
     periods = [d for d in plan.dimensions if d in PERIOD_COLUMN]
     if len(periods) != 1 or plan.time.kind == "date_range":
         return False
-    return plan.rolling is not None or len(plan.dimensions) == 1
+    # A period-over-period change does too, even beside another dimension: a
+    # month with no rows for a group is that group's zero (or unknown), and
+    # skipping it would compare September with July and call it "the month
+    # before".
+    return plan.rolling is not None or plan.period_over_period or len(plan.dimensions) == 1
 
 
 def _reads_sales(ds: "DimSpec") -> bool:
@@ -226,15 +238,34 @@ def check_compatibility(plan: AnalyticalPlan, spec: dict[str, Any]) -> list[str]
         # each period against its own prior is a different query shape.
         for d in plan.dimensions:
             if d in (Dimension.period_mo, Dimension.period_qtr, Dimension.period_wk):
-                grain = d.value.replace("period_", "")
+                # The grain as a word: the message used to say "a mo-by-mo
+                # breakdown" and "volume by mo".
+                grain = GRAIN_WORD[d]
                 reasons.append(
                     f"A {grain}-by-{grain} breakdown cannot also be a two-window "
                     f"comparison: each side would be labelled with a different "
                     f"{grain}, so nothing lines up. Ask for the trend "
-                    f"(\"volume by {grain}\") to see the series, or drop the "
-                    f"{grain} breakdown to see one growth figure for the window."
+                    f"(\"volume by {grain}\") to see the series, \"{grain} over "
+                    f"{grain}\" to see each {grain} against the one before it, or "
+                    f"drop the {grain} breakdown to see one growth figure for the window."
                 )
                 break
+
+    if plan.period_over_period:
+        if kind not in (None, "count_distinct"):
+            reasons.append(
+                f"Each period against the one before it (period over period) is "
+                f"computed for a volume or count that adds up over periods. "
+                f"{spec['label'].capitalize()} does not: a share or a growth figure "
+                f"is not added across periods, and a structural count has no "
+                f"series. Ask for {spec['label']} by period to see how it moves."
+            )
+        if plan.time.kind == "date_range":
+            reasons.append(
+                "A period-over-period change steps through reporting periods, and a "
+                "window given as calendar dates does not select whole periods. Asking "
+                "for a number of months or weeks gives the same change over whole periods."
+            )
 
     if plan.rolling is not None and plan.time.kind == "date_range":
         reasons.append(
@@ -280,6 +311,9 @@ class CompiledQuery:
     metric_label: str
     window_label: str
     comparison_label: str | None = None
+    # The period still accumulating, when the window includes it: its total
+    # and any change to it are provisional.
+    current_period: str | None = None
     notes: list[str] = field(default_factory=list)
     quality_checks: list[str] = field(default_factory=list)
 
@@ -648,6 +682,12 @@ class Compiler:
             direction = "DESC" if plan.ranking.direction == "top" else "ASC"
             out += f"ORDER BY {value_col} {direction} NULLS LAST\n"
             out += f"LIMIT {int(plan.ranking.limit)}\n"
+        elif plan.period_over_period:
+            period_index = next(i for i, d in enumerate(plan.dimensions)
+                                if d in PERIOD_COLUMN)
+            keys = [f"dim{i}_label" for i in range(len(plan.dimensions)) if i != period_index]
+            out += f"ORDER BY {', '.join(keys + [f'dim{period_index}_id'])} ASC\n"
+            out += f"LIMIT {int(self.max_rows) + 1}\n"
         elif plan.dimensions:
             first = plan.dimensions[0]
             # Period dimensions read naturally in chronological order.
@@ -670,6 +710,8 @@ class Compiler:
             # The un-averaged point is kept beside the average: a rolling
             # figure is hard to sanity-check without the series it came from.
             cols += ["point_value"]
+        if plan.period_over_period:
+            cols += ["prior_value", "change", "change_pct", "weeks", "prior_weeks"]
         cols += extra or ["value"]
         return cols
 
@@ -720,7 +762,10 @@ class Compiler:
                             if d in PERIOD_COLUMN)
         column = PERIOD_COLUMN[plan.dimensions[period_index]]
         partition = [i for i in range(len(plan.dimensions)) if i != period_index]
-        span = plan.rolling.periods if plan.rolling is not None else 1
+        # A rolling average reaches N-1 periods back; a period-over-period
+        # change reaches one, so the window's first period has its prior.
+        span = (plan.rolling.periods if plan.rolling is not None
+                else 2 if plan.period_over_period else 1)
         params: list[Any] = []
 
         # 1. every period of this grain, with whether its sources covered it
@@ -729,14 +774,14 @@ class Compiler:
         params += sources
         ctes = [
             "pac_periods AS (\n"
-            f"  SELECT c.{column} AS label, min(c.wk_offset) AS newest,\n"
+            f"  SELECT c.{column} AS label, min(c.wk_offset) AS newest, count(*) AS weeks,\n"
             # min(...) = 1 rather than bool_and, which sqlglot renames to
             # logical_and -- an allowlist entry that depends on parser naming.
             f"         min(CASE WHEN {coverage} THEN 1 ELSE 0 END) = 1 AS covered\n"
             "  FROM app_ref.calendar c\n"
             f"  GROUP BY c.{column})",
             "pac_numbered AS (\n"
-            "  SELECT label, covered,\n"
+            "  SELECT label, covered, weeks,\n"
             "         row_number() OVER (ORDER BY newest DESC) AS pos\n"
             "  FROM pac_periods)",
         ]
@@ -757,7 +802,7 @@ class Compiler:
         params.append(span - 1)
         ctes.append(
             "pac_spine AS (\n"
-            "  SELECT n.label, n.covered, n.pos,\n"
+            "  SELECT n.label, n.covered, n.weeks, n.pos,\n"
             "         n.label IN (SELECT label FROM pac_requested) AS requested\n"
             "  FROM pac_numbered n CROSS JOIN pac_span sp\n"
             "  WHERE n.pos BETWEEN sp.lo AND sp.hi)")
@@ -799,7 +844,7 @@ class Compiler:
         extras = "".join(f",\n         se.{c}" for c in extra_cols)
         ctes.append(
             "pac_dense AS (\n"
-            f"  SELECT {', '.join(select_dims)}, sp.pos, sp.requested,\n"
+            f"  SELECT {', '.join(select_dims)}, sp.pos, sp.requested, sp.weeks,\n"
             f"         CASE WHEN sp.covered THEN {fill} END AS value{extras}\n"
             "  FROM pac_spine sp\n"
             + ("  CROSS JOIN pac_parts pt\n" if partition else "")
@@ -822,6 +867,28 @@ class Compiler:
             body = (f"WITH {', '.join(ctes)}\n"
                     f"SELECT {carried}, point_value{carried_extras}, value\n"
                     "FROM pac_rolled WHERE requested\n")
+        elif plan.period_over_period:
+            # The prior is the same group's previous period on the spine --
+            # NULL for the first period of the data, and NULL where that
+            # period is unknown. A percentage needs a positive prior: from zero
+            # it is undefined, and from a negative total its sign would invert
+            # the direction. The absolute change is given whenever both
+            # periods are known.
+            over = ((f"PARTITION BY {', '.join(f'dim{i}_id' for i in partition)} "
+                     if partition else "") + "ORDER BY pos")
+            ctes.append(
+                "pac_lagged AS (\n"
+                f"  SELECT {carried}{carried_extras}, requested, value, weeks,\n"
+                f"         lag(value) OVER ({over}) AS prior_value,\n"
+                f"         lag(weeks) OVER ({over}) AS prior_weeks\n"
+                "  FROM pac_dense)")
+            body = (f"WITH {', '.join(ctes)}\n"
+                    f"SELECT {carried}, prior_value,\n"
+                    "       value - prior_value AS change,\n"
+                    "       CASE WHEN prior_value > 0\n"
+                    "            THEN (value - prior_value)::numeric / prior_value END AS change_pct,\n"
+                    f"       weeks, prior_weeks{carried_extras}, value\n"
+                    "FROM pac_lagged WHERE requested\n")
         else:
             body = (f"WITH {', '.join(ctes)}\n"
                     f"SELECT {carried}{carried_extras}, value\n"
@@ -838,6 +905,20 @@ class Compiler:
             notes.append(
                 "A period with no data is left blank: a share with nothing to "
                 "divide by is undefined, not zero.")
+        if plan.period_over_period:
+            grain = GRAIN_WORD[plan.dimensions[period_index]]
+            notes.append(
+                f"Each {grain} is compared with the {grain} before it, including the "
+                f"{grain} just before the window. The change is blank for the first "
+                f"{grain} of the data, and wherever either {grain} is unknown. The "
+                f"percentage is blank where the earlier {grain} was zero or negative; "
+                f"the change in {spec['unit']} is still shown.")
+            if plan.dimensions[period_index] is not Dimension.period_wk:
+                notes.append(
+                    f"A reporting {grain} holds the weeks that end in it, so {grain}s "
+                    f"differ in length (4 or 5 weeks for a month); a total moves with its "
+                    f"number of weeks even when the weekly rate does not. Each row shows "
+                    f"both {grain}s' week counts.")
         if plan.rolling is not None:
             notes.append(
                 f"Each figure averages that period and the {span - 1} before it, "
@@ -846,9 +927,12 @@ class Compiler:
                 f"unknown, rather than averaging fewer.")
         columns = (self._columns(plan, extra=extra_cols + ["value"])
                    if extra_cols else self._columns(plan))
+        current = (anchor.get(f"max_{column}")
+                   if plan.period_over_period and window.incomplete_period else None)
         return CompiledQuery(
             sql=sql, params=params, columns=columns,
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
+            current_period=current,
             notes=notes,
             quality_checks=list(spec.get("quality_checks", [])) if kind == "ratio" else [],
         )

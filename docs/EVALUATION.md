@@ -543,11 +543,12 @@ and the metric registry were changed during development, and both reach it.
 `holdout2` is the closest thing to an unbiased estimate and scored **8/12 on
 its first offline run** before the fixes it prompted.
 
-## Running the next live evaluation (prompt 2.1.0)
+## Running the next live evaluation (prompt 2.2.0)
 
-Every live result above was measured on earlier prompt text. Prompt 2.1.0
-(fingerprint `5ca5ddf08608fb64`, recorded in every run) has never been run
-against a live model. When credentials and a budget exist, run it in this
+Every live result above was measured on earlier prompt text. Prompt 2.2.0
+(fingerprint `ed8e49619d32de7b`, recorded in every run; 2.1.0 was
+`5ca5ddf08608fb64`) has never been run against a live model, and neither
+has 2.1.0. When credentials and a budget exist, run it in this
 order. Each step is a decision point.
 
 **1. Smoke first, with a hard cap.** `--smoke` runs the first question of
@@ -658,3 +659,70 @@ users can retry failed requests through the existing durable run/idempotency pat
 A crash after transport but before persistence can still lose usage evidence;
 provider invoice reconciliation remains necessary under best-effort audit. The
 UTF-8/NFKC input reservation remains an assumption, not a provider token guarantee.
+
+## k-07, 7 October 2026: each period against the one before it
+
+**Question** (`holdout2.yaml`, one of the supplied sample questions in
+`docs/product_analytics.md`): "Is Zenovax volume growing or declining month
+over month?" **Oracle**, written before the set was first run: a plan with
+metric `paid_pack_units` and dimension `period_mo`, a monthly series.
+
+**What happened.** The offline planner returned `volume_growth` (a two-window
+growth figure) broken down by `period_mo`. The compiler refuses that
+combination -- each side of a two-window comparison carries a different month,
+so nothing lines up -- and the answer was a clarification. The judge scored it
+`wrong`. The clarification also read "a mo-by-mo breakdown" and "volume by mo".
+
+**Root cause.** Intent mapping and a missing capability, not an obsolete
+oracle or a genuinely ambiguous question:
+
+- the planner's dimension rule read "month over month" as a monthly breakdown
+  while its metric rule did not count it as asking for a series, so "growing
+  or declining" chose two-window growth; the live prompt said the same ("Growth
+  is volume_growth and needs a comparison window");
+- no plan could express growth of each period against the previous one.
+
+**Change** (`plan.period_over_period`, planner contract 2.1.0, prompt 2.2.0).
+Four questions are now told apart:
+
+| Asked | Plan |
+|---|---|
+| a monthly series ("volume by month") | `paid_pack_units` by `period_mo` |
+| each month against the one before ("month over month", "MoM") | the same, with `period_over_period: true`: each month's value, the month before, the change and the percentage |
+| one window against another ("this quarter vs last") | `volume_growth` with a comparison window, unchanged |
+| a rolling average | `rolling`, unchanged |
+
+Semantics, from the dense calendar series: a month with no purchases where the
+source covered it is zero; a month a source did not cover is unknown and never
+imputed; the first month of the data has no prior; the window's first month is
+compared with the month before the window. The percentage is blank where the
+prior is zero or negative (the ingestion contract refuses non-positive packs,
+so a negative total is defensive only); the absolute change is still given.
+Only additive volumes and counts qualify. Reporting months hold 4 or 5 weeks, which
+is disclosed per row (`weeks`, `prior_weeks`), and the still-accumulating month
+is marked provisional in the row and the headline: on the release dataset,
+September 2026 had 3 of its weeks, and its "-40%" is mostly missing weeks.
+See [ASSUMPTIONS.md](ASSUMPTIONS.md) A20.
+
+**Verification.** 19 unit tests (paraphrases, explicit units, quarter and week
+grains, the four-way distinction, plan coherence, refusals, the validator's new
+`lag` and nothing beside it), 7 numerical tests on the fixture database against
+an oracle computed outside the compiler (first month, zero prior, negative
+prior, the month before the window, equivalents, two products, an uncovered
+month, a territory-scoped user with a nonempty scope), and 3 end-to-end tests
+of the sample question on the release dataset, national and territory-scoped,
+and 3 component tests of the table.
+Reproduction: `r5-k07-reproduced.json` (25 failed on unmodified code).
+
+**Evaluation results, offline planner** (not natural-language accuracy):
+
+| Set | Status | Before (`7950e71`, prompt 2.1.0) | After (prompt 2.2.0) |
+|---|---|---|---|
+| `questions.yaml` | regression | 38/38 | 38/38 |
+| `holdout.yaml` | spent | 12/12 | 12/12 |
+| `holdout2.yaml` | spent | 11/12 (k-07 `wrong`) | 12/12 |
+
+`holdout2` was already spent; it stays spent. Its 12/12 is a regression
+result, not a held-out estimate, and no oracle was changed: k-07's oracle was
+right. The oracle checks the plan's metric and dimensions only; the numbers
+behind the answer are checked by the tests above, not by the evaluation.

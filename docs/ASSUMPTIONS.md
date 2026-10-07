@@ -415,3 +415,27 @@ the schema that produced it.
 Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
 so that every non-LLM layer is testable now. Nothing in this document claims a
 deployment or live measurement that has not occurred.
+
+## A20 — Each period against the one before it: blank rather than misleading
+
+Added 7 October 2026 for k-07 ("growing or declining month over month").
+`period_over_period` compares each period of a series with the immediately
+preceding period of the same grain.
+
+- **Zero or negative prior → no percentage.** From zero the percentage is
+  undefined; from a negative total its sign would invert the direction. The
+  absolute change is still given. A negative total cannot come from accepted
+  data today (ingestion refuses non-positive packs); the rule is defensive.
+- **Unknown, not zero.** A period a source did not cover is unknown, and so is
+  any change involving it. Nothing is imputed.
+- **Uneven periods are disclosed, not normalised.** A reporting month holds the
+  weeks ending in it, 4 or 5; a total moves with its week count. Rows carry
+  both periods' week counts. Per-week normalisation is not applied: the
+  supplied documents do not define it, and it would change what "volume" means.
+- **The accumulating period is provisional.** Where the window includes the
+  current month or quarter, its row and the headline say so. Weeks are
+  published whole, so no week is marked.
+- **Two-window growth is unchanged.** `volume_growth` still divides by the
+  prior window with `NULLIF(prior, 0)`; a negative prior window is not treated
+  specially there. Aligning it with this rule changes an existing metric and
+  needs the owner's agreement.

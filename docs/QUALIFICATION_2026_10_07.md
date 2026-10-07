@@ -83,3 +83,39 @@ to be produced on this pass's final candidate, and the four unpreserved logs).
 
 **Residual.** Hosted CI is externally verified for `7bca4ca` and `69c62de` only. The
 candidate's JUnit is not yet in the index.
+
+## Step 2 — the offline k-07 mismatch
+
+**Diagnosis.** Intent mapping plus a missing capability; not an obsolete oracle,
+and not a genuinely ambiguous question (it is a supplied sample question). The
+offline planner read "growing or declining" as two-window growth and "month over
+month" as a monthly breakdown; the compiler refuses that pair, so the answer was a
+clarification, scored `wrong`. The live prompt carried the same rule. No plan could
+express each period against the one before it. The refusal also said "mo-by-mo".
+Full write-up: [EVALUATION.md](EVALUATION.md#k-07-7-october-2026-each-period-against-the-one-before-it).
+
+**Changed** (implemented, locally verified): `AnalyticalPlan.period_over_period`
+(planner contract 2.1.0), compiled on the dense calendar series with `lag` (added to
+the SQL validator's allowlist alone; `lead` and `nth_value` stay refused); each row
+carries the prior period, the change, the percentage, both periods' week counts and
+whether the period is still accumulating; the headline answers the direction and
+marks a provisional period. The offline planner and the live prompt (2.2.0,
+fingerprint `ed8e49619d32de7b`) distinguish a series, each period against the one
+before, a two-window comparison and a rolling average. The table shows the new
+columns. Semantics are recorded as [ASSUMPTIONS.md](ASSUMPTIONS.md) A20.
+
+**Verification.** Reproduction `r5-k07-reproduced.json`: 25 failed on unmodified
+code. Now: 19 unit, 7 fixture-database numerical tests against an oracle computed
+outside the compiler, 3 end-to-end tests of the sample question (national and
+territory-scoped, nonempty), 3 component tests. Mutants, each caught: no period
+before the window (fails 4), a percentage from any nonzero prior (2), unknown
+months imputed as zero (6), no partition by group (1), cadence not read as a series
+by the planner (7). Offline evaluations: 38/38, 12/12, 12/12 (holdout2 was 11/12;
+it was already spent and stays spent, so 12/12 is a regression result). No oracle
+changed.
+
+**Residual.** No live model has run under prompt 2.2.0 (nor 2.1.0). The evaluation
+oracle checks the plan only; numbers are checked by the tests. Two-window
+`volume_growth` still divides by a negative prior window without special handling
+(A20; needs owner agreement to change). Per-week normalisation of uneven months is
+disclosed, not applied.

@@ -245,6 +245,15 @@ def render(
         if "current_value" in row:
             item["current"] = row["current_value"]
             item["prior"] = row["prior_value"]
+        if plan.period_over_period:
+            item["prior"] = row.get("prior_value")
+            item["change"] = row.get("change")
+            item["change_pct"] = row.get("change_pct")
+            item["change_formatted"] = _signed(row.get("change"), query.unit)
+            item["change_pct_formatted"] = _signed(row.get("change_pct"), "ratio")
+            item["weeks"] = row.get("weeks")
+            item["prior_weeks"] = row.get("prior_weeks")
+            item["provisional"] = row.get(f"dim{_period_index(plan)}_id") == query.current_period
         item["value"] = row.get("value")
         item["value_formatted"] = format_value(row.get("value"), query.unit)
         table.append(item)
@@ -278,6 +287,63 @@ def render(
     )
 
 
+def _signed(value: Any, unit: str) -> str:
+    """A change with its direction: "+14 packs", "-100.00%", "unavailable"."""
+    if value is None:
+        return "unavailable"
+    return ("+" if value > 0 else "") + format_value(value, unit)
+
+
+def _step_headline(rows: list[dict[str, Any]], query: CompiledQuery,
+                   plan: AnalyticalPlan) -> str:
+    """Answers "growing or declining?" for the latest period: each period is
+    compared with the one before it, so the latest comparison is the answer,
+    and the table shows every one."""
+    from app.analytics.compiler import GRAIN_WORD, PERIOD_COLUMN
+
+    index = next(i for i, d in enumerate(plan.dimensions) if d in PERIOD_COLUMN)
+    grain = GRAIN_WORD[plan.dimensions[index]]
+    latest = max(r[f"dim{index}_id"] for r in rows)
+    current = [r for r in rows if r[f"dim{index}_id"] == latest]
+    lead = f"{query.metric_label.capitalize()} by {grain}, {len(rows)} row(s)."
+    if len(plan.dimensions) == 1:
+        row = current[0]
+        change, pct = row.get("change"), row.get("change_pct")
+        if change is None:
+            return (f"{lead} In {latest}, the change against the {grain} before is unknown: "
+                    f"that {grain} or this one is outside the data or not covered.")
+        direction = "up" if change > 0 else "down" if change < 0 else "unchanged"
+        size = "" if change == 0 else f" {format_value(abs(change), query.unit)}"
+        share = (f" ({_signed(pct, 'ratio')})" if pct is not None else
+                 f" (no percentage: the {grain} before was zero or negative)")
+        text = (f"{lead} In {latest}, {format_value(row.get('value'), query.unit)}: "
+                f"{direction}{size}{share} on the {grain} before.")
+        weeks, prior_weeks = row.get("weeks"), row.get("prior_weeks")
+        if latest == query.current_period:
+            text += (f" {latest} is still accumulating ({weeks} reporting week(s) so far), "
+                     f"so this change is provisional.")
+        elif weeks and prior_weeks and weeks != prior_weeks:
+            text += (f" {latest} has {weeks} reporting weeks and the {grain} before it "
+                     f"{prior_weeks}, which alone moves a total.")
+        return text
+    counts = {"up": 0, "down": 0, "unchanged": 0, "unknown": 0}
+    for row in current:
+        change = row.get("change")
+        key = ("unknown" if change is None else "up" if change > 0
+               else "down" if change < 0 else "unchanged")
+        counts[key] += 1
+    text = (f"{lead} In {latest}, against the {grain} before: "
+            + ", ".join(f"{n} {k}" for k, n in counts.items()) + ".")
+    if latest == query.current_period:
+        text += f" {latest} is still accumulating, so these changes are provisional."
+    return text
+
+
+def _period_index(plan: AnalyticalPlan) -> int:
+    from app.analytics.compiler import PERIOD_COLUMN
+    return next(i for i, d in enumerate(plan.dimensions) if d in PERIOD_COLUMN)
+
+
 def _headline(rows: list[dict[str, Any]], query: CompiledQuery, plan: AnalyticalPlan) -> str:
     metric = query.metric_label
 
@@ -293,6 +359,8 @@ def _headline(rows: list[dict[str, Any]], query: CompiledQuery, plan: Analytical
             return f"{metric.capitalize()} is {text} ({num} against a reported market of {den})."
         return f"{metric.capitalize()}: {text}."
 
+    if plan.period_over_period:
+        return _step_headline(rows, query, plan)
     grain = _dimension_labels(plan)[0]
     if plan.ranking:
         direction = "Top" if plan.ranking.direction == "top" else "Bottom"

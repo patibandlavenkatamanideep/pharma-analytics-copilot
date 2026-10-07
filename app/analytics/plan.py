@@ -228,6 +228,18 @@ class AnalyticalPlan(BaseModel):
     ranking: Ranking | None = None
     threshold: Threshold | None = None
     rolling: Rolling | None = None
+    # Each period of the series against the period before it ("month over
+    # month"): the period's value, the previous period's, the change and the
+    # percentage change. Not a two-window comparison, which gives one figure
+    # for one window against another (volume_growth); not a rolling average.
+    period_over_period: bool = Field(
+        default=False,
+        description=(
+            "true to report, for each period of a series, the change against the "
+            "immediately preceding period of the same grain ('month over month', "
+            "'each month vs the previous month'). Needs exactly one period dimension "
+            "and an additive volume metric; never combined with comparison, rolling, "
+            "ranking or threshold."))
 
     # Set when the question cannot be answered as asked. The pipeline returns
     # this text instead of guessing.
@@ -260,6 +272,26 @@ class AnalyticalPlan(BaseModel):
                 raise ValueError(
                     "a rolling average and a two-window comparison cannot be "
                     "combined")
+        if self.period_over_period:
+            periods = [d for d in self.dimensions
+                       if d in (Dimension.period_mo, Dimension.period_qtr,
+                                Dimension.period_wk)]
+            if len(periods) != 1:
+                raise ValueError(
+                    "a period-over-period change needs exactly one period dimension "
+                    "to step through")
+            if self.comparison is not None:
+                raise ValueError(
+                    "a period-over-period change and a two-window comparison cannot be "
+                    "combined: one compares each period with the one before it, the "
+                    "other one window with another")
+            if self.rolling is not None:
+                raise ValueError(
+                    "a period-over-period change and a rolling average cannot be combined")
+            if self.ranking is not None or self.threshold is not None:
+                raise ValueError(
+                    "a period-over-period change cannot be combined with a ranking or a "
+                    "threshold: it is a series, read in order")
         if self.threshold and not self.dimensions:
             raise ValueError(
                 "a threshold requires at least one dimension: filtering a single "

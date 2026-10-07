@@ -43,7 +43,10 @@ log = logging.getLogger(__name__)
 #:          everything from data or the conversation framed as data; a
 #:          previous plan carried as typed fields only. The first three
 #:          changed the text under 2.0.0 and should have bumped it then.
-PROMPT_VERSION = "2.1.0"
+#: 2.2.0 -- growth of each period against the one before it
+#:          (period_over_period) told apart from two-window growth (k-07,
+#:          7 October 2026). No live model has been run under 2.2.0.
+PROMPT_VERSION = "2.2.0"
 
 #: Free text a model wrote in an earlier plan. Never carried into the next
 #: prompt: a remembered instruction must not reach the model as context it
@@ -58,8 +61,8 @@ def typed_plan(plan: dict[str, Any] | None) -> dict[str, Any] | None:
     return {k: v for k, v in plan.items() if k not in _PLAN_FREE_TEXT}
 
 #: The planner<->pipeline contract: what a planner returns and what the
-#: pipeline may rely on.
-PLANNER_CONTRACT_VERSION = "2.0.0"
+#: pipeline may rely on. 2.1.0 adds the plan field period_over_period.
+PLANNER_CONTRACT_VERSION = "2.1.0"
 
 
 class PlannerError(RuntimeError):
@@ -308,8 +311,15 @@ def build_system_prompt(context: PlanningContext) -> str:
         "- Market share ALWAYS uses brand_market_share. Never build it from two",
         "  volume metrics.",
         "- 'Accounts' means the account dimension (top-level health system).",
-        "- Growth is volume_growth and needs a comparison window. A change in market",
-        "  share is share_trend_pp (percentage points), not volume_growth.",
+        "- Growth of ONE window against another ('this quarter vs last quarter') is",
+        "  volume_growth and needs a comparison window. A change in market share is",
+        "  share_trend_pp (percentage points), not volume_growth.",
+        "- Growth of EACH period against the one before it ('month over month',",
+        "  'MoM', 'each month vs the previous month') is the volume metric itself,",
+        "  e.g. paid_pack_units, with exactly one period dimension (period_mo for",
+        "  months) and period_over_period true -- never volume_growth, never with a",
+        "  comparison, rolling, ranking or threshold. 'By month' with no change",
+        "  asked for is the plain series, with period_over_period false.",
         "- Set clarification (and nothing else) when the question is genuinely",
         "  ambiguous or asks for something the metric list cannot express.",
         "- Use interpretation to state how you read an ambiguous phrase.",
@@ -717,13 +727,26 @@ class OfflinePlanner:
         (r"\ball time\b|\ball history\b", "all_time"),
     ]
 
+    #: Each period against the one before it: "month over month", "MoM",
+    #: "each month compared with the month before". One pattern for the metric
+    #: rule, the dimension rule and the plan flag -- before k-07 the first two
+    #: disagreed, and "growing ... month over month" became a two-window
+    #: growth figure broken down by month, which cannot be compiled.
+    CADENCE = re.compile(
+        r"\b(?:month|quarter|week)[- ](?:over|on)[- ](?:month|quarter|week)\b|"
+        r"\b(?:mom|qoq)\b|"
+        r"\beach (?:month|quarter|week)\b[^?]{0,60}\b(?:before|previous|prior)\b")
+
     DIMENSION_WORDS = [
         (r"\bby territor\w*|\bper territor\w*|\b(?:all|each|every|compare)\s+territor\w*|\bterritories in\b", Dimension.territory),
         (r"\bby region\b|\bper region\b|\b(?:all|each|every|compare)\s+regions?\b", Dimension.region),
         (r"\bby state\b", Dimension.state),
-        (r"\bby month\b|\bmonthly\b|\bmonth over month\b", Dimension.period_mo),
-        (r"\bby quarter\b|\bquarterly\b|\bquarter over quarter\b", Dimension.period_qtr),
-        (r"\bby week\b|\bweekly\b", Dimension.period_wk),
+        (r"\bby month\b|\bmonthly\b|\bmonth[- ](?:over|on)[- ]month\b|\bmom\b|"
+         r"\beach month\b", Dimension.period_mo),
+        (r"\bby quarter\b|\bquarterly\b|\bquarter[- ](?:over|on)[- ]quarter\b|\bqoq\b|"
+         r"\beach quarter\b", Dimension.period_qtr),
+        (r"\bby week\b|\bweekly\b|\bweek[- ](?:over|on)[- ]week\b|\beach week\b",
+         Dimension.period_wk),
         (r"\bby product\b|\bper product\b|\bby drug\b|\beach product\b", Dimension.product),
         (r"\bby ndc\b", Dimension.ndc),
         (r"\bby strength\b", Dimension.strength),
@@ -825,11 +848,18 @@ class OfflinePlanner:
             wide = NamedWindow.last_6_months if rolling.periods <= 3 else NamedWindow.ytd
             window = TimeWindow(kind="named", named=wide)
 
+        threshold = self._threshold(q, metric, dimensions)
+        periods = [d for d in dimensions
+                   if d in (Dimension.period_mo, Dimension.period_qtr, Dimension.period_wk)]
+        period_over_period = bool(
+            self.CADENCE.search(q) and len(periods) == 1 and comparison is None
+            and rolling is None and ranking is None and threshold is None)
         plan = AnalyticalPlan(
             metric=metric, dimensions=dimensions, filters=filters,
             time=window, comparison=comparison, ranking=ranking,
-            threshold=self._threshold(q, metric, dimensions),
+            threshold=threshold,
             rolling=rolling,
+            period_over_period=period_over_period,
             interpretation=interpretation,
         )
         # The same contract as the live adapter, so the pipeline and the
@@ -974,6 +1004,7 @@ class OfflinePlanner:
         wants_series = bool(
             re.search(r"\bby month\b|\bmonthly\b|\bby quarter\b|\bquarterly\b|"
                       r"\bby week\b|\bweekly\b|\bover the last\b|\bover the past\b", q)
+            or self.CADENCE.search(q)
         )
         if re.search(r"grow\w*|grew|grown|declin\w*|increase|decrease|trend|trending", q) \
                 and not re.search(r"market share", q):

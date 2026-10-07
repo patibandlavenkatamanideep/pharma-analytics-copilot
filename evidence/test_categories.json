@@ -18,7 +18,8 @@
         "tests/integration/test_structural_geography.py",
         "tests/integration/test_threshold_boundaries.py",
         "tests/integration/test_full_cohort.py",
-        "tests/integration/test_period_over_period_fixture.py"
+        "tests/integration/test_period_over_period_fixture.py",
+        "tests/integration/test_period_over_period_pipeline.py"
       ]
     },
     "authorization_security": {

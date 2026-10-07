@@ -22,6 +22,7 @@ from app.llm.prompt_fingerprint import prompt_fingerprint as fingerprint
 #: (app/llm/prompt_fingerprint.py).
 FINGERPRINTS = {
     "2.1.0": "5ca5ddf08608fb64",
+    "2.2.0": "ed8e49619d32de7b",
 }
 
 

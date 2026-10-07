@@ -21,7 +21,7 @@ blank where the prior is zero or negative, a change is blank where either
 month is unknown or there is no earlier month, and nothing is imputed as zero
 where a source did not cover a month.
 
-The first tests reproduced k-07's missing capability on the unmodified code
+These tests reproduced k-07's missing capability on the unmodified code
 (evidence/runs/r5-k07-reproduced.json): no plan could express it.
 """
 
@@ -40,7 +40,6 @@ ANCHOR = {"min_mo": 0, "max_mo": 3, "min_wk": 0, "max_wk": 13,
           "max_period_mo": "2026-09", "max_period_qtr": "2026-Q3"}
 ALL = {"kind": "named", "named": "all_time"}
 MONTHS = ["2026-06", "2026-07", "2026-08", "2026-09"]
-K07 = pytest.mark.xfail(strict=True, reason="k-07: per-period change is not expressible")
 
 #: month -> (week label, week ending, quarter, wk_offset, mo_offset), from the fixture calendar
 CAL = {"2026-06": ("2026-W25", "2026-06-20", "2026-Q2", 13, 3),
@@ -167,7 +166,6 @@ def assert_same(actual, expected):
 PAID = "s.data_source = 'distributor' AND s.brand_flag = 1 AND s.drug_name = %s"
 
 
-@K07
 def test_each_month_against_the_one_before_matches_the_oracle(series_env):
     _, rows = run({"metric": "paid_pack_units", "dimensions": ["period_mo"],
                    "filters": {"product_names": ["SERIESMAB"]}, "time": ALL,
@@ -181,7 +179,6 @@ def test_each_month_against_the_one_before_matches_the_oracle(series_env):
     assert actual["2026-09"]["change"] == 14.0 and close(actual["2026-09"]["pct"], 14 / 6)
 
 
-@K07
 def test_the_windows_first_month_is_compared_with_the_month_before_the_window(series_env):
     """r3m is July to September. July's change is against June, which is
     outside the window but in the data -- not blank, and not against zero."""
@@ -193,7 +190,6 @@ def test_the_windows_first_month_is_compared_with_the_month_before_the_window(se
     assert actual["2026-07"]["prior"] == 10.0 and actual["2026-07"]["change"] == -10.0
 
 
-@K07
 def test_a_negative_prior_gives_a_change_but_no_percentage(series_env):
     _, rows = run({"metric": "paid_pack_units", "dimensions": ["period_mo"],
                    "filters": {"product_names": ["RETURNMAB"]}, "time": ALL,
@@ -205,7 +201,6 @@ def test_a_negative_prior_gives_a_change_but_no_percentage(series_env):
     assert actual["2026-09"]["change"] == 0.0 and actual["2026-09"]["pct"] == 0.0
 
 
-@K07
 def test_explicit_units_change_in_their_own_unit(series_env):
     query, rows = run({"metric": "paid_equivalents", "dimensions": ["period_mo"],
                        "filters": {"product_names": ["SERIESMAB"]}, "time": ALL,
@@ -215,7 +210,6 @@ def test_explicit_units_change_in_their_own_unit(series_env):
                                   value_sql="sum(s.pack_units * p.unit_conversion_factor)"))
 
 
-@K07
 def test_several_products_each_compare_with_their_own_prior(series_env):
     """Partitioned by product: SERIESMAB's June is not compared with
     RETURNMAB's September, and each product's first month has no prior."""
@@ -230,7 +224,6 @@ def test_several_products_each_compare_with_their_own_prior(series_env):
         assert_same(got(product_rows, key="dim1_id"), oracle(PAID, (drug,)))
 
 
-@K07
 def test_a_month_a_source_did_not_cover_is_unknown_not_zero(series_env):
     """Market data covered June and September only. July and August are
     unknown, so no change involving them is computed -- September is not a
@@ -247,7 +240,6 @@ def test_a_month_a_source_did_not_cover_is_unknown_not_zero(series_env):
     assert actual["2026-09"]["value"] is not None and actual["2026-09"]["change"] is None
 
 
-@K07
 def test_a_scoped_user_sees_the_change_in_their_own_territory_only(series_env):
     """A RAM for New York Metro: September is 12 (ACME-1), not 20 -- the Texas
     facility's 8 packs are outside their scope, and so is any change they cause."""

@@ -59,6 +59,11 @@ ALLOWED_FUNCTIONS = {
     #   row_number -- numbers calendar periods so a window can extend N-1
     #                 periods before the ones requested
     "case", "if", "row_number",
+    # Added for a period-over-period change (k-07, 7 October 2026): the same
+    # group's previous period on the calendar spine. A pure window function
+    # over rows already read. Its siblings (lead, nth_value, ...) stay out:
+    # nothing compiles them.
+    "lag",
 }
 
 FORBIDDEN_SCHEMAS = {"pg_catalog", "information_schema", "app_auth", "app_conv", "app_meta"}

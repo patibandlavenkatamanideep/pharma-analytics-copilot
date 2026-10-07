@@ -112,13 +112,16 @@ function Login({ onSignedIn, notice }) {
   );
 }
 
-function ResultTable({ answer }) {
+export function ResultTable({ answer }) {
   if (!answer?.rows?.length) return null;
   const dimensionKeys = Object.keys(answer.rows[0]).filter(
     (k) => /^dim\d+$/.test(k)
   );
   const hasComponents = "numerator" in answer.rows[0];
   const hasChange = "current" in answer.rows[0];
+  // Each period against the one before it (k-07): the prior period, the change
+  // and the percentage, with the still-accumulating period marked.
+  const hasStep = "change" in answer.rows[0];
   if (!dimensionKeys.length && answer.rows.length === 1) return null;
 
   const number = (v) =>
@@ -139,6 +142,9 @@ function ResultTable({ answer }) {
             ))}
             {hasChange && <th className="num">current</th>}
             {hasChange && <th className="num">prior</th>}
+            {hasStep && <th className="num">prior period</th>}
+            {hasStep && <th className="num">change</th>}
+            {hasStep && <th className="num">% change</th>}
             {hasComponents && <th className="num">ours</th>}
             {hasComponents && <th className="num">market</th>}
             <th className="num">{answer.columns[answer.columns.length - 1]}</th>
@@ -154,9 +160,15 @@ function ResultTable({ answer }) {
               ))}
               {hasChange && <td className="num">{number(row.current)}</td>}
               {hasChange && <td className="num">{number(row.prior)}</td>}
+              {hasStep && <td className="num">{number(row.prior)}</td>}
+              {hasStep && <td className="num">{row.change_formatted}</td>}
+              {hasStep && <td className="num">{row.change_pct_formatted}</td>}
               {hasComponents && <td className="num">{number(row.numerator)}</td>}
               {hasComponents && <td className="num">{number(row.denominator)}</td>}
-              <td className="num strong">{row.value_formatted}</td>
+              <td className="num strong">
+                {row.value_formatted}
+                {row.provisional && <span className="muted small"> (provisional)</span>}
+              </td>
             </tr>
           ))}
         </tbody>
