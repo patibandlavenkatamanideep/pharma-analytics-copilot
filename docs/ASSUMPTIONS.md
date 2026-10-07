@@ -222,11 +222,25 @@ approximated.
 competitors — TAXOTERE, GEMZAR, ALIMTA, KEYTRUDA, AVASTIN are all `brand_flag = 0`. There is no
 generic/biosimilar classification column.
 
-**Handling.** A curated additive lookup (`migrations/003_derived_classification.sql`) classifies the
-40 supplied products by drug name (`% GENERIC` → generic, `% BIOSIMILAR` → biosimilar, else branded).
-It is clearly marked derived-not-supplied, is versioned with the metric registry, and the answer
-discloses that the classification is derived. Without it the request is refused as unsupported
-rather than answered with competitor volume relabelled as generic.
+**Handling (rule 2.0.0, 7 October 2026).** `brand_flag = 1` is `company_brand` (authority:
+the source). Every other class comes from a versioned **classification mapping** that names
+products by drug name within a market subcategory (authority: the mapping, recorded per product
+with its version and SHA-256), or is `unknown` (authority: none). The supplied dataset's mapping,
+`app/data/classification_supplied.json`, is curated from the tables of
+`docs/market_classification.md` and covers all 40 supplied products; another dataset brings its own
+(`product_classification.json` beside its files, or `scripts/load_data.py
+--classification-mapping`) or has none. A mapping that contradicts `brand_flag`, lists a key
+twice or uses another class is refused with the load. The published manifest records which
+mappings classified the products and how many are unknown, and every answer that uses a class
+names the mapping.
+
+An unknown product counts in its market and in no segment. A segment share carries that volume:
+the share is stated as a range, from "none of it is the segment" to "all of it is"; a market
+whose volume is all of unknown class has no share (unavailable, not 0%). Rule 1.0.0 classified by
+the generator's name suffixes and made every other `brand_flag = 0` product a branded competitor
+by elimination; on a dataset unlike the supplied one that reported, for example, 50.2% for a
+branded-competitor share that is known only to lie between 27.2% and 50.2%
+([QUALIFICATION_2026_10_07.md](QUALIFICATION_2026_10_07.md), step 4).
 
 ---
 

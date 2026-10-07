@@ -6,6 +6,8 @@ import { useId } from "react";
 export default function ResultChart({ answer }) {
   const captionId = useId();
   if (answer?.dimensions?.length !== 1 || !answer.unit || answer.rows?.length < 2) return null;
+  // A share stated as a range (volume of unknown class) is not one bar.
+  if (answer.rows.some(r => r.unclassified)) return null;
   const isTime = ["period_mo", "period_qtr", "period_wk"].includes(answer.dimensions[0]);
   const all = [...(answer.rows || [])];
   if (isTime) all.sort((a, b) => String(a.dim0).localeCompare(String(b.dim0)));

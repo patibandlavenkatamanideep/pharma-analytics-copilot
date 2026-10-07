@@ -22,6 +22,7 @@ include = ["app*"]
 [tool.setuptools.package-data]
 "app" = ["log_config.json"]
 "app.analytics" = ["*.yaml"]
+"app.data" = ["*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

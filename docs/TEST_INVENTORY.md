@@ -27,11 +27,11 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 802 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Integration** | `pytest tests/integration -q` | 935 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Unit** | `pytest tests/unit -q` | 822 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Integration** | `pytest tests/integration -q` | 947 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pass, strict gate | `r5-final-security.json` (`7950e71`) |
-| **Total (pytest)** | `pytest tests -q` | **2146** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Browser — component** | `cd web && npm test` | 30 | pass, strict gate | `r5-final-component.json` (`7950e71`) |
+| **Total (pytest)** | `pytest tests -q` | **2178** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
+| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-final-component.json` (`7950e71`, 30 tests); 32 to be recorded on this pass's final candidate |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-final-browser.json` (`7950e71`) |
 | **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r5-final-eval-*.json` (`7950e71`, offline) |
 
@@ -110,9 +110,9 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (27, vitest + jsdom).** The 22 conversation/identity cases cover: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer, one for waiting out an overload before retrying.
+**Component tests (32, vitest + jsdom).** The 22 conversation/identity cases cover: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer, one for waiting out an overload before retrying.
 
-Five additional chart cases cover returned-row scope and labels, negative values, missing/time-ordered values, truncation disclosure, and unsupported shapes. The final run uses Node 24.19.0 and the locked install.
+Six chart cases cover returned-row scope and labels, negative values, missing/time-ordered values, truncation disclosure, unsupported shapes, and no bar for a share stated as a range. Four table cases cover each period against the one before it (prior, change, percentage), the provisional period, a plain series without change columns, and a segment share with volume of unknown class (that volume and the range). The final run uses Node 24.19.0 and the locked install.
 
 The following cache diagnosis is historical. They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run

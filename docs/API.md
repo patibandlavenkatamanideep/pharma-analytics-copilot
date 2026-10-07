@@ -125,7 +125,7 @@ Response `200`:
 | `persistence` | yes | `saved`, `not_saved`, `failed`, `conflict` — whether this turn is now part of the conversation |
 | `choices` | on some `clarify` | `[{"id", "label", "detail"}]` in display order; reply with "the second one", the number, or a distinguishing detail |
 | `alternative` | on some `denied` | What the user can ask instead |
-| `answer` | on `answered` | `headline`, `columns`, `rows`, `scope_note`, `period_note`, `warnings`, `notes`, `row_count`, `truncated`. For each period against the one before it (`period_over_period`), every row also carries `prior`, `change`, `change_pct` (blank where the prior is zero, negative or unknown), their `_formatted` strings, `weeks`, `prior_weeks` and `provisional` |
+| `answer` | on `answered` | `headline`, `columns`, `rows`, `scope_note`, `period_note`, `warnings`, `notes`, `row_count`, `truncated`. For each period against the one before it (`period_over_period`), every row also carries `prior`, `change`, `change_pct` (blank where the prior is zero, negative or unknown), their `_formatted` strings, `weeks`, `prior_weeks` and `provisional`. A segment share also carries `unclassified` (market volume of unknown class) and `value_upper` (the share if all of it were the segment); where `unclassified` is positive, `value` is the lower end and `value_formatted` states the range |
 | `plan`, `sql` | only with `include_sql` | The typed plan, and the SQL this user was authorised to run |
 | `replayed` | on a replay | `true` when the response is the stored outcome of an earlier request with the same key |
 

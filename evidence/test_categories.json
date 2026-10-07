@@ -122,7 +122,8 @@
         "tests/unit/test_specialty_and_periods.py",
         "tests/unit/test_turn_graph.py",
         "tests/unit/test_admission.py",
-        "tests/unit/test_period_over_period.py"
+        "tests/unit/test_period_over_period.py",
+        "tests/unit/test_classification_mapping.py"
       ]
     },
     "rendering": {

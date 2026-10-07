@@ -28,11 +28,16 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="print the manifest as JSON")
     ap.add_argument("--generated-dir", type=pathlib.Path, default=None,
                     help="same-schema CSVs to load instead of schema/generated (full mode)")
+    ap.add_argument("--classification-mapping", type=pathlib.Path, default=None,
+                    help="the classification mapping to use as the authority for classes other "
+                         "than the company's own (default: the supplied mapping for the supplied "
+                         "data, else product_classification.json beside --generated-dir, else none)")
     args = ap.parse_args()
 
     started = time.time()
     try:
-        report = load(args.mode, generated_dir=args.generated_dir)
+        report = load(args.mode, generated_dir=args.generated_dir,
+                      classification_mapping_path=args.classification_mapping)
     except SchemaIncompatible as exc:
         # Already a fully formed, user-facing explanation naming what differs.
         print(f"\nLOAD REFUSED\n\n{exc}\n", file=sys.stderr)

@@ -104,15 +104,50 @@ def check_quality(
 
     if "derived_classification" in query.quality_checks:
         # brand_flag = 0 covers branded competitors AND generics, so "generic"
-        # is not a column in the supplied data -- it is inferred from the drug
-        # name by app/data/classification.py. The number is only interpretable
-        # if the reader knows that.
-        warnings.append(
-            "Generic and branded-competitor are DERIVED here: the supplied data "
-            "marks only brand_flag = 0, which covers both. The split comes from "
-            "the product classification rules in docs/market_classification.md, "
-            "not from the source."
-        )
+        # is not a column in the supplied data. Each class other than our own
+        # comes from the dataset's classification mapping, or is unknown
+        # (app/data/classification.py); the answer names which.
+        classes = coverage.get("classification")
+        if classes is None:
+            warnings.append(
+                "Generic and branded-competitor are not columns of the source data, "
+                "and this dataset did not record which classification authority "
+                "classified its products."
+            )
+        elif classes.get("mappings"):
+            warnings.append(
+                "Generic, biosimilar and branded-competitor are not columns of the "
+                "source data, which marks only our own brands. They come from the "
+                f"classification mapping {', '.join(classes['mappings'])}."
+            )
+        else:
+            warnings.append(
+                "No classification mapping was supplied with this dataset, and the "
+                "source marks only our own brands, so every other product is of "
+                "unknown class: a share of any other segment is known only as the "
+                "range that volume allows."
+            )
+        if classes and (unknown := classes.get("unknown_products")):
+            warnings.append(
+                f"{unknown} product(s) have no class from the source or a mapping. "
+                "Their volume counts in the market and in no segment."
+            )
+        bounded = [r for r in rows if r.get("unclassified")]
+        if bounded:
+            widest = max(bounded, key=lambda r: (r.get("value_upper") or 0) - (r.get("value") or 0))
+            warnings.append(
+                "Part of this market's volume is of unknown class, so each share is a "
+                "range: the value shown if none of that volume belongs to the segment, "
+                "up to the upper value if all of it does (largest: "
+                f"{format_value(widest.get('value'), 'ratio')} to "
+                f"{format_value(widest.get('value_upper'), 'ratio')})."
+            )
+        if any(r.get("value") is None and r.get("denominator") and "unclassified" in r
+               and r["unclassified"] >= r["denominator"] for r in rows):
+            warnings.append(
+                "Where a market's volume is all of unknown class, its share is "
+                "unavailable rather than zero."
+            )
 
     if "conversion_factor_coverage" in query.quality_checks:
         # Equivalents are pack_units * unit_conversion_factor. A missing or
@@ -242,6 +277,10 @@ def render(
         if "numerator" in row:
             item["numerator"] = row["numerator"]
             item["denominator"] = row["denominator"]
+        if "value_upper" in row:
+            item["unclassified"] = row["unclassified"]
+            item["value_upper"] = row["value_upper"]
+            item["value_upper_formatted"] = format_value(row["value_upper"], query.unit)
         if "current_value" in row:
             item["current"] = row["current_value"]
             item["prior"] = row["prior_value"]
@@ -256,6 +295,9 @@ def render(
             item["provisional"] = row.get(f"dim{_period_index(plan)}_id") == query.current_period
         item["value"] = row.get("value")
         item["value_formatted"] = format_value(row.get("value"), query.unit)
+        if row.get("unclassified") and row.get("value") is not None:
+            # The lower bound alone would read as the share.
+            item["value_formatted"] += f" to {item['value_upper_formatted']}"
         table.append(item)
 
     # A row cap is not a size cap. 5,000 rows of short account codes and 5,000
@@ -357,6 +399,13 @@ def _headline(rows: list[dict[str, Any]], query: CompiledQuery, plan: Analytical
             num = format_value(rows[0].get("numerator"), "equivalents")
             den = format_value(rows[0].get("denominator"), "equivalents")
             return f"{metric.capitalize()} is {text} ({num} against a reported market of {den})."
+        if rows[0].get("unclassified"):
+            if value is None:
+                return (f"{metric.capitalize()} is unavailable: every product in this "
+                        "market other than our own is of unknown class.")
+            upper = format_value(rows[0].get("value_upper"), query.unit)
+            return (f"{metric.capitalize()} is between {text} and {upper}: part of this "
+                    "market's volume is of unknown class.")
         return f"{metric.capitalize()}: {text}."
 
     if plan.period_over_period:

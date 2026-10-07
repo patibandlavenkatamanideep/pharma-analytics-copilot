@@ -46,7 +46,11 @@ log = logging.getLogger(__name__)
 #: 2.2.0 -- growth of each period against the one before it
 #:          (period_over_period) told apart from two-window growth (k-07,
 #:          7 October 2026). No live model has been run under 2.2.0.
-PROMPT_VERSION = "2.2.0"
+#: 2.3.0 -- the metric registry it carries is 1.5.0: a segment share reports
+#:          the volume of unknown classification and the range it allows
+#:          (step 4 of the same qualification). The instructions did not
+#:          change. No live model has been run under 2.3.0.
+PROMPT_VERSION = "2.3.0"
 
 #: Free text a model wrote in an earlier plan. Never carried into the next
 #: prompt: a remembered instruction must not reach the model as context it

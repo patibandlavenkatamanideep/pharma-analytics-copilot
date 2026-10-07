@@ -50,3 +50,11 @@ it("does not chart scalar, mixed-grain, legacy or wholly unavailable results", (
     view.unmount();
   }
 });
+
+it("draws no bar for a share stated as a range", () => {
+  const answer = {...base, unit: "ratio", rows: [
+    {dim0: "Anti-IL", value: 0.27, value_upper: 0.5, unclassified: 1248, value_formatted: "27.21% to 50.22%"},
+    {dim0: "Anti-TNF", value: 0, value_upper: 0.35, unclassified: 1162, value_formatted: "0.00% to 35.00%"}]};
+  const {container} = render(<ResultChart answer={answer} />);
+  expect(container.querySelector("figure")).toBeNull();
+});

@@ -1,0 +1,178 @@
+{
+ "mapping": "supplied",
+ "version": "1.0.0",
+ "authority": "docs/market_classification.md (supplied with the assignment), tables 'Oncology Markets' and 'Urology Markets': every product listed by drug name within its market subcategory",
+ "basis": "The NovaPharma Brand column is company_brand (the source marks these brand_flag = 1). A Key Competitor is a generic where the document lists it as '<molecule> GENERIC', a biosimilar where '<molecule> BIOSIMILAR', and otherwise a branded competitor. Curated on 7 October 2026 for the supplied dataset only; another dataset brings its own mapping or has none.",
+ "entries": [
+  {
+   "drug_name": "ZYTIGA",
+   "market_subcategory": "Abiraterone",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "CARBOPLATIN GENERIC",
+   "market_subcategory": "Carboplatin",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "CARBOTREL",
+   "market_subcategory": "Carboplatin",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "PARAPLATIN",
+   "market_subcategory": "Carboplatin",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "ERBITUX",
+   "market_subcategory": "Cetuximab",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "CISPLATIN GENERIC",
+   "market_subcategory": "Cisplatin",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "CYCLONOVA",
+   "market_subcategory": "Cyclophosphamide",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "CYCLOPHOSPHAMIDE GENERIC",
+   "market_subcategory": "Cyclophosphamide",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "CYTOXAN",
+   "market_subcategory": "Cyclophosphamide",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "FIRMAGON",
+   "market_subcategory": "Degarelix",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "DOCETAXEL GENERIC",
+   "market_subcategory": "Docetaxel",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "TAXOTERE",
+   "market_subcategory": "Docetaxel",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "ZENOVAX",
+   "market_subcategory": "Docetaxel",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "DOXORUBICIN GENERIC",
+   "market_subcategory": "Doxorubicin",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "XTANDI",
+   "market_subcategory": "Enzalutamide",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "GEMCITABINE GENERIC",
+   "market_subcategory": "Gemcitabine",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "GEMTARA",
+   "market_subcategory": "Gemcitabine",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "GEMZAR",
+   "market_subcategory": "Gemcitabine",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "IRINOTECAN GENERIC",
+   "market_subcategory": "Irinotecan",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "ELIGARD",
+   "market_subcategory": "Leuprolide",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "LUPREX DEPOT",
+   "market_subcategory": "Leuprolide",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "LUPRON DEPOT",
+   "market_subcategory": "Leuprolide",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "OXALIPLATIN GENERIC",
+   "market_subcategory": "Oxaliplatin",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "KEYTRUDA",
+   "market_subcategory": "PD-1 Inhibitors",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "OPDIVO",
+   "market_subcategory": "PD-1 Inhibitors",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "ABRAXANE",
+   "market_subcategory": "Paclitaxel",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "ALOXI",
+   "market_subcategory": "Palonosetron",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "ONCOSETRON",
+   "market_subcategory": "Palonosetron",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "PALONOSETRON GENERIC",
+   "market_subcategory": "Palonosetron",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "ALIMTA",
+   "market_subcategory": "Pemetrexed",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "PAXELIUM",
+   "market_subcategory": "Pemetrexed",
+   "classification": "company_brand"
+  },
+  {
+   "drug_name": "PEMETREXED GENERIC",
+   "market_subcategory": "Pemetrexed",
+   "classification": "generic"
+  },
+  {
+   "drug_name": "AVASTIN",
+   "market_subcategory": "VEGF Inhibitors",
+   "classification": "branded_competitor"
+  },
+  {
+   "drug_name": "BEVACIZUMAB BIOSIMILAR",
+   "market_subcategory": "VEGF Inhibitors",
+   "classification": "biosimilar"
+  }
+ ]
+}

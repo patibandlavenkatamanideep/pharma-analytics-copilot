@@ -443,6 +443,7 @@ class Compiler:
         extra_params: list[Any] | None = None,
         org_side: bool = True,
         join_labels: bool = False,
+        extra_needs: set[str] | None = None,
     ) -> tuple[str, list[Any], set[str]]:
         """One pre-aggregated component.
 
@@ -452,7 +453,7 @@ class Compiler:
         numerator has to meet a subcategory-level market denominator.
         """
         spec = self.registry.get(metric_key)
-        needs: set[str] = set()
+        needs: set[str] = set(extra_needs or ())
         params: list[Any] = []
 
         select_parts: list[str] = []
@@ -1099,6 +1100,37 @@ class Compiler:
             dims=[], join_dims=den_dims, join_labels=not bridged,
             extra_clauses=den_extra_clauses, extra_params=den_extra_params,
         )
+        # A product of unknown class (app/data/classification.py) is in the
+        # market and in no segment. Its volume, in the denominator's own
+        # population, is carried beside the share, so the answer can give the
+        # range it allows: none of it is the segment (value) to all of it
+        # (value_upper). A market whose volume is all of unknown class has no
+        # share at all. Grouped by class, unknown is a row of its own instead.
+        bounded = (spec.get("unknown_class_bound") and bool(plan.filters.classifications)
+                   and Dimension.classification not in requested)
+        if bounded:
+            unk_sql, unk_params, _ = self._leaf_select(
+                den_key, den_filters, window, dims=[], join_dims=den_dims,
+                extra_clauses=den_extra_clauses + ["c.classification = 'unknown'"],
+                extra_params=list(den_extra_params), extra_needs={"p", "c"},
+            )
+            # With the volume of unknown class beside it, a market without
+            # the segment is a known zero, not a missing value.
+            ratio_sql = (
+                "CASE WHEN COALESCE(u.value, 0) < d.value\n"
+                "            THEN COALESCE(n.value, 0) / NULLIF(d.value, 0) END AS value,\n"
+                "       COALESCE(u.value, 0) AS unclassified,\n"
+                "       CASE WHEN COALESCE(u.value, 0) < d.value\n"
+                "            THEN (COALESCE(n.value, 0) + COALESCE(u.value, 0))"
+                " / NULLIF(d.value, 0) END AS value_upper\n")
+        else:
+            unk_sql, unk_params = "", []
+            # A3: zero or missing denominator -> NULL, never 0, never a
+            # division-by-zero error.
+            ratio_sql = "n.value / NULLIF(d.value, 0) AS value\n"
+        ctes = f"WITH num AS (\n{num_sql}), den AS (\n{den_sql})"
+        if bounded:
+            ctes += f", unk AS (\n{unk_sql})"
 
         join_params: list[Any] = []
         if den_dims:
@@ -1113,6 +1145,12 @@ class Compiler:
                 conds.append(f"{_join_key('n', left)} = {_join_key('d', f'jk{j}')}")
                 join_params += [NULL_KEY_SENTINEL, NULL_KEY_SENTINEL]
             join_cond = " AND ".join(conds)
+            unk_join = ""
+            if bounded:
+                unk_join = "LEFT JOIN unk u ON " + " AND ".join(
+                    f"{_join_key('d', f'jk{j}')} = {_join_key('u', f'jk{j}')}"
+                    for j in range(len(den_dims))) + "\n"
+                join_params += [NULL_KEY_SENTINEL, NULL_KEY_SENTINEL] * len(den_dims)
             # When a product grain was bridged, only numerator rows are
             # meaningful (a competitor product is never in our numerator), so
             # the numerator drives. Otherwise keep both sides so a market with
@@ -1131,22 +1169,22 @@ class Compiler:
                 dims_sql = ""
             select_head = f"{dims_sql}," if dims_sql else ""
             sql = (
-                f"WITH num AS (\n{num_sql}), den AS (\n{den_sql})\n"
+                f"{ctes}\n"
                 f"SELECT {select_head}\n"
                 "       n.value AS numerator, d.value AS denominator,\n"
-                # A3: zero or missing denominator -> NULL, never 0, never a
-                # division-by-zero error.
-                "       n.value / NULLIF(d.value, 0) AS value\n"
+                f"       {ratio_sql}"
                 f"FROM num n {join_type} den d ON {join_cond}\n"
+                f"{unk_join}"
             )
         else:
             sql = (
-                f"WITH num AS (\n{num_sql}), den AS (\n{den_sql})\n"
+                f"{ctes}\n"
                 "SELECT n.value AS numerator, d.value AS denominator,\n"
-                "       n.value / NULLIF(d.value, 0) AS value\n"
+                f"       {ratio_sql}"
                 "FROM num n CROSS JOIN den d\n"
+                + ("CROSS JOIN unk u\n" if bounded else "")
             )
-        ratio_params = num_params + den_params + join_params
+        ratio_params = num_params + den_params + unk_params + join_params
         if apply_limit:
             sql, ratio_params = self._finish(sql, plan, ratio_params)
 
@@ -1166,7 +1204,8 @@ class Compiler:
         return CompiledQuery(
             sql=sql,
             params=ratio_params,
-            columns=self._columns(plan, extra=["numerator", "denominator", "value"]),
+            columns=self._columns(plan, extra=["numerator", "denominator", "value"]
+                                  + (["unclassified", "value_upper"] if bounded else [])),
             unit=spec["unit"], metric_label=spec["label"], window_label=window.label,
             notes=notes,
             quality_checks=list(spec.get("quality_checks", [])),

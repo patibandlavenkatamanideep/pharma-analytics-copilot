@@ -227,12 +227,6 @@ def test_a_reused_territory_name_is_refused_at_load(profile, tmp_path):
         load("full", generated_dir=data)
 
 
-ELIMINATION = ("classification rule 1.0.0 classes a product by elimination: brand_flag 0 "
-               "and no generic or biosimilar name suffix makes it a branded competitor, "
-               "whatever it is, and no mapping can say otherwise")
-
-
-@pytest.mark.xfail(strict=True, reason=ELIMINATION)
 def test_a_product_nothing_classifies_stays_unknown(profile):
     """The source's brand_flag says what is ours; the dataset's mapping says
     what the rest are. A product neither names is unknown -- not a branded
@@ -246,7 +240,6 @@ def test_a_product_nothing_classifies_stays_unknown(profile):
     assert got == expected, {n: (got.get(n), c) for n, c in expected.items() if got.get(n) != c}
 
 
-@pytest.mark.xfail(strict=True, reason=ELIMINATION)
 def test_a_segment_share_counts_unknown_volume_in_no_segment_and_bounds_it(profile):
     """Branded-competitor share of each of our markets. The segment is the
     products known to be branded competitors; volume of unknown class is in
@@ -276,3 +269,82 @@ def test_a_segment_share_counts_unknown_volume_in_no_segment_and_bounds_it(profi
         assert close(row["value"], w["n"] / w["d"]), (sub, row, w)
         assert close(row["unclassified"], w["u"]), (sub, row, w)
         assert close(row["value_upper"], (w["n"] + w["u"]) / w["d"]), (sub, row, w)
+
+
+def test_a_named_market_has_a_generic_share_only_where_some_volume_is_classified(profile):
+    """Every market named in turn. A market the mapping does not cover (or a
+    dataset with no mapping) has volume of unknown class only, and no share --
+    not 0%, which would assert there are no generics in it."""
+    expected = profile["manifest"]["expected_classification"]
+    if profile["manifest"]["classification_mapping"]:
+        assert profile["manifest"]["markets_without_classification"], \
+            "a mapping that covers only the customer's markets leaves one uncovered"
+    subcategories = [r["s"] for r in sql("SELECT DISTINCT market_subcategory AS s FROM products")]
+    for sub in subcategories:
+        rows = run({"metric": "market_segment_share", "time": ALL,
+                    "filters": {"market_subcategories": [sub], "classifications": ["generic"]}})
+        n = u = d = 0.0
+        for r in sql("SELECT p.ndc, sum(s.pack_units * p.unit_conversion_factor) AS v FROM sales s "
+                     "JOIN products p ON p.ndc = s.ndc WHERE s.data_source = 'market_data' "
+                     "AND p.market_subcategory = %s GROUP BY 1", (sub,)):
+            d += float(r["v"])
+            n += float(r["v"]) if expected[r["ndc"]] == "generic" else 0.0
+            u += float(r["v"]) if expected[r["ndc"]] == "unknown" else 0.0
+        assert d, sub
+        if sub in profile["manifest"]["markets_without_classification"]:
+            assert u == d and rows[0]["value"] is None and rows[0]["value_upper"] is None, (sub, rows)
+        else:
+            assert u < d and close(rows[0]["value"], n / d), (sub, rows, n, u, d)
+            assert close(rows[0]["value_upper"], (n + u) / d), (sub, rows, n, u, d)
+
+
+def test_a_mapping_that_contradicts_the_source_is_refused_at_load(profile, tmp_path):
+    """A customer mapping that calls one of our brands a generic is refused
+    whole, recorded as a failed load, and the published dataset stays."""
+    from app.data.loader import LoadError, load
+
+    [before] = sql("SELECT dataset_id FROM app_ref.generation")
+    data = tmp_path / "contradicts"
+    shutil.copytree(profile["dir"], data)
+    ours = next(x for x in csv_rows(data / "products.csv") if x["brand_flag"] == "1")
+    (data / "product_classification.json").write_text(json.dumps({
+        "mapping": "contradicts", "version": "1.0.0", "authority": "test",
+        "entries": [{"drug_name": ours["drug_name"], "market_subcategory":
+                     ours["market_subcategory"], "classification": "generic"}]}))
+    with pytest.raises(LoadError, match="brand_flag = 1"):
+        load("full", generated_dir=data)
+    assert sql("SELECT dataset_id FROM app_ref.generation")[0] == before
+    [failed] = sql("SELECT load_state, warnings FROM app_meta.dataset_manifest "
+                   "ORDER BY started_at DESC LIMIT 1")
+    assert failed["load_state"] == "failed" and "brand_flag = 1" in str(failed["warnings"])
+
+
+def test_a_mapping_entry_that_names_no_product_is_reported(profile):
+    """Inside a transaction that is rolled back: nothing is published."""
+    from app.data.classification import Mapping
+    from app.data.loader import _populate_classification
+    from app.data.manifest import LoadReport
+    from app.db import owner_transaction
+
+    mapping = Mapping(name="stale", version="1.0.0", sha256="0" * 64, authority="test",
+                      entries={("NO SUCH DRUG", "Nowhere"): "generic"})
+    report = LoadReport(dataset_id="probe", load_mode="full")
+
+    class RolledBack(Exception):
+        pass
+
+    with pytest.raises(RolledBack):
+        with owner_transaction() as cur:
+            cur.execute("DELETE FROM app_ref.product_classification")
+            _populate_classification(cur, report, mapping)
+            raise RolledBack
+    codes = {w["code"]: w for w in report.warnings}
+    assert codes["classification_mapping_unused_entries"]["entries"] == ["NO SUCH DRUG in Nowhere"]
+    assert codes["products_of_unknown_classification"]["ndcs"]
+    assert sql("SELECT count(*) AS n FROM app_ref.product_classification")[0]["n"] > 0
+
+
+def csv_rows(path):
+    import csv
+    with path.open() as fh:
+        return list(csv.DictReader(fh))

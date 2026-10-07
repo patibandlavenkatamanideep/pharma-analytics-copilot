@@ -26,7 +26,8 @@ from typing import Any
 
 from psycopg import sql
 
-from app.data.classification import RULE_VERSION, classify
+from app.data.classification import (MAPPING_FILE, RULE_VERSION, SUPPLIED_MAPPING, Mapping,
+                                     MappingError, classify, read_mapping)
 from app.data.manifest import MAPPING_VERSION, LoadReport, file_sha256
 from app.data.schema_contract import CONTRACT_VERSION, require_compatible
 from app.db import owner_transaction
@@ -249,20 +250,85 @@ def _count(cur: Any, table: str) -> int:
     return cur.fetchone()["n"]
 
 
-def _populate_classification(cur: Any) -> None:
-    cur.execute("SELECT ndc, drug_name, brand_flag FROM products")
+def classification_mapping(directory: pathlib.Path | None,
+                           explicit: pathlib.Path | None = None) -> Mapping | None:
+    """The authority for classes other than our own (app/data/classification.py).
+
+    An explicit path wins. The supplied dataset (schema/generated, or the seed)
+    uses the mapping curated from docs/market_classification.md. Any other
+    dataset uses the product_classification.json beside its files, or has no
+    mapping -- the supplied one names the supplied products and is not an
+    authority for anyone else's.
+    """
+    try:
+        if explicit is not None:
+            return read_mapping(explicit)
+        if directory is None or directory.resolve() == GENERATED.resolve():
+            return read_mapping(SUPPLIED_MAPPING)
+        beside = directory / MAPPING_FILE
+        return read_mapping(beside) if beside.exists() else None
+    except MappingError as exc:
+        raise LoadError(f"classification mapping refused: {exc}") from None
+
+
+def _populate_classification(cur: Any, report: LoadReport, mapping: Mapping | None) -> None:
+    cur.execute("SELECT ndc, drug_name, brand_flag, market_subcategory FROM products ORDER BY ndc")
     rows = cur.fetchall()
     buf = io.StringIO()
     writer = csv.writer(buf)
+    used: set[tuple[str, str]] = set()
+    unknown: list[str] = []
     for row in rows:
-        classification, derivation = classify(row["drug_name"], row["brand_flag"])
-        writer.writerow([row["ndc"], classification, derivation, RULE_VERSION])
+        try:
+            c = classify(row["drug_name"], row["brand_flag"], row["market_subcategory"], mapping)
+        except MappingError as exc:
+            raise LoadError(f"classification mapping refused: {exc}") from None
+        key = ((row["drug_name"] or "").strip().upper(), (row["market_subcategory"] or "").strip())
+        if mapping is not None and key in mapping.entries:
+            used.add(key)       # including a company brand, classified by the source
+        if c.classification == "unknown":
+            unknown.append(row["ndc"])
+        writer.writerow([row["ndc"], c.classification, c.derivation, RULE_VERSION, c.authority,
+                         mapping.ref if c.authority == "mapping" else None])
     buf.seek(0)
     with cur.copy(
-        "COPY app_ref.product_classification (ndc, classification, derivation, rule_version) "
-        "FROM STDIN WITH (FORMAT csv)"
+        "COPY app_ref.product_classification (ndc, classification, derivation, rule_version, "
+        "authority, mapping_ref) FROM STDIN WITH (FORMAT csv)"
     ) as copy:
         copy.write(buf.read())
+    if mapping is not None:
+        report.source_hashes["classification_mapping"] = mapping.sha256
+        if unused := sorted(set(mapping.entries) - used):
+            report.warn(
+                "classification_mapping_unused_entries",
+                f"{len(unused)} classification mapping entr(ies) name no product in this "
+                "dataset; check the drug name and market subcategory",
+                entries=[f"{name} in {sub}" for name, sub in unused[:20]])
+    if unknown:
+        report.warn(
+            "products_of_unknown_classification",
+            f"{len(unknown)} product(s) have no class from the source or a classification "
+            "mapping; they count in their market and in no segment",
+            ndcs=unknown[:50])
+
+
+def _classification_coverage(cur: Any, report: LoadReport) -> None:
+    """Which authorities classified the published products, recorded so an
+    answer can name them (app/analytics/render.py)."""
+    cur.execute("SELECT classification, authority, mapping_ref, rule_version, count(*) AS n "
+                "FROM app_ref.product_classification GROUP BY 1, 2, 3, 4")
+    rows = cur.fetchall()
+    by_class: dict[str, int] = {}
+    by_authority: dict[str, int] = {}
+    for r in rows:
+        by_class[r["classification"]] = by_class.get(r["classification"], 0) + r["n"]
+        by_authority[r["authority"]] = by_authority.get(r["authority"], 0) + r["n"]
+    report.source_coverage["classification"] = {
+        "rule_versions": sorted({r["rule_version"] for r in rows}),
+        "mappings": sorted({r["mapping_ref"] for r in rows if r["mapping_ref"]}),
+        "by_class": by_class, "by_authority": by_authority,
+        "unknown_products": by_class.get("unknown", 0),
+    }
 
 
 def _populate_calendar(cur: Any, report: LoadReport | None = None) -> None:
@@ -539,16 +605,20 @@ def _validate(cur: Any, report: LoadReport) -> None:
 
     cur.execute("SELECT data_source, count(*) AS n FROM sales GROUP BY 1 ORDER BY 1")
     report.source_coverage["rows_by_source"] = {r["data_source"]: r["n"] for r in cur.fetchall()}
+    _classification_coverage(cur, report)
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
-def load(mode: str, *, generated_dir: pathlib.Path | None = None) -> LoadReport:
+def load(mode: str, *, generated_dir: pathlib.Path | None = None,
+         classification_mapping_path: pathlib.Path | None = None) -> LoadReport:
     """Load and publish a snapshot. `generated_dir` points a full load at
     same-schema CSVs other than schema/generated -- a fixture profile
-    (scripts/fixture_profile.py); its file hashes are recorded as usual."""
+    (scripts/fixture_profile.py); its file hashes are recorded as usual.
+    `classification_mapping_path` names the classification authority; see
+    classification_mapping() for the default."""
     if mode not in ("seed", "full"):
         raise LoadError(f"unknown load mode {mode!r}")
 
@@ -565,6 +635,10 @@ def load(mode: str, *, generated_dir: pathlib.Path | None = None) -> LoadReport:
         )
 
     try:
+        # Read and checked before anything is written: a refused mapping is a
+        # refused (and recorded) load.
+        mapping = classification_mapping(generated_dir if mode == "full" else None,
+                                         classification_mapping_path)
         # One transaction: either the whole snapshot lands or none of it does.
         with owner_transaction() as cur:
             publication_lock(cur)
@@ -588,7 +662,7 @@ def load(mode: str, *, generated_dir: pathlib.Path | None = None) -> LoadReport:
             else:
                 _load_seed(cur, report)
             _bootstrap_users(cur, report)
-            _populate_classification(cur)
+            _populate_classification(cur, report, mapping)
             _populate_calendar(cur, report)
             cur.execute("ANALYZE sales")
             cur.execute("ANALYZE organizations")

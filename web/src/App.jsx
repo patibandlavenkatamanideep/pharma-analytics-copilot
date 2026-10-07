@@ -122,6 +122,9 @@ export function ResultTable({ answer }) {
   // Each period against the one before it (k-07): the prior period, the change
   // and the percentage, with the still-accumulating period marked.
   const hasStep = "change" in answer.rows[0];
+  // A segment share with volume of unknown class: that volume, and the share
+  // as the range it allows (value_formatted carries both ends).
+  const hasUnknown = "unclassified" in answer.rows[0];
   if (!dimensionKeys.length && answer.rows.length === 1) return null;
 
   const number = (v) =>
@@ -147,6 +150,7 @@ export function ResultTable({ answer }) {
             {hasStep && <th className="num">% change</th>}
             {hasComponents && <th className="num">ours</th>}
             {hasComponents && <th className="num">market</th>}
+            {hasUnknown && <th className="num">of unknown class</th>}
             <th className="num">{answer.columns[answer.columns.length - 1]}</th>
           </tr>
         </thead>
@@ -165,6 +169,7 @@ export function ResultTable({ answer }) {
               {hasStep && <td className="num">{row.change_pct_formatted}</td>}
               {hasComponents && <td className="num">{number(row.numerator)}</td>}
               {hasComponents && <td className="num">{number(row.denominator)}</td>}
+              {hasUnknown && <td className="num">{number(row.unclassified)}</td>}
               <td className="num strong">
                 {row.value_formatted}
                 {row.provisional && <span className="muted small"> (provisional)</span>}

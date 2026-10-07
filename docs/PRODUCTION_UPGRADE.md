@@ -121,7 +121,7 @@ Three categories, deliberately separated.
 
 | ID | Risk | Location |
 |---|---|---|
-| **R1** | Classification derives generic/biosimilar from **synthetic name suffixes** (`" GENERIC"`, `" BIOSIMILAR"`) and defaults every other non-company product to `branded_competitor`. On original data this silently manufactures a classification. Unknowns cannot currently stay unknown. | `app/data/classification.py` |
+| **R1** ✅ | *Addressed 7 October 2026 (qualification step 4; locally verified on synthetic profiles, `r5-classification-*`).* Classification derived generic/biosimilar from **synthetic name suffixes** (`" GENERIC"`, `" BIOSIMILAR"`) and defaulted every other non-company product to `branded_competitor`. Rule 2.0.0: the source flag, else a versioned mapping, else `unknown`; segment shares carry unknown volume as a range. | `app/data/classification.py` |
 | **R2** ✅ | *Fixed in Phase 1C.* Shared mutable planner usage. `BedrockPlanner.last_usage` is instance state written per call and read later by `Pipeline`; one `Pipeline`/planner is created per process lifespan. Concurrent requests can read each other's usage, and plan repair overwrites first-attempt usage. | `app/llm/planner.py:229,303`, `app/pipeline.py:182`, `scripts/run_evals.py:493` |
 | **R3** | No request-wide snapshot pin. The manifest, the vocabulary and the result rows are read in **separate transactions**; the vocabulary cache is keyed by `dataset_id` but reads current tables. A refresh between stages can label B's rows with A's calendar. Distinct from the already-fixed atomic publication. | `app/pipeline.py`, `app/analytics/entities.py` |
 | **R4** | No original-data onboarding path. `load_data.py` accepts `seed`/`full` only, reads fixed generated paths, requires exact CSV headers, and loads while holding `TRUNCATE` locks. | `app/data/loader.py` |
@@ -182,7 +182,7 @@ deferred. Neither is a pass.
 | A6 | Planner returns an immutable per-call result; usage survives repair | 1 | **passed** | `p1c-planning-result.json` |
 | A7 | DSN tolerates reserved characters | 1 | **passed** | `p1d-dsn-encoding.json` |
 | A8 | Real-data mode loads configured paths with a readiness report | 2 | not run | |
-| A9 | Unknown classification stays unknown and disables only affected metrics | 2 | not run | |
+| A9 | Unknown classification stays unknown and disables only affected metrics | 2 | **passed** (local, synthetic profiles) | `r5-classification-fixed.json` |
 | A10 | A refresh cannot mix calendar A with rows B | 3 | not run | |
 | A11 | Deadlines, cancellation, idempotency, duplicate-turn prevention | 4 | not run | |
 | A12 | Clarification → restart → authorized resume | 5 | not run | |

@@ -49,7 +49,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-GENERATOR_VERSION = "1.1.0"
+GENERATOR_VERSION = "1.2.0"
 
 ORG_FIELDS = ["org_id", "org_name", "org_type", "org_status", "org_archetype", "specialty",
               "address_line1", "city", "state", "zip", "parent_org_id", "parent_org_name",
@@ -337,7 +337,8 @@ def batches(name: str, p: dict, orgs: list[dict], weeks: list[dict]) -> tuple[li
                   week=0 if i % 10 else 3)   # every tenth is a late event, three weeks back
         b1_events.append(keep(e, "b1", "insert", e["pack_units"]))
     # Two legitimately distinct sales with identical values.
-    twin = dict(b1_events[1]); twin["source_event_id"] = f"{name}-twin"
+    twin = dict(b1_events[1])
+    twin["source_event_id"] = f"{name}-twin"
     b1_events.append(keep(twin, "b1", "insert", twin["pack_units"]))
     bad = [dict(event(f"{name}-neg"), pack_units=-3.0),
            dict(event(""), source_event_id=""),
@@ -379,11 +380,14 @@ def batches(name: str, p: dict, orgs: list[dict], weeks: list[dict]) -> tuple[li
 
 def mapping(profile: str, p: dict) -> dict | None:
     """The customer's classification mapping, keyed as a customer would key
-    it: by drug name within a market subcategory. Products whose class the
-    customer does not know are left out, not guessed."""
+    it: by drug name within a market subcategory. It covers the markets the
+    customer competes in, and leaves out products whose class it does not
+    know -- neither is guessed."""
     if not p.get("classification_mapping"):
         return None
-    entries = {(x[1], x[6]): x[10] for x in p["products"] if x[10] != "unknown"}
+    ours = {x[6] for x in p["products"] if x[4] == 1}
+    entries = {(x[1], x[6]): x[10] for x in p["products"]
+               if x[10] != "unknown" and x[6] in ours}
     return {"mapping": f"{profile}-customer", "version": "1.0.0",
             "authority": "fixture profile (synthetic): the profile's declared classes",
             "entries": [{"drug_name": name, "market_subcategory": sub, "classification": cls}
@@ -421,6 +425,10 @@ def write(out: pathlib.Path, profile: str) -> dict:
     from app.data.manifest import MAPPING_VERSION
     from app.data.schema_contract import CONTRACT_VERSION
     files = sorted(x for x in out.rglob("*") if x.is_file() and x.name != "manifest.json")
+    mapped_keys = {(e["drug_name"], e["market_subcategory"]) for e in (mapped or {}).get("entries", [])}
+    expected_classes = {x[0]: ("company_brand" if x[4] == 1 else
+                               x[10] if (x[1], x[6]) in mapped_keys else "unknown")
+                        for x in p["products"]}
     manifest = {
         "profile": profile, "description": p["description"], "seed": p["seed"],
         "generator": "scripts/fixture_profile.py", "generator_version": GENERATOR_VERSION,
@@ -433,10 +441,11 @@ def write(out: pathlib.Path, profile: str) -> dict:
         "classification_mapping": None if mapped is None else "product_classification.json",
         # What the system should report: the source's brand_flag, else the
         # mapping, else unknown -- never a guess from the name.
-        "expected_classification": {
-            x[0]: ("company_brand" if x[4] == 1 else
-                   x[10] if mapped is not None and x[10] != "unknown" else "unknown")
-            for x in p["products"]},
+        "expected_classification": expected_classes,
+        # Markets whose volume is all of unknown class: no segment share.
+        "markets_without_classification": sorted(
+            {x[6] for x in p["products"]} - {x[6] for x in p["products"]
+                                              if expected_classes[x[0]] != "unknown"}),
         "market_gap_weeks": p["market_gap_weeks"], "silent_product": p["silent_product"],
         "expected_ingestion": expected,
         "files": {str(x.relative_to(out)): hashlib.sha256(x.read_bytes()).hexdigest() for x in files},
