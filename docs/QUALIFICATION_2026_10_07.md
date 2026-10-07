@@ -240,3 +240,43 @@ been used; every item that needs them is marked blocked in the checklist. The
 supplied mapping is only as good as the document it was curated from. The
 evidence index lists five fixes after the measured candidate (`7950e71`) as not
 yet verified on a candidate; step 8 measures the final one.
+
+## Step 5 — audit guarantees
+
+**Starting point.** Audit writes were best effort: the row was written after the
+turn committed, in its own transaction; a failure was logged, counted and alerted
+on, and the answer still released. That was documented and pinned by a test, with
+two replacements described and neither built. One document overstated it
+(`EVALUATION.md`: "any failed request: still written to the audit trail"), now
+corrected.
+
+**Decision** ([AUDIT_DECISION.md](AUDIT_DECISION.md)). Best effort stays the
+default. A strict mode is implemented and opt-in (`PAC_AUDIT_MODE=strict`): atomic
+*and* fail closed, because either alone still lets an unrecorded answer out. The
+row commits in the transaction that commits the turn and the run's outcome; if it
+does not commit, the answer is withheld (`503 audit_unavailable`, retryable under
+the same key, nothing committed); a replay is recorded (`replayed`, `replay_of`)
+before it is returned, or withheld. Every row now carries `run_id` and
+`audit_mode` (migration 024). Implemented `1c5df01`, documented `ab8dde9`.
+
+**Verification** (locally verified; `r5-audit-modes.json`, 40 passed;
+`r5-audit-mutants.json`, 5 of 5 mutants caught). In both modes where they differ:
+a refused insert, a storage outage at commit, a worker killed before, inside and
+after the commit (a child process exiting without cleanup), a lost response, a
+replay whose row cannot be written, an uncertain commit acknowledgement, a
+duplicate request, an expired lease, access revoked before a replay, and a cancel
+before the answering step or during the commit. Under best effort the tests pin
+the gap the record states: a worker dying between the commit and the audit write
+leaves a committed, replayable answer with no row, and its replay has none either.
+
+**Incident during this step.** The first mutant run was started before the strict
+mode was committed. The probe restores each mutated file with `git checkout`, which
+discarded the uncommitted edits to `app/pipeline.py` and `app/conversation/state.py`.
+Nothing committed was affected; the edits were re-applied from the same edit
+scripts, the suite re-run (2209 passed) and committed before mutants were run again.
+Both mutant probes now refuse a tree with uncommitted changes.
+
+**Residual.** Which mode a deployment uses is the owner's decision. Strict mode
+turns an audit-storage problem into an answer outage. Refusals before a run starts
+are in telemetry only. Worker death was simulated in-process tree against one local
+PostgreSQL, not across containers (step 6).
