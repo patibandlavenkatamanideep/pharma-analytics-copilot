@@ -4,9 +4,15 @@
 
 **Not production-ready.** The seven release defects are corrected and
 regression-tested locally, and every local gate passes on the candidate
-below. Hosted CI runs when the branch is pushed (authorized on 7 October);
-its result is recorded in [REVIEW_2026_10_06.md](REVIEW_2026_10_06.md) once
-known. Nothing has been published, deployed or sent to a paid model.
+below. **Hosted CI passes**: run
+[37651718276](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37651718276)
+on `7bca4ca`, all four jobs, including an image built natively on
+linux/amd64 (`sha256:dc31d26e33be…`). `7bca4ca` has `7950e71`'s application
+code; the two runs before it failed on CI defects, now fixed: a trivy-action
+tag that no longer exists, and too little shared memory for PostgreSQL in
+its service container (also in `compose.yaml`). Details:
+[REVIEW_2026_10_06.md](REVIEW_2026_10_06.md#hosted-ci-7-october). Nothing
+has been published, deployed or sent to a paid model.
 
 `7950e71` is `a05237b` (the candidate measured first, section below) plus
 four changes, each ported from the parallel branch
