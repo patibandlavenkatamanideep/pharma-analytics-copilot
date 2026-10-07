@@ -17,7 +17,8 @@
         "tests/integration/test_structural_counts.py",
         "tests/integration/test_structural_geography.py",
         "tests/integration/test_threshold_boundaries.py",
-        "tests/integration/test_full_cohort.py"
+        "tests/integration/test_full_cohort.py",
+        "tests/integration/test_period_over_period_fixture.py"
       ]
     },
     "authorization_security": {
@@ -115,7 +116,8 @@
         "tests/unit/test_segment_share.py",
         "tests/unit/test_specialty_and_periods.py",
         "tests/unit/test_turn_graph.py",
-        "tests/unit/test_admission.py"
+        "tests/unit/test_admission.py",
+        "tests/unit/test_period_over_period.py"
       ]
     },
     "rendering": {
