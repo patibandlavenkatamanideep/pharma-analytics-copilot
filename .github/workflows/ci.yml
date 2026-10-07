@@ -264,8 +264,17 @@ jobs:
       # Known-vulnerable packages in the OS layer or the Python environment
       # fail the build when a fixed version exists. Policy and exceptions:
       # docs/SUPPLY_CHAIN.md.
+      #
+      # Pinned to a commit, not a tag. The tag this used, 0.28.0, no longer
+      # exists: upstream re-tagged its releases with a "v" prefix on
+      # 2026-03-20, and the job failed at "Set up job" on 7 October 2026.
+      # v0.28.0 cannot be pinned instead, because it calls
+      # aquasecurity/setup-trivy@v0.2.1, whose tag is also gone. v0.36.0 pins
+      # its own nested actions by commit, its commit is signed and verified,
+      # and it is outside GHSA-9p44-j4g5-cfx5 (affected 0.31.0-0.34.0). It
+      # runs trivy v0.70.0; scripts/image_smoke.sh runs trivy 0.58.1 locally.
       - name: Scan the image for vulnerabilities with a fix available
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: pharma-analytics-copilot:ci
           severity: HIGH,CRITICAL
