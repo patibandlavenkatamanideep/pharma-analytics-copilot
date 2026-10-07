@@ -78,10 +78,19 @@ AUDIT_COLUMNS = (
     "input_tokens", "output_tokens",
     "reason_codes", "intent_gaps", "turn_kind", "prompt_version",
     "planner_attempts", "planner_repaired", "usage_known",
+    "run_id", "replay_of", "audit_mode",
 )
 
 #: Keys used while building the row and deliberately not stored.
 AUDIT_TRANSIENT = frozenset({"blocking_gaps"})
+
+
+class AuditUnavailable(Exception):
+    """Strict audit (PAC_AUDIT_MODE=strict): the audit row could not be
+    committed, so the answer is withheld. Nothing was committed for the run,
+    so a retry under the same idempotency key runs it again."""
+
+    retry_after = 5
 
 
 @dataclass
@@ -225,7 +234,7 @@ class Pipeline:
     #: counted under.
     _REFUSALS = {"RunBusy": "busy", "IdempotencyConflict": "idempotency_conflict",
                  "ReplayUnavailable": "access_changed", "QuotaExceeded": "rate_limited",
-                 "Overloaded": "overloaded"}
+                 "Overloaded": "overloaded", "AuditUnavailable": "audit_unavailable"}
 
     def ask(
         self,
@@ -240,7 +249,7 @@ class Pipeline:
         started = time.perf_counter()
         status, persistence = "error", "not_saved"
         refusals = (runs.RunBusy, runs.IdempotencyConflict, runs.ReplayUnavailable,
-                    runs.QuotaExceeded, admission.Overloaded)
+                    runs.QuotaExceeded, admission.Overloaded, AuditUnavailable)
         with telemetry.span("pac.ask", expected=refusals, **{
                 "pac.role": principal.role, "pac.release": self.settings.release,
                 "pac.registry_version": get_registry().version,
@@ -318,6 +327,10 @@ class Pipeline:
             )
         if run.replay is not None:
             replayed = dict(run.replay)
+            if self.settings.audit_mode == "strict":
+                # Strict: a replay releases the answer again, so it is
+                # recorded before it is returned, or not returned.
+                self._record_replay(principal, run, replayed, dataset)
             return PipelineResult(
                 status=replayed.get("status", "answered"),
                 conversation_id=replayed.get("conversation_id", state.conversation_id),
@@ -468,8 +481,18 @@ class Pipeline:
     # -- audit -----------------------------------------------------------------
 
     def _write_audit(self, audit: dict[str, Any]) -> None:
-        """Hashes, counts, codes and timings only -- never WAC values, result
-        rows, prompts or text from the question."""
+        """Best effort: in its own transaction; a failure is logged and
+        counted, never raised. Hashes, counts, codes and timings only --
+        never WAC values, result rows, prompts or text from the question."""
+        try:
+            with telemetry.span("pac.audit"), auth_transaction() as cur:
+                self._insert_audit(cur, audit)
+        except Exception:
+            log.warning("failed to write audit row", exc_info=True)
+            telemetry.count("pac.persistence.failures", kind="audit")
+
+    def _insert_audit(self, cur: Any, audit: dict[str, Any]) -> None:
+        """The audit row, in the caller's transaction."""
         # Derived before the write, so a code is present on every outcome
         # path rather than only where someone remembered to add it.
         codes = [audit.get("status")] + list(audit.get("blocking_gaps") or [])
@@ -483,18 +506,34 @@ class Pipeline:
         columns = list(AUDIT_COLUMNS)
         values = [audit.get(c) for c in columns]
         placeholders = ", ".join(["%s"] * len(columns))
+        # Keyed by request: a node replayed after a crash cannot record the
+        # same request twice.
+        cur.execute(
+            f"INSERT INTO app_meta.query_audit ({', '.join(columns)}) "
+            f"VALUES ({placeholders}) ON CONFLICT (request_id) DO NOTHING",
+            values,
+        )
+
+    def _record_replay(self, principal: Principal, run: Any, replayed: dict[str, Any],
+                       dataset: dict[str, Any]) -> None:
+        """Strict audit: a replayed answer is a release of its own."""
+        audit = {
+            "request_id": uuid.uuid4().hex[:16], "user_id": principal.user_id,
+            "role": principal.role, "scope_kind": principal.scope_kind,
+            "scope_value": principal.scope_value,
+            "wac_authorized": principal.wac_authorized,
+            "dataset_id": dataset["dataset_id"], "metric_version": get_registry().version,
+            "policy_version": POLICY_VERSION, "status": "replayed",
+            "run_id": run.run_id, "replay_of": replayed.get("request_id"),
+            "audit_mode": "strict",
+        }
         try:
             with telemetry.span("pac.audit"), auth_transaction() as cur:
-                # Keyed by request: a node replayed after a crash cannot
-                # record the same request twice.
-                cur.execute(
-                    f"INSERT INTO app_meta.query_audit ({', '.join(columns)}) "
-                    f"VALUES ({placeholders}) ON CONFLICT (request_id) DO NOTHING",
-                    values,
-                )
+                self._insert_audit(cur, audit)
         except Exception:
-            log.warning("failed to write audit row", exc_info=True)
+            log.warning("replay withheld: its audit row could not be written", exc_info=True)
             telemetry.count("pac.persistence.failures", kind="audit")
+            raise AuditUnavailable() from None
 
 
 class Turn:
@@ -537,6 +576,8 @@ class Turn:
             "dataset_id": dataset["dataset_id"],
             "metric_version": get_registry().version,
             "policy_version": POLICY_VERSION,
+            "run_id": run.run_id,
+            "audit_mode": pipe.settings.audit_mode,
         }
         self._vocab = None
         self._index = None
@@ -646,10 +687,19 @@ class Turn:
         else:
             result.persistence = "saved"
             result.payload = to_payload(result, self.include_sql)
+            strict = self.pipe.settings.audit_mode == "strict"
+            in_commit = None
+            if strict:
+                # The audit row commits with the turn and the run's outcome:
+                # all of them, or none (docs/AUDIT_DECISION.md).
+                self.audit.update(status=status, total_ms=timings["total_ms"], **extra)
+
+                def in_commit(cur: Any) -> None:
+                    self.pipe._insert_audit(cur, self.audit)
             try:
                 with telemetry.span("pac.finalise", parent=self.otel_parent):
                     done = finalise(self.principal, self.state, self.run, turn,
-                                    result.payload)
+                                    result.payload, audit=in_commit)
             except Exception:
                 # Stated, not swallowed: the answer is returned, and the
                 # response says it was not saved, so nothing implies the next
@@ -658,6 +708,16 @@ class Turn:
                 runs.fail(self.run, None)
                 done = Finalised(persisted=False, reason="error")
                 telemetry.count("pac.persistence.failures", kind="turn")
+            if strict and not done.persisted and not done.conflict:
+                # Nothing committed, the audit row included: the answer is
+                # not released. The run is closed as failed, so a retry under
+                # the same key runs it again (from its last checkpoint).
+                telemetry.count("pac.persistence.failures", kind="audit")
+                runs.fail(self.run, None)
+                raise AuditUnavailable()
+            if strict and done.persisted:
+                self.result = result
+                return result
             if done.conflict:
                 # The conversation moved while this was being answered: a
                 # lease expired and another turn committed. The answer was

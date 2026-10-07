@@ -36,7 +36,7 @@ from app.conversation.state import (
 from app.db import close_pools, verify_runtime_role_safety
 from app.llm.planner import build_planner
 from app.conversation import feedback, privacy, runs
-from app.pipeline import Pipeline, to_payload
+from app.pipeline import AuditUnavailable, Pipeline, to_payload
 
 log = logging.getLogger(__name__)
 
@@ -487,6 +487,14 @@ def ask(
             headers={"Retry-After": str(exc.retry_after)}) from None
     except admission.Overloaded as exc:
         raise _overloaded(exc.retry_after) from None
+    except AuditUnavailable as exc:
+        # Strict audit: the answer exists but could not be recorded, so it is
+        # not released. Retryable under the same key; nothing was committed.
+        raise HTTPException(status_code=503, detail={
+            "code": "audit_unavailable",
+            "message": "That answer could not be recorded, so it is not shown. "
+                       "Please try again in a moment."},
+            headers={"Retry-After": str(exc.retry_after)}) from None
     except DATABASE_UNAVAILABLE:
         raise                          # 503, by the handler below
     except Exception:

@@ -29,6 +29,7 @@ EVENTS = {
     "planner failed: %s": "planner.invalid",
     "query failed (%s): %s": "query.failed",
     "failed to write audit row": "audit.write_failed",
+    "replay withheld: its audit row could not be written": "audit.replay_withheld",
     "failed to commit turn for run %s": "turn.commit_failed",
     "generation changed mid-request (%s)": "dataset.changed",
     "could not prune checkpoint thread %s": "checkpoint.prune_failed",

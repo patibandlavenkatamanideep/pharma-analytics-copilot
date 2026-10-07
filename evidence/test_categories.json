@@ -63,7 +63,8 @@
         "tests/integration/test_failure_handling.py",
         "tests/integration/test_failure_modes.py",
         "tests/integration/test_admission_pipeline.py",
-        "tests/integration/test_snapshot_publication.py"
+        "tests/integration/test_snapshot_publication.py",
+        "tests/security/test_audit_modes.py"
       ]
     },
     "ingestion_contract": {

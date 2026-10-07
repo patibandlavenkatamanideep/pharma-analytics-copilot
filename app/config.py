@@ -94,6 +94,16 @@ class Settings(BaseSettings):
     llm_input_usd_per_mtok: float | None = None
     llm_output_usd_per_mtok: float | None = None
 
+    # --- audit ------------------------------------------------------------------
+    # best_effort (default): the audit row is written in its own transaction
+    # after the turn commits; if that write fails the answer is still
+    # returned, and the failure is logged and counted. strict: the audit row
+    # commits in the same transaction as the turn and the run's outcome, and
+    # an answer whose audit row cannot be committed is withheld (503,
+    # retryable under the same idempotency key); a replay is recorded before
+    # it is returned. docs/AUDIT_DECISION.md.
+    audit_mode: Literal["best_effort", "strict"] = "best_effort"
+
     # --- runs -------------------------------------------------------------------
     # How long one request may hold a conversation before another may take
     # it over. Longer than the slowest legitimate request, or a slow answer

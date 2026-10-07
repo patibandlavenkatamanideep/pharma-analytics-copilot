@@ -32,6 +32,7 @@ from __future__ import annotations
 import json
 import secrets
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import Any
 
 from app.auth.policy import Principal
@@ -328,7 +329,8 @@ CLARIFICATION_TTL_SECONDS = 1800
 
 
 def finalise(principal: Principal, state: ConversationState, run, turn: StagedTurn,
-             outcome: dict[str, Any] | None) -> Finalised:
+             outcome: dict[str, Any] | None, *,
+             audit: Callable[[Any], None] | None = None) -> Finalised:
     """Commit a request's turn and outcome as ONE fact.
 
     In one transaction: the turn, its full cohort, the clarification it asks
@@ -341,6 +343,10 @@ def finalise(principal: Principal, state: ConversationState, run, turn: StagedTu
     holding a transaction across planning: if another turn committed after
     this request read the conversation, this one is refused rather than
     recorded as though it had planned against the latest state.
+
+    `audit`, when given, writes the request's audit row in this same
+    transaction (strict audit, docs/AUDIT_DECISION.md); if it fails, nothing
+    here commits.
     """
     import secrets as _secrets
 
@@ -426,6 +432,9 @@ def finalise(principal: Principal, state: ConversationState, run, turn: StagedTu
                 "revision = revision + 1, title = COALESCE(title, %s) "
                 "WHERE conversation_id = %s",
                 (turn.question[:120], state.conversation_id))
+
+            if audit is not None:
+                audit(cur)
 
             if run is not None:
                 cur.execute(
