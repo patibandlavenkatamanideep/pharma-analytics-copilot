@@ -38,7 +38,8 @@ from datetime import datetime, time, timezone
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-log = logging.getLogger("ingest")
+# Under app.*, so app/logs.py maps its messages to registered events.
+log = logging.getLogger("app.ingest")
 
 
 def _synthetic(seed: int):

@@ -47,6 +47,9 @@ EVENTS = {
     "telemetry exporter shutdown failed": "telemetry.exporter_shutdown_failed",
     "metric exporter shutdown failed": "telemetry.metric_shutdown_failed",
     "freshness could not be read (%s); not reported this time": "freshness.unavailable",
+    "span attribute not recorded": "telemetry.attribute_dropped",
+    "metric %s not recorded": "telemetry.metric_dropped",
+    "telemetry not started (%s); ingesting without it": "ingest.telemetry_unavailable",
 }
 REASONS = {"database_unreachable", "security_boundary_broken", "owner_credential_present"}
 ERROR_CODES = REASONS | {"browser_mismatch", "invalid_state", "expired_state"}
@@ -121,7 +124,7 @@ class JsonFormatter(logging.Formatter):
                 timespec="milliseconds"),
             "level": record.levelname.lower(),
             "logger": record.name if record.name in {"app.pipeline", "app.api.main", "app.db",
-                "app.llm.planner", "app.telemetry", "uvicorn", "uvicorn.error",
+                "app.llm.planner", "app.telemetry", "app.ingest", "uvicorn", "uvicorn.error",
                 "uvicorn.access", "py.warnings"} else "external",
         }
         args = record.args
