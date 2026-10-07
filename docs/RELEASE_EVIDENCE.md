@@ -1,5 +1,84 @@
 # Release evidence
 
+## Current local candidate — 7 October 2026
+
+**Not production-ready.** All seven requested release defects are implemented
+and locally regression-tested. The known offline `holdout2/k-07` mismatch remains
+a recorded failure. Nothing has been pushed, published, deployed, run on hosted
+CI, or sent to a paid model during this work.
+
+| Identity | Value |
+|---|---|
+| Branch | `codex/release-defects-oct06` |
+| Exact candidate measured | `a05237b3e3621c6744c435e5007776adec3f46a1` |
+| Starting tree | Clean `76298b6`; supplied review `58b3d3e` and final reviewed code `45db088` retained |
+| Environment | macOS arm64; Python 3.13.2; local PostgreSQL 16.14; Node 24.19.0; deterministic offline planner |
+| Dependencies | All 80 applicable Python packages match unchanged `requirements.lock`; frontend installed with `npm ci` from unchanged `package-lock.json` |
+| Verification checkout | Detached temporary worktree of the same repository; each `r5-release-*` command record records the exact candidate SHA/tree and `worktree_clean: true` |
+| Final documentation | The subsequent commit adds evidence and documentation only; it does not change the measured executable/configuration candidate |
+
+[The finding-to-reproduction-to-fix ledger](REVIEW_2026_10_06.md) identifies
+original observations, fix commits, regression files, failed attempts and
+preserved contracts. Full test details and evaluation outcomes accompany the
+command records in `evidence/runs/`.
+
+| Suite / check | Environment | Pass | Fail | Skip | Evidence record |
+|---|---|---:|---:|---:|---|
+| Python unit | Local Python, part of full suite | 761 | 0 | 0 | `r5-release-full.json`, `.junit.xml` |
+| Python integration | Disposable real PostgreSQL | 892 | 0 | 0 | `r5-release-full.json`, `.junit.xml` |
+| Python security | Disposable real PostgreSQL | 409 | 0 | 0 | `r5-release-full.json`, `.junit.xml` |
+| Full Python suite | Combined three rows above | 2062 | 0 | 0 | `r5-release-full.json` |
+| Security release gate (overlaps full suite) | Real PostgreSQL, strict floor 409 | 409 | 0 | 0 | `r5-release-security.json` |
+| Ingestion release gate (overlaps full suite) | Real PostgreSQL, strict floor 176 | 176 | 0 | 0 | `r5-release-ingestion.json` |
+| Pure telemetry (overlaps unit suite) | PostgreSQL unavailable at port 1 | 18 | 0 | 0 | `r5-release-telemetry-unit.json` |
+| Components | Node 24 / jsdom, strict floor 27 | 27 | 0 | 0 | `r5-release-components.json`, `.detail.json` |
+| Browser journeys | Chromium, real local app / PostgreSQL | 10 | 0 | 0 | `r5-release-browser.json` |
+| Offline regression questions | Existing synthetic fixture | 38 | 0 | 0 | `r5-release-eval-questions.json`, `.detail.json` |
+| Offline holdout | Existing synthetic fixture | 12 | 0 | 0 | `r5-release-eval-holdout.json`, `.detail.json` |
+| Offline holdout2 | Existing synthetic fixture | 11 | 1 | 0 | `r5-release-eval-holdout2.json`, `.detail.json` |
+| Image journeys | Local linux/amd64 emulation with isolated PostgreSQL containers | 25 | 0 | 0 | `r5-release-image.json` |
+| Frontend production build | Locked Node 24 install | pass | — | — | `r5-release-web-build.json` |
+| pip-audit / production npm audit | Unchanged locks | pass | — | — | `r5-release-pip-audit.json`, `r5-release-npm-audit.json` |
+| Gitleaks full history | Exact two public-fingerprint exceptions only | pass | — | — | `r5-release-gitleaks.json` |
+| Trivy | Exact image; no HIGH/CRITICAL vulnerability with a fix | pass | — | — | `r5-release-image.json` |
+
+The full Python run reports five existing pytest-asyncio deprecation warnings
+from nested gate tests. No test was skipped or converted to xfail. Offline
+results measure deterministic compilation/authorization/execution behavior;
+61/62 is not a live-model accuracy estimate. The integration matrix includes
+672 EXPLAIN compatibility cases; these do not establish numerical correctness.
+
+Local image `pharma-analytics-copilot:smoke`, `linux/amd64`, 302 MB:
+
+- Image ID: `5263cb9925936d9619beb0b10d9c1fff3791868fa90e2bc1dcd25b50e64017eb`
+- Digest: `sha256:831164811ab69b33fb02ee980b78c3e8576cbfdf590299796e6327904803d072`
+- Revision label: `a05237b3e3621c6744c435e5007776adec3f46a1`
+
+This image was built and exercised with Podman on an arm64 Mac using amd64
+emulation. It was not published, built by hosted CI or run in staging.
+
+| Status | Established / outstanding |
+|---|---|
+| Implemented | Seven defect corrections, bounded metric labels, supported Node CI/image version, existing authorized-result charts, dashboard/alert specification, unchanged best-effort audit policy, corrected Exec WAC staging scenario, documented SSO disable / reviewed-image rollback |
+| Locally verified | Exact clean candidate gates, image and dependency/secret scans above; original failures retained as `r5-attempt-*` |
+| Staging verified | None for this candidate. Fake OIDC/provider and local collectors do not establish hosted integration |
+| Production | Not ready; no deployment or capacity/accuracy claim |
+
+External inputs still needed: authorization to push/run hosted CI and publish
+or deploy; real OIDC registration; model access with agreed rates and explicit
+spend caps; an independently authored fresh hash-frozen holdout for prompt
+2.1.0; staging with multiple processes/replicas, real OTLP backend/alerting and
+source feed contracts; agreed SLOs, retention, RTO/RPO and backup/PITR drills.
+If every released answer must be durably audited, choose an atomic answer/run/audit
+commit or fail-closed write/replay policy before implementation. Current audit
+writes remain best effort. Follow [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md).
+
+## Historical evidence — 1–2 October 2026
+
+The sections below describe the earlier `45db088` candidate. Their counts,
+branches, image identities and observations are historical, not measurements
+of the current candidate.
+
 The single authoritative record of what this branch has established and
 what it has not. Every claim points at a commit and at an evidence record in
 `evidence/runs/` (schema: `evidence/schema.json`). A claim without one

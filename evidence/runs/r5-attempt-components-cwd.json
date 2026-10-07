@@ -1,0 +1,57 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T15:12:36+00:00",
+  "claim": "Node 24 locked frontend components, strict floor 27 and no skips",
+  "application": {
+    "sha": "d82cc5206a403b9eda663ed7cb93108922fced98",
+    "tree": "b4092f9450bbe79e855416f9b938c740f7d03fed",
+    "branch": "HEAD",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "-c",
+      "npm test -- --reporter=json --outputFile=/tmp/r5-d82-vitest.json && python ../scripts/assert_test_results.py vitest /tmp/r5-d82-vitest.json --min-tests 27"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.4
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 254,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "npm error A complete log of this run can be found in: /Users/manideep/.npm/_logs/2026-10-07T15_12_35_982Z-debug-0.log"
+  },
+  "artifacts": [],
+  "limits": null
+}

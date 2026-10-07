@@ -1,0 +1,61 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T15:04:27+00:00",
+  "claim": "Repeat component suite with locked local dependencies",
+  "application": {
+    "sha": "b872a71aef83af781bcf397a81a2f00f5c9e07ed",
+    "tree": "a7bc4e7f75d4c18f3e1437b37ab6e4e949e1d881",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "npm",
+      "--prefix",
+      "web",
+      "test",
+      "--",
+      "--reporter=json",
+      "--outputFile=/tmp/r5-final-components-repeat-results.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 187.66
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "JSON report written to /tmp/r5-final-components-repeat-results.json"
+  },
+  "artifacts": [],
+  "limits": null
+}

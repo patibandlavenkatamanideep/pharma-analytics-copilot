@@ -1,0 +1,105 @@
+{
+  "kind": "release-evidence-manifest",
+  "candidate": "a05237b3e3621c6744c435e5007776adec3f46a1",
+  "branch": "codex/release-defects-oct06",
+  "python_suite_counts": {
+    "tests.integration": 892,
+    "tests.security": 409,
+    "tests.unit": 761
+  },
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "5263cb9925936d9619beb0b10d9c1fff3791868fa90e2bc1dcd25b50e64017eb",
+    "digest": "sha256:831164811ab69b33fb02ee980b78c3e8576cbfdf590299796e6327904803d072",
+    "platform": "linux/amd64",
+    "revision_label": "a05237b3e3621c6744c435e5007776adec3f46a1"
+  },
+  "notes": [
+    "Each command record preserves its own measured SHA, tree, environment and result.",
+    "Detailed evaluator data contains synthetic fixture questions/results; no live model run.",
+    "This manifest is supporting data, not an evidence-schema command record."
+  ],
+  "files": [
+    {
+      "path": "r5-release-browser.json",
+      "sha256": "bcb055f07e92330cfd38a1023f1346fe33a80c9744e703a52688ca341212453c"
+    },
+    {
+      "path": "r5-release-components.detail.json",
+      "sha256": "2e7011de8c08c4e0b5038c43a7d2e6e69d23f80cce6ea18cf9bed61cb661c1a2"
+    },
+    {
+      "path": "r5-release-components.json",
+      "sha256": "8bb47b2cb8ebef86a8c0da88e41b812b26cece55b0c4972c12eec0c0fb7aa27c"
+    },
+    {
+      "path": "r5-release-eval-holdout.detail.json",
+      "sha256": "bf0cad550911a1beee21f59fd71b60624ecc485de514a09c4886c43f4c555d51"
+    },
+    {
+      "path": "r5-release-eval-holdout.json",
+      "sha256": "95f858e32d72eb74eaa512f2c7e721b89cdb864653831ca11a675d8946f64ca2"
+    },
+    {
+      "path": "r5-release-eval-holdout2.detail.json",
+      "sha256": "79a36f08910992ae7878bf0d7e18cfbb22eef056a257c2f1fb10131cac2ce8de"
+    },
+    {
+      "path": "r5-release-eval-holdout2.json",
+      "sha256": "32fb77c965a63c249c83969f04436a1f3cb883f8f6dbbcf66d882fe069497855"
+    },
+    {
+      "path": "r5-release-eval-questions.detail.json",
+      "sha256": "05b32fac82916a85383f92bdfdcc1310a1e8e1ddc8a653c11a6168160bae35e9"
+    },
+    {
+      "path": "r5-release-eval-questions.json",
+      "sha256": "041fc98339861446dfd260b956a426365cb61023267902dcb2639bfe7ae82e82"
+    },
+    {
+      "path": "r5-release-full.json",
+      "sha256": "7c428af637e9654dd2b3cfeb6a9677e29ad6766a12fdcc4f52ecec881c7ac07d"
+    },
+    {
+      "path": "r5-release-full.junit.xml",
+      "sha256": "1c5ed3746540c9013dbec3cf1e7cfba4dab98b4b3f5c9eced2c9f095a90cc413"
+    },
+    {
+      "path": "r5-release-gitleaks.json",
+      "sha256": "ba5af0e49533feb997a1f943f2245120b50d4ab61026375d5b2c978cb773a013"
+    },
+    {
+      "path": "r5-release-image.json",
+      "sha256": "b1dff884eefbb6748b66ac6c07ad994e2508feabd2396fc88a868339b6939adf"
+    },
+    {
+      "path": "r5-release-ingestion.json",
+      "sha256": "f8abe4ed1da3128327fb9a062c29122655b7fd37833418e91a77d9ae6f9b1e44"
+    },
+    {
+      "path": "r5-release-npm-audit.json",
+      "sha256": "5439e04d2e915485e07e4f430db81ad085652325cebbd82ef18d01c07848cc58"
+    },
+    {
+      "path": "r5-release-pip-audit.json",
+      "sha256": "66e78866f2c4e199a474e0dc4d0016fc7de0307e98abddae3568e5e1e8c23020"
+    },
+    {
+      "path": "r5-release-python-lock-check.json",
+      "sha256": "699e22070a746f50dd057975d6a27feadc068c08e42e09ca16bf79d1b3b9eea0"
+    },
+    {
+      "path": "r5-release-security.json",
+      "sha256": "bcb77b8b632e8d34ae85ccd151d0d93802afb5a4b3d6e3f2974e55658d11923d"
+    },
+    {
+      "path": "r5-release-telemetry-unit.json",
+      "sha256": "0f058560cf8c8c9310ae2603b18e6b848828fac82372bf3e6a0a1d8addaf9b55"
+    },
+    {
+      "path": "r5-release-web-build.json",
+      "sha256": "fd8b62a8f953313a3830ab0a1f7ebb7b3d9324589e4ed1c1f688d4b5db381198"
+    }
+  ]
+}

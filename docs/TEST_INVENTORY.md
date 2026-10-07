@@ -27,13 +27,13 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 761 | pending final candidate | historical baseline: `r3-final-pytest.json` (`45db088`) |
-| **Integration** | `pytest tests/integration -q` | 892 | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pending current gate | historical baseline: `r3-final-security.json` (`45db088`) |
-| **Total (pytest)** | `pytest tests -q` | **2062** | pending current gate | historical baseline: `r3-final-pytest.json` (`45db088`) |
-| **Browser — component** | `cd web && npm test` | 27 | pending current gate | `r3-final-component.json` (`45db088`) |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pending final candidate | `r3-final-browser.json` (`45db088`) |
-| **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r3-final-eval-*.json` (`45db088`, offline) |
+| **Unit** | `pytest tests/unit -q` | 761 | pass, no skips | `r5-release-full.json` (`a05237b`) |
+| **Integration** | `pytest tests/integration -q` | 892 | pass, no skips | `r5-release-full.json` (`a05237b`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 409` | 409 | pass, strict gate | `r5-release-security.json` (`a05237b`) |
+| **Total (pytest)** | `pytest tests -q` | **2062** | pass, no skips | `r5-release-full.json` (`a05237b`) |
+| **Browser — component** | `cd web && npm test` | 27 | pass, strict gate | `r5-release-components.json` (`a05237b`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-release-browser.json` (`a05237b`) |
+| **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r5-release-eval-*.json` (`a05237b`, offline) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.
@@ -110,9 +110,11 @@ this work. They are labelled with the date they were taken.
 
 ## Browser tests
 
-**Component tests (22, vitest + jsdom).** These pass here, in about a second: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer, one for waiting out an overload before retrying.
+**Component tests (27, vitest + jsdom).** The 22 conversation/identity cases cover: six for identity isolation, eight for the API v2 contract (idempotent retry, Stop, clarification choices, the not-saved notice, an ended session, busy and rate-limited responses), two for offering single sign-on only when configured, one for re-asking once when the data was refreshed mid-answer, one for showing the date the data runs through, two for deleting a conversation and downloading one's own data, one for sending feedback on an answer, one for waiting out an overload before retrying.
 
-They had not run from this checkout for weeks, and the recorded reason was
+Five additional chart cases cover returned-row scope and labels, negative values, missing/time-ordered values, truncation disclosure, and unsupported shapes. The final run uses Node 24.19.0 and the locked install.
+
+The following cache diagnosis is historical. They had not run from this checkout for weeks, and the recorded reason was
 wrong. The symptom: the vitest worker starts, never responds, and the run
 ends after 60 s having collected nothing — under both the `forks` and the
 `threads` pool. The recorded explanation was that macOS stalls reads under
@@ -128,7 +130,7 @@ A fresh checkout also has a fresh cache. Isolating the variables:
 | The tree copied to `~/Desktop`, outside this repository, `node_modules` symlinked back into it | **6 passed, 578 ms** |
 | The repository itself, after `rm -rf web/node_modules/.vite` | **6 passed, 509 ms**, then 456 / 376 / 375 ms |
 
-So it was never the path and never the filesystem: a stale entry in
+That historical comparison identified a cache problem: a stale entry in
 `web/node_modules/.vite` hung the worker. `npm test` now clears that
 directory before running. The suite takes under half a second, which does
 not need a cache.
@@ -144,7 +146,7 @@ out-of-scope territory refused, identity change leaves nothing on screen,
 a conversation belongs to its owner, a clarification answered by choosing,
 an ended session returns to sign-in. CI runs them in the test job.
 
-Neither browser suite is counted in the 1851: they do not run in the same
+Neither browser suite is counted in the pytest total: they do not run in the same
 command, and a single number that mixed them would imply they do.
 
 ---
@@ -181,8 +183,7 @@ What is true now: the security job builds its database, runs under
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
-What is still **not** true: CI does not run the browser suites, and does not
-run live-model evaluation.
+CI now includes both browser suites. Hosted CI has not run for this local branch, and live-model evaluation remains unverified.
 
 ---
 

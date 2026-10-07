@@ -1,0 +1,7 @@
+{
+  "python": "3.13.2",
+  "platform": "macOS-26.2-arm64-arm-64bit-Mach-O",
+  "requirements_lock_sha256": "fe9f7b5d2100fd1e5adea16cb85190747915807852e221be85593820d87b77b0",
+  "applicable_locked_packages": 80,
+  "mismatches": []
+}
