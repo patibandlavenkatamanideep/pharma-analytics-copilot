@@ -336,7 +336,10 @@ def new_cluster(args) -> int:
         run(["createdb", "-T", args.source, "-O", "pac_owner", copy])
         timings["copy_source_seconds"] = round(time.perf_counter() - t0, 2)
         state = child(MAKE_STATE, LOCAL.app_env(copy), TWIN)
-        before, cut, reference = facts(copy), cutoff(copy), answers(copy)
+        # Asking writes (audit, conversations): ask first, then read what the
+        # dump will hold.
+        reference = answers(copy)
+        before, cut = facts(copy), cutoff(copy)
         dump = work / "pac.dump"
         timings["dump_seconds"] = run(["pg_dump", "-Fc", "-f", str(dump), copy])
         dump_mb = round(dump.stat().st_size / 1e6, 1)
@@ -354,11 +357,12 @@ def new_cluster(args) -> int:
             except Exception as exc:          # recorded as a failed check
                 errors[name] = f"{type(exc).__name__}: {str(exc).strip().splitlines()[-1][:200]}"
                 return default
+        # What was restored, read before any check writes to it.
         after = attempt("facts", lambda: facts(args.target, cluster),
                         {k: None for k in before} | {"counts": {}})
+        restored_cut = attempt("cutoff", lambda: cutoff(args.target, cluster), None)
         served = attempt("answers", lambda: answers(args.target, cluster),
                          {"boundary_problems": None, "ready_dataset": None, "answers": None})
-        restored_cut = attempt("cutoff", lambda: cutoff(args.target, cluster), None)
         resumed = attempt("state", lambda: child(CHECK_STATE, cluster.app_env(args.target),
                                                  json.dumps(state)),
                           {"replayed": False, "replay_status": None, "replay_headline": None,
