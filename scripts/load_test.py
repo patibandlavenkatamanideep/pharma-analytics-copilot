@@ -224,16 +224,36 @@ def run_phase(phase: str, n: int, seconds: float, pool: list[dict], rec: Recorde
     for t in threads:
         t.join(180)
     return {"phase": phase, "concurrency": n, "wall_s": round(time.time() - started, 1),
-            "window": window}
+            "window": window, "started": started}
 
 
 class Sampler(threading.Thread):
-    """Connections per login role, from pg_stat_activity, twice a second."""
+    """Connections per login role, from pg_stat_activity, twice a second; and
+    every 10 s a resource point: the server's resident memory (parent and
+    workers) and the rows each request adds (attempts, audit, conversations),
+    so a soak shows a trend rather than one number."""
 
     def __init__(self, db: str):
         super().__init__(daemon=True)
         self.db, self.stop, self.peak, self.active_peak = db, threading.Event(), {}, {}
         self.visible = True
+        self.server_pid: int | None = None
+        self.trend: list[dict] = []
+        self.started = time.time()
+
+    def rss_kib(self) -> dict | None:
+        if self.server_pid is None:
+            return None
+        kids = subprocess.run(["pgrep", "-P", str(self.server_pid)], capture_output=True,
+                              text=True).stdout.split()
+        out = {}
+        for name, pid in [("parent", str(self.server_pid))] + [(f"worker{i}", k)
+                                                               for i, k in enumerate(kids)]:
+            rss = subprocess.run(["ps", "-o", "rss=", "-p", pid], capture_output=True,
+                                 text=True).stdout.strip()
+            if rss:
+                out[name] = int(rss)
+        return out
 
     def run(self):
         import psycopg
@@ -243,6 +263,7 @@ class Sampler(threading.Thread):
             self.visible = False
             return
         with conn:
+            next_point = 0.0
             while not self.stop.is_set():
                 rows = conn.execute(
                     "SELECT usename, count(*) AS n, count(*) FILTER (WHERE state = 'active') "
@@ -251,6 +272,15 @@ class Sampler(threading.Thread):
                     if user:
                         self.peak[user] = max(self.peak.get(user, 0), n)
                         self.active_peak[user] = max(self.active_peak.get(user, 0), active)
+                if time.time() >= next_point:
+                    attempts, audit, conversations = conn.execute(
+                        "SELECT (SELECT count(*) FROM app_conv.run_attempts), "
+                        "(SELECT count(*) FROM app_meta.query_audit), "
+                        "(SELECT count(*) FROM app_conv.conversations)").fetchone()
+                    self.trend.append({"t_s": round(time.time() - self.started),
+                                       "rss_kib": self.rss_kib(), "run_attempts": attempts,
+                                       "audit_rows": audit, "conversations": conversations})
+                    next_point = time.time() + 10
                 time.sleep(0.5)
 
 
@@ -343,6 +373,18 @@ def report(rows: list[dict], phases: list[dict]) -> list[dict]:
             "refused_overloaded": len(refused),
             "refused_ms": summary([r["ms"] for r in refused]),
         }
+        if ph["wall_s"] >= 120:
+            # A long phase: latency per minute, to show drift rather than one figure.
+            entry["by_minute"] = []
+            ok_ids, failed_ids = {id(r) for r in ok}, {id(r) for r in failed}
+            for m in range(int(ph["wall_s"] // 60)):
+                lo, hi = ph["started"] + 60 * m, ph["started"] + 60 * (m + 1)
+                inside = [r for r in mine if lo <= r.get("started", 0) < hi]
+                answered = [r["ms"] for r in inside if id(r) in ok_ids]
+                entry["by_minute"].append({"minute": m + 1, "requests": len(inside),
+                                           "answered": len(answered),
+                                           "errors": sum(id(r) in failed_ids for r in inside),
+                                           "p50": pct(answered, 50), "p95": pct(answered, 95)})
         if ph.get("window"):
             w = ph["window"]
             inside = [r for r in ok if w["start"] <= r["started"] <= w["end"]]
@@ -375,6 +417,7 @@ def main() -> int:
     users = provision()
     server = start_server(db)
     sampler = Sampler(db)
+    sampler.server_pid = server.pid
     sampler.start()
     rec = Recorder()
     phases = []
@@ -401,6 +444,9 @@ def main() -> int:
         "phases": report(rec.rows, phases),
         "db_connections_peak": sampler.peak if sampler.visible else None,
         "db_connections_active_peak": sampler.active_peak if sampler.visible else None,
+        "resource_trend": sampler.trend if sampler.visible else None,
+        "run_seconds": {"levels": args.levels, "per_level": args.seconds,
+                        "publication": not args.no_publication},
         "model_cost": {
             "this_run": "offline planner; no model calls",
             "live_tokens_per_question": {"input": 4670, "output": 160,
