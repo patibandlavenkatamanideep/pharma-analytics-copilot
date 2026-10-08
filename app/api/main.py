@@ -399,7 +399,12 @@ def oidc_callback(request: Request, code: str = "", state: str = "",
 @app.post("/api/logout")
 def logout(request: Request, response: Response) -> dict[str, str]:
     identity.revoke(session_token(request))
-    response.delete_cookie(get_settings().cookie_name, path="/")
+    settings = get_settings()
+    # A deletion is a Set-Cookie like any other: with the attributes the
+    # cookie was set with, or a browser ignores it for a __Host- name and a
+    # scanner reports an insecure cookie.
+    response.delete_cookie(settings.cookie_name, path="/", secure=settings.cookie_secure,
+                           httponly=True, samesite="lax")
     return {"status": "signed out"}
 
 

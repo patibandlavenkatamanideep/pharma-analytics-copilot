@@ -229,8 +229,6 @@ def test_over_https_the_session_cookie_is_secure_httponly_and_lax(https_client, 
     assert https_client.get("/api/me").status_code == 200
 
 
-@pytest.mark.xfail(strict=True, reason="sign-out deletes the session cookie without Secure or "
-                                       "HttpOnly: delete_cookie(name, path='/')")
 def test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with(
     https_client, make_identity
 ):
