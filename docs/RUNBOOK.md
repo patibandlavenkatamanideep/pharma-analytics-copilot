@@ -364,19 +364,38 @@ upward, and that is where expensive questions began to hit the statement
 timeout. Raising the pool size moves the queue into the database rather
 than removing it; measure before changing it.
 
+**Concurrency budget.** Two kinds of limit, counted in different places:
+
+| Limit | Counted | Default | Across a deployment |
+|---|---|---|---|
+| Questions in flight | per worker process, in memory (`app/admission.py`) | 24 | × workers × replicas |
+| Analytical queries running / waiting | per worker process, in memory | 4 / 16 | × workers × replicas |
+| Requests per user per minute / hour | in PostgreSQL (`app_conv.run_attempts`) | 20 / 300 | one allowance per user, whatever the process count |
+| Concurrent requests per user | in PostgreSQL (live run leases) | 2 | one allowance per user |
+| Live requests per conversation | in PostgreSQL (run lease) | 1 | one per conversation |
+
+So one replica of the image (2 workers) runs at most 8 analytical queries
+at once on its 16 scoped and 16 exec connections, and admits 48 questions;
+a second replica doubles both, and the connections above. The per-user
+limits do not grow with replicas. The drill (`scripts/ops_drill.py`) shows
+both kinds on separate processes sharing one database: the user limits hold
+across processes, and a process with one query slot refuses its own
+overflow at once.
+
 **What is safe across replicas.** Every piece of shared state lives in
 PostgreSQL:
 
-- **Quotas:** counted in `app_conv.runs`, under an advisory lock.
+- **Quotas:** counted in `app_conv.run_attempts`, under a per-user advisory
+  lock; deleting a conversation refunds nothing.
 - **One live request per conversation:** a run lease.
 - **One outcome per idempotency key:** a unique index.
 - **Sessions, clarifications and checkpoints.**
 - **Ingestion and loads:** one advisory publication lock.
 
 The in-process caches (vocabularies, entity indexes) are keyed by dataset
-id and scope, so a replica never serves another generation's names. Not
-verified: running more than one replica, which no environment here has
-done.
+id and scope, so a replica never serves another generation's names.
+Verified locally on separate processes of one host sharing one database
+(the drill); not verified: replicas on separate hosts or containers.
 
 **Shutdown.** On SIGTERM uvicorn lets in-flight requests finish for up to
 65 s, longer than the 60 s request deadline. Compose's `stop_grace_period`
