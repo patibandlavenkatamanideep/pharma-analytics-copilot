@@ -82,7 +82,7 @@ OBS = ROOT / "deploy" / "observability"
 #: The deployable collector configuration, plus local JSON-lines files that
 #: append across restarts (the sentinel scan reads them after one).
 COLLECTOR_CONFIGS = [OBS / "otel-collector.yaml", OBS / "otel-collector.local-files.yaml"]
-DRILL_VERSION = "1.1.0"
+DRILL_VERSION = "1.1.1"
 #: Run lease and request deadline for app-1 and app-2 (defaults 120 s and
 #: 60 s). The deadline stays shorter than the lease, as config.py says it must.
 LEASE_S, DEADLINE_S = 15, 12
@@ -1196,6 +1196,8 @@ class Drill:
         log line, and from that line (run_id) to its trace and the error
         type the trace recorded."""
         sys.path.insert(0, str(ROOT))
+        import psycopg.errors
+
         from app.logs import ERROR_TYPES, EVENTS
         known = set(EVENTS.values()) | {"http.access", "server.started", "log.external"}
         lines, not_json = [], 0
@@ -1212,6 +1214,11 @@ class Drill:
         unknown = sorted(e for e in events if e not in known)
         error_types = sorted({line["error"]["type"] for line in lines
                               if isinstance(line.get("error"), dict)})
+        # The driver's own classes are named after their SQLSTATE condition.
+        driver = {n for n in error_types if isinstance(getattr(psycopg.errors, n, None), type)}
+        # The refused audit insert (s_audit_loss) must say what kind of failure it was.
+        audit_types = sorted({(line.get("error") or {}).get("type") for line in lines
+                              if line.get("event") == "audit.write_failed"})
         failed = [line for line in lines if line.get("event") == "query.failed"]
         responded = set(self.response_ids)
         spans = self.span_errors_by_run()
@@ -1219,11 +1226,13 @@ class Drill:
         to_trace = [f for f in failed if f.get("request_id") and "QueryCanceled" in spans.get(
             f.get("run_id"), set())]
         return {"ok": bool(lines) and not_json == 0 and not unknown
-                and set(error_types) <= ERROR_TYPES | {"Exception"}
+                and set(error_types) <= ERROR_TYPES | {"Exception"} | driver
+                and audit_types == ["InsufficientPrivilege"]
                 and len(failed) >= 12 and len(to_response) == len(failed)
                 and len(to_trace) == len(failed),
                 "lines": len(lines), "not_json": not_json, "events": events,
                 "unknown_events": unknown, "error_types": error_types,
+                "audit_write_failed_types": audit_types,
                 "query_failed_lines": len(failed),
                 "linked_to_the_response_id": len(to_response),
                 "linked_to_a_trace_recording_QueryCanceled": len(to_trace)}
