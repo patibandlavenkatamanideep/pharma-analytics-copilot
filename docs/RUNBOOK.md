@@ -184,7 +184,7 @@ python3 scripts/load_data.py --mode seed
 python3 scripts/build_fixture_db.py
 
 # Tests
-python3 -m pytest tests -q               # 148
+python3 -m pytest tests -q               # counts: docs/TEST_INVENTORY.md
 python3 -m pytest tests/security -q --release-gate --min-tests 436
 ```
 

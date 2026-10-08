@@ -626,3 +626,61 @@ rulesets (read-only API).
 gates that would support either (hosted CI on the exact head with enforced branch
 protection, a live evaluation, a real identity provider and feed, staging, and the
 owners' targets) are not met. Locally, `a9de92e` is ready to push for hosted CI.
+
+## AWS staging preparation — 8 October 2026
+
+A pass to move the candidate toward independently verified, restricted AWS staging. No
+AWS API, hosted model or GitHub setting was used: the push stays denied, and planning,
+applying, publishing and deploying were not authorized. Status of every item, with the
+prepared commands and the owner's decisions: [AWS_STAGING.md](AWS_STAGING.md).
+
+**The candidate is now `e551650`.** Against `a9de92e` its executable changes are:
+`scripts/bootstrap_db.py` (a non-superuser administrator gets `SET ROLE pac_owner` and
+nothing more; `--roles-only` grants CONNECT on an existing database); the `Dockerfile`
+(the pinned RDS CA bundle, `/app/schema/generated` as the one volume owned by the
+application user); `app/api/main.py` (sign-out's cookie attributes); and
+`scripts/image_smoke.sh` (every run read-only without tmpfs, all capabilities dropped,
+`no-new-privileges`; the CA and the single writable path checked). Records on
+`e551650`, clean tree, freshly provisioned databases: boundary; security 436 and ingestion
+177 strict; the whole suite strict, 2238; 845 without a database; the gate's 19
+self-tests; offline evaluations 38/38, 12/12, 12/12 (not model accuracy); 32 components;
+the web build; 10 browser journeys; pip-audit, npm audit and gitleaks clean; the
+linux/amd64 image `219ddd92…`, 28 checks; the same 8 HIGH advisories, none fixable,
+re-triaged against the deployed configuration ([VULNERABILITY_TRIAGE.md](VULNERABILITY_TRIAGE.md)).
+On the same commit, the new-cluster restore passes every check (restore to ready 54.6 s
+on this run against 17.0 s at `6ced978`; the source copy slowed by a similar factor, so
+the machine's load rather than the procedure is the likely difference) and upgrade
+compatibility from `7950e71` passes. The 20-scenario drill (`866b6e2`) and the load
+profile and soak (`1e0312a`) were measured on application code that differs from
+`e551650` only in sign-out's cookie deletion.
+
+**Two chain runs were stopped, not hidden.** On `4c90704` the chain was stopped during
+provisioning when `tests/unit/test_staging_infra.py` was found uncategorised in
+`evidence/test_categories.json`, which fails `test_evidence_index`
+(`r5-attempt-4c90704-uncategorised-test.json`; fixed in `a2f3bdf`). On `a2f3bdf` it was
+stopped early in the gates to add the session-cookie tests below, so that the candidate
+would contain them.
+
+**Three new defects** (ledger), each reproduced before its fix:
+
+- `rds-admin-provisioning`: as an administrator with only CREATEROLE and CREATEDB (as on
+  RDS), bootstrap stopped at `CREATE DATABASE … OWNER pac_owner` and the restore procedure
+  could not run (`739957a` → `4ab8fd7`; emulated in local PostgreSQL 16, not RDS).
+- `proxy-client-address`: behind an untrusted load balancer, 20 failed sign-ins by anyone
+  refuse everyone (`b4315bb`; configuration fix in the staging module, `5a49a34`).
+- `logout-cookie-attributes`: sign-out deleted the session cookie without Secure or
+  HttpOnly; no test had run with Secure cookies (`11dd083` → `e551650`).
+
+**Prepared for AWS, not run there:** a Terraform module in the tool the repository
+already used (validated, formatted, statically scanned with only accepted findings, 13
+policy tests from source with 10 of 10 mutations caught), a publishing workflow that can
+push images and nothing else, an owner-run secret seeding script, and a region-specific
+cost estimate from AWS's public price list (about $96 a month for low-cost staging, $213
+during replica and failover tests; metric series measured, 588 per process). Locally
+proven and still owed on AWS: the restricted administrator, certificate-verified TLS,
+the hardened runtime, proxy trust, cookies and OIDC.
+
+**Recommendation.** Unchanged: neither pilot nor production readiness can be claimed.
+Hosted CI with enforced protection, staging itself, a live evaluation, a real identity
+provider and feed, and the owners' targets are all outstanding. Locally, `e551650` is
+ready to push for hosted CI.

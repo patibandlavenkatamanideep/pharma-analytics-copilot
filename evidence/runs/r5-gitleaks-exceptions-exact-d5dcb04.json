@@ -1,0 +1,58 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T20:11:47+00:00",
+  "claim": "At d5dcb04: the .gitleaksignore exceptions are exact: in a throwaway clone, the excepted public value in a new file, a value of the excepted rule at an excepted path and line in another commit, and an AWS-key-shaped value are all reported",
+  "application": {
+    "sha": "d5dcb04e01edbbc9b53d0005a91f5d40667f8302",
+    "tree": "28f499533c182a6837686e4833d9f935332fbd3c",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "evidence/probes/gitleaks_exceptions_exact.sh"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.59
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"findings\": [[\"evidence/runs/probe-same-public-value.json\", \"generic-api-key\", 1], [\"evidence/runs/r5-candidate-trivy.json\", \"aws-access-token\", 51], [\"evidence/runs/r5-candidate-trivy.json\", \"generic-api-key\", 50]], \"planted\": 3, \"all_planted_findings_reported\": true}"
+  },
+  "artifacts": [],
+  "limits": [
+    "gitleaks 8.30.1 locally; CI runs the same version in a container"
+  ]
+}

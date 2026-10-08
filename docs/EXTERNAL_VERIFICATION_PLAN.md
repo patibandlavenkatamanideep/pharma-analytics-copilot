@@ -43,17 +43,22 @@ gh pr create --repo patibandlavenkatamanideep/pharma-analytics-copilot --draft \
 **Found (8 October 2026, read-only API):** `main` is **not protected** and has no
 rulesets. Nothing enforces the checks above before a merge.
 
-**Needs:** repository-settings authorization. Then require, on `main`: a pull request with
-one approving review; the status checks `test`, `frontend`, `supply-chain`, `image`
-(workflow `CI`), up to date with `main`; no force pushes; no deletions; administrators
-included, or a bypass limited to one named person and reviewed after use. Verify by
-opening a pull request with a failing check and confirming merge is blocked.
+**Needs:** repository-settings authorization. Then require, on `main`: a pull request; the
+status checks `test`, `frontend`, `supply-chain`, `image` (workflow `CI`), up to date with
+`main`; no force pushes; no deletions; administrators included. One approving review
+once a second maintainer exists (with one, a required review blocks every merge or needs a
+bypass). The exact `gh api` commands, and the `staging` environment the publishing
+workflow needs, are prepared in [AWS_STAGING.md](AWS_STAGING.md) ("Blocked actions").
+Verify by opening a pull request with a failing check and confirming merge is blocked.
 
 ## 3. The release image
 
 CI builds the image with `push: false`; nothing is published. A release needs:
 
-1. **Authorization and a registry** (for example GHCR under the repository).
+1. **Authorization and a registry.** Prepared for Amazon ECR:
+   `.github/workflows/publish-staging.yml` (manual, environment `staging`, GitHub OIDC to a
+   push-only role from `infra/aws-staging`); it builds, scans, runs the image journeys,
+   pushes and reports the registry digest. Never run.
 2. Build once, from the pushed commit, for `linux/amd64`, and push; record the
    **registry manifest digest** (and the index digest if multi-platform). The local image
    ID (`b6d529719b31…`) will not match a CI-built one: another builder, another time, and the
@@ -104,9 +109,13 @@ ledger, and freshness against the agreed schedule.
 
 ## 7. Staging
 
-**Needs:** an environment, authorization to deploy the digest from step 3, a PostgreSQL
-16 instance, an OTLP collector and a metrics backend, and the targets in
-[TARGETS_DECISION.md](TARGETS_DECISION.md) agreed. Then
+**Prepared for AWS:** [infra/aws-staging](../infra/aws-staging/README.md) (ECS Fargate, RDS
+PostgreSQL 16, HTTPS load balancer, optional Amazon Managed Service for Prometheus), its
+cost estimate, and the status of every check in [AWS_STAGING.md](AWS_STAGING.md).
+
+**Needs:** an AWS account and region, authorization to plan and apply, then to deploy the
+digest from step 3, and the targets in [TARGETS_DECISION.md](TARGETS_DECISION.md) agreed.
+Then
 [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) §1–10: identity of the deployed image,
 SSO, permission changes, per-user limits across two replicas, restart and checkpoint
 recovery, overload, ingestion under load, stopped-feed alerts, logs, and recovery: a
@@ -127,5 +136,5 @@ image: [ROLLBACK_DECISION.md](ROLLBACK_DECISION.md)).
 | An independent author for the fresh holdout | evaluation owner | §4 holdout |
 | An IdP client registration | identity owner | §5 |
 | Feed samples, control totals and the source contract | source-system owner | §6 |
-| A staging environment and deploy authorization | platform owner | §7 |
+| An AWS account and region (residency), a monthly budget and alert addresses, a hostname and DNS zone, the testers' networks, and authorization to plan, apply and deploy | platform and budget owners | §3, §7 |
 | Targets, audit mode, retention and residency decisions; a named release owner for the vulnerability triage | product, data and compliance owners | §7, and the triage's expiry |
