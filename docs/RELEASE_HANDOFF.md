@@ -24,7 +24,7 @@ on `workflow_dispatch`. Four jobs, none conditional on branch or path:
 
 | Job | What fails it |
 |---|---|
-| `test` | the boundary check; the security suite under `--release-gate` with a floor of 433; ingestion under `--release-gate` (floor 176); **the full suite under `--release-gate`** (since `03316f3`: before it, a step that passed with its tests skipped, `evidence/probes/ci_full_suite_gate.py`); the regression question set; the release gate's own tests; the browser journeys. The two held-out sets are measurements (`continue-on-error`), by design |
+| `test` | the boundary check; the security suite under `--release-gate` with a floor of 436; ingestion under `--release-gate` (floor 176); **the full suite under `--release-gate`** (since `03316f3`: before it, a step that passed with its tests skipped, `evidence/probes/ci_full_suite_gate.py`); the regression question set; the release gate's own tests; the browser journeys. The two held-out sets are measurements (`continue-on-error`), by design |
 | `frontend` | the component suite below its floor (32), any skipped or failed |
 | `supply-chain` | `pip-audit` on the hashed lock, `npm audit --omit=dev --audit-level=high`, gitleaks over the history |
 | `image` | the amd64 build (`push: false`: no registry), trivy at HIGH and CRITICAL with a fix available (`ignore-unfixed`, exit code 1; the complete counts are triaged in VULNERABILITY_TRIAGE.md), no setuid or setgid file (since `a9de92e`), and the image's journeys on a fresh database |

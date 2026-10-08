@@ -179,3 +179,78 @@ def test_the_default_cookie_name_is_not_accepted_when_renamed(
     c.cookies.clear()
     c.cookies.set("pac_session", token)
     assert c.get("/api/me").status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Cookie attributes, as a browser sees them behind the TLS load balancer
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def https_client(authtest_db):
+    """HTTPS, and cookies configured Secure, as infra/aws-staging runs it
+    (PAC_COOKIE_SECURE=true). The other clients here run over HTTP with
+    Secure off, so they never see these attributes."""
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+
+    original = os.environ.get("PAC_COOKIE_SECURE")
+    os.environ["PAC_COOKIE_SECURE"] = "true"
+    get_settings.cache_clear()
+    try:
+        from app.api.main import app
+
+        with TestClient(app, base_url="https://testserver") as c:
+            yield c
+    finally:
+        if original is None:
+            os.environ.pop("PAC_COOKIE_SECURE", None)
+        else:
+            os.environ["PAC_COOKIE_SECURE"] = original
+        get_settings.cache_clear()
+
+
+def _cookie_attributes(response, name: str) -> set[str]:
+    for header in response.headers.get_list("set-cookie"):
+        if header.startswith(name + "="):
+            return {a.strip().lower() for a in header.split(";")[1:]}
+    raise AssertionError(f"the response set no {name} cookie")
+
+
+def test_over_https_the_session_cookie_is_secure_httponly_and_lax(https_client, make_identity):
+    user = make_identity("exec", can_view_wac=1)
+    attributes = _cookie_attributes(sign_in(https_client, user), "pac_session")
+
+    assert {"httponly", "secure", "samesite=lax", "path=/"} <= attributes
+    # Host-only: no Domain attribute, so a sibling subdomain never receives it.
+    assert not any(a.startswith("domain=") for a in attributes)
+    max_age = int(next(a for a in attributes if a.startswith("max-age="))[len("max-age="):])
+    assert 0 < max_age <= 12 * 3600, "outlives the absolute session lifetime"
+    assert https_client.get("/api/me").status_code == 200
+
+
+@pytest.mark.xfail(strict=True, reason="sign-out deletes the session cookie without Secure or "
+                                       "HttpOnly: delete_cookie(name, path='/')")
+def test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with(
+    https_client, make_identity
+):
+    """A deletion is a Set-Cookie like any other: without Secure, a browser
+    refuses it for a __Host- name (the session then outlives sign-out in
+    the browser, though not on the server), and a scanner reports the
+    response as setting an insecure cookie."""
+    user = make_identity("exec", can_view_wac=1)
+    sign_in(https_client, user)
+
+    r = https_client.post("/api/logout")
+    assert r.status_code == 200
+    attributes = _cookie_attributes(r, "pac_session")
+    assert "max-age=0" in attributes
+    assert {"httponly", "secure", "samesite=lax", "path=/"} <= attributes
+    assert https_client.get("/api/me").status_code == 401
+
+
+def test_cookies_are_secure_unless_configured_otherwise(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.delenv("PAC_COOKIE_SECURE", raising=False)
+    assert Settings(_env_file=None).cookie_secure is True

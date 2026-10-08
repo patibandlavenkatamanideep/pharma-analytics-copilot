@@ -29,8 +29,8 @@ whether an answer is arithmetically right.
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 845 | 832 passed at `a9de92e`; the 13 in `test_staging_infra.py` are newer: re-qualification pending | `r5-rc-a9de92e-pytest.json` (`a9de92e`); without a database too, `r5-rc-a9de92e-unit-nodb.json` |
 | **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 433` | 433 | pass, strict gate | `r5-rc-a9de92e-security.json` (`a9de92e`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2235** | 2222 passed at `a9de92e`, strict gate: no skips, no xfails; re-qualification pending | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | 433 passed at `a9de92e`, strict gate; the 3 session-cookie tests are newer: re-qualification pending | `r5-rc-a9de92e-security.json` (`a9de92e`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2238** | 2222 passed at `a9de92e`, strict gate: no skips, no xfails; re-qualification pending | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-a9de92e-component.json` (`a9de92e`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-rc-a9de92e-browser.json` (`a9de92e`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-a9de92e-eval-*.json` (`a9de92e`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
@@ -186,7 +186,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 433`, and fails on a skip in any phase, a
+`--release-gate --min-tests 436`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -202,7 +202,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 433
+python3 -m pytest tests/security -q --release-gate --min-tests 436
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline
