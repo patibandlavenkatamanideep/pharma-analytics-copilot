@@ -424,6 +424,21 @@
           "note": "evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push"
         }
       ]
+    },
+    {
+      "id": "evidence-commit-secret-scan",
+      "title": "The candidate's evidence commit added trivy reports that quote the base image's GPG_KEY (the public CPython release key); gitleaks over the history found it four times, so CI's supply-chain job would have failed on a push",
+      "fix_commits": [
+        "bbc2242"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-head-gitleaks-reproduced.json",
+          "baseline": "47bf736",
+          "note": "gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

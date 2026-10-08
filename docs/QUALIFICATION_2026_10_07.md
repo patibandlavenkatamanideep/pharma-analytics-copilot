@@ -510,13 +510,22 @@ from the candidate's records and JUnit: 16 records (the image's among them), 21 
 in the ledger, 0 problems; 4 hashes of original logs from the 6 October review that were never
 preserved, stated as missing.
 
+**History review, and one more finding.** Before bundling, gitleaks ran over every
+commit reachable from HEAD, not only up to the candidate. It found the base image's
+`GPG_KEY` four times in the candidate's own trivy reports, committed in `ef061f1`
+(`47bf736`, `r5-head-gitleaks-reproduced.json`): the public CPython release key, the
+value already reviewed as not a secret, but enough to fail CI's supply-chain job on a
+push. Four exact fingerprints were added to `.gitleaksignore` (`bbc2242`), and gitleaks
+over the whole history then passed (`r5-head-gitleaks-fixed.json`). That file is the
+one input changed after the candidate, and the manifest lists it: it changes only the
+secret scan's exceptions, so the scan is the one check rerun at HEAD; no code, test,
+dependency or image input changed. No `.env`, dump, key or dataset is in any commit
+(`.env.example` holds empty values); the largest file is 0.5 MB.
+
 **Bundle.** A Git bundle of `codex/release-defects-oct06` at the final HEAD, its
 SHA-256 and an inventory are produced beside the repository (a file inside the bundle
-cannot carry the bundle's checksum), after a review of the reachable history: gitleaks
-over every commit with only the two reviewed fingerprints; no `.env`, dump, key or
-dataset in any commit (`.env.example` holds empty values); the largest file 0.5 MB.
-`git bundle verify` reports it complete. Verification commands are in
-RELEASE_HANDOFF.md.
+cannot carry the bundle's checksum). `git bundle verify` reports it complete.
+Verification commands are in RELEASE_HANDOFF.md.
 
 **Deferred checklist**: [RELEASE_HANDOFF.md](RELEASE_HANDOFF.md#deferred-checklist).
 

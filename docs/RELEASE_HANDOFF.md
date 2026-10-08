@@ -11,7 +11,7 @@ this document has been pushed, dispatched, published or deployed.
 | Public GitHub | `codex/release-defects-oct06` at `69c62de`; hosted CI run [37653591687](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687) passed on it (`evidence/external.json`). `main` at `c8aab5b` |
 | Local branch | unpushed beyond `69c62de`: 52 commits up to the executable candidate, then evidence and documentation commits (`git rev-list --count github/codex/release-defects-oct06..HEAD`) |
 | Executable candidate | `84dfc1e`: the last commit that changes code, tests, configuration, dependencies, fixtures, workflow or build inputs. Every local gate, the image and the scans below ran on it from a clean tree |
-| Final HEAD | the commit that carries this document: the candidate plus evidence and documentation only. The release manifest lists the delta and checks that it touches no build input |
+| Final HEAD | the candidate plus evidence, documentation and four exact secret-scan exceptions in `.gitleaksignore` (the public CPython key quoted in the candidate's own trivy reports). The release manifest lists the delta and classes each path; `.gitleaksignore` is the one input in it, it affects only the secret scan, and that scan was rerun over the whole history at HEAD (`r5-head-gitleaks-fixed.json`) |
 | Hosted CI for the local commits | **Pending**: needs authorization to push |
 
 ## The CI path

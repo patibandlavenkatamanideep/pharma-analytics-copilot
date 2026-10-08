@@ -1,0 +1,62 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T08:50:15+00:00",
+  "claim": "No secret in any commit reachable from bbc2242 (gitleaks 8.30.1, redacted), with .gitleaksignore's six exact fingerprints of the public CPython release key",
+  "application": {
+    "sha": "bbc2242d65458b2d62aaf399901f7607cb36bc00",
+    "tree": "b69ed5363dd06fcd6700443d1e11de81e55b7be2",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/opt/homebrew/bin/gitleaks",
+      "git",
+      ".",
+      "--redact",
+      "--no-banner",
+      "--no-color"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.85
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "4:50AM INF no leaks found"
+  },
+  "artifacts": [],
+  "limits": [
+    "pattern-based secret scanning; it finds known shapes of secrets, not every possible one"
+  ]
+}
