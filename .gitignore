@@ -45,3 +45,6 @@ web/playwright-report/
 
 # evidence: records and probes are tracked; restricted detail is not
 evidence/restricted/
+
+# the staging module's provider cache (its lock file is committed)
+infra/aws-staging/.terraform/
