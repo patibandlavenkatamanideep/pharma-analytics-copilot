@@ -384,3 +384,79 @@ collector and Prometheus with shortened windows and lease, no Alertmanager routi
 hosted backend, no real identity provider, and not an on-call drill or a load test. The
 container image was not run in the drill. A hosted collector and backend need
 credentials and a target; blocked, in the checklist.
+
+## Step 7 — performance, rollback and recovery against the candidate
+
+**Targets** ([TARGETS_DECISION.md](TARGETS_DECISION.md)). Provisional service,
+freshness and recovery targets, each labelled an assumption with the measurement it is
+judged against. No SLO is declared; the owner's agreement is in the deferred checklist.
+
+**Performance under row-level security** (locally verified; `1e0312a`, `r5-load-profile.json`,
+machine held awake). HTTP sessions through the scoped and exec roles: RAMs in the busiest
+territories (the skewed sources), Directors and Execs (60/30/10); cheap, medium and
+expensive shapes (45/40/15) including the dense monthly series under RLS; two workers,
+the image's pools, admission on; the offline planner; 30 s per level on 2,000,000 sales;
+a 10-core, 16 GiB machine with 8.5 GiB of swap used by other applications. At 8 clients:
+21.9 answers/s, p95 cheap 0.35 s, medium 0.78 s, expensive 4.45 s, no errors. At 16:
+24.3/s, no errors. At 32: 22.3/s, one statement timeout (0.14%). At 64: 18.3/s answered,
+31.5% refused at once (`503 overloaded`, refusal p95 0.10 s), two timeouts (0.23%).
+Publications under load: in-week 32.6 s, new week **320 s** (434 s on 1 October), readers
+answering throughout (p95 2.12 s during against 2.01 s outside; 0.57% expensive
+timeouts). This is offline-pipeline capacity; provider-inclusive capacity is unmeasured.
+An earlier attempt at the same commit spanned a system sleep (`r5-attempt-load-profile-slept.json`):
+its concurrency levels agree, its publication phases are not used.
+
+**Soak** (`1e0312a`, `r5-load-soak.json`): 8 clients for 10 minutes right after the
+new-week batch, to answer two concrete questions. Does anything drift as the per-request
+rows (attempts, audit, conversations) accumulate? No: p95 2.28–2.40 s every minute, worker
+memory flat near 145 MB, 8,000 attempts added linearly. Does the batch leave a lasting
+cost? Yes: it leaves the facts table and its indexes at twice their size (heap 356 →
+711 MB, indexes 776 → 1,550 MB), and expensive questions timed out at 0.99%.
+`VACUUM (FULL, ANALYZE) sales` (`262c7cd`, `r5-compact-after-shift.json`) took 33 s with
+readers blocked and restored both; at 8 clients errors then fell to 0.11% and p95 to
+1.58 s (`r5-load-after-compaction.json`), the throughput of a never-published copy
+measured two minutes later (14.6 against 15.5 answers a second, `r5-load-control-fresh.json`).
+The soak's lower throughput than the profile's (13.4 against 21.9) is mostly this machine's
+variance, which the control exposed; CAPACITY.md's 1 October reading of a "within
+variance" dip after the batch was half right. Compaction in the batch's out-of-hours
+window is now a working assumption, not a code change.
+
+**Rollback** ([ROLLBACK_DECISION.md](ROLLBACK_DECISION.md)). No previous image is a safe
+target: the previous executable candidate, `7950e71`, lacks the territory-name scope fix
+(an access defect) and the numerical fixes after it, and every earlier one has more. The
+strategy is forward fix; restore is for lost or damaged data. The compatibility of the
+previous code with the upgraded schema was measured all the same, in a cluster of its
+own (`d2a6628`, `r5-upgrade-compatibility.json`): the candidate's migrations upgrade a
+database the previous release left with live state, twice, converging; the candidate
+serves it with that state intact (an old session, a replayed answer, a resumed
+clarification, a dead run taken over after its lease and committed once, RAM rows, no
+pricing for a no-WAC executive, SSO disabled to password only). The previous code also
+serves it, but writes audit rows without `run_id`/`audit_mode` and cannot load data
+(`NotNullViolation` on the 023 `authority` column; the published dataset is untouched).
+
+**Restore into a new cluster.** The documented procedure was wrong. RUNBOOK §8 said to
+run `bootstrap_db.py` before `pg_restore`; reproduced against a new cluster with a
+full-size copy carrying application state (`4be5d4e`, `r5-restore-new-cluster-reproduced.json`):
+`pg_restore` exits 1 with 142 errors, and every conversation, turn, run, attempt and
+clarification (80 conversations) is missing, while the database reports ready and
+answers questions; the stored answer is recomputed rather than replayed and the paused
+clarification is gone. *Changed* (`6ced978`): `bootstrap_db.py --roles-only` creates the
+roles and memberships only, and `pg_restore --create` recreates the database as dumped;
+RUNBOOK §8 documents it and warns against the old order. Verified
+(`r5-restore-new-cluster-fixed.json`): a new cluster (`initdb`, own port and
+credentials), a 39.8 MB dump of 2,000,000 sales restored in **11.6 s**, restore to ready
+with every check in **17.0 s** — row counts, generation, policies and RLS flags, every
+table and column ACL (catalog digests), role memberships, CONNECT for the three logins,
+the runtime boundary, readiness, the same answers as a RAM and an Exec, the stored
+answer replayed, the paused clarification resumed. **Data cutoff restored**: the newest
+audit row, turn and run equal the source's at the dump (to the microsecond); nothing
+after the dump began. Three harness defects were fixed on the way and are kept in
+history (`0f1920c`, `4a9de63`, `4be5d4e`); the failed attempts are kept beside the
+records.
+
+**Residual.** One development machine; the database on the same host; the offline
+planner (no provider-inclusive capacity measured); a closed loop with no think time and
+quotas lifted; a dump on local disk restored into a cluster on the same host — not PITR,
+not off-host backup storage, not a managed database, not a production RTO or RPO; the
+previous release's source run as processes, not its image; no deployed rollback or
+roll-forward.

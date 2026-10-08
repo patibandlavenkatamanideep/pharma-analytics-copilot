@@ -394,6 +394,21 @@
           "baseline": "7366937"
         }
       ]
+    },
+    {
+      "id": "restore-new-cluster-procedure",
+      "title": "RUNBOOK §8's restore into a new cluster (bootstrap_db.py, then pg_restore) exited with 142 errors and restored no conversation, turn, run, attempt or clarification, while the database reported ready and answered questions; a stored answer was recomputed rather than replayed",
+      "fix_commits": [
+        "6ced978"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-restore-new-cluster-reproduced.json",
+          "baseline": "4be5d4e",
+          "note": "scripts/restore_drill.py --new-cluster following the documented procedure; the drill itself is the regression check (r5-restore-new-cluster-fixed.json), not a pytest file"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

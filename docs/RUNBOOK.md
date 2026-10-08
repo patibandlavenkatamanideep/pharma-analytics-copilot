@@ -258,8 +258,12 @@ Each batch is reconciled against its declared totals, validated (invalid
 events quarantined with a reason), applied by event identity and version,
 and published as a new generation in one transaction. A replay changes
 nothing. A batch that adds a new week rewrites every fact's week offset;
-on the full dataset that took 124 s idle and about 7 minutes under load,
-and readers kept answering throughout ([CAPACITY.md](CAPACITY.md)). The contract, the outcomes table, recovery and the
+on the full dataset that took 124 s idle and about 7 minutes under load
+(320 s under load on the 7 October candidate), and readers kept answering
+throughout ([CAPACITY.md](CAPACITY.md)). It leaves the facts table and its
+indexes at twice their size; compact them in the same out-of-hours window
+(`VACUUM (FULL, ANALYZE) sales`, 33 s on the full dataset here, blocking
+readers; [INGESTION.md](INGESTION.md#measured-limits)). The contract, the outcomes table, recovery and the
 measurements are in [INGESTION.md](INGESTION.md).
 
 A full or seed load clears the ingestion ledger, so retained batches can be
@@ -343,7 +347,25 @@ already exists (142 errors) and, with the foreign keys already in place,
 loads no conversation, turn, run, attempt or clarification at all, while the
 database still reports ready and answers questions
 (`r5-restore-new-cluster-reproduced.json`). `restore_drill.py --new-cluster`
-runs the procedure above against a new cluster and checks it.
+runs the procedure above against a new cluster and checks it. Measured on
+7 October 2026 (`r5-restore-new-cluster-fixed.json`) with a full-size copy
+(2,000,000 sales) carrying application state:
+
+| Step | Time |
+|---|---:|
+| `pg_dump -Fc` (39.8 MB) | 3.2 s |
+| New cluster (`initdb`, start) | 0.5 s |
+| Roles (`--roles-only`) | 0.1 s |
+| `pg_restore --create -j 4` | 11.6 s |
+| Restore to ready, every check passed | **17.0 s** |
+
+Every check: row counts, generation, policies and RLS flags, every table and
+column ACL, role memberships, CONNECT for the three logins, the runtime
+boundary, readiness, the same answers as a RAM and an Exec, a stored answer
+replayed under its idempotency key and a paused clarification resumed. The
+data restored runs exactly to the dump: its newest audit row, turn and run
+equal the source's when the dump began. Same host, local disk: not a
+production RTO.
 
 The dump matters most for `app_auth`, `app_conv`, `app_meta` and
 `app_ingest`. The business data can be regenerated (`SEED = 42`), but

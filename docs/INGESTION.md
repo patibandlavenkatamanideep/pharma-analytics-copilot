@@ -450,6 +450,21 @@ The offsets stored on each fact are the root cost. Resolving offsets from
 the calendar at query time would remove the rewrite entirely, but it changes
 how the supplied columns are used, so it is recorded here rather than done.
 
+**Re-measured on 7 October 2026** (candidate `1e0312a`, machine held awake,
+`r5-load-profile.json`): the new-week batch published in 320 s under load at 8
+clients (reader p95 2.12 s during it, 2.01 s outside), the in-week batch in
+32.6 s. The **heap doubles as well as the indexes** (356 → 711 MB; indexes 776 →
+1,550 MB; order kept, correlation 1.00). Over a 10-minute soak right after it
+(`r5-load-soak.json`) nothing drifted, but expensive questions timed out at
+0.99% and p95 was about 2.3 s. `VACUUM (FULL, ANALYZE) sales`
+(`evidence/probes/compact_facts.sh`) took 33 s, blocking every reader, and
+restored both; errors then fell to 0.11% and p95 to 1.58 s at the same
+throughput as a never-published copy (14.6 against 15.5 answers a second,
+`r5-load-after-compaction.json`, `r5-load-control-fresh.json`). `REINDEX TABLE
+CONCURRENTLY` is online but leaves the heap doubled; which of the two costs
+the latency was not separated. Compact in the same out-of-hours window as
+the new-week batch ([TARGETS_DECISION.md](TARGETS_DECISION.md)).
+
 
 ## October 6 adapter bounds
 

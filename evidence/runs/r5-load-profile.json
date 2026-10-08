@@ -1,0 +1,84 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T08:06:23+00:00",
+  "claim": "Load profile of candidate 1e0312a under row-level security, the machine held awake (caffeinate): HTTP sessions of RAMs in the busiest territories, Directors and Execs (60/30/10), cheap/medium/expensive questions (45/40/15), 1 to 64 concurrent clients with admission on, then an in-week and a new-week publication under load, on a disposable full-size copy (2,000,000 sales)",
+  "application": {
+    "sha": "1e0312aa168ed43238c9866aca56873b2f2a7fff",
+    "tree": "a637de5d8bf20e07695db84ab7a6852543dcc5fb",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-eac45a752cb9",
+    "load_mode": "full",
+    "fingerprint": "ba325be6d251300ad4e8141d",
+    "row_counts": {
+      "sales": 2001000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 156,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-24",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-26"
+    },
+    "database": "pac_release_loadtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/sh",
+      "-c",
+      "caffeinate -dims /Users/manideep/.venvs/pac-release/bin/python scripts/load_test.py --levels 1,4,8,16,32,64 --seconds 30 > /Users/manideep/src/pac-work/step7/r5-load-profile.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pac_release_loadtest"
+    },
+    "seed": null,
+    "duration_s": 629.75
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": null
+  },
+  "artifacts": [],
+  "limits": [
+    "offline planner: no model latency, tokens or provider limits; closed loop with no think time and per-user quotas lifted; one development machine (Apple silicon, 10 cores, 16 GiB, 8.5 GiB of swap in use by other applications), database on the same host with shared_buffers 128MB; 30 s per level; not a capacity commitment",
+    "an earlier attempt at the same commit spanned a system sleep; it is kept as attempt1-r5-load-profile-slept.json and its publication phases are not used"
+  ]
+}

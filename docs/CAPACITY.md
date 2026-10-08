@@ -3,8 +3,10 @@
 How much load one deployment carries, where it saturates, and what a data
 refresh costs while users are asking questions. The numbers come from
 `scripts/load_test.py`, which anyone can run against a disposable copy of
-the full dataset. The authoritative run is
-`evidence/runs/r2-load-profile.json`.
+the full dataset. The current candidate's run is
+`evidence/runs/r5-load-profile.json` ([below](#candidate-of-7-october-2026));
+the sections after it are the 1 October measurements
+(`evidence/runs/r2-load-profile.json`, code `66e62d2`), kept as measured.
 
 **These are measurements on one development machine, not agreed service
 levels.** No SLO has been set for this product. The targets below are
@@ -16,6 +18,40 @@ throughput, latency, provider rate limits or cost. They measure everything
 around the model: sessions, policy, compilation, the database, rendering
 and persistence. See [Sensitivity](#sensitivity-a-live-model) for how a
 live model changes them. That needs measuring, not deriving.
+
+## Candidate of 7 October 2026
+
+Same profile as below (RAMs in the busiest territories, Directors and Execs
+60/30/10; cheap, medium and expensive questions 45/40/15; two workers; the
+offline planner; quotas lifted; admission on), candidate `1e0312a`, the
+machine held awake with `caffeinate`, 30 s per level
+(`r5-load-profile.json`). The machine had 16 GiB with 8.5 GiB of swap in use by
+other applications.
+
+| Concurrent clients | Answers/s | p95 | p95 cheap / medium / expensive | Errors | Refused (503) |
+|---:|---:|---:|---|---:|---:|
+| 1 | 2.4 | 2.69 s | 0.25 / 0.57 / 2.92 s | 0 | 0 |
+| 4 | 16.0 | 0.95 s | 0.12 / 0.52 / 3.29 s | 0 | 0 |
+| 8 | 21.9 | 1.35 s | 0.35 / 0.78 / 4.45 s | 0 | 0 |
+| 16 | 24.3 | 1.68 s | 0.75 / 1.12 / 2.29 s | 0 | 0 |
+| 32 | 22.3 | 2.53 s | 1.77 / 2.10 / 3.09 s | 0.14% (1 timeout) | 0 |
+| 64 | 18.3 | 3.51 s | 2.64 / 3.44 / 4.30 s | 0.23% (2 timeouts) | 31.5%, p95 0.10 s |
+
+Publications under 8 clients: in-week 32.6 s (reader p95 1.93 s during, 1.94 s
+outside, no errors); new week 320 s (2.12 s during, 2.01 s outside; 22
+expensive questions timed out, 0.57%, and one answer was `refresh`).
+
+After the new-week batch the facts table and its indexes are twice their
+size. A 10-minute soak at 8 clients (`r5-load-soak.json`) showed no drift --
+p95 about 2.3 s every minute, workers flat near 145 MB, the attempt, audit and
+conversation rows growing linearly -- and 0.99% expensive timeouts. After
+`VACUUM (FULL, ANALYZE) sales` (33 s, readers blocked) errors were 0.11% and
+p95 1.58 s, at the throughput of a never-published copy measured minutes
+later (14.6 against 15.5 answers a second). That those two read 15/s where the
+profile read 22/s at the same concurrency is this machine's variance under
+memory pressure, again: compare runs taken together, not across hours.
+
+Targets these are judged against: [TARGETS_DECISION.md](TARGETS_DECISION.md).
 
 ## The profile
 
@@ -198,7 +234,9 @@ so users can see the age of what they are reading.
 
 ## Provisional targets
 
-These are proposals, not commitments.
+Superseded by [TARGETS_DECISION.md](TARGETS_DECISION.md), which adopts these
+as working assumptions, adds freshness and recovery, and judges the 7 October
+candidate against them. The original proposals, as written on 1 October:
 
 | | Proposal | Measured here (8 clients) |
 |---|---|---|
