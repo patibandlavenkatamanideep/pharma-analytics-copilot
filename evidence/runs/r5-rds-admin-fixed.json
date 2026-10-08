@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T15:58:47+00:00",
+  "claim": "After 4ab8fd7: provisioning, loading, the boundary check, an answer, pg_dump as the owner, and a restore into a new cluster (roles, createdb, pg_restore --role=pac_owner, CONNECT) all succeed as a restricted administrator (CREATEROLE, CREATEDB; not superuser, not BYPASSRLS), as on Amazon RDS; no pac_ role holds superuser, BYPASSRLS, CREATEROLE or CREATEDB",
+  "application": {
+    "sha": "4ab8fd7535e19c45949b40886cddc071cf78895e",
+    "tree": "340e0b206e927f1e278e8e714b55150b7314c101",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/restricted_admin_provisioning.py",
+      "--out",
+      "/Users/manideep/src/pac-work/step10/r5-rds-admin-fixed.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 23.94
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"admin_role\": \"rds_master_emul: LOGIN CREATEROLE CREATEDB, not SUPERUSER, not BYPASSRLS, not REPLICATION\", \"steps\": [{\"step\": \"bootstrap_db.py\", \"exit\": 0, \"errors\": []}, {\"step\": \"load_data.py --mode seed\", \"exit\": 0, \"errors\": []}, {\"step\": \"pg_dump as the owner\", \"exit\": 0, \"errors\": []}, {\"step\": \"bootstrap_db.py --roles-only (new cluster)\", \"exit\": 0, \"errors\": []}, {\"step\": \"createdb -O pac_owner as the administrator\", \"exit\": 0, \"errors\": []}, {\"step\": \"pg_restore --role=pac_owner as the administrator\", \"exit\": 0, \"errors\": []}, {\"step\": \"bootstrap_db.py --roles-only again (CONNECT)\", \"exit\": 0, \"errors\": []}], \"after_provisioning\": {\"boundary_problems\": [], \"answer\": \"answered\"}, \"roles\": [[\"pac_auth\", false, false, false, false, false], [\"pac_auth_login\", false, false, false, false, true], [\"pac_exec_login\", false, false, false, false, true], [\"pac_owner\", false, false, false, false, true], [\"pac_rt_exec\", false, false, false, false, false], [\"pac_rt_scoped\", false, false, false, false, false], [\"pac_scoped_login\", false, false, false, false, true]], \"after_restore\": {\"boundary_problems\": [], \"answer\": \"answered\"}, \"roles_after_restore\": [[\"pac_auth\", false, false, false, false, false], [\"pac_auth_login\", false, false, false, false, true], [\"pac_exec_login\", false, false, false, false, true], [\"pac_owner\", false, false, false, false, true], [\"pac_rt_exec\", false, false, false, false, false], [\"pac_rt_scoped\", false, false, false, false, false], [\"pac_scoped_login\", false, false, false, false, true]], \"all_steps_passed\": true}"
+  },
+  "artifacts": [],
+  "limits": [
+    "an emulation of RDS's permission model on local PostgreSQL 16.14, not RDS itself: no parameter groups, TLS, IAM authentication, snapshots or point-in-time recovery"
+  ]
+}

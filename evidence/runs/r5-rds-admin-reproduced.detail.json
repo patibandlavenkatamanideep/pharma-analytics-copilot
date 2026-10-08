@@ -1,0 +1,52 @@
+{
+ "admin_role": "rds_master_emul: LOGIN CREATEROLE CREATEDB, not SUPERUSER, not BYPASSRLS, not REPLICATION",
+ "steps": [
+  {
+   "step": "bootstrap_db.py",
+   "exit": 1,
+   "errors": [
+    "psycopg.errors.InsufficientPrivilege: must be able to SET ROLE \"pac_owner\""
+   ]
+  },
+  {
+   "step": "pg_dump as the owner",
+   "exit": 1,
+   "errors": []
+  }
+ ],
+ "roles": [
+  [
+   "pac_auth",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_owner",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_rt_exec",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_rt_scoped",
+   false,
+   false,
+   false,
+   false,
+   false
+  ]
+ ],
+ "all_steps_passed": false
+}

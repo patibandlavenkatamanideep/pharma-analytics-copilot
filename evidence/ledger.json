@@ -457,6 +457,61 @@
         }
       ],
       "verified_by": "evidence/runs/r5-image-setuid-fixed.json (local, the image built from a9de92e)"
+    },
+    {
+      "id": "rds-admin-provisioning",
+      "title": "Provisioning assumed a PostgreSQL superuser: as a managed database's administrator (CREATEROLE and CREATEDB, as on RDS), bootstrap_db.py stopped at CREATE DATABASE ... OWNER pac_owner (must be able to SET ROLE \"pac_owner\"), so no database could be provisioned, and RUNBOOK §8's restore used pg_restore --create, which such an administrator cannot run",
+      "fix_commits": [
+        "4ab8fd7"
+      ],
+      "regression_files": [
+        "evidence/probes/restricted_admin_provisioning.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-rds-admin-reproduced.json",
+          "baseline": "739957a",
+          "note": "The probe runs every provisioning and restore step as rds_master_emul (LOGIN CREATEROLE CREATEDB; not SUPERUSER, BYPASSRLS or REPLICATION) in clusters of its own on local PostgreSQL 16: an emulation of RDS's permission model for these statements, not RDS"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-rds-admin-fixed.json (4ab8fd7: all 7 steps, the runtime boundary intact and an answer after provisioning and after a restore into a new cluster; the administrator gets SET on pac_owner without INHERIT, and no serving role is a member of it). Not run against RDS"
+    },
+    {
+      "id": "proxy-client-address",
+      "title": "Behind a load balancer that the server does not trust, every client has the load balancer's address, so 20 failed sign-ins by anyone refuse every user's correct password for 15 minutes (MAX_FAILURES_PER_IP); nothing in the deployment configuration set FORWARDED_ALLOW_IPS",
+      "fix_commits": [
+        "5a49a34"
+      ],
+      "regression_files": [
+        "evidence/probes/client_address_behind_proxy.py",
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-proxy-client-address.json",
+          "baseline": "b4315bb",
+          "note": "The real server behind a local proxy, run twice: untrusted (FORWARDED_ALLOW_IPS empty), another user's correct password is refused with 429 after 20 failures from 20 forwarded addresses; trusted, the same sign-in succeeds. The fix is configuration: infra/aws-staging trusts X-Forwarded-For from the VPC range only, and the load balancer appends the address it received"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-staging-policy-tests.json (the staging module sets FORWARDED_ALLOW_IPS to the VPC range, X-Forwarded-For append, ingress to the tasks from the load balancer only). Not verified through a real load balancer"
+    },
+    {
+      "id": "logout-cookie-attributes",
+      "title": "Sign-out deleted the session cookie with delete_cookie(name, path='/'): the deletion carried no Secure and no HttpOnly, so a browser ignores it for a __Host- cookie name and a scanner reports an insecure Set-Cookie. The server revoked the token, so no session survived sign-out",
+      "fix_commits": [
+        "e551650"
+      ],
+      "regression_files": [
+        "tests/security/test_session_lifecycle.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-logout-cookie-reproduced.json",
+          "baseline": "11dd083",
+          "note": "test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with, committed as a strict xfail and run with --runxfail: the deletion lacked secure and httponly. Found while proving cookie attributes for staging: no client in the suites, the image smoke or the browser journeys ran with Secure cookies"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-logout-cookie-fixed.json (e551650, over https://testserver with PAC_COOKIE_SECURE=true); the security suite under the release gate at 436"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

@@ -1,0 +1,83 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T20:10:03+00:00",
+  "claim": "At e551650: a full-size copy (2,000,000 sales) with application state restores into a new PostgreSQL cluster by RUNBOOK \u00a78 and is served with the boundary intact",
+  "application": {
+    "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+    "tree": "fb7c3cde7eb9c0b48259d04dfed6d9c5efc44b10",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-56a5d9b253ef",
+    "load_mode": "full",
+    "fingerprint": "1edc425858a2466a94d43657",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/restore_drill.py",
+      "--new-cluster",
+      "--source",
+      "pac_release"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 98.53
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"mode\": \"new_cluster\", \"source\": \"pac_release\", \"copy\": \"pharma_analytics_restored\", \"target\": \"pharma_analytics_restored\", \"procedure\": {\"roles_seconds\": 0.14, \"roles_exit\": 0, \"restore_seconds\": 47.68, \"restore_exit\": 0, \"restore_errors\": 0, \"first_errors\": []}, \"dump_mb\": 40.2, \"timings\": {\"copy_source_seconds\": 33.59, \"dump_seconds\": 3.31, \"new_cluster_seconds\": 0.63, \"restore_to_ready_seconds\": 54.6}, \"checks\": {\"restore_clean\": true, \"row_counts_match\": true, \"generation_matches\": true, \"policies_and_rls_match\": true, \"grants_match\": true, \"memberships_match\": true, \"logins_can_connect\": true, \"boundary_intact\": true, \"ready\": true, \"answers_match\": true, \"cutoff_matches\": true, \"stored_answer_replays\": true, \"paused_clarification_resumes\": true}, \"errors\": {}, \"state\": {\"left\": {\"answered\": \"answered\", \"paused\": \"clarify\"}, \"after_restore\": {\"replayed\": true, \"replay_status\": \"answered\", \"replay_headline\": \"Gross revenue (wac): $250,766,926.42.\", \"resumed\": \"answered\"}}, \"cutoff\": {\"source_copy\": {\"audit\": \"2026-10-08 16:09:03.064123-04:00\", \"turn\": \"2026-10-08 16:09:03.062245-04:00\", \"run\": \"2026-10-08 16:09:02.770757-04:00\", \"dataset_published\": \"2026-10-08 15:56:28.497749-04:00\", \"sales_through\": \"2026-09-18\"}, \"restored\": {\"audit\": \"2026-10-08 16:09:03.064123-04:00\", \"turn\": \"2026-10-08 16:09:03.062245-04:00\", \"run\": \"2026-10-08 16:09:02.770757-04:00\", \"dataset_published\": \"2026-10-08 15:56:28.497749-04:00\", \"sales_through\": \"2026-09-18\"}}, \"sales_rows\": 2000000, \"differences\": {}, \"memberships\": [\"pac_auth_login -> pac_auth\", \"pac_exec_login -> pac_rt_exec\", \"pac_scoped_login -> pac_rt_scoped\"], \"answers\": {\"exec: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 526,836 packs.\", 1], \"exec: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,811 packs.\", 10], \"exec: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 15 row(s).\", 15], \"ram: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 38,242 packs.\", 1], \"ram: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Jubilee Clinical Network leads with 1,766 packs.\", 10], \"ram: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 1 row(s).\", 1]}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "one machine; a new cluster on the same host from a dump on local disk; superuser procedure; the managed (RDS) procedure is restricted_admin_provisioning.py; not PITR, not off-host storage"
+  ]
+}

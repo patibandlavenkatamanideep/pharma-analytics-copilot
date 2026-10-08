@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T15:55:07+00:00",
+  "claim": "Reproduction at 739957a: provisioning as a restricted administrator (CREATEROLE, CREATEDB; not superuser, not BYPASSRLS), as on Amazon RDS, fails at CREATE DATABASE ... OWNER pac_owner",
+  "application": {
+    "sha": "739957ad6ed29606ad1c95da639dec229f1a3270",
+    "tree": "bee4b4153e90c7d9c2e66efc8cbd5b92e8268e74",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/restricted_admin_provisioning.py",
+      "--out",
+      "/Users/manideep/src/pac-work/step10/r5-rds-admin-reproduced.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.92
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"admin_role\": \"rds_master_emul: LOGIN CREATEROLE CREATEDB, not SUPERUSER, not BYPASSRLS, not REPLICATION\", \"steps\": [{\"step\": \"bootstrap_db.py\", \"exit\": 1, \"errors\": [\"psycopg.errors.InsufficientPrivilege: must be able to SET ROLE \\\"pac_owner\\\"\"]}, {\"step\": \"pg_dump as the owner\", \"exit\": 1, \"errors\": []}], \"roles\": [[\"pac_auth\", false, false, false, false, false], [\"pac_owner\", false, false, false, false, true], [\"pac_rt_exec\", false, false, false, false, false], [\"pac_rt_scoped\", false, false, false, false, false]], \"all_steps_passed\": false}"
+  },
+  "artifacts": [],
+  "limits": [
+    "an emulation of RDS's permission model on local PostgreSQL 16.14, not RDS itself"
+  ]
+}
