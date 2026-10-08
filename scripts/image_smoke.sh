@@ -64,6 +64,9 @@ jobs_env=("${app_env[@]}" -e PAC_DB_OWNER_PASSWORD="$OWNER")
 # capabilities, and no way to gain privilege (infra/aws-staging sets the same
 # on ECS). The image's one volume, /app/schema/generated, stays writable.
 harden=(--read-only --cap-drop ALL --security-opt no-new-privileges)
+# podman otherwise mounts a tmpfs on /tmp, /var/tmp and /run under --read-only,
+# which docker and Fargate do not.
+[ "$CLI" = podman ] && harden+=(--read-only-tmpfs=false)
 
 # -- build ------------------------------------------------------------------
 # From the COMMIT, not the working directory: `git archive` of $RELEASE is the
