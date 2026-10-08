@@ -30,11 +30,19 @@ uv pip compile requirements.txt --universal --generate-hashes \
 | Secrets (`gitleaks`, every commit in history) | CI `supply-chain` job | any finding |
 | Image: OS packages and the Python environment (`trivy`) | CI `image` job | high or critical **with a fixed version available** |
 
-That gate is the policy, and all a passing scan establishes. Locally,
+The image gate is the policy, and all a passing scan establishes. Locally,
 `scripts/image_smoke.sh` also runs trivy unfiltered over the same image with
 the same database (every severity, fixed or not; not a gate) and records the
 database's own dates (`TRIVY_FULL_REPORT`, `TRIVY_DB_REPORT`), so a release
 manifest can state complete counts and when the advisories were current.
+
+**Reviewed exceptions.** `.gitleaksignore` lists exactly two findings, by
+commit, file, rule and line: commit `58b3d3e`,
+`evidence/runs/r3-final-trivy-amd64.json` lines 50 and 201, rule
+`generic-api-key`. Both are the public GPG fingerprint of the Python release
+key, quoted in trivy's metadata about the base image: not a secret. There is
+no file-wide or rule-wide exemption ([REVIEW_2026_10_06.md](REVIEW_2026_10_06.md)).
+pip-audit, npm audit and trivy have none.
 
 What was run locally, and its result, is recorded:
 

@@ -460,3 +460,66 @@ quotas lifted; a dump on local disk restored into a cluster on the same host —
 not off-host backup storage, not a managed database, not a production RTO or RPO; the
 previous release's source run as processes, not its image; no deployed rollback or
 roll-forward.
+
+## Step 8 — release handoff
+
+**CI path** ([RELEASE_HANDOFF.md](RELEASE_HANDOFF.md)). `ci.yml` runs on pushes to
+`codex/**`, so this branch is covered, and on pull requests and `workflow_dispatch`. The
+four jobs (`test`, `frontend`, `supply-chain`, `image`) carry no branch or path
+condition; the held-out evaluations are measurements by design; the image job builds
+with `push: false` and publishes nothing. One gap was found: the full-suite step ran
+without the release gate, so the fixture-database tests (the k-07 regressions among
+them) skipped on an empty fixture and the step stayed green (`cff458e`,
+`r5-ci-full-suite-gate-reproduced.json`). It now runs under `--release-gate` (`03316f3`,
+`r5-ci-full-suite-gate-fixed.json`); locally the whole suite satisfies it. Hosted CI
+passed on `69c62de` (run 37653591687), the last commit on GitHub; for the local commits
+after it, hosted CI is **pending** authorization to push. The current-branch
+instructions in README, REQUIREMENTS and RELEASE_EVIDENCE named
+`post-assessment/release-risks`; corrected.
+
+**The executable candidate, `84dfc1e`** (locally verified, from a clean tree and freshly
+provisioned databases; `r5-candidate-*.json`): the boundary; security 433 and ingestion
+177 under the strict gate; the whole suite under the strict gate, **2222 passed, no
+skips, no xfails** (JUnit sanitised, `r5-candidate-pytest.junit.xml`); 832 unit tests
+with no database; the release gate's self-test; the offline evaluation sets 38/38,
+12/12 and 12/12 (the holdouts are spent: regression measurements); 32 components on
+Node 24; the web build; 10 browser journeys in Chromium; pip-audit, `npm audit` and
+gitleaks over the history, clean; the linux/amd64 image, 25 checks (emulated with
+Rosetta in an arm64 podman VM).
+
+**Release manifest** (`evidence/release/manifest.json`, `scripts/release_manifest.py`):
+the commit and tree; the SHA-256 of `requirements.lock`, `pyproject.toml`,
+`web/package-lock.json`, `web/package.json`, `Dockerfile` and `.dockerignore` as
+committed; the contract versions and prompt fingerprint (`5dd66431f2ba8230`); each
+record's SHA-256, the commit it measured, clean or not, gate or measurement, outcome;
+the image's **config ID** `263a2296d35b…` (the local engine's image ID, the SHA-256 of its
+configuration; the same ID trivy scanned) and its **manifest digest** `sha256:3e3ed288…`
+(the manifest in the local store; **not** a registry digest: nothing was pushed; no OCI
+index for a single-platform build); trivy 0.58.1 with its database updated
+2026-10-07 07:38Z and downloaded 2026-10-08 08:44Z; the gate (no HIGH or CRITICAL with a
+fix: passed, 0 findings) and the complete counts, none fixable: HIGH 44, MEDIUM 58, LOW
+61, UNKNOWN 2, CRITICAL 0; the reviewed exceptions (two exact gitleaks fingerprints,
+SUPPLY_CHAIN.md); the last hosted run; and the paths after the candidate, each classed:
+**no build input changed**. The policy statement stays what the gate establishes: no
+HIGH or CRITICAL vulnerability with a fix available; 44 HIGH without a fix remain in the
+base image's packages.
+
+**Documentation from the evidence index.** `docs/EVIDENCE_INDEX.md` is regenerated
+from the candidate's records and JUnit: 15 records, 21 defects in the ledger, 0
+problems; 4 hashes of original logs from the 6 October review that were never
+preserved, stated as missing.
+
+**Bundle.** A Git bundle of `codex/release-defects-oct06` at the final HEAD, its
+SHA-256 and an inventory are produced beside the repository (a file inside the bundle
+cannot carry the bundle's checksum), after a review of the reachable history: gitleaks
+over every commit with only the two reviewed fingerprints; no `.env`, dump, key or
+dataset in any commit (`.env.example` holds empty values); the largest file 0.5 MB.
+`git bundle verify` reports it complete. Verification commands are in
+RELEASE_HANDOFF.md.
+
+**Deferred checklist**: [RELEASE_HANDOFF.md](RELEASE_HANDOFF.md#deferred-checklist).
+
+**Residual.** No push, hosted CI run, registry publication or deployment was made, so
+nothing after `69c62de` is externally verified, including the stricter CI step. The image
+was built and run under emulation on a developer machine, not by a hosted runner. Branch
+protection on GitHub was not inspectable from this checkout.
