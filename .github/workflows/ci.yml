@@ -124,8 +124,13 @@ jobs:
             tests/unit/test_ingest_validation.py \
             -q --release-gate --min-tests 176
 
+      # Strict too. Everything not in the two steps above runs here, among
+      # it the tests on the coherent-market fixture database (the k-07
+      # regressions): with that database built but left empty they skip,
+      # and without the gate the step stayed green
+      # (evidence/probes/ci_full_suite_gate.py).
       - name: Full test suite
-        run: python -m pytest tests -q
+        run: python -m pytest tests -q --release-gate
 
       # This step used to be named "Held-out question set" and ran the
       # default suite -- which is the regression set the system was
