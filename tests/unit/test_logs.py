@@ -8,7 +8,6 @@ import json
 import logging
 import sys
 
-import pytest
 
 from app import logs
 from app.logs import REDACTED, JsonFormatter
@@ -133,7 +132,6 @@ def test_a_python_warning_becomes_a_record_not_a_stray_line():
     assert out["logger"] == "py.warnings" and out["level"] == "warning"
 
 
-@pytest.mark.xfail(strict=True, reason="reproduction: a database error's kind is logged as Exception")
 def test_a_database_error_keeps_its_sqlstate_class_name():
     """psycopg names each error class after its SQLSTATE condition: a finite,
     code-defined set. Reduced to "Exception", a refused audit insert (the

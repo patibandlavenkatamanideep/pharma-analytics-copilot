@@ -98,10 +98,23 @@ def current() -> dict[str, str]:
     return dict(_context.get())
 
 
+def _driver_error(kind) -> bool:
+    """psycopg's own error classes, each named after its SQLSTATE condition
+    (InsufficientPrivilege, UniqueViolation, AdminShutdown, ...): a finite,
+    code-defined set that says what kind of database failure it was and
+    nothing about the data. A same-named class anywhere else does not count."""
+    try:
+        from psycopg import errors
+    except ImportError:
+        return False
+    return (isinstance(kind, type) and issubclass(kind, errors.Error)
+            and kind.__module__ in ("psycopg.errors", "psycopg"))
+
+
 def _error(exc_info) -> dict[str, Any]:
     kind, value, _tb = exc_info
     name = getattr(kind, "__name__", "Exception")
-    error = {"type": name if name in ERROR_TYPES else "Exception"}
+    error = {"type": name if name in ERROR_TYPES or _driver_error(kind) else "Exception"}
     code = getattr(value, "code", None)
     if isinstance(code, str) and code in ERROR_CODES:
         error["code"] = code

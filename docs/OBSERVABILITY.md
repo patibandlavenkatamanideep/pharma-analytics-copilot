@@ -251,9 +251,9 @@ supplied is not.
 
 | Field | Holds |
 |---|---|
-| `event` | The message **template** as written in code (`"query failed (%s): %s"`), never the interpolated text |
-| `args` | Each argument if it is a number, boolean, null or identifier-shaped text (a route, a model id, a run id), otherwise `"[redacted]"`. An exception, a question, SQL or an address never appears |
-| `error` | The exception's type, its stable `code` if it has one, and the innermost frame in `app/` (`app/pipeline.py:1025`). Never its message or traceback |
+| `event` | A stable code registered for the message template in `app/logs.py` (`"query failed (%s): %s"` is `query.failed`); `log.unclassified` for an unregistered application message, `log.external` for another library's. The text and its arguments are never written |
+| `ts`, `level`, `logger`, `release` | When, how severe, which of the application's loggers (`external` otherwise), and the release |
+| `error` | The exception's type, if it is on the allowlist or is one of the database driver's own classes, which are named after their SQLSTATE condition (`InsufficientPrivilege`, `UniqueViolation`); otherwise `Exception`. Its stable `code` if it has one. Never its message or traceback |
 | `http_id` | Generated per HTTP request and returned as `X-Request-ID`. A client cannot choose it |
 | `request_id`, `run_id` | The audit row and run of the turn being served, from the moment the turn starts, including inside graph steps |
 | access lines | `{"event": "http.access", "method", "path", "status"}`, with no query string (an OIDC callback carries its code and state there) and no client address |
