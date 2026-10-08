@@ -8,15 +8,15 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `a9de92ee90b804a8f5c72350fd08a87450a5e037` | `93f3c7a1a2a2cc7c01cf0aef17d3bcb1fb2cca16` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `373c755ce5b4b7320353583c9d461e6d2619fae0` | `afbac0e46e97c52ce07f01ddc07543ec62209529` |
+| Executable candidate (what the records measured) | `e551650f7ed2d797b25bf64f2b31d8d7b8451e56` | `fb7c3cde7eb9c0b48259d04dfed6d9c5efc44b10` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `95b1acc56bb2376063e9f14c8de47e6a1be63451` | `3a8f018d2406316f199debbe7f63097418d27af8` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
-- **documentation** (7): `docs/EVALUATION.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/SUPPLY_CHAIN.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
-- **evidence data** (34): `evidence/ledger.json`, `evidence/runs/r5-attempt-image-42e9090-setuid-check.json`, `evidence/runs/r5-gitleaks-exceptions-exact.json`, `evidence/runs/r5-head-gitleaks-final.json`, `evidence/runs/r5-image-84dfc1e-build-inputs.json`, `evidence/runs/r5-image-84dfc1e-packages.txt`, `evidence/runs/r5-image-a9de92e-build-inputs.json`, `evidence/runs/r5-image-a9de92e-packages.txt` …
-- **probe tooling** (1): `evidence/probes/gitleaks_exceptions_exact.sh`
+- **documentation** (7): `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/RUNBOOK.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
+- **evidence data** (56): `evidence/ledger.json`, `evidence/runs/r5-attempt-4c90704-uncategorised-test.json`, `evidence/runs/r5-db-tls-verify-full.detail.json`, `evidence/runs/r5-db-tls-verify-full.json`, `evidence/runs/r5-gitleaks-exceptions-exact-d5dcb04.json`, `evidence/runs/r5-image-e551650-build-inputs.detail.json`, `evidence/runs/r5-image-e551650-build-inputs.json`, `evidence/runs/r5-image-e551650-packages.txt` …
+- **probe tooling** (1): `evidence/probes/client_address_behind_proxy.py`
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -38,30 +38,31 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-rc-a9de92e-boundary.json` | passed | boundary intact | yes |
-| `r5-rc-a9de92e-browser.json` | passed |   10 passed (4.9s) | yes |
-| `r5-rc-a9de92e-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-rc-a9de92e-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a9de92e-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a9de92e-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a9de92e-gitleaks.json` | passed | [90m10:37AM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-rc-a9de92e-image.json` | passed | {"release": "a9de92ee90b804a8f5c72350fd08a87450a5e037", "checks": ["PASS: image builds (77 | yes |
-| `r5-rc-a9de92e-ingestion.json` | passed | 177 passed in 19.17s | yes |
-| `r5-rc-a9de92e-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-rc-a9de92e-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-rc-a9de92e-pytest.json` | passed | 2222 passed, 5 warnings in 145.64s (0:02:25) | yes |
-| `r5-rc-a9de92e-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.95s | yes |
-| `r5-rc-a9de92e-security.json` | passed | 433 passed in 48.30s | yes |
-| `r5-rc-a9de92e-unit-nodb.json` | passed | 832 passed, 5 warnings in 29.64s | yes |
-| `r5-rc-a9de92e-web-build.json` | passed | ✓ built in 241ms | yes |
+| `r5-rc-e551650-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-e551650-browser.json` | passed |   10 passed (4.7s) | yes |
+| `r5-rc-e551650-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-e551650-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e551650-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e551650-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e551650-gitleaks.json` | passed | [90m4:04PM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-e551650-image.json` | passed | {"release": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56", "checks": ["PASS: image builds (82 | yes |
+| `r5-rc-e551650-ingestion.json` | passed | 177 passed in 18.66s | yes |
+| `r5-rc-e551650-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-e551650-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-e551650-pytest.json` | passed | 2238 passed, 5 warnings in 145.88s (0:02:25) | yes |
+| `r5-rc-e551650-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.92s | yes |
+| `r5-rc-e551650-security.json` | passed | 436 passed in 47.00s | yes |
+| `r5-rc-e551650-unit-nodb.json` | passed | 845 passed, 5 warnings in 29.11s | yes |
+| `r5-rc-e551650-web-build.json` | passed | ✓ built in 248ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-rc-a9de92e-pytest.junit.xml`: 2222 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-e551650-pytest.junit.xml`: 2238 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
-| authorization_security | 361 | 361 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
+| authorization_security | 364 | 364 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
+| deployment_configuration | 13 | 13 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
 | durability_recovery_concurrency | 107 | 107 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
 | evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
 | ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
@@ -76,9 +77,9 @@ From `evidence/runs/r5-rc-a9de92e-pytest.junit.xml`: 2222 tests, each counted on
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-rc-a9de92e-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-a9de92e-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-a9de92e-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-e551650-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-e551650-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-e551650-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -280,6 +281,30 @@ The release image carried eleven setuid or setgid binaries the application never
 - Fix: `42e9090`, `a9de92e`
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `3389045`: `r5-image-setuid-reproduced.json` — failed — {"image": "pharma-analytics-copilot:smoke", "setuid_or_setgi (evidence/probes/image_privileged_files.py on the image tested for 84dfc1e (263a2296). The regression check is the image smoke's and CI image job's 'no setuid or setgid file' step; 42e9090's first version of that check aborted the smoke silently (kept as r5-attempt-image-42e9090-setuid-check.json) and a9de92e corrected it)
+
+### rds-admin-provisioning
+
+Provisioning assumed a PostgreSQL superuser: as a managed database's administrator (CREATEROLE and CREATEDB, as on RDS), bootstrap_db.py stopped at CREATE DATABASE ... OWNER pac_owner (must be able to SET ROLE "pac_owner"), so no database could be provisioned, and RUNBOOK §8's restore used pg_restore --create, which such an administrator cannot run.
+
+- Fix: `4ab8fd7`
+- Regression on the candidate: `restricted_admin_provisioning.py` (0, NOT ALL PASS)
+- Reproduction on `739957a`: `r5-rds-admin-reproduced.json` — failed — {"admin_role": "rds_master_emul: LOGIN CREATEROLE CREATEDB,  (The probe runs every provisioning and restore step as rds_master_emul (LOGIN CREATEROLE CREATEDB; not SUPERUSER, BYPASSRLS or REPLICATION) in clusters of its own on local PostgreSQL 16: an emulation of RDS's permission model for these statements, not RDS)
+
+### proxy-client-address
+
+Behind a load balancer that the server does not trust, every client has the load balancer's address, so 20 failed sign-ins by anyone refuse every user's correct password for 15 minutes (MAX_FAILURES_PER_IP); nothing in the deployment configuration set FORWARDED_ALLOW_IPS.
+
+- Fix: `5a49a34`
+- Regression on the candidate: `client_address_behind_proxy.py` (0, NOT ALL PASS), `test_staging_infra.py` (13, all pass)
+- Reproduction on `128c558`: `r5-proxy-client-address-reproduced.json` — failed — {"database": "pac_release", "run": {"FORWARDED_ALLOW_IPS": " (The real server behind a local proxy with FORWARDED_ALLOW_IPS empty, i.e. the load balancer untrusted, as every deployment configuration before 5a49a34 left it: after 20 failures from 20 forwarded addresses another user's correct password is refused (429). The defect is configuration, so it is reproduced on the current code with the old configuration. r5-proxy-client-address.json (b4315bb) runs both configurations in one record)
+
+### logout-cookie-attributes
+
+Sign-out deleted the session cookie with delete_cookie(name, path='/'): the deletion carried no Secure and no HttpOnly, so a browser ignores it for a __Host- cookie name and a scanner reports an insecure Set-Cookie. The server revoked the token, so no session survived sign-out.
+
+- Fix: `e551650`
+- Regression on the candidate: `test_session_lifecycle.py` (9, all pass)
+- Reproduction on `11dd083`: `r5-logout-cookie-reproduced.json` — failed — 1 failed, 8 deselected in 0.42s (test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with, committed as a strict xfail and run with --runxfail: the deletion lacked secure and httponly. Found while proving cookie attributes for staging: no client in the suites, the image smoke or the browser journeys ran with Secure cookies)
 
 ## Externally verified (hosted)
 
