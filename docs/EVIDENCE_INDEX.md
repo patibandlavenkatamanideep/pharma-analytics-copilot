@@ -8,14 +8,15 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `2d1cc5f6bfc250a7184651ddc1d6f7b32af4d06b` | `7f5174d21fce55287ab891ca15cd29d94087c38b` |
+| Executable candidate (what the records measured) | `a9de92ee90b804a8f5c72350fd08a87450a5e037` | `93f3c7a1a2a2cc7c01cf0aef17d3bcb1fb2cca16` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `373c755ce5b4b7320353583c9d461e6d2619fae0` | `afbac0e46e97c52ce07f01ddc07543ec62209529` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
-- **documentation** (8): `README.md`, `docs/EVIDENCE_INDEX.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_EVIDENCE.md`, `docs/RELEASE_HANDOFF.md`, `docs/REQUIREMENTS.md`, `docs/SUPPLY_CHAIN.md`, `docs/TEST_INVENTORY.md`
-- **evidence data** (30): `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-candidate-boundary.json`, `evidence/runs/r5-candidate-browser.json`, `evidence/runs/r5-candidate-component.detail.json`, `evidence/runs/r5-candidate-component.json`, `evidence/runs/r5-candidate-eval-holdout.detail.json`, `evidence/runs/r5-candidate-eval-holdout.json` …
+- **documentation** (7): `docs/EVALUATION.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/SUPPLY_CHAIN.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
+- **evidence data** (34): `evidence/ledger.json`, `evidence/runs/r5-attempt-image-42e9090-setuid-check.json`, `evidence/runs/r5-gitleaks-exceptions-exact.json`, `evidence/runs/r5-head-gitleaks-final.json`, `evidence/runs/r5-image-84dfc1e-build-inputs.json`, `evidence/runs/r5-image-84dfc1e-packages.txt`, `evidence/runs/r5-image-a9de92e-build-inputs.json`, `evidence/runs/r5-image-a9de92e-packages.txt` …
+- **probe tooling** (1): `evidence/probes/gitleaks_exceptions_exact.sh`
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -37,26 +38,26 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-candidate-boundary.json` | passed | boundary intact | yes |
-| `r5-candidate-browser.json` | passed |   10 passed (5.9s) | yes |
-| `r5-candidate-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-candidate-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-candidate-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-candidate-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-candidate-gitleaks.json` | passed | [90m4:42AM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-candidate-image.json` | passed | {"release": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d", "checks": ["PASS: image builds (81 | yes |
-| `r5-candidate-ingestion.json` | passed | 177 passed in 18.47s | yes |
-| `r5-candidate-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-candidate-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-candidate-pytest.json` | passed | 2222 passed, 5 warnings in 142.96s (0:02:22) | yes |
-| `r5-candidate-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.73s | yes |
-| `r5-candidate-security.json` | passed | 433 passed in 45.97s | yes |
-| `r5-candidate-unit-nodb.json` | passed | 832 passed, 5 warnings in 27.66s | yes |
-| `r5-candidate-web-build.json` | passed | ✓ built in 234ms | yes |
+| `r5-rc-a9de92e-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-a9de92e-browser.json` | passed |   10 passed (4.9s) | yes |
+| `r5-rc-a9de92e-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-a9de92e-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a9de92e-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a9de92e-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a9de92e-gitleaks.json` | passed | [90m10:37AM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-a9de92e-image.json` | passed | {"release": "a9de92ee90b804a8f5c72350fd08a87450a5e037", "checks": ["PASS: image builds (77 | yes |
+| `r5-rc-a9de92e-ingestion.json` | passed | 177 passed in 19.17s | yes |
+| `r5-rc-a9de92e-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-a9de92e-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-a9de92e-pytest.json` | passed | 2222 passed, 5 warnings in 145.64s (0:02:25) | yes |
+| `r5-rc-a9de92e-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.95s | yes |
+| `r5-rc-a9de92e-security.json` | passed | 433 passed in 48.30s | yes |
+| `r5-rc-a9de92e-unit-nodb.json` | passed | 832 passed, 5 warnings in 29.64s | yes |
+| `r5-rc-a9de92e-web-build.json` | passed | ✓ built in 241ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-candidate-pytest.junit.xml`: 2222 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-a9de92e-pytest.junit.xml`: 2222 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
@@ -75,9 +76,9 @@ From `evidence/runs/r5-candidate-pytest.junit.xml`: 2222 tests, each counted onc
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-candidate-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-candidate-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-candidate-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-a9de92e-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-a9de92e-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-a9de92e-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -268,9 +269,17 @@ CI's Full test suite step ran without the release gate: the tests on the coheren
 
 The candidate's evidence commit added trivy reports that quote the base image's GPG_KEY (the public CPython release key); gitleaks over the history found it four times, so CI's supply-chain job would have failed on a push.
 
-- Fix: `bbc2242` (after the candidate; verified by evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242))
+- Fix: `bbc2242`
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `47bf736`: `r5-head-gitleaks-reproduced.json` — failed — 4:49AM WRN leaks found: 4 (gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json)
+
+### image-setuid-binaries
+
+The release image carried eleven setuid or setgid binaries the application never uses, among them setuid-root mount, umount, su and newgrp from util-linux, whose open HIGH advisories need privilege to matter.
+
+- Fix: `42e9090`, `a9de92e`
+- Regression on the candidate: none (CI configuration)
+- Reproduction on `3389045`: `r5-image-setuid-reproduced.json` — failed — {"image": "pharma-analytics-copilot:smoke", "setuid_or_setgi (evidence/probes/image_privileged_files.py on the image tested for 84dfc1e (263a2296). The regression check is the image smoke's and CI image job's 'no setuid or setgid file' step; 42e9090's first version of that check aborted the smoke silently (kept as r5-attempt-image-42e9090-setuid-check.json) and a9de92e corrected it)
 
 ## Externally verified (hosted)
 
