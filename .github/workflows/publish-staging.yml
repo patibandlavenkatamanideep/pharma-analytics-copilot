@@ -1,0 +1,102 @@
+# Publish one release image to the staging registry. Manual only, and only in
+# the GitHub environment "staging" (its protection rules decide who may run
+# it). It builds the dispatched commit for linux/amd64 (the task
+# definitions' platform), applies the same gates as the image job in ci.yml,
+# pushes with the commit as the tag (tags are immutable there) and reports
+# the registry's digest. It does not deploy: what runs changes only by a
+# reviewed Terraform plan with that digest (infra/aws-staging/README.md).
+#
+# Needs, as variables of the "staging" environment (none is a secret):
+#   AWS_REGION, AWS_ACCOUNT_ID, PAC_PUBLISH_ROLE_ARN (Terraform output
+#   github_publish_role_arn), PAC_ECR_REPOSITORY_URL (output
+#   ecr_repository_url).
+#
+# Prepared, never run: no such role or repository existed when it was written.
+
+name: publish-staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-staging
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Required configuration
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          ROLE: ${{ vars.PAC_PUBLISH_ROLE_ARN }}
+          REPO: ${{ vars.PAC_ECR_REPOSITORY_URL }}
+        run: |
+          for v in AWS_REGION AWS_ACCOUNT_ID ROLE REPO; do
+            [ -n "${!v}" ] || { echo "::error::environment variable for $v is not set"; exit 1; }
+          done
+
+      - uses: actions/checkout@v4
+
+      # No build cache: a release image is built from the commit alone.
+      - name: Build the image
+        run: |
+          docker build --pull --no-cache --platform linux/amd64 \
+            --build-arg PAC_RELEASE="$GITHUB_SHA" -t pharma-analytics-copilot:publish .
+
+      - name: Scan the image for vulnerabilities with a fix available
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: pharma-analytics-copilot:publish
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Hardened runs (read-only root, every capability dropped), no setuid
+      # or setgid file, the pinned RDS CA bundle, a fresh database, sign-in
+      # journeys and a clean stop: the same script the image job runs.
+      - name: Image journeys on a freshly provisioned database
+        env:
+          PAC_SMOKE_IMAGE: pharma-analytics-copilot:publish
+        run: bash scripts/image_smoke.sh
+
+      - name: Expiring credentials for the publishing role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.PAC_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: publish-${{ github.run_id }}
+          role-duration-seconds: 3600
+
+      - name: Push, and read the digest back from the registry
+        env:
+          REPO: ${{ vars.PAC_ECR_REPOSITORY_URL }}
+        run: |
+          registry=${REPO%%/*}
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          docker tag pharma-analytics-copilot:publish "$REPO:$GITHUB_SHA"
+          docker push "$REPO:$GITHUB_SHA"
+          digest=$(aws ecr describe-images --repository-name "${REPO#*/}" \
+            --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)
+          docker logout "$registry"
+          case "$digest" in sha256:*) ;; *) echo "::error::no digest for $GITHUB_SHA"; exit 1 ;; esac
+          {
+            echo "### Published"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| commit | \`$GITHUB_SHA\` |"
+            echo "| image | \`$REPO@$digest\` |"
+            echo
+            echo "For the reviewed plan: \`image_digest = \"$digest\"\`"
+          } >> "$GITHUB_STEP_SUMMARY"
