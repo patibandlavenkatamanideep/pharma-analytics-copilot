@@ -1,12 +1,12 @@
 {
- "generated_at": "2026-10-08T08:43:45+00:00",
+ "generated_at": "2026-10-08T08:48:27+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
-   "tree": "4d30e9e6f22328779256088435c51ddd64eb653d",
+   "sha": "9aebc32dbf1d35563698887ec4777b0c381ae7a7",
+   "tree": "a7dc8e8dae9418a311e8af3a62c0c16571a9516a",
    "branch": "codex/release-defects-oct06",
-   "worktree_clean": false
+   "worktree_clean": true
   },
   "candidate": {
    "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
@@ -14,8 +14,53 @@
    "is_ancestor_of_head": true
   },
   "delta_candidate_to_head": {
-   "by_class": {},
-   "classes_needing_evidence": []
+   "by_class": {
+    "application and build": [
+     "evidence/release/trivy-db.json",
+     "evidence/release/trivy-full.json",
+     "evidence/release/trivy-gate.json"
+    ],
+    "documentation": [
+     "README.md",
+     "docs/EVIDENCE_INDEX.md",
+     "docs/QUALIFICATION_2026_10_07.md",
+     "docs/RELEASE_EVIDENCE.md",
+     "docs/RELEASE_HANDOFF.md",
+     "docs/REQUIREMENTS.md",
+     "docs/SUPPLY_CHAIN.md",
+     "docs/TEST_INVENTORY.md"
+    ],
+    "evidence data": [
+     "evidence/index.json",
+     "evidence/ledger.json",
+     "evidence/runs/r5-candidate-boundary.json",
+     "evidence/runs/r5-candidate-browser.json",
+     "evidence/runs/r5-candidate-component.detail.json",
+     "evidence/runs/r5-candidate-component.json",
+     "evidence/runs/r5-candidate-eval-holdout.detail.json",
+     "evidence/runs/r5-candidate-eval-holdout.json",
+     "evidence/runs/r5-candidate-eval-holdout2.detail.json",
+     "evidence/runs/r5-candidate-eval-holdout2.json",
+     "evidence/runs/r5-candidate-eval-questions.detail.json",
+     "evidence/runs/r5-candidate-eval-questions.json",
+     "evidence/runs/r5-candidate-gitleaks.json",
+     "evidence/runs/r5-candidate-image.json",
+     "evidence/runs/r5-candidate-ingestion.json",
+     "evidence/runs/r5-candidate-npm-audit.json",
+     "evidence/runs/r5-candidate-pip-audit.json",
+     "evidence/runs/r5-candidate-pytest.json",
+     "evidence/runs/r5-candidate-pytest.junit.xml",
+     "evidence/runs/r5-candidate-release-gate-selftest.json",
+     "evidence/runs/r5-candidate-security.json",
+     "evidence/runs/r5-candidate-unit-nodb.json",
+     "evidence/runs/r5-candidate-web-build.json",
+     "evidence/runs/r5-ci-full-suite-gate-fixed.json",
+     "evidence/runs/r5-ci-full-suite-gate-reproduced.json"
+    ]
+   },
+   "classes_needing_evidence": [
+    "application and build"
+   ]
   }
  },
  "versions": {
@@ -43,7 +88,18 @@
    "database": "pac_release_authtest"
   }
  ],
- "images": [],
+ "images": [
+  {
+   "file": "r5-candidate-image.json",
+   "ref": "pharma-analytics-copilot:smoke",
+   "inspected_with": "podman",
+   "id": "263a2296d35b1e35654c041ab60a5ed003180fe3b388d007460d7d2b602fcd09",
+   "digest": "sha256:3e3ed28864e5412f848bb550c52fb6b5da22844c6a2c10461ea27fd337b8d4c5",
+   "platform": "linux/amd64",
+   "revision_label": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
+   "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
+  }
+ ],
  "records": [
   {
    "file": "evidence/runs/r5-candidate-boundary.json",
@@ -127,6 +183,21 @@
    "worktree_clean": true,
    "limits": null,
    "recorded_at": "2026-10-08T08:42:13+00:00",
+   "measures_candidate": true
+  },
+  {
+   "file": "evidence/runs/r5-candidate-image.json",
+   "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
+   "status": "passed",
+   "counts": null,
+   "summary": "{\"release\": \"84dfc1e0ad70f70dda8d537470203aedc04e5d2d\", \"checks\": [\"PASS: image builds (81 s)\", \"PASS: image is labelled with commit 84dfc1e0ad70f70dda8d537470203aedc04e5d2d\", \"PASS: image size 304 MB\", \"PASS: image id 263a2296d35b1e35654c041ab60a5ed003180fe3b388d007460d7d2b602fcd09 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release 84dfc1e0ad70f70dda8d537470203aedc04e5d2d\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 25, \"failed\": 0}",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
+   "worktree_clean": true,
+   "limits": [
+    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
+    "seed data, not the full dataset; offline planner"
+   ],
+   "recorded_at": "2026-10-08T08:45:50+00:00",
    "measures_candidate": true
   },
   {

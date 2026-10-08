@@ -9,12 +9,15 @@ detail file, git or the code.
 | | SHA | Tree |
 |---|---|---|
 | Executable candidate (what the records measured) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
-| HEAD (`codex/release-defects-oct06`, clean: False) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `9aebc32dbf1d35563698887ec4777b0c381ae7a7` | `a7dc8e8dae9418a311e8af3a62c0c16571a9516a` |
 
 Changed between the candidate and HEAD:
 
+- **application and build** (3): `evidence/release/trivy-db.json`, `evidence/release/trivy-full.json`, `evidence/release/trivy-gate.json`
+- **documentation** (8): `README.md`, `docs/EVIDENCE_INDEX.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_EVIDENCE.md`, `docs/RELEASE_HANDOFF.md`, `docs/REQUIREMENTS.md`, `docs/SUPPLY_CHAIN.md`, `docs/TEST_INVENTORY.md`
+- **evidence data** (25): `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-candidate-boundary.json`, `evidence/runs/r5-candidate-browser.json`, `evidence/runs/r5-candidate-component.detail.json`, `evidence/runs/r5-candidate-component.json`, `evidence/runs/r5-candidate-eval-holdout.detail.json`, `evidence/runs/r5-candidate-eval-holdout.json` …
 
-The delta is documentation and evidence only: the candidate's records describe HEAD's executable bytes.
+**Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
 ## Versions
 
@@ -41,6 +44,7 @@ The delta is documentation and evidence only: the candidate's records describe H
 | `r5-candidate-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
 | `r5-candidate-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
 | `r5-candidate-gitleaks.json` | passed | [90m4:42AM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-candidate-image.json` | passed | {"release": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d", "checks": ["PASS: image builds (81 | yes |
 | `r5-candidate-ingestion.json` | passed | 177 passed in 18.47s | yes |
 | `r5-candidate-npm-audit.json` | passed | found 0 vulnerabilities | yes |
 | `r5-candidate-pip-audit.json` | passed | No known vulnerabilities found | yes |
