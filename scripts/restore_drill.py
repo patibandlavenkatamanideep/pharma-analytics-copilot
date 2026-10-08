@@ -230,12 +230,19 @@ from app.pipeline import Pipeline
 s = json.loads(sys.argv[1])
 pipe = Pipeline(OfflinePlanner())
 p = principal_for_user_id(s["user_id"])
-replay = pipe.ask(p, "What is our total revenue this quarter?", idempotency_key=s["key"])
-resumed = pipe.ask(p, "the second one", conversation_id=s["conversation_id"])
-print(json.dumps({"replayed": (replay.payload or {}).get("replayed") is True,
-                  "replay_status": replay.status,
-                  "replay_headline": ((replay.payload or {}).get("answer") or {}).get("headline"),
-                  "resumed": resumed.status}))
+out = {}
+try:
+    replay = pipe.ask(p, "What is our total revenue this quarter?", idempotency_key=s["key"])
+    out.update(replayed=(replay.payload or {}).get("replayed") is True,
+               replay_status=replay.status,
+               replay_headline=((replay.payload or {}).get("answer") or {}).get("headline"))
+except Exception as exc:
+    out.update(replayed=False, replay_status=type(exc).__name__, replay_headline=None)
+try:
+    out["resumed"] = pipe.ask(p, "the second one", conversation_id=s["conversation_id"]).status
+except Exception as exc:
+    out["resumed"] = type(exc).__name__
+print(json.dumps(out))
 """
 
 
@@ -339,10 +346,23 @@ def new_cluster(args) -> int:
         cluster = start_cluster(work)
         timings["new_cluster_seconds"] = round(time.perf_counter() - t0, 2)
         procedure = restore_as_documented(cluster, args.target, dump, args.jobs)
-        after = facts(args.target, cluster)
-        served = answers(args.target, cluster)
-        restored_cut = cutoff(args.target, cluster)
-        resumed = child(CHECK_STATE, cluster.app_env(args.target), json.dumps(state))
+        errors: dict[str, str] = {}
+
+        def attempt(name, fn, default):
+            try:
+                return fn()
+            except Exception as exc:          # recorded as a failed check
+                errors[name] = f"{type(exc).__name__}: {str(exc).strip().splitlines()[-1][:200]}"
+                return default
+        after = attempt("facts", lambda: facts(args.target, cluster),
+                        {k: None for k in before} | {"counts": {}})
+        served = attempt("answers", lambda: answers(args.target, cluster),
+                         {"boundary_problems": None, "ready_dataset": None, "answers": None})
+        restored_cut = attempt("cutoff", lambda: cutoff(args.target, cluster), None)
+        resumed = attempt("state", lambda: child(CHECK_STATE, cluster.app_env(args.target),
+                                                 json.dumps(state)),
+                          {"replayed": False, "replay_status": None, "replay_headline": None,
+                           "resumed": None})
         timings["restore_to_ready_seconds"] = round(time.perf_counter() - started, 2)
     finally:
         if cluster is not None:
@@ -361,7 +381,7 @@ def new_cluster(args) -> int:
         "grants_match": (before["table_grants"], before["column_grants"])
                         == (after["table_grants"], after["column_grants"]),
         "memberships_match": before["memberships"] == after["memberships"],
-        "logins_can_connect": len(after["connect"]) == 3,
+        "logins_can_connect": len(after["connect"] or []) == 3,
         "boundary_intact": served["boundary_problems"] == [],
         "ready": served["ready_dataset"] == before["generation"],
         "answers_match": served["answers"] == reference["answers"],
@@ -374,8 +394,10 @@ def new_cluster(args) -> int:
     print(json.dumps({
         "mode": "new_cluster", "source": args.source, "copy": copy, "target": args.target,
         "procedure": procedure, "dump_mb": dump_mb, "timings": timings, "checks": checks,
+        "errors": errors, "state": {"left": {k: state[k] for k in ("answered", "paused")},
+                                    "after_restore": resumed},
         "cutoff": {"source_copy": cut, "restored": restored_cut},
-        "sales_rows": after["counts"]["sales"],
+        "sales_rows": after["counts"].get("sales"),
         "differences": {k: [before["counts"].get(k), after["counts"].get(k)]
                         for k in before["counts"] if before["counts"][k] != after["counts"].get(k)},
         "memberships": after["memberships"], "answers": served["answers"],
