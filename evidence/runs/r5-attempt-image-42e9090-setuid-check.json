@@ -1,0 +1,67 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T14:28:23+00:00",
+  "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
+  "application": {
+    "sha": "42e9090bd926a9424d978582862d4233aea56d7c",
+    "tree": "04ff2f395e5e25f803bcebaf104c2ff14ca29fe6",
+    "branch": "HEAD",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "scripts/image_smoke.sh"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 140.56
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "PASS  runs as 'appuser', not root"
+  },
+  "artifacts": [],
+  "limits": [
+    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
+    "seed data, not the full dataset; offline planner"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "16136a8d4bca30049c171881f539958f0155b87517054fae3746a8aea9ae38a2",
+    "digest": "sha256:21bd39e8affa5068a81198c61c45e76a23f6e44df0cb3926ed9ca7bd2c9113ad",
+    "platform": "linux/amd64",
+    "revision_label": "42e9090bd926a9424d978582862d4233aea56d7c"
+  }
+}

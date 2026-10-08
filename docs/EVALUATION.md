@@ -543,12 +543,13 @@ and the metric registry were changed during development, and both reach it.
 `holdout2` is the closest thing to an unbiased estimate and scored **8/12 on
 its first offline run** before the fixes it prompted.
 
-## Running the next live evaluation (prompt 2.2.0)
+## Running the next live evaluation (prompt 2.3.0)
 
-Every live result above was measured on earlier prompt text. Prompt 2.2.0
-(fingerprint `ed8e49619d32de7b`, recorded in every run; 2.1.0 was
-`5ca5ddf08608fb64`) has never been run against a live model, and neither
-has 2.1.0. When credentials and a budget exist, run it in this
+Every live result above was measured on earlier prompt text. Prompt 2.3.0
+(fingerprint `5dd66431f2ba8230`, recorded in every run; 2.2.0 was
+`ed8e49619d32de7b`, 2.1.0 `5ca5ddf08608fb64`) has never been run against a
+live model, and neither have 2.2.0 or 2.1.0. The plan with its inputs is
+[EXTERNAL_VERIFICATION_PLAN.md](EXTERNAL_VERIFICATION_PLAN.md) §4. When credentials and a budget exist, run it in this
 order. Each step is a decision point.
 
 **1. Smoke first, with a hard cap.** `--smoke` runs the first question of

@@ -440,6 +440,23 @@
         }
       ],
       "verified_by": "evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242)"
+    },
+    {
+      "id": "image-setuid-binaries",
+      "title": "The release image carried eleven setuid or setgid binaries the application never uses, among them setuid-root mount, umount, su and newgrp from util-linux, whose open HIGH advisories need privilege to matter",
+      "fix_commits": [
+        "42e9090",
+        "a9de92e"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-image-setuid-reproduced.json",
+          "baseline": "3389045",
+          "note": "evidence/probes/image_privileged_files.py on the image tested for 84dfc1e (263a2296). The regression check is the image smoke's and CI image job's 'no setuid or setgid file' step; 42e9090's first version of that check aborted the smoke silently (kept as r5-attempt-image-42e9090-setuid-check.json) and a9de92e corrected it"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-image-setuid-fixed.json (local, the image built from a9de92e)"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

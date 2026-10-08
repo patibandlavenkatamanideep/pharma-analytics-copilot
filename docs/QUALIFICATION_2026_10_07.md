@@ -533,3 +533,96 @@ Verification commands are in RELEASE_HANDOFF.md.
 nothing after `69c62de` is externally verified, including the stricter CI step. The image
 was built and run under emulation on a developer machine, not by a hosted runner. Branch
 protection on GitHub was not inspectable from this checkout.
+
+## Release verification — 8 October 2026
+
+A verification pass over steps 1–8, against the actual candidate, without repeating the
+implementation program. External steps are prepared, not run:
+[EXTERNAL_VERIFICATION_PLAN.md](EXTERNAL_VERIFICATION_PLAN.md).
+
+**Identity.** The handoff bundle (`37199f2`, SHA-256 `a8cd1298…0341a`) verifies: checksum,
+complete history, one ref; `69c62de` and `84dfc1e` are ancestors of `37199f2`. Between
+`84dfc1e` and `37199f2` the only path outside documentation and evidence is
+`.gitleaksignore`. Every executable image input (`app`, `migrations`, `schema`, `scripts`,
+`web`, the lock, `pyproject.toml`, `Dockerfile`, `.dockerignore`) has the same Git tree at
+both; `README.md`, which the image copies, and the revision label do not, so a build at
+`37199f2` would be a replacement image needing its own scan and journeys.
+
+**The release gate.** `03316f3` changes only the CI command (`--release-gate` on the full
+suite); no assertion changed. The gate's 19 self-tests fail a run on a skip in any phase
+(setup, call, `skipif`, module level), an unapproved xfail or an xpass, an empty or
+narrowed selection, a collection error, a session where nothing passed and a teardown
+failure; the CI step itself fails on an empty fixture database
+(`r5-ci-full-suite-gate-fixed.json`). **k-07** has blocking coverage at the exact question:
+`tests/unit/test_period_over_period.py` (the planner) and
+`tests/integration/test_period_over_period_pipeline.py` (the pipeline), both in the strict
+suite; `holdout2` stays a measurement. No fresh independent holdout exists: it needs an
+author who has not seen the development sets (`evals/packet/`).
+
+**The post-candidate configuration change.** `bbc2242` adds four exact
+`commit:file:rule:line` fingerprints, all the public CPython release key in the
+candidate's own trivy reports. `evidence/probes/gitleaks_exceptions_exact.sh` (`a2b38d5`,
+`r5-gitleaks-exceptions-exact.json`) plants, in a throwaway clone, the same public value in
+a new file, a value of the excepted rule at an excepted path and line in another commit,
+and an AWS-key-shaped value: all three are reported. The exceptions hide nothing else.
+
+**Supply chain.** The unfiltered scan of the tested image has 165 findings, none fixable
+in Debian: 44 HIGH, 58 MEDIUM, 61 LOW, 2 UNKNOWN, no CRITICAL, none in Python packages. The
+44 HIGH are 8 advisories in 17 base-image packages; each is triaged in
+[VULNERABILITY_TRIAGE.md](VULNERABILITY_TRIAGE.md) (reachability, mitigation, owner,
+expiry). The gate ("no HIGH or CRITICAL with a fix") passes; that is not "vulnerability
+free". The bases' resolved IDs and digests, the layer match and the 87 Debian packages are
+recorded (`r5-image-84dfc1e-build-inputs.json`, `r5-image-a9de92e-build-inputs.json`);
+pinning the bases by digest is proposed, not done.
+
+**A new finding, fixed.** The tested image carried eleven setuid or setgid binaries,
+among them setuid-root `mount`, `umount`, `su` and `newgrp` from util-linux, which made its
+HIGH advisories reachable from the application user (`3389045`,
+`r5-image-setuid-reproduced.json`, against the `84dfc1e` image `263a2296…`). `42e9090`
+clears every setuid and setgid bit and adds the check to the image smoke and CI's image
+job. That first check searched as `appuser`, whose `find` exits 1 on unreadable
+directories, and ended the smoke silently (`r5-attempt-image-42e9090-setuid-check.json`);
+`a9de92e` searches as root and fails on a failing search. The image built from `a9de92e`
+(`b6d529719b31…`) has none (`r5-image-setuid-fixed.json`). Ledger: `image-setuid-binaries`.
+
+**The candidate is now `a9de92e`** (locally verified, clean tree, freshly provisioned
+databases; `r5-rc-a9de92e-*.json`, manifest `r5-manifest-a9de92e.json`): boundary; security
+433 and ingestion 177 strict; the whole suite strict, 2222 passed, no skips or xfails; 832
+unit tests without a database; the gate's self-test; offline evaluations 38/38, 12/12,
+12/12 (regression and spent sets, not model accuracy); 32 components; the web build; 10
+browser journeys; pip-audit, npm audit and gitleaks clean; the linux/amd64 image, 26
+checks. Its application, migrations, schema and locks are identical to those of `866b6e2`
+(the 20-scenario drill), `1e0312a` (load profile and soak), `6ced978` (new-cluster restore)
+and `d2a6628` (upgrade compatibility), so those measurements describe its code.
+
+**Hosted gates.** Not run: a push was requested by the owner on 8 October 2026 and refused
+by the working session's permission controls. `main` has no branch protection and no
+rulesets (read-only API).
+
+| Item | Status | Exact identity |
+|---|---|---|
+| Hosted CI, all four jobs | **independently verified for `69c62de` only** | GitHub run 37653591687 |
+| Hosted CI on the candidate and HEAD | blocked: push | — |
+| Branch protection on `main` | blocked: absent; needs settings authorization | — |
+| Bundle integrity and ancestry | locally verified | `37199f2`, SHA-256 `a8cd1298…`; the final bundle is beside it |
+| Strict release gate, k-07 blocking coverage | locally verified | `a9de92e`; macOS arm64, PostgreSQL 16.14, Python 3.13.2 |
+| Python suites: 2222 strict, security 433, ingestion 177, 832 without a database | locally verified | `a9de92e` |
+| Offline evaluations 38/38, 12/12, 12/12 | locally verified; **not** model accuracy | `a9de92e`, offline planner |
+| Components 32, web build, browser journeys 10 | locally verified | `a9de92e`, Node 24.19.0, Chromium |
+| pip-audit, npm audit, gitleaks; exceptions exact | locally verified | `a9de92e`, `a2b38d5` |
+| Image journeys 26/26, no setuid, trivy gate | locally verified | image `b6d529719b31…` (linux/amd64 under Rosetta, podman 5.7.1) |
+| HIGH findings triaged | locally verified; release owner not named | trivy 0.58.1, database 2026-10-07 07:38Z |
+| Multi-process drill (20) | locally verified at `866b6e2`; same application code | one machine, processes |
+| Load profile, soak, compaction | locally verified at `1e0312a`; same application code | Apple silicon, 16 GiB, under memory pressure |
+| New-cluster restore (17.0 s), upgrade compatibility | locally verified at `6ced978`, `d2a6628`; same code | local clusters |
+| Live deployment (`7aae7cf`), live evaluations (September, earlier prompts) | reported only, historical | — |
+| Four original logs from the 6 October review | missing (hashes only) | — |
+| Registry publication and digest | blocked | — |
+| Live model evaluation of prompt 2.3.0; fresh holdout | blocked: credentials, budget, independent author | — |
+| Real IdP, real feed, staging, replicas, hosted collector and alerts | blocked | — |
+| Targets, audit mode, retention and residency | blocked: owner decisions | — |
+
+**Recommendation.** Neither pilot nor production readiness can be claimed: the agreed
+gates that would support either (hosted CI on the exact head with enforced branch
+protection, a live evaluation, a real identity provider and feed, staging, and the
+owners' targets) are not met. Locally, `a9de92e` is ready to push for hosted CI.
