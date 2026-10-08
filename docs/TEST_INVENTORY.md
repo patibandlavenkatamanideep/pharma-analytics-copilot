@@ -27,16 +27,22 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 832 | pass, no skips | `r5-rc-a9de92e-pytest.json` (`a9de92e`); without a database too, `r5-rc-a9de92e-unit-nodb.json` |
+| **Unit** | `pytest tests/unit -q` | 845 | 832 passed at `a9de92e`; the 13 in `test_staging_infra.py` are newer: re-qualification pending | `r5-rc-a9de92e-pytest.json` (`a9de92e`); without a database too, `r5-rc-a9de92e-unit-nodb.json` |
 | **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 433` | 433 | pass, strict gate | `r5-rc-a9de92e-security.json` (`a9de92e`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2222** | pass, strict gate: no skips, no xfails | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2235** | 2222 passed at `a9de92e`, strict gate: no skips, no xfails; re-qualification pending | `r5-rc-a9de92e-pytest.json` (`a9de92e`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-a9de92e-component.json` (`a9de92e`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-rc-a9de92e-browser.json` (`a9de92e`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-a9de92e-eval-*.json` (`a9de92e`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.
+
+13 of the unit tests (`tests/unit/test_staging_infra.py`) read the AWS
+staging module's Terraform source and its cost estimate: what a change would
+have to remove to open the database, run a privileged container, put a
+password in plain environment or let CI deploy. They need neither AWS nor a
+database, and they do not establish that the module applies.
 
 **Read the integration count with care.** 672 of its cases are the
 compatibility matrix (`tests/integration/test_compatibility_matrix.py`):
