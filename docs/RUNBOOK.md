@@ -273,7 +273,8 @@ python3 scripts/ingest.py --check-freshness --max-since-success 26h --source <fe
 ```
 
 Exit 3 means a missed run (`missed_run`), data that stopped moving
-(`stale_data`) or a feed that never delivered (`never_delivered`). The job
+(`stale_data`), a feed that never delivered (`never_delivered`) or batches
+rejected since the last accepted one (`batches_rejected`). The job
 also exports its batches and freshness when `PAC_OTEL_ENDPOINT` is set in
 the jobs container ([OBSERVABILITY.md](OBSERVABILITY.md#freshness)).
 

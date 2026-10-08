@@ -126,11 +126,37 @@ status is not set to error.
 | `pac.ingest.since_success` | observed gauge, s | `source`. Seconds since the source's last accepted batch, **read from the database at every collection**, so it grows when a feed stops |
 | `pac.ingest.watermark_age` | observed gauge, s | `source`. Seconds since the newest event time applied for the source, read at every collection. Grows when the data stops moving forward, even if batches keep arriving |
 | `pac.ingest.duration` | histogram, s | `status` |
+| `pac.ingest.rejected_since_success` | observed gauge | `source`. Batches rejected since the source's last accepted batch, read from the batch log at every collection: a serving process reports what the one-shot jobs process did |
+| `pac.ingest.quarantined_last_day` | observed gauge | `source`. Events quarantined in the last 24 hours, read from the batch log at every collection |
 
 Every label has a small, bounded set of values. **No metric carries a user,
 conversation, request or run id.** Those are unbounded, and they belong on a
 trace, not on a label. Recording an undeclared metric raises, so a new
 metric must be declared with its labels.
+
+**Each process is its own series.** The resource carries `service.instance.id`,
+random per process start (nothing about the host), which Prometheus shows as
+`instance`. Without it two processes of one release -- two replicas, or the
+image's own `uvicorn --workers 2` -- wrote the same series and overwrote each
+other's running totals; the local drill showed one process's count where two
+had answered. Aggregate across instances (`sum`, `max by (source)`); a restart
+is a new instance.
+
+**Single-event counters start at zero.** `pac.persistence.failures`,
+`pac.db.errors` and `pac.db.pool.timeouts` are recorded at 0 for every value
+of their label when a process starts. A series that first appears at its first
+increment is already 1, `increase()` has no earlier sample, and the first
+audit loss would never page.
+
+**The jobs process is one-shot.** Its counters (`pac.ingest.batches`, `events`,
+`quarantined`, `duration`) are exported once per run and then expire, so
+alerts and panels about the feed read the batch log through the serving
+processes' observed gauges instead.
+
+**A failed export is logged**, at most once a minute per exporter
+(`telemetry.spans_dropped`, `telemetry.metrics_dropped`). The OTLP exporters
+report an unreachable collector by returning a failure rather than raising,
+and before 7 October 2026 that left no line in the log.
 
 ## Redaction
 
@@ -247,11 +273,15 @@ the formatter.
 
 ## Alerts
 
-These are proposed rules. They are written in Prometheus form, using the
-OpenTelemetry-to-Prometheus name translation (`pac.ask.duration` in ms
-becomes `pac_ask_duration_milliseconds_*`). **No collector or Prometheus has
-been run against them.** The thresholds are starting points, not agreed
-SLOs.
+The rules Prometheus evaluates are [deploy/observability/alerts.yml](../deploy/observability/alerts.yml);
+this table is generated from it and `tests/unit/test_alert_rules.py` keeps the
+two equal. Names follow the collector's Prometheus translation, confirmed
+against a live scrape (`pac.ask.duration` in ms becomes
+`pac_ask_duration_milliseconds_*`, counters end in `_total`). **Run locally
+only**: `scripts/ops_drill.py` evaluates them in a real Prometheus fed by a real
+collector, with shortened windows, and checks that the exercised alerts fire
+and clear (`r5-ops-drill-*.json`). No hosted backend has run them. The
+thresholds are starting points, not agreed SLOs.
 
 | Alert | Expression | For | Why |
 |---|---|---|---|
@@ -268,15 +298,17 @@ SLOs.
 | `MissedIngestionRun` | `max by (source) (pac_ingest_since_success_seconds) > 93600` | 15m | No accepted batch for 26 hours; set to the feed's schedule |
 | `DataNotMoving` | `max by (source) (pac_ingest_watermark_age_seconds) > 259200` | 1h | Newest applied event older than three days |
 | `FreshnessNotReported` | `absent_over_time(pac_ingest_since_success_seconds[30m])` | — | No process is reporting freshness |
-| `BatchRejected` | `sum(increase(pac_ingest_batches_total{status="rejected"}[1h])) > 0` | — | A feed delivered a broken batch |
-| `QuarantineRising` | `sum(increase(pac_ingest_quarantined_total[1d])) > 100` | — | Feed quality degrading |
+| `BatchRejected` | `max by (source) (pac_ingest_rejected_since_success) > 0` | — | A feed's batches are being rejected and none has been accepted since; read from the batch log |
+| `QuarantineRising` | `sum(pac_ingest_quarantined_last_day) > 100` | — | More than 100 events quarantined in a day; read from the batch log |
 | `TelemetryPipelineDown` | `up{job="otel-collector"} == 0` | 5m | Prometheus cannot scrape the collector: every metric and alert above is blind |
 
 ## Not covered
 
 - The deployed host exports nothing until a collector is provisioned and
-  `PAC_OTEL_ENDPOINT` is set. No collector exists in this repository's
-  compose files, because no requirement names one.
+  `PAC_OTEL_ENDPOINT` is set. [deploy/observability/](../deploy/observability/)
+  has a collector, Prometheus and dashboard configuration, exercised locally by
+  the drill; none is in the compose files or deployed, because no requirement
+  names a backend.
 - Logs are written to stderr for the platform to collect. Shipping them
   to a log store is the platform's job, and none is configured here.
 

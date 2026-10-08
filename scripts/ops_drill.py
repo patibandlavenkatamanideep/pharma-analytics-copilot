@@ -80,8 +80,8 @@ DRILL_RULES: dict[str, dict[str, Any]] = {
     "MissedIngestionRun": {"sub": {"> 93600": "> 25"}, "for": "0s"},
     "DataNotMoving": {"sub": {"> 259200": "> 3600"}, "for": "0s"},
     "FreshnessNotReported": {"sub": {"[30m]": "[20s]"}, "for": "0s"},
-    "BatchRejected": {"sub": {"[1h]": "[40s]"}, "for": "0s"},
-    "QuarantineRising": {"sub": {"[1d]": "[1m]"}, "for": "0s"},
+    "BatchRejected": {"sub": {}, "for": "0s"},
+    "QuarantineRising": {"sub": {}, "for": "0s"},
     "TelemetryPipelineDown": {"sub": {}, "for": "0s"},
 }
 NOT_EXERCISED = {
@@ -657,6 +657,8 @@ class Drill:
             - timedelta(days=1)
         r = self.ingest(self.batch("drill-old", [self.sale("drill-old-1", old)]))
         evidence["old_batch_exit"] = r.returncode
+        # Accepted: the feed recovered, so the rejection no longer pages.
+        evidence["BatchRejected_cleared_after_s"] = self.wait_alert("BatchRejected", "inactive", 60)
         evidence["DataNotMoving_fired_after_s"] = self.wait_alert("DataNotMoving", "firing", 60)
         evidence["missed_run_not_yet"] = "MissedIngestionRun" not in self.prom.alerts()
         # No further batch: the job is stopped. Freshness keeps ageing.
@@ -745,7 +747,7 @@ class Drill:
 
     def s_alerts_clear(self) -> dict:
         """Every alert that fired is inactive once its window has passed."""
-        fired = ["AuditLoss", "QueryTimeouts", "Errors", "BatchRejected"]
+        fired = ["AuditLoss", "QueryTimeouts", "Errors"]
         cleared = {name: self.wait_alert(name, "inactive", 150) for name in fired}
         return {"cleared_after_s": cleared}
 
@@ -761,8 +763,7 @@ class Drill:
                         empty.append(target["expr"])
                 except Exception:
                     invalid.append(target["expr"])
-        unexercised = re.compile(r"pac_llm_|pac_admission_|pac_db_pool_timeouts|"
-                                 r"pac_persistence_failures_total\b(?!.*audit)")
+        unexercised = re.compile(r"pac_llm_|pac_admission_")
         unexpected_empty = [e for e in empty if not unexercised.search(e)]
         return {"ok": not invalid and not unexpected_empty, "invalid": invalid,
                 "empty": empty, "unexpected_empty": unexpected_empty,

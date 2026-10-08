@@ -343,9 +343,6 @@ def test_database_outage_leaves_unrelated_metrics_collectable(ingest_env, monkey
 # sample -- so increase() over them is zero -- and expired when the process
 # is gone. The drill rejected a batch and the alert never fired.
 
-@pytest.mark.xfail(strict=True, reason=(
-    "rejections and quarantines are counted only by the one-shot jobs process; no "
-    "serving process reports them"))
 def test_a_rejected_batch_is_reported_by_a_serving_process_until_the_feed_recovers(
         fresh, exported):
     from tests.integration.test_ingestion import filler

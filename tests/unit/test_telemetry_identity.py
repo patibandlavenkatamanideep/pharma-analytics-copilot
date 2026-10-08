@@ -61,9 +61,6 @@ def exported_resource() -> dict:
     return resources[0]
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "the telemetry resource is service.name and service.version only: two processes "
-    "of one release export identical series and overwrite each other's totals"))
 def test_two_processes_export_under_distinct_opaque_identities():
     first, second = exported_resource(), exported_resource()
     assert first.get("service.instance.id") and second.get("service.instance.id")

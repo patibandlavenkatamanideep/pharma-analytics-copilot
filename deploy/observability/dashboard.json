@@ -260,7 +260,7 @@
    "id": 11,
    "type": "timeseries",
    "title": "Feed quality",
-   "description": "",
+   "description": "From the batch log, read by the serving processes: the jobs process is one-shot, so its own counters are exported once per run",
    "datasource": {
     "type": "prometheus",
     "uid": "${datasource}"
@@ -274,15 +274,15 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "sum by (status) (increase(pac_ingest_batches_total[1h]))"
+     "expr": "max by (source) (pac_ingest_rejected_since_success)"
     },
     {
      "refId": "B",
-     "expr": "sum by (outcome) (increase(pac_ingest_events_total[1h]))"
+     "expr": "max by (source) (pac_ingest_quarantined_last_day)"
     },
     {
      "refId": "C",
-     "expr": "sum by (reason) (increase(pac_ingest_quarantined_total[1d]))"
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(pac_ingest_duration_seconds_bucket[1h])))"
     }
    ]
   },

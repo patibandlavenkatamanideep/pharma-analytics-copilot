@@ -39,38 +39,63 @@ from typing import Any, Callable
 @dataclass(frozen=True)
 class SourceFreshness:
     source: str
-    last_success_at: datetime
-    watermark: datetime
+    #: None for a source whose every batch so far was rejected.
+    last_success_at: datetime | None
+    watermark: datetime | None
     checked_at: datetime
+    #: Batches rejected after the last accepted one: a feed delivering broken
+    #: batches, until it delivers a good one. And events quarantined in the
+    #: last day. Both from the batch log, so a serving process reports what
+    #: the one-shot jobs process did (qualification of 7 October 2026, step 6).
+    rejected_since_success: int = 0
+    quarantined_last_day: int = 0
 
     @property
-    def since_success_s(self) -> float:
+    def since_success_s(self) -> float | None:
+        if self.last_success_at is None:
+            return None
         return max((self.checked_at - self.last_success_at).total_seconds(), 0.0)
 
     @property
-    def watermark_age_s(self) -> float:
+    def watermark_age_s(self) -> float | None:
+        if self.watermark is None:
+            return None
         return max((self.checked_at - self.watermark).total_seconds(), 0.0)
 
     def as_dict(self) -> dict[str, Any]:
-        return {"source": self.source, "last_success_at": self.last_success_at.isoformat(),
-                "watermark": self.watermark.isoformat(),
-                "checked_at": self.checked_at.isoformat(),
-                "since_success_s": round(self.since_success_s, 1),
-                "watermark_age_s": round(self.watermark_age_s, 1)}
+        rounded = lambda v: None if v is None else round(v, 1)          # noqa: E731
+        iso = lambda v: None if v is None else v.isoformat()            # noqa: E731
+        return {"source": self.source, "last_success_at": iso(self.last_success_at),
+                "watermark": iso(self.watermark), "checked_at": self.checked_at.isoformat(),
+                "since_success_s": rounded(self.since_success_s),
+                "watermark_age_s": rounded(self.watermark_age_s),
+                "rejected_since_success": self.rejected_since_success,
+                "quarantined_last_day": self.quarantined_last_day}
 
 
 def read(transaction: Callable[[], Any] | None = None) -> list[SourceFreshness]:
-    """Every source that has ever delivered an accepted batch. A short
+    """Every source that has delivered a batch, accepted or not. A short
     statement timeout: this runs on a metrics thread and must not hang it."""
     if transaction is None:
         from app.db import freshness_transaction as transaction
     with transaction() as cur:
         cur.execute("SET LOCAL statement_timeout = '500ms'")
-        cur.execute("SELECT source_system, watermark, last_batch_at, now() AS checked_at "
-                    "FROM app_ingest.watermarks ORDER BY source_system")
+        cur.execute(
+            "SELECT s.source_system, w.watermark, w.last_batch_at, now() AS checked_at, "
+            "  (SELECT count(*) FROM app_ingest.batches b WHERE b.source_system = s.source_system "
+            "    AND b.status = 'rejected' AND b.last_attempt_at > "
+            "    coalesce(w.last_batch_at, '-infinity'::timestamptz)) AS rejected_since_success, "
+            "  (SELECT coalesce(sum(b.quarantined), 0) FROM app_ingest.batches b "
+            "    WHERE b.source_system = s.source_system "
+            "    AND b.last_attempt_at > now() - interval '1 day') AS quarantined_last_day "
+            "FROM (SELECT source_system FROM app_ingest.watermarks "
+            "      UNION SELECT source_system FROM app_ingest.batches) s "
+            "LEFT JOIN app_ingest.watermarks w ON w.source_system = s.source_system "
+            "ORDER BY 1")
         rows = cur.fetchall()
     return [SourceFreshness(r["source_system"], r["last_batch_at"], r["watermark"],
-                            r["checked_at"]) for r in rows]
+                            r["checked_at"], int(r["rejected_since_success"]),
+                            int(r["quarantined_last_day"])) for r in rows]
 
 
 _DURATION = re.compile(r"^(\d+(?:\.\d+)?)([smhd])$")
@@ -91,15 +116,21 @@ def problems(found: list[SourceFreshness], *, expected: list[str] | None = None,
     """What is stale, as stable codes: `never_delivered` (an expected
     source with no accepted batch), `missed_run` (no accepted batch within
     max_since_success), `stale_data` (newest event older than
-    max_watermark_age). No source at all is itself a problem."""
+    max_watermark_age), `batches_rejected` (rejected batches since the last
+    accepted one). No source at all is itself a problem."""
     out: list[dict[str, Any]] = []
-    by_source = {f.source: f for f in found}
+    delivered = {f.source: f for f in found if f.last_success_at is not None}
     for source in expected or []:
-        if source not in by_source:
+        if source not in delivered:
             out.append({"source": source, "problem": "never_delivered"})
-    if not found and not expected:
+    if not delivered and not expected:
         out.append({"source": None, "problem": "never_delivered"})
     for f in found:
+        if f.rejected_since_success:
+            out.append({"source": f.source, "problem": "batches_rejected",
+                        "rejected_since_success": f.rejected_since_success})
+        if f.last_success_at is None:
+            continue
         if max_since_success is not None and f.since_success_s > max_since_success.total_seconds():
             out.append({"source": f.source, "problem": "missed_run",
                         "since_success_s": round(f.since_success_s, 1)})

@@ -56,11 +56,11 @@ groups:
         expr: absent_over_time(pac_ingest_since_success_seconds[30m])
         annotations: {summary: "No process is reporting freshness"}
       - alert: BatchRejected
-        expr: sum(increase(pac_ingest_batches_total{status="rejected"}[1h])) > 0
-        annotations: {summary: "A feed delivered a broken batch"}
+        expr: max by (source) (pac_ingest_rejected_since_success) > 0
+        annotations: {summary: "A feed's batches are being rejected and none has been accepted since; read from the batch log"}
       - alert: QuarantineRising
-        expr: sum(increase(pac_ingest_quarantined_total[1d])) > 100
-        annotations: {summary: "Feed quality degrading"}
+        expr: sum(pac_ingest_quarantined_last_day) > 100
+        annotations: {summary: "More than 100 events quarantined in a day; read from the batch log"}
       - alert: TelemetryPipelineDown
         expr: up{job="otel-collector"} == 0
         for: 5m

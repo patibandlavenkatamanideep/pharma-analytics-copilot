@@ -121,12 +121,16 @@ def test_expected_exceptions_are_outcomes_not_errors(spans):
 # -- metrics -------------------------------------------------------------------
 
 def points(reader):
+    """Recorded points, without the counters every process starts at zero
+    (telemetry.ZERO_STARTED, checked on their own below)."""
     data = reader.get_metrics_data()
     out = []
     for rm in data.resource_metrics if data else []:
         for sm in rm.scope_metrics:
             for m in sm.metrics:
                 for p in m.data.data_points:
+                    if m.name in telemetry.ZERO_STARTED and getattr(p, "value", None) == 0:
+                        continue
                     out.append((m.name, dict(p.attributes)))
     return out
 
@@ -145,7 +149,8 @@ def test_the_metric_exporter_drops_points_that_carry_a_forbidden_label(spans):
     counter.add(1, {"status": "answered", "user_id": "U009"})
     cleaned = _redacted_metrics(spans.reader.get_metrics_data())
     labels = [dict(p.attributes) for rm in cleaned.resource_metrics
-              for sm in rm.scope_metrics for m in sm.metrics for p in m.data.data_points]
+              for sm in rm.scope_metrics for m in sm.metrics for p in m.data.data_points
+              if m.name not in telemetry.ZERO_STARTED]
     assert labels == [{"status": "answered"}]
 
 
@@ -364,9 +369,6 @@ def _points(reader) -> dict[tuple[str, tuple], float]:
     return out
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "a counter series appears at its first increment, already at 1; increase() needs an "
-    "earlier sample, so the first audit loss, database error or pool timeout never pages"))
 def test_the_counters_single_event_alerts_watch_start_at_zero():
     reader = InMemoryMetricReader()
     telemetry.use(None, MeterProvider(metric_readers=[reader]))
@@ -382,9 +384,6 @@ def test_the_counters_single_event_alerts_watch_start_at_zero():
             assert points.get((name, ((key, value),))) == 0, (name, value)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "the OTLP exporters report an unreachable collector by returning FAILURE, not by "
-    "raising; the wrappers log only exceptions, so an outage leaves no line in the log"))
 def test_an_export_the_collector_did_not_accept_is_logged(caplog):
     from opentelemetry.sdk.metrics.export import MetricExporter, MetricExportResult, MetricsData
     from opentelemetry.sdk.trace.export import SpanExporter, SpanExportResult

@@ -1,6 +1,6 @@
 # Operations dashboard and feedback review
 
-This is a backend-neutral dashboard specification for the existing OpenTelemetry
+This is a dashboard specification (as Prometheus queries in [deploy/observability/dashboard.json](../deploy/observability/dashboard.json), each run against a local Prometheus by `scripts/ops_drill.py`) for the existing OpenTelemetry
 metrics and PostgreSQL audit/feedback records. No second SDK is introduced.
 It is prepared for staging, not a claim that a hosted dashboard exists.
 
@@ -23,7 +23,7 @@ are unavailable; show their event counts alongside them.
 | Permissions | `pac.ask.outcomes{status="denied"}` and bounded HTTP 403 counts | Never label with the denied place, question or user. An unexpected spike calls for security review, not policy relaxation |
 | Audit and turn persistence | `pac.persistence.failures` by `kind` | Page on any audit loss under the present best-effort contract. A telemetry outage can itself hide loss; reconcile with sanitized logs |
 | Feed freshness | `pac.ingest.since_success`, `pac.ingest.watermark_age` by source, plus absent-series check | Thresholds follow the expected feed schedule and allowable data lag. These gauges continue aging without another batch |
-| Feed quality and runtime | `pac.ingest.batches`, events, quarantined reasons, duration | Compare rejected/quarantined counts with received/applied counts; use the persisted batch record for reconciliation |
+| Feed quality and runtime | `pac.ingest.rejected_since_success` and `pac.ingest.quarantined_last_day` by source (read from the batch log by the serving processes), duration | The jobs process is one-shot: its own batch, event and quarantine counters are exported once per run and expire. Use the persisted batch record for per-run reconciliation |
 | User feedback | Aggregated rating/reason counts from `app_conv.feedback` | Feedback is self-selected, may be replaced, and is not an accuracy score. Never export comments or identity-bearing rows |
 
 ## Request-level review queries

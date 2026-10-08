@@ -33,6 +33,7 @@ import logging
 import re
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Iterator
@@ -89,7 +90,7 @@ METRIC_LABELS = frozenset({
 #: Event attributes that may be exported. An exception's message can quote
 #: SQL or data; its type cannot.
 _EVENT_ATTRIBUTES = frozenset({"exception.type"})
-_RESOURCE_ATTRIBUTES = frozenset({"service.name", "service.version",
+_RESOURCE_ATTRIBUTES = frozenset({"service.name", "service.version", "service.instance.id",
                                   "telemetry.sdk.name", "telemetry.sdk.language",
                                   "telemetry.sdk.version"})
 
@@ -138,20 +139,45 @@ def clean(attributes: dict[str, Any] | Any, allowed: frozenset[str] = SPAN_ATTRI
 # Exporters that redact
 # ---------------------------------------------------------------------------
 
+class _FailureReport:
+    """At most one log line a minute per exporter: an outage is said, and a
+    long one does not flood the log (the spans exporter tries every 2 s)."""
+
+    interval_s = 60.0
+
+    def __init__(self) -> None:
+        self.last: float | None = None
+        self.lock = threading.Lock()
+
+    def due(self) -> bool:
+        now = time.monotonic()
+        with self.lock:
+            if self.last is not None and now - self.last < self.interval_s:
+                return False
+            self.last = now
+            return True
+
+
 class RedactingSpanExporter(SpanExporter):
     """Wraps a real exporter. Rebuilds every span from the allowlists before
     handing it on, and never lets an export failure escape."""
 
     def __init__(self, inner: SpanExporter):
         self.inner = inner
+        self.reported = _FailureReport()
 
     def export(self, spans) -> SpanExportResult:
         try:
-            return self.inner.export([_redacted(s) for s in spans])
+            result = self.inner.export([_redacted(s) for s in spans])
         except Exception as exc:     # a collector that is down is not our failure
-            log.warning("telemetry export failed (%s); %d spans dropped",
-                        type(exc).__name__, len(spans))
-            return SpanExportResult.FAILURE
+            result, reason = SpanExportResult.FAILURE, type(exc).__name__
+        else:
+            reason = "NotAccepted"
+        if result != SpanExportResult.SUCCESS and self.reported.due():
+            # The OTLP exporter reports an unreachable collector by returning
+            # FAILURE, not by raising: before this, an outage left no line.
+            log.warning("telemetry export failed (%s); %d spans dropped", reason, len(spans))
+        return result
 
     def shutdown(self) -> None:
         try:
@@ -205,14 +231,19 @@ class RedactingMetricExporter(MetricExporter):
         super().__init__(preferred_temporality=getattr(inner, "_preferred_temporality", None),
                          preferred_aggregation=getattr(inner, "_preferred_aggregation", None))
         self.inner = inner
+        self.reported = _FailureReport()
 
     def export(self, metrics_data, timeout_millis: float = 10_000, **kwargs) -> MetricExportResult:
         try:
-            return self.inner.export(_redacted_metrics(metrics_data),
-                                     timeout_millis=timeout_millis, **kwargs)
+            result = self.inner.export(_redacted_metrics(metrics_data),
+                                       timeout_millis=timeout_millis, **kwargs)
         except Exception as exc:
-            log.warning("metric export failed (%s); interval dropped", type(exc).__name__)
-            return MetricExportResult.FAILURE
+            result, reason = MetricExportResult.FAILURE, type(exc).__name__
+        else:
+            reason = "NotAccepted"
+        if result != MetricExportResult.SUCCESS and self.reported.due():
+            log.warning("metric export failed (%s); interval dropped", reason)
+        return result
 
     def force_flush(self, timeout_millis: float = 10_000) -> bool:
         try:
@@ -297,6 +328,13 @@ OBSERVED: dict[str, tuple[str, str, str]] = {
                                       "read at collection", "since_success_s"),
     "pac.ingest.watermark_age": ("s", "Seconds since the newest event applied for the "
                                       "source, read at collection", "watermark_age_s"),
+    # Read from the batch log, so a serving process reports what the
+    # one-shot jobs process did: its own counters are exported once and gone.
+    "pac.ingest.rejected_since_success": ("{batch}", "Batches rejected since the source's "
+                                                     "last accepted batch, read at collection",
+                                          "rejected_since_success"),
+    "pac.ingest.quarantined_last_day": ("{event}", "Events quarantined in the last 24 hours, "
+                                                   "read at collection", "quarantined_last_day"),
 }
 
 #: Spans whose duration is also a stage metric.
@@ -341,6 +379,7 @@ class BoundedFreshness:
         self.timeout_s = timeout_s
         self.lock = threading.Lock()
         self.worker = None
+        self.started = 0.0
         self.value = []
         self.sampled = 0.0
 
@@ -348,6 +387,13 @@ class BoundedFreshness:
         with self.lock:
             if time.monotonic() - self.sampled < 1:
                 return self.value
+            if self.worker is not None and self.worker.is_alive() \
+                    and time.monotonic() - self.started >= self.timeout_s:
+                # A read that has already had its wait: every gauge after the
+                # first, and every later collection, goes without rather than
+                # waiting again. One stuck read costs one wait, however many
+                # gauges read it (four since step 6 of 7 October 2026).
+                return []
             if self.worker is None or not self.worker.is_alive():
                 def collect():
                     try:
@@ -358,11 +404,35 @@ class BoundedFreshness:
                     with self.lock:
                         self.value, self.sampled = value, time.monotonic()
                 self.worker = threading.Thread(target=collect, name="pac-freshness", daemon=True)
+                self.started = time.monotonic()
                 self.worker.start()
             worker = self.worker
         worker.join(self.timeout_s)
         with self.lock:
             return self.value if time.monotonic() - self.sampled < 1 else []
+
+
+class _FailureBackoff:
+    """Every observed gauge reads freshness. After a failed read, the others
+    -- and the next collection, within a second -- fail at once instead of
+    each waiting on the database again. A successful read is never reused,
+    so a value is always current."""
+
+    def __init__(self, read, backoff_s: float = 1.0):
+        self.read, self.backoff_s = read, backoff_s
+        self.failed_at: float | None = None
+        self.lock = threading.Lock()
+
+    def __call__(self):
+        with self.lock:
+            if self.failed_at is not None and time.monotonic() - self.failed_at < self.backoff_s:
+                raise TimeoutError("freshness read backing off")
+        try:
+            return self.read()
+        except Exception:
+            with self.lock:
+                self.failed_at = time.monotonic()
+            raise
 
 
 def _observe(attribute: str, read):
@@ -377,8 +447,20 @@ def _observe(attribute: str, read):
                         type(exc).__name__)
             return []
         return [Observation(getattr(f, attribute), {"source": f.source}) for f in found
-                if f.source in source_inventory()]
+                if f.source in source_inventory() and getattr(f, attribute) is not None]
     return callback
+
+
+#: Counters that page on a single event, started at zero for every value of
+#: their one bounded label. A series that first appears at its first
+#: increment is already 1, and increase() needs an earlier sample: the first
+#: audit loss, database error or pool timeout would never page
+#: (qualification of 7 October 2026, step 6).
+ZERO_STARTED: dict[str, tuple[str, tuple[str, ...]]] = {
+    "pac.persistence.failures": ("kind", ("audit", "turn")),
+    "pac.db.errors": ("kind", ("timeout", "unavailable", "generation_changed")),
+    "pac.db.pool.timeouts": ("pool", ("exec", "scoped", "auth")),
+}
 
 
 def use(tracer_provider=None, meter_provider=None, *, freshness=None) -> None:
@@ -389,7 +471,12 @@ def use(tracer_provider=None, meter_provider=None, *, freshness=None) -> None:
                      else trace.NoOpTracer())
     meter = meter_provider.get_meter("pac") if meter_provider else metrics.NoOpMeter("pac")
     _state.instruments = _make_instruments(meter)
+    if meter_provider is not None:
+        for name, (label, values) in ZERO_STARTED.items():
+            for value in values:
+                count(name, 0, **{label: value})
     if meter_provider is not None and freshness is not None:
+        freshness = _FailureBackoff(freshness)
         for name, (unit, description, attribute) in OBSERVED.items():
             meter.create_observable_gauge(name, callbacks=[_observe(attribute, freshness)],
                                           unit=unit, description=description)
@@ -417,8 +504,13 @@ def configure(settings, *, freshness_reader=None) -> None:
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
     base = settings.otel_endpoint.rstrip("/")
+    # service.instance.id tells this process's series from every other
+    # process's: two processes of one release (replicas, or uvicorn
+    # --workers) exporting the same series overwrite each other's running
+    # totals. Random per configure(), so it says nothing about the host.
     resource = Resource({"service.name": "pharma-analytics-copilot",
-                         "service.version": settings.release})
+                         "service.version": settings.release,
+                         "service.instance.id": uuid.uuid4().hex})
     tracer_provider = TracerProvider(resource=resource, shutdown_on_exit=False)
     tracer_provider.add_span_processor(BatchSpanProcessor(
         RedactingSpanExporter(OTLPSpanExporter(endpoint=f"{base}/v1/traces",
