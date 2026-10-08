@@ -488,12 +488,12 @@
       ],
       "reproductions": [
         {
-          "artifact": "evidence/runs/r5-proxy-client-address.json",
-          "baseline": "b4315bb",
-          "note": "The real server behind a local proxy, run twice: untrusted (FORWARDED_ALLOW_IPS empty), another user's correct password is refused with 429 after 20 failures from 20 forwarded addresses; trusted, the same sign-in succeeds. The fix is configuration: infra/aws-staging trusts X-Forwarded-For from the VPC range only, and the load balancer appends the address it received"
+          "artifact": "evidence/runs/r5-proxy-client-address-reproduced.json",
+          "baseline": "128c558",
+          "note": "The real server behind a local proxy with FORWARDED_ALLOW_IPS empty, i.e. the load balancer untrusted, as every deployment configuration before 5a49a34 left it: after 20 failures from 20 forwarded addresses another user's correct password is refused (429). The defect is configuration, so it is reproduced on the current code with the old configuration. r5-proxy-client-address.json (b4315bb) runs both configurations in one record"
         }
       ],
-      "verified_by": "evidence/runs/r5-staging-policy-tests.json (the staging module sets FORWARDED_ALLOW_IPS to the VPC range, X-Forwarded-For append, ingress to the tasks from the load balancer only). Not verified through a real load balancer"
+      "verified_by": "evidence/runs/r5-proxy-client-address-fixed.json (128c558, the proxy trusted: the same sign-in succeeds) and evidence/runs/r5-staging-policy-tests.json (the staging module trusts the VPC range only, the load balancer appends, ingress to the tasks only from it). Not verified through a real load balancer"
     },
     {
       "id": "logout-cookie-attributes",
