@@ -280,3 +280,93 @@ Both mutant probes now refuse a tree with uncommitted changes.
 turns an audit-storage problem into an answer outage. Refusals before a run starts
 are in telemetry only. Worker death was simulated as a child process against one local
 PostgreSQL, not across containers (step 6).
+
+## Step 6 — operations under a real telemetry backend
+
+**Starting point.** Telemetry was tested against in-process exporters; the alert rules
+existed as a table in `OBSERVABILITY.md`, never evaluated by Prometheus, and no test ran
+more than one application process.
+
+**What was built** (implemented `d7263c4`). `deploy/observability/` holds the collector
+configuration (OTLP/HTTP in; Prometheus exporter and JSON-lines files out), a Prometheus
+configuration, the 16 alert rules as Prometheus evaluates them (`alerts.yml`; the
+documented table is generated from it and a test keeps them equal and checks every
+metric a rule or panel names is exported) and the dashboard (`dashboard.json`).
+`scripts/fetch_ops_tools.sh` fetches the official Collector contrib 0.162.0 and
+Prometheus 3.15.0 builds, pinned by the SHA-256 their projects publish.
+`scripts/ops_drill.py` is the one reproducible script: it creates its own PostgreSQL
+cluster (`initdb`, own port, credentials generated in the run and never printed), loads
+the seed data, starts the collector, Prometheus and two uvicorn processes, runs thirteen
+scenarios and tears everything down. Alert windows are shortened by substitution only
+(listed in the detail file); a test checks every rule is listed and every substitution applies.
+
+**Reproduced first** (`c2e5915`, `r5-telemetry-identity-reproduced.json`, 1 failed;
+`b974af7`, `r5-drill-findings-reproduced.json`, 3 failed). The drill on that code
+(`r5-ops-drill-before.json`): **6 passed, 7 failed.**
+
+| Finding | Effect in the drill |
+|---|---|
+| The resource was `service.name` and `service.version` only | Two processes wrote one series and overwrote each other's running totals: request totals, the count of six statement timeouts and the totals after the collector outage each held one process's share |
+| A counter series first appears at its first increment | `increase()` has no earlier sample: the first audit loss never paged `AuditLoss` |
+| Feed alerts read the jobs process's counters | A one-shot process exports once and its series expire: `BatchRejected` never fired; the feed scenario stopped there, so no batch was accepted and `FreshnessNotReported` could not clear after the restart |
+| Exporters return `FAILURE` for an unreachable collector; the wrappers logged only exceptions | A 35-second collector outage left no line in either process's log |
+
+The dashboard scenario failed on panels left empty by the same causes (pool timeouts,
+feed freshness).
+
+*Changed* (implemented, locally verified; `4187419`, `r5-drill-findings-fixed.json`, 49
+passed). A random `service.instance.id` per process (nothing about the host); the three
+single-event counters start at 0 for each value of their label; two gauges read by the
+serving processes from the batch log (`pac.ingest.rejected_since_success`, which also
+lets `BatchRejected` clear when the feed recovers, and `pac.ingest.quarantined_last_day`),
+with migration 025 indexing the batch log for them; a failed export is logged at most
+once a minute per exporter; one failed freshness read backs off for every gauge. One
+drill bug fixed after (`ed02e4f`: question totals compared across a restart).
+
+**Verification** (locally verified; `ed02e4f`, clean tree, `r5-ops-drill-after.json`,
+**13 passed, 0 failed**, 241 s; detail in `r5-ops-drill-after.detail.json`):
+
+- promtool accepts the production rules, the drill rules and the configuration;
+- traffic of every outcome (answered, clarify, denied) on two processes: distinct
+  instances, Prometheus totals equal the requests each process received;
+- a per-user rate limit holds across processes (the 21st request: 429);
+- one idempotency key on both processes, the first held by a table lock observed in
+  `pg_stat_activity`: the second is refused (409 `same_request_running`), the retry
+  replays the identical answer;
+- a refused audit insert pages `AuditLoss` (15 s); statement timeouts page
+  `QueryTimeouts` and `Errors`;
+- a control-total failure rejects a batch and pages `BatchRejected`, which clears when a
+  batch is accepted; old events page `DataNotMoving`; a stopped feed pages
+  `MissedIngestionRun`; a current batch clears both; both processes then answer from the
+  same refreshed snapshot;
+- both processes stopped: `FreshnessNotReported` pages (42 s) and clears on restart;
+- the collector killed (`SIGKILL`) for the length of 50 answers: answers continue (p95
+  0.044 s before, 0.020 s during), resident memory does not grow (at most
+  +0.2 MiB), each process logs the failed export, `TelemetryPipelineDown` pages and
+  clears, and the totals catch up after the restart;
+- every alert that fired clears; all 21 dashboard queries parse and run, and only the
+  five model and admission-refusal panels are empty (expected: the offline planner calls
+  no model and no admission refusal was provoked);
+- sentinels sent in (per-user e-mail tags, a question, territory names, a revenue
+  figure, idempotency keys, 18 session cookies, the database and user passwords) are
+  searched for in every exported trace and metric, every Prometheus label value and every
+  log: none found, with a positive control showing the sentinel was in the database.
+
+Not exercised, and why, is in the detail file: `SlowAnswers`, `ModelFailing`,
+`UsageNotReported`, `PoolSaturation`, `PoolExhausted`, `DatabaseErrors`,
+`TurnsNotSaved`, `QuarantineRising` (their expressions are still checked by promtool and
+by the metric-name test).
+
+**Observations, not changed.** `FreshnessNotReported` fires on a deployment that has
+never accepted a batch (seed data only): correct for a feed deployment, noise for a
+demonstration; silence it there. `Errors` is a ratio and needs a sustained condition, so
+a single error does not page it. `increase()` still cannot see the first sample of a
+series whose label values are not known in advance (per-model or per-source series);
+the zero start covers only the three single-event counters.
+
+**Residual.** Local evidence: one machine, one PostgreSQL cluster, two processes (not
+containers, so no container restart, network partition or orchestrator), a local
+collector and Prometheus with shortened windows, no Alertmanager routing, no hosted
+backend, and not an on-call drill or a load test. The container image was not run in
+the drill (the local container VM was not used). A hosted collector and backend need
+credentials and a target; blocked, in the checklist.

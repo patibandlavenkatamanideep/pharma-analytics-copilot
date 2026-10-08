@@ -1,0 +1,261 @@
+{
+ "drill_version": "1.0.0",
+ "label": "local evidence: one machine, one PostgreSQL cluster created for the drill, two application processes (not containers), a local collector and Prometheus with shortened alert windows; not a hosted backend or an on-call incident drill",
+ "tools": {
+  "otelcol-contrib": "otelcol-contrib version 0.162.0",
+  "prometheus": "prometheus, version 3.15.0 (branch: HEAD, revision: 5241a27fe3c6983549fccc32f6e65917408c63cd)",
+  "postgres": "postgres (PostgreSQL) 16.14 (Homebrew)"
+ },
+ "alerts_not_exercised": {
+  "SlowAnswers": "no answer was made slow on purpose",
+  "ModelFailing": "the offline planner calls no model",
+  "UsageNotReported": "the offline planner calls no model",
+  "PoolSaturation": "pools were not saturated",
+  "PoolExhausted": "pools were not exhausted",
+  "DatabaseErrors": "the database stayed reachable",
+  "TurnsNotSaved": "turn persistence was not broken",
+  "QuarantineRising": "fewer than 100 events were quarantined"
+ },
+ "drill_rule_substitutions": {
+  "SlowAnswers": {
+   "[10m]": "[1m]"
+  },
+  "Errors": {
+   "[10m]": "[1m]"
+  },
+  "QueryTimeouts": {
+   "[10m]": "[1m]"
+  },
+  "ModelFailing": {
+   "[15m]": "[1m]"
+  },
+  "UsageNotReported": {
+   "[1h]": "[1m]"
+  },
+  "PoolSaturation": {
+   "[5m]": "[1m]"
+  },
+  "PoolExhausted": {
+   "[5m]": "[1m]"
+  },
+  "DatabaseErrors": {
+   "[5m]": "[1m]"
+  },
+  "AuditLoss": {
+   "[5m]": "[40s]"
+  },
+  "TurnsNotSaved": {
+   "[15m]": "[1m]"
+  },
+  "MissedIngestionRun": {
+   "> 93600": "> 25"
+  },
+  "DataNotMoving": {
+   "> 259200": "> 3600"
+  },
+  "FreshnessNotReported": {
+   "[30m]": "[20s]"
+  },
+  "BatchRejected": {
+   "[1h]": "[40s]"
+  },
+  "QuarantineRising": {
+   "[1d]": "[1m]"
+  },
+  "TelemetryPipelineDown": {}
+ },
+ "passed": 6,
+ "failed": 7,
+ "results": [
+  {
+   "scenario": "promtool accepts the rules and configuration",
+   "status": "passed",
+   "at_s": 2.5,
+   "checks": {
+    "production rules": true,
+    "drill rules": true,
+    "drill config": true
+   }
+  },
+  {
+   "scenario": "traffic of every outcome on two processes, counted per process",
+   "status": "failed",
+   "at_s": 94.6,
+   "outcomes": [
+    [
+     "app-1",
+     200,
+     "answered"
+    ],
+    [
+     "app-1",
+     200,
+     "clarify"
+    ],
+    [
+     "app-2",
+     200,
+     "answered"
+    ],
+    [
+     "app-2",
+     200,
+     "answered"
+    ],
+    [
+     "app-2",
+     200,
+     "denied"
+    ]
+   ],
+   "distinct_instances": false,
+   "totals_match_requests_received": false,
+   "asks": {
+    "app-1": 2,
+    "app-2": 3
+   }
+  },
+  {
+   "scenario": "a per-user rate limit holds across processes",
+   "status": "passed",
+   "at_s": 94.9,
+   "first_20": [
+    200
+   ],
+   "twenty_first": 429
+  },
+  {
+   "scenario": "one idempotency key on two processes: refused, then replayed",
+   "status": "passed",
+   "at_s": 95.0,
+   "first": 200,
+   "second_on_other_process": 409,
+   "second_code": "same_request_running",
+   "replay_on_other_process_identical": true
+  },
+  {
+   "scenario": "a refused audit insert pages AuditLoss",
+   "status": "failed",
+   "at_s": 155.6,
+   "error": "TimeoutError: AuditLoss firing: not observed within 60 s"
+  },
+  {
+   "scenario": "a burst of statement timeouts pages QueryTimeouts and Errors",
+   "status": "failed",
+   "at_s": 206.1,
+   "error": "TimeoutError: wave 1: its timeouts exported: not observed within 45 s"
+  },
+  {
+   "scenario": "a malformed batch, old events, a stopped feed and a resumed one",
+   "status": "failed",
+   "at_s": 266.9,
+   "error": "TimeoutError: BatchRejected firing: not observed within 60 s"
+  },
+  {
+   "scenario": "both processes answer from the refreshed snapshot",
+   "status": "passed",
+   "at_s": 267.0,
+   "data_through": [
+    "2026-09-15",
+    "2026-09-15"
+   ],
+   "database": "2026-09-15"
+  },
+  {
+   "scenario": "both processes stopped: FreshnessNotReported pages, then clears",
+   "status": "failed",
+   "at_s": 389.5,
+   "error": "TimeoutError: FreshnessNotReported clears: not observed within 120 s"
+  },
+  {
+   "scenario": "the collector killed: answers continue, the outage pages, totals catch up",
+   "status": "failed",
+   "at_s": 488.9,
+   "answers_during_outage": 50,
+   "p95_s_baseline": 0.042,
+   "p95_s_during": 0.023,
+   "rss_growth_kib": {
+    "app-1": 2144,
+    "app-2": 2352
+   },
+   "export_failure_log_lines": 0,
+   "TelemetryPipelineDown_fired_after_s": 2.0,
+   "TelemetryPipelineDown_cleared_after_s": 2.0,
+   "totals_caught_up": false
+  },
+  {
+   "scenario": "every alert that fired clears",
+   "status": "passed",
+   "at_s": 488.9,
+   "cleared_after_s": {
+    "AuditLoss": 0.0,
+    "QueryTimeouts": 0.0,
+    "Errors": 0.0,
+    "BatchRejected": 0.0
+   }
+  },
+  {
+   "scenario": "every dashboard query runs against the backend",
+   "status": "failed",
+   "at_s": 488.9,
+   "invalid": [],
+   "empty": [
+    "sum by (kind, outcome, model) (rate(pac_llm_attempts_total[5m]))",
+    "sum by (direction, model) (increase(pac_llm_tokens_total[1h]))",
+    "sum by (model) (increase(pac_llm_cost_total[1h]))",
+    "sum by (model) (increase(pac_llm_usage_unknown_total[1h]))",
+    "sum by (stage, reason) (rate(pac_admission_refused_total[5m]))",
+    "sum by (pool) (increase(pac_db_pool_timeouts_total[15m]))",
+    "max by (source) (pac_ingest_since_success_seconds)",
+    "max by (source) (pac_ingest_watermark_age_seconds)",
+    "sum by (outcome) (increase(pac_ingest_events_total[1h]))",
+    "sum by (reason) (increase(pac_ingest_quarantined_total[1d]))"
+   ],
+   "unexpected_empty": [
+    "max by (source) (pac_ingest_since_success_seconds)",
+    "max by (source) (pac_ingest_watermark_age_seconds)",
+    "sum by (outcome) (increase(pac_ingest_events_total[1h]))",
+    "sum by (reason) (increase(pac_ingest_quarantined_total[1d]))"
+   ],
+   "queries": 21
+  },
+  {
+   "scenario": "no sentinel reaches telemetry, Prometheus or a log",
+   "status": "passed",
+   "at_s": 489.4,
+   "positive_control_turns_with_sentinel": 1,
+   "sentinels_checked": [
+    "email_drill-dup-e599f958",
+    "email_drill-exec-e599f958",
+    "email_drill-ram-e599f958",
+    "email_drill-rate-e599f958",
+    "email_drill-w0-e599f958",
+    "email_drill-w1-e599f958",
+    "email_drill-w2-e599f958",
+    "email_drill-w3-e599f958",
+    "email_drill-w4-e599f958",
+    "email_drill-w5-e599f958",
+    "email_tag",
+    "idempotency_key",
+    "other_territory",
+    "own_territory",
+    "question",
+    "revenue_figure",
+    "18 session cookies",
+    "database and user passwords"
+   ],
+   "leaks": [],
+   "bytes_scanned": {
+    "traces.jsonl": 52832,
+    "metrics.jsonl": 100270,
+    "otel-collector.log": 4813,
+    "postgres.log": 3296,
+    "app-2.log": 15472,
+    "app-1.log": 17622,
+    "prometheus.log": 3518,
+    "prometheus label values": 1454
+   }
+  }
+ ],
+ "work_dir_kept": null
+}
