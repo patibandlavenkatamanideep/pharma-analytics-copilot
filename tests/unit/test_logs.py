@@ -8,6 +8,8 @@ import json
 import logging
 import sys
 
+import pytest
+
 from app import logs
 from app.logs import REDACTED, JsonFormatter
 
@@ -129,3 +131,25 @@ def test_a_python_warning_becomes_a_record_not_a_stray_line():
     assert lines and all(x.startswith("{") for x in lines), proc.stderr
     out = json.loads(lines[-1])
     assert out["logger"] == "py.warnings" and out["level"] == "warning"
+
+
+@pytest.mark.xfail(strict=True, reason="reproduction: a database error's kind is logged as Exception")
+def test_a_database_error_keeps_its_sqlstate_class_name():
+    """psycopg names each error class after its SQLSTATE condition: a finite,
+    code-defined set. Reduced to "Exception", a refused audit insert (the
+    drill's AuditLoss scenario) cannot be told from a lost connection or a
+    constraint violation in the log."""
+    import psycopg.errors
+
+    out = line(record("failed to write audit row", level=logging.ERROR,
+                      exc=psycopg.errors.InsufficientPrivilege("permission denied for MARKER")))
+    assert out["error"]["type"] == "InsufficientPrivilege"
+    assert "MARKER" not in json.dumps(out)
+
+
+def test_a_lookalike_class_outside_the_driver_stays_generic():
+    class InsufficientPrivilege(Exception):
+        pass
+    out = line(record("failed to write audit row", level=logging.ERROR,
+                      exc=InsufficientPrivilege("x")))
+    assert out["error"]["type"] == "Exception"
