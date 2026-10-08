@@ -694,6 +694,9 @@ class Drill:
             self.apps[name].stop()
         fired = self.wait_alert("FreshnessNotReported", "firing", 120)
         self.start_apps()
+        # New processes, new instances: their running totals start again.
+        with self.lock:
+            self.asks = {name: 0 for name in self.asks}
         cleared = self.wait_alert("FreshnessNotReported", "inactive", 120)
         # Restarted processes are new instances with new running totals.
         return {"fired_after_s": fired, "cleared_after_s": cleared}
