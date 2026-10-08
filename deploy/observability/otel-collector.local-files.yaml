@@ -1,0 +1,23 @@
+# Local JSON-lines copies of every span and metric, for the drill only
+# (scripts/ops_drill.py), which scans them for values that must never be
+# exported. Added on top of the deployable configuration:
+#
+#   otelcol-contrib --config otel-collector.yaml --config otel-collector.local-files.yaml
+#
+# append: the file exporter otherwise truncates its file whenever the
+# collector starts, and the drill restarts the collector before its scan.
+# Unbounded; never part of a deployment.
+exporters:
+  file/traces:
+    path: ${env:PAC_OTEL_FILE_DIR}/traces.jsonl
+    append: true
+  file/metrics:
+    path: ${env:PAC_OTEL_FILE_DIR}/metrics.jsonl
+    append: true
+
+service:
+  pipelines:
+    traces:
+      exporters: [file/traces]
+    metrics:
+      exporters: [prometheus, file/metrics]

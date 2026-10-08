@@ -1,10 +1,12 @@
 # OpenTelemetry Collector (contrib distribution) for the application's OTLP
 # export. Point PAC_OTEL_ENDPOINT at the OTLP/HTTP receiver.
 #
-# Metrics leave as a Prometheus scrape endpoint. Traces and metrics are also
-# written as JSON lines when PAC_OTEL_FILE_DIR is set: the local drill
-# (scripts/ops_drill.py) scans them for anything that must never be exported.
-# Every address and path comes from the environment, with these defaults.
+# Metrics leave as a Prometheus scrape endpoint. No trace backend has been
+# chosen: until one is, traces go to the debug exporter at basic verbosity,
+# which logs how many spans arrived and nothing they contain. Replace it with
+# the deployment's trace exporter. Nothing is written to local files; the
+# drill adds that with otel-collector.local-files.yaml. Every address comes
+# from the environment, with these defaults.
 receivers:
   otlp:
     protocols:
@@ -28,10 +30,8 @@ exporters:
     metric_expiration: ${env:PAC_OTEL_METRIC_EXPIRATION:-2m}
     resource_to_telemetry_conversion:
       enabled: false
-  file/traces:
-    path: ${env:PAC_OTEL_FILE_DIR:-/tmp}/traces.jsonl
-  file/metrics:
-    path: ${env:PAC_OTEL_FILE_DIR:-/tmp}/metrics.jsonl
+  debug:
+    verbosity: basic
 
 service:
   telemetry:
@@ -41,8 +41,8 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [file/traces]
+      exporters: [debug]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [prometheus, file/metrics]
+      exporters: [prometheus]

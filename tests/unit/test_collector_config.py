@@ -10,7 +10,8 @@ The drill scans those files for sentinels after the collector has been
 killed and restarted. A file exporter that does not append truncates its
 file at start, so the scan then covers only what was exported after the
 restart (evidence/probes/collector_restart_keeps_exports.py runs the real
-collector to show it).
+collector to show it). The files are an overlay the drill adds,
+otel-collector.local-files.yaml, and they append.
 """
 
 from __future__ import annotations
@@ -18,7 +19,6 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 
-import pytest
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -50,13 +50,11 @@ def drill_configs() -> list[pathlib.Path]:
     return list(getattr(drill, "COLLECTOR_CONFIGS", [OBS / "otel-collector.yaml"]))
 
 
-@pytest.mark.xfail(strict=True, reason="reproduction: the deployable collector writes local files")
 def test_the_deployable_collector_writes_no_local_files():
     config = yaml.safe_load((OBS / "otel-collector.yaml").read_text())
     assert not {e for e in exporters_in_use(config) if e.split("/")[0] == "file"}
 
 
-@pytest.mark.xfail(strict=True, reason="reproduction: the drill's files are truncated at a restart")
 def test_the_drill_keeps_every_export_across_collector_restarts():
     config = merged(drill_configs())
     files = {e for e in exporters_in_use(config) if e.split("/")[0] == "file"}

@@ -12,7 +12,8 @@ Everything runs on this machine and is torn down at the end:
   anywhere but the cluster itself -- the working, release and test databases
   are never touched, and the repository's .env is never read;
 * the seed dataset, loaded by the ordinary bootstrap and loader;
-* the collector (deploy/observability/otel-collector.yaml) and Prometheus
+* the collector (deploy/observability/otel-collector.yaml, with
+  otel-collector.local-files.yaml for the files the scan reads) and Prometheus
   (deploy/observability/prometheus.yml and alerts.yml, with the drill's
   shortened windows and thresholds: DRILL_RULES below);
 * two uvicorn processes of the application, each exporting over OTLP;
@@ -61,6 +62,9 @@ from typing import Any, Callable
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OBS = ROOT / "deploy" / "observability"
+#: The deployable collector configuration, plus local JSON-lines files that
+#: append across restarts (the sentinel scan reads them after one).
+COLLECTOR_CONFIGS = [OBS / "otel-collector.yaml", OBS / "otel-collector.local-files.yaml"]
 DRILL_VERSION = "1.0.0"
 
 #: The drill's windows and thresholds, per alert. Each production rule is
@@ -357,9 +361,10 @@ class Drill:
                "PAC_OTEL_PROMETHEUS": f"127.0.0.1:{self.prom_exp_port}",
                "PAC_OTEL_FILE_DIR": str(self.work / "otel"),
                "PAC_OTEL_METRIC_EXPIRATION": "20s"}
-        self.collector = Proc("otel-collector", [str(self.tools / "otelcol" / "otelcol-contrib"),
-                                                 "--config", str(OBS / "otel-collector.yaml")],
-                              env, self.work, self.logs).start()
+        argv = [str(self.tools / "otelcol" / "otelcol-contrib")]
+        for config in COLLECTOR_CONFIGS:
+            argv += ["--config", str(config)]
+        self.collector = Proc("otel-collector", argv, env, self.work, self.logs).start()
         self.procs.append(self.collector)
         wait_until(lambda: self._port_open(self.otlp_port) and self._port_open(self.prom_exp_port),
                    "collector listening", 60)
