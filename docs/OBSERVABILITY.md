@@ -309,6 +309,12 @@ thresholds are starting points, not agreed SLOs.
   has a collector, Prometheus and dashboard configuration, exercised locally by
   the drill; none is in the compose files or deployed, because no requirement
   names a backend.
+- No trace backend is chosen. The deployable collector configuration sends
+  traces to its `debug` exporter at basic verbosity (span counts, no content)
+  until one is, and writes nothing to local files. The drill adds JSON-lines
+  copies, which append across collector restarts, with
+  `otel-collector.local-files.yaml` (`tests/unit/test_collector_config.py`,
+  `evidence/probes/collector_restart_keeps_exports.py`).
 - Logs are written to stderr for the platform to collect. Shipping them
   to a log store is the platform's job, and none is configured here.
 
