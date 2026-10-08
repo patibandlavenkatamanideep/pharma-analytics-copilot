@@ -60,7 +60,12 @@ COPY pyproject.toml README.md ./
 COPY --from=web /build/dist ./web/dist
 
 # Run as a non-root user. Nothing in the image needs to write to it.
-RUN useradd --system --uid 10001 --home /app appuser && chown -R appuser /app
+# And no setuid or setgid file: the application never mounts, switches user or
+# changes a password, and a setuid-root mount, umount, su or newgrp (util-linux,
+# with open HIGH advisories in the image scan) would be a way from a
+# compromised application process to root.
+RUN useradd --system --uid 10001 --home /app appuser && chown -R appuser /app \
+ && find / -xdev -type f -perm /6000 -exec chmod a-s {} +
 USER appuser
 
 EXPOSE 8000

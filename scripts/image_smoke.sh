@@ -193,6 +193,8 @@ grep -qiE "^x-request-id: [0-9a-f]{16}" "$WORK/headers.txt" \
   && pass "responses carry a server-generated X-Request-ID" || fail "X-Request-ID: $(grep -i x-request-id "$WORK/headers.txt")"
 user=$($CLI exec "$APP" id -un)
 [ "$user" != "root" ] && pass "runs as '$user', not root" || fail "runs as root"
+privileged=$($CLI exec "$APP" find / -xdev -type f -perm /6000 2>/dev/null | tr '\n' ' ')
+[ -z "$privileged" ] && pass "no setuid or setgid file" || fail "setuid or setgid: $privileged"
 
 # -- data, through the jobs path --------------------------------------------
 $CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \

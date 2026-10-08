@@ -424,6 +424,12 @@ jobs:
           echo "running as: $user"
           [ "$user" != "root" ] || { echo "container runs as root"; exit 1; }
 
+      # A setuid-root binary would be a way from the application user to root.
+      - name: It carries no setuid or setgid file
+        run: |
+          privileged=$(docker exec pac find / -xdev -type f -perm /6000 2>/dev/null)
+          [ -z "$privileged" ] || { echo "setuid or setgid: $privileged"; exit 1; }
+
       - name: Stop
         if: always()
         run: docker rm -f pac || true
