@@ -9,13 +9,13 @@ detail file, git or the code.
 | | SHA | Tree |
 |---|---|---|
 | Executable candidate (what the records measured) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `9aebc32dbf1d35563698887ec4777b0c381ae7a7` | `a7dc8e8dae9418a311e8af3a62c0c16571a9516a` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `2d1cc5f6bfc250a7184651ddc1d6f7b32af4d06b` | `7f5174d21fce55287ab891ca15cd29d94087c38b` |
 
 Changed between the candidate and HEAD:
 
-- **application and build** (3): `evidence/release/trivy-db.json`, `evidence/release/trivy-full.json`, `evidence/release/trivy-gate.json`
+- **application and build** (1): `.gitleaksignore`
 - **documentation** (8): `README.md`, `docs/EVIDENCE_INDEX.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_EVIDENCE.md`, `docs/RELEASE_HANDOFF.md`, `docs/REQUIREMENTS.md`, `docs/SUPPLY_CHAIN.md`, `docs/TEST_INVENTORY.md`
-- **evidence data** (25): `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-candidate-boundary.json`, `evidence/runs/r5-candidate-browser.json`, `evidence/runs/r5-candidate-component.detail.json`, `evidence/runs/r5-candidate-component.json`, `evidence/runs/r5-candidate-eval-holdout.detail.json`, `evidence/runs/r5-candidate-eval-holdout.json` …
+- **evidence data** (30): `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-candidate-boundary.json`, `evidence/runs/r5-candidate-browser.json`, `evidence/runs/r5-candidate-component.detail.json`, `evidence/runs/r5-candidate-component.json`, `evidence/runs/r5-candidate-eval-holdout.detail.json`, `evidence/runs/r5-candidate-eval-holdout.json` …
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -263,6 +263,14 @@ CI's Full test suite step ran without the release gate: the tests on the coheren
 - Fix: `03316f3`
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `cff458e`: `r5-ci-full-suite-gate-reproduced.json` — failed — {"step": "python -m pytest tests/integration/test_period_ove (evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push)
+
+### evidence-commit-secret-scan
+
+The candidate's evidence commit added trivy reports that quote the base image's GPG_KEY (the public CPython release key); gitleaks over the history found it four times, so CI's supply-chain job would have failed on a push.
+
+- Fix: `bbc2242` (after the candidate; verified by evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242))
+- Regression on the candidate: none (CI configuration)
+- Reproduction on `47bf736`: `r5-head-gitleaks-reproduced.json` — failed — 4:49AM WRN leaks found: 4 (gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json)
 
 ## Externally verified (hosted)
 

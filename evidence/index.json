@@ -1,10 +1,10 @@
 {
- "generated_at": "2026-10-08T08:48:27+00:00",
+ "generated_at": "2026-10-08T08:51:14+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "9aebc32dbf1d35563698887ec4777b0c381ae7a7",
-   "tree": "a7dc8e8dae9418a311e8af3a62c0c16571a9516a",
+   "sha": "2d1cc5f6bfc250a7184651ddc1d6f7b32af4d06b",
+   "tree": "7f5174d21fce55287ab891ca15cd29d94087c38b",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": true
   },
@@ -16,9 +16,7 @@
   "delta_candidate_to_head": {
    "by_class": {
     "application and build": [
-     "evidence/release/trivy-db.json",
-     "evidence/release/trivy-full.json",
-     "evidence/release/trivy-gate.json"
+     ".gitleaksignore"
     ],
     "documentation": [
      "README.md",
@@ -55,7 +53,12 @@
      "evidence/runs/r5-candidate-unit-nodb.json",
      "evidence/runs/r5-candidate-web-build.json",
      "evidence/runs/r5-ci-full-suite-gate-fixed.json",
-     "evidence/runs/r5-ci-full-suite-gate-reproduced.json"
+     "evidence/runs/r5-ci-full-suite-gate-reproduced.json",
+     "evidence/runs/r5-head-gitleaks-fixed.json",
+     "evidence/runs/r5-head-gitleaks-reproduced.json",
+     "evidence/runs/r5-scan-84dfc1e-trivy-db.json",
+     "evidence/runs/r5-scan-84dfc1e-trivy-full.json",
+     "evidence/runs/r5-scan-84dfc1e-trivy-gate.json"
     ]
    },
    "classes_needing_evidence": [
@@ -1426,6 +1429,34 @@
     }
    ],
    "verified_by": null
+  },
+  {
+   "id": "evidence-commit-secret-scan",
+   "title": "The candidate's evidence commit added trivy reports that quote the base image's GPG_KEY (the public CPython release key); gitleaks over the history found it four times, so CI's supply-chain job would have failed on a push",
+   "fix_commits": [
+    {
+     "commit": "bbc2242",
+     "exists": true,
+     "in_candidate": false,
+     "in_head": true
+    }
+   ],
+   "regression": [],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-head-gitleaks-reproduced.json",
+     "baseline": "47bf736",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "4:49AM WRN leaks found: 4",
+     "measured": "47bf73614768",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242)"
   }
  ],
  "external": {
