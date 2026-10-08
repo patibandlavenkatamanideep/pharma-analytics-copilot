@@ -357,6 +357,43 @@
           "note": "the drill itself (scripts/ops_drill.py) against a real collector and Prometheus; 6 passed, 7 failed"
         }
       ]
+    },
+    {
+      "id": "collector-local-files",
+      "title": "The deployable collector configuration wrote every span and metric to local files (to /tmp by default) although its header said only when PAC_OTEL_FILE_DIR was set; and its file exporter truncated at each start, so the drill's sentinel scan covered only exports after the collector restart, not every exported trace as stated",
+      "fix_commits": [
+        "fba626c"
+      ],
+      "regression_files": [
+        "tests/unit/test_collector_config.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-collector-files-reproduced.json",
+          "baseline": "952c6a9"
+        },
+        {
+          "artifact": "evidence/runs/r5-collector-restart-reproduced.json",
+          "baseline": "952c6a9",
+          "note": "evidence/probes/collector_restart_keeps_exports.py: the real collector, a span before a restart lost after it"
+        }
+      ]
+    },
+    {
+      "id": "log-error-type-generic",
+      "title": "A database error was logged with error type Exception: the refused audit insert (InsufficientPrivilege) read the same as a lost connection or a constraint violation",
+      "fix_commits": [
+        "9fb1d1f"
+      ],
+      "regression_files": [
+        "tests/unit/test_logs.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-log-error-type-reproduced.json",
+          "baseline": "7366937"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

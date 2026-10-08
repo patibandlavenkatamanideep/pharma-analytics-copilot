@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T02:33:43+00:00",
+  "claim": "After fba626c: the real collector (contrib 0.162.0) with the drill's configuration keeps the span written before a restart",
+  "application": {
+    "sha": "65193266f6060fc6f5256f615b664fddfda40ef5",
+    "tree": "45fef826be35f83eb8567a624f614530751949d2",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/collector_restart_keeps_exports.py",
+      "--tools",
+      "/Users/manideep/src/pac-work/tools"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 5.29
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"configs\": [\"deploy/observability/otel-collector.yaml\", \"deploy/observability/otel-collector.local-files.yaml\"], \"bytes_before_restart\": 374, \"bytes_after_restart\": 748, \"first_span_kept\": true, \"second_span_written\": true}"
+  },
+  "artifacts": [],
+  "limits": [
+    "one span through one restart on loopback; says nothing about a hosted collector"
+  ]
+}

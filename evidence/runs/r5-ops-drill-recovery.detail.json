@@ -1,0 +1,422 @@
+{
+ "drill_version": "1.1.0",
+ "label": "local evidence: one machine, one PostgreSQL cluster created for the drill, two application processes and a third for overload (not containers), a local collector and Prometheus with shortened alert windows and a 15 s run lease; not a hosted backend or an on-call incident drill",
+ "tools": {
+  "otelcol-contrib": "otelcol-contrib version 0.162.0",
+  "prometheus": "prometheus, version 3.15.0 (branch: HEAD, revision: 5241a27fe3c6983549fccc32f6e65917408c63cd)",
+  "postgres": "postgres (PostgreSQL) 16.14 (Homebrew)"
+ },
+ "alerts_not_exercised": {
+  "SlowAnswers": "no answer was made slow on purpose",
+  "ModelFailing": "the offline planner calls no model",
+  "UsageNotReported": "the offline planner calls no model",
+  "PoolSaturation": "pools were not saturated",
+  "PoolExhausted": "pools were not exhausted",
+  "DatabaseErrors": "the database stayed reachable",
+  "TurnsNotSaved": "turn persistence was not broken",
+  "QuarantineRising": "fewer than 100 events were quarantined"
+ },
+ "drill_rule_substitutions": {
+  "SlowAnswers": {
+   "[10m]": "[1m]"
+  },
+  "Errors": {
+   "[10m]": "[1m]"
+  },
+  "QueryTimeouts": {
+   "[10m]": "[1m]"
+  },
+  "ModelFailing": {
+   "[15m]": "[1m]"
+  },
+  "UsageNotReported": {
+   "[1h]": "[1m]"
+  },
+  "PoolSaturation": {
+   "[5m]": "[1m]"
+  },
+  "PoolExhausted": {
+   "[5m]": "[1m]"
+  },
+  "DatabaseErrors": {
+   "[5m]": "[1m]"
+  },
+  "AuditLoss": {
+   "[5m]": "[40s]"
+  },
+  "TurnsNotSaved": {
+   "[15m]": "[1m]"
+  },
+  "MissedIngestionRun": {
+   "> 93600": "> 25"
+  },
+  "DataNotMoving": {
+   "> 259200": "> 3600"
+  },
+  "FreshnessNotReported": {
+   "[30m]": "[20s]"
+  },
+  "BatchRejected": {},
+  "QuarantineRising": {},
+  "TelemetryPipelineDown": {}
+ },
+ "shortened_settings": {
+  "PAC_RUN_LEASE_SECONDS": 15,
+  "PAC_REQUEST_DEADLINE_SECONDS": 12
+ },
+ "passed": 20,
+ "failed": 0,
+ "results": [
+  {
+   "scenario": "promtool accepts the rules and configuration",
+   "status": "passed",
+   "at_s": 2.6,
+   "checks": {
+    "production rules": true,
+    "drill rules": true,
+    "drill config": true
+   }
+  },
+  {
+   "scenario": "traffic of every outcome on two processes, counted per process",
+   "status": "passed",
+   "at_s": 20.5,
+   "outcomes": [
+    [
+     "app-1",
+     200,
+     "answered"
+    ],
+    [
+     "app-1",
+     200,
+     "clarify"
+    ],
+    [
+     "app-2",
+     200,
+     "answered"
+    ],
+    [
+     "app-2",
+     200,
+     "answered"
+    ],
+    [
+     "app-2",
+     200,
+     "denied"
+    ]
+   ],
+   "distinct_instances": true,
+   "totals_match_requests_received": true,
+   "asks": {
+    "app-1": 2,
+    "app-2": 3
+   }
+  },
+  {
+   "scenario": "a per-user rate limit holds across processes",
+   "status": "passed",
+   "at_s": 20.8,
+   "first_20": [
+    200
+   ],
+   "twenty_first": 429
+  },
+  {
+   "scenario": "one idempotency key on two processes: refused, then replayed",
+   "status": "passed",
+   "at_s": 20.9,
+   "first": 200,
+   "second_on_other_process": 409,
+   "second_code": "same_request_running",
+   "replay_on_other_process_identical": true
+  },
+  {
+   "scenario": "a refused audit insert pages AuditLoss",
+   "status": "passed",
+   "at_s": 39.0,
+   "answer_status": 200,
+   "alert": "AuditLoss",
+   "fired_after_s": 18.1
+  },
+  {
+   "scenario": "a burst of statement timeouts pages QueryTimeouts and Errors",
+   "status": "passed",
+   "at_s": 68.4,
+   "responses": [
+    [
+     200,
+     "error"
+    ]
+   ],
+   "fired_after_s": {
+    "QueryTimeouts": 0.0,
+    "Errors": 2.0
+   }
+  },
+  {
+   "scenario": "a malformed batch, old events, a stopped feed and a resumed one",
+   "status": "passed",
+   "at_s": 126.8,
+   "malformed_exit": 1,
+   "BatchRejected_fired_after_s": 2.0,
+   "old_batch_exit": 0,
+   "BatchRejected_cleared_after_s": 20.1,
+   "DataNotMoving_fired_after_s": 0.0,
+   "missed_run_not_yet": true,
+   "MissedIngestionRun_fired_after_s": 20.1,
+   "current_batch_exit": 0,
+   "MissedIngestionRun_cleared_after_s": 15.1,
+   "DataNotMoving_cleared_after_s": 0.0
+  },
+  {
+   "scenario": "both processes answer from the refreshed snapshot",
+   "status": "passed",
+   "at_s": 126.9,
+   "data_through": [
+    "2026-10-07",
+    "2026-10-07"
+   ],
+   "database": "2026-10-07"
+  },
+  {
+   "scenario": "a process killed mid-request: the other takes the key over after the lease and commits once",
+   "status": "passed",
+   "at_s": 143.0,
+   "killed_request": "RemoteDisconnected",
+   "same_key_while_leased": [
+    409,
+    "same_request_running"
+   ],
+   "taken_over": [
+    200,
+    "answered",
+    null
+   ],
+   "run_status": "succeeded",
+   "turns_committed": 1,
+   "attempts_counted": 2,
+   "replay_on_restarted_process_identical": true,
+   "lease_s": 15
+  },
+  {
+   "scenario": "one conversation on two processes: the second question waits its turn",
+   "status": "passed",
+   "at_s": 143.2,
+   "first": 200,
+   "held": 200,
+   "other_process_while_held": [
+    409,
+    "conversation_busy"
+   ],
+   "other_process_after": 200,
+   "turn_seqs": [
+    1,
+    2,
+    3
+   ],
+   "distinct_runs": 3,
+   "conversation_revision": 3
+  },
+  {
+   "scenario": "a clarification asked on one process is answered on the other",
+   "status": "passed",
+   "at_s": 143.3,
+   "asked_on": "app-1",
+   "answered_on": "app-2",
+   "statuses": [
+    "clarify",
+    "answered"
+   ],
+   "clarification": "resolved",
+   "second_choice_bound": true,
+   "checkpoints_left": 0
+  },
+  {
+   "scenario": "pricing revoked: the replay on the other process is withheld, history and new answers show no figure",
+   "status": "passed",
+   "at_s": 143.3,
+   "before": [
+    200,
+    "figure shown"
+   ],
+   "replay_after_revocation": [
+    403,
+    "access_changed"
+   ],
+   "history_status": 404,
+   "new_question": [
+    200,
+    "answered"
+   ],
+   "figure_seen_after_revocation_in": []
+  },
+  {
+   "scenario": "deleting conversations refunds no rate, on either process",
+   "status": "passed",
+   "at_s": 143.6,
+   "answered": 20,
+   "deleted": 20,
+   "conversations_left": 0,
+   "after_deletion": 429,
+   "retry_after": "60"
+  },
+  {
+   "scenario": "overload refused at once; a queued request cancelled from another process",
+   "status": "passed",
+   "at_s": 145.1,
+   "refused": [
+    503,
+    "overloaded",
+    0.02
+   ],
+   "cancel_from_other_process": 200,
+   "queued_outcome": [
+    200,
+    "cancelled",
+    0.27
+   ],
+   "running_outcome": 200,
+   "refused_retried": [
+    200,
+    "answered"
+   ],
+   "run_status": {
+    "running": "succeeded",
+    "queued": "cancelled",
+    "refused": "succeeded"
+   },
+   "turns_committed": {
+    "running": 1,
+    "queued": 0,
+    "refused": 1
+   }
+  },
+  {
+   "scenario": "both processes stopped: FreshnessNotReported pages, then clears",
+   "status": "passed",
+   "at_s": 204.7,
+   "fired_after_s": 41.2,
+   "cleared_after_s": 17.1
+  },
+  {
+   "scenario": "the collector killed: answers continue, the outage pages, totals catch up",
+   "status": "passed",
+   "at_s": 254.6,
+   "answers_during_outage": 50,
+   "p95_s_baseline": 0.036,
+   "p95_s_during": 0.025,
+   "rss_growth_kib": {
+    "app-1": -63696,
+    "app-2": 1856
+   },
+   "export_failure_log_lines": 4,
+   "stopped_during_outage": {
+    "exit_code": -15,
+    "took_s": 6.0
+   },
+   "TelemetryPipelineDown_fired_after_s": 2.0,
+   "TelemetryPipelineDown_cleared_after_s": 1.0,
+   "totals_caught_up": true
+  },
+  {
+   "scenario": "every alert that fired clears",
+   "status": "passed",
+   "at_s": 254.6,
+   "cleared_after_s": {
+    "AuditLoss": 0.0,
+    "QueryTimeouts": 0.0,
+    "Errors": 0.0
+   }
+  },
+  {
+   "scenario": "every dashboard query runs against the backend",
+   "status": "passed",
+   "at_s": 254.6,
+   "invalid": [],
+   "empty": [
+    "sum by (kind, outcome, model) (rate(pac_llm_attempts_total[5m]))",
+    "sum by (direction, model) (increase(pac_llm_tokens_total[1h]))",
+    "sum by (model) (increase(pac_llm_cost_total[1h]))",
+    "sum by (model) (increase(pac_llm_usage_unknown_total[1h]))"
+   ],
+   "unexpected_empty": [],
+   "queries": 21
+  },
+  {
+   "scenario": "no sentinel reaches telemetry, Prometheus or a log",
+   "status": "passed",
+   "at_s": 255.0,
+   "positive_control_turns_with_sentinel": 1,
+   "sentinels_checked": [
+    "email_drill-clar-b2ff4e94",
+    "email_drill-conv-b2ff4e94",
+    "email_drill-dup-b2ff4e94",
+    "email_drill-exec-b2ff4e94",
+    "email_drill-kill-b2ff4e94",
+    "email_drill-o0-b2ff4e94",
+    "email_drill-o1-b2ff4e94",
+    "email_drill-o2-b2ff4e94",
+    "email_drill-quota-b2ff4e94",
+    "email_drill-ram-b2ff4e94",
+    "email_drill-rate-b2ff4e94",
+    "email_drill-rev-b2ff4e94",
+    "email_drill-w0-b2ff4e94",
+    "email_drill-w1-b2ff4e94",
+    "email_drill-w2-b2ff4e94",
+    "email_drill-w3-b2ff4e94",
+    "email_drill-w4-b2ff4e94",
+    "email_drill-w5-b2ff4e94",
+    "email_tag",
+    "idempotency_key",
+    "other_territory",
+    "own_territory",
+    "question",
+    "revenue_figure",
+    "26 session cookies",
+    "database and user passwords"
+   ],
+   "leaks": [],
+   "bytes_scanned": {
+    "traces.jsonl": 411905,
+    "metrics.jsonl": 365553,
+    "otel-collector.log": 4813,
+    "postgres.log": 4631,
+    "app-3.log": 2981,
+    "app-2.log": 25012,
+    "app-1.log": 26974,
+    "prometheus.log": 3523,
+    "prometheus label values": 2256
+   }
+  },
+  {
+   "scenario": "logs keep event codes, error types and ids that lead to the trace",
+   "status": "passed",
+   "at_s": 255.1,
+   "lines": 319,
+   "not_json": 0,
+   "events": {
+    "log.external": 78,
+    "startup.local_owner": 7,
+    "telemetry.configured": 7,
+    "startup.dataset_ready": 7,
+    "server.started": 7,
+    "http.access": 196,
+    "audit.write_failed": 1,
+    "query.failed": 12,
+    "telemetry.spans_dropped": 2,
+    "telemetry.metrics_dropped": 2
+   },
+   "unknown_events": [],
+   "error_types": [
+    "Exception"
+   ],
+   "query_failed_lines": 12,
+   "linked_to_the_response_id": 12,
+   "linked_to_a_trace_recording_QueryCanceled": 12
+  }
+ ],
+ "work_dir_kept": null
+}

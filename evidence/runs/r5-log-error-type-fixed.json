@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T02:56:01+00:00",
+  "claim": "After 9fb1d1f: a psycopg error is logged with its SQLSTATE class name; a look-alike class outside the driver stays generic; the log suites pass",
+  "application": {
+    "sha": "9fb1d1fa5074a9ea7850276fa2d46aaf6bdb2bac",
+    "tree": "e8d473ce93a7bc428b6d48937cc13a2e4e7cc646",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "tests/unit/test_logs.py",
+      "tests/unit/test_log_allowlist.py",
+      "tests/unit/test_log_registry.py",
+      "tests/security/test_log_hygiene.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.89
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 24
+    },
+    "blocked_reason": null,
+    "summary": "24 passed in 2.32s"
+  },
+  "artifacts": [],
+  "limits": [
+    "the formatter and the log suites; the drill's refused audit insert is not re-run here"
+  ]
+}

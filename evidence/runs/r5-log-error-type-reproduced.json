@@ -1,0 +1,66 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T02:53:54+00:00",
+  "claim": "Reproduction at 7366937: a psycopg error (InsufficientPrivilege, as in the drill's refused audit insert) is logged with error type Exception",
+  "application": {
+    "sha": "7366937daa689b0679bf40e6c18571eb2f001412",
+    "tree": "519ba0ba7e9173e175f03098f3c18f5a291db020",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "tests/unit/test_logs.py::test_a_database_error_keeps_its_sqlstate_class_name"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.35
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed in 0.05s"
+  },
+  "artifacts": [],
+  "limits": [
+    "the formatter in isolation; the drill line is r5-ops-drill-recovery.detail.json (error_types: [Exception])"
+  ]
+}
