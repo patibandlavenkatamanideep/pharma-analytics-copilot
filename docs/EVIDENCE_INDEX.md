@@ -8,21 +8,13 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `7950e71304ec1c6da7985f6fa9ec41a2b154da6f` | `f9eaf48ad0180532f0c82ec7f6b8939e80125067` |
-| HEAD (`codex/release-defects-oct06`, clean: False) | `00c192e8b1cccc5a720a7efbb2ea7e95eae80134` | `87484f59687bab697011d89f54c21913bf069782` |
+| Executable candidate (what the records measured) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
+| HEAD (`codex/release-defects-oct06`, clean: False) | `84dfc1e0ad70f70dda8d537470203aedc04e5d2d` | `4d30e9e6f22328779256088435c51ddd64eb653d` |
 
 Changed between the candidate and HEAD:
 
-- **application and build** (24): `app/analytics/compiler.py`, `app/analytics/metrics.yaml`, `app/analytics/plan.py`, `app/analytics/render.py`, `app/analytics/validator.py`, `app/data/classification.py`, `app/data/classification_supplied.json`, `app/data/loader.py` …
-- **deployment configuration** (1): `compose.yaml`
-- **documentation** (17): `docs/API.md`, `docs/ASSUMPTIONS.md`, `docs/COVERAGE_BY_INVARIANT.md`, `docs/DATA_QUALITY.md`, `docs/EVALUATION.md`, `docs/EVIDENCE_INDEX.md`, `docs/INGESTION.md`, `docs/PRODUCTION_UPGRADE.md` …
-- **evaluation sets** (1): `evals/packet/oracle_schema.json`
-- **evidence data** (54): `evidence/external.json`, `evidence/index.json`, `evidence/ledger.json`, `evidence/runs/r5-ci-shm-fixed.json`, `evidence/runs/r5-ci-shm-reproduced.json`, `evidence/runs/r5-final-boundary.json`, `evidence/runs/r5-final-browser.json`, `evidence/runs/r5-final-component.detail.json` …
-- **probe tooling** (5): `evidence/probes/readiness_reports.sh`, `evidence/probes/replay_on_baseline.sh`, `evidence/probes/sanitize_junit.py`, `evidence/probes/shm_full_load.sh`, `evidence/probes/startup_refusal_on_baseline.py`
-- **test code** (16): `tests/integration/test_calendar_convention_at_load.py`, `tests/integration/test_classification_authority.py`, `tests/integration/test_fixture_profiles.py`, `tests/integration/test_invariant_oracles.py`, `tests/integration/test_period_over_period_fixture.py`, `tests/integration/test_period_over_period_pipeline.py`, `tests/integration/test_readiness_report.py`, `tests/unit/test_classification_mapping.py` …
-- **workflow** (1): `.github/workflows/ci.yml`
 
-**Needs evidence beyond the candidate's records:** application and build, deployment configuration, evaluation sets, test code, workflow. See the external runs below for what covered them.
+The delta is documentation and evidence only: the candidate's records describe HEAD's executable bytes.
 
 ## Versions
 
@@ -42,30 +34,46 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-final-boundary.json` | passed | boundary intact | yes |
-| `r5-final-browser.json` | passed |   10 passed (4.9s) | yes |
-| `r5-final-component.json` | passed | component gate satisfied: 27 passed, none skipped (floor 27) | yes |
-| `r5-final-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-final-eval-holdout2.json` | failed |   accuracy and must not be reported as one. | yes |
-| `r5-final-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-final-gitleaks.json` | passed | [90m12:05PM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-final-image-amd64.json` | passed | {"release": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f", "checks": ["PASS: image builds (79 | yes |
-| `r5-final-ingestion.json` | passed | 176 passed in 18.37s | yes |
-| `r5-final-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-final-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-final-pytest.json` | passed | 2078 passed, 5 warnings in 119.10s (0:01:59) | yes |
-| `r5-final-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.83s | yes |
-| `r5-final-security.json` | passed | 409 passed in 33.33s | yes |
-| `r5-final-unit-nodb.json` | passed | 770 passed, 5 warnings in 27.52s | yes |
-| `r5-final-web-build.json` | passed | ✓ built in 231ms | yes |
+| `r5-candidate-boundary.json` | passed | boundary intact | yes |
+| `r5-candidate-browser.json` | passed |   10 passed (5.9s) | yes |
+| `r5-candidate-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-candidate-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-candidate-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-candidate-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-candidate-gitleaks.json` | passed | [90m4:42AM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-candidate-ingestion.json` | passed | 177 passed in 18.47s | yes |
+| `r5-candidate-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-candidate-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-candidate-pytest.json` | passed | 2222 passed, 5 warnings in 142.96s (0:02:22) | yes |
+| `r5-candidate-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.73s | yes |
+| `r5-candidate-security.json` | passed | 433 passed in 45.97s | yes |
+| `r5-candidate-unit-nodb.json` | passed | 832 passed, 5 warnings in 27.66s | yes |
+| `r5-candidate-web-build.json` | passed | ✓ built in 234ms | yes |
+
+## What the test suite establishes, by category
+
+From `evidence/runs/r5-candidate-pytest.junit.xml`: 2222 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+
+| Category | Tests | Passed | Not passed | Establishes |
+|---|---:|---:|---:|---|
+| authorization_security | 361 | 361 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
+| durability_recovery_concurrency | 107 | 107 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
+| evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
+| ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
+| numerical_oracle | 115 | 115 | 0 | Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler. |
+| observability | 60 | 60 | 0 | Spans, metrics, log allowlisting and telemetry bounds, with in-memory exporters, a local receiver and simulated outages. |
+| planning_explain | 672 | 672 | 0 | Compiles a plan, passes the SQL validator and is PLANNED by PostgreSQL (EXPLAIN). No result value is checked: this establishes that combinations reach the database without error, not that any number is right. |
+| planning_semantics_unit | 450 | 450 | 0 | Deterministic plan, intent, entity, semantics, threshold, cohort and answer-shape logic without a database. |
+| release_tooling | 157 | 157 | 0 | The release gate, evidence records, documented counts, packaging, configuration encoding and the startup-refusal checker. Establishes the verification machinery, not product behaviour. |
+| rendering | 1 | 1 | 0 | What the response carries for display (chart metadata), from authorized rows. |
 
 ## Evaluations (offline planner unless stated)
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-final-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-final-eval-holdout2.detail.json` | spent | offline | 11 | 1 | k-07 (wrong): plan.metric = 'volume_growth', expected 'paid_pack_units' |
-| `r5-final-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-candidate-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-candidate-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-candidate-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -78,7 +86,7 @@ false in every detail file).
 Checkpoint bytes could run constructors through the runtime factory; a graph-version mismatch silently discarded a checkpoint.
 
 - Fix: `fabb9c0`, `0e582c7`
-- Regression on the candidate: `test_checkpoint_loading.py` (0, NOT ALL PASS), `test_graph_durability.py` (0, NOT ALL PASS), `test_conversation_reliability.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_checkpoint_loading.py` (9, all pass), `test_graph_durability.py` (11, all pass), `test_conversation_reliability.py` (16, all pass)
 - Reproduction on `58b3d3e`: `r4-checkpoint-reproduced.json` — failed — 5 failed in 36.49s
 
 ### ci-startup-refusal
@@ -86,7 +94,7 @@ Checkpoint bytes could run constructors through the runtime factory; a graph-ver
 CI's startup-refusal checks grepped for text the sanitised logs no longer print; the no-database refusal took 30.9 s against a 25 s timeout.
 
 - Fix: `b189650`, `5290ec0`
-- Regression on the candidate: `test_startup_refusal.py` (0, NOT ALL PASS), `test_startup_refusal.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_startup_refusal.py` (9, all pass), `test_startup_refusal.py` (2, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `76298b6`: `r5-replay-ci-startup-behaviour.json` — failed — baseline 76298b6: no_database: exit 124 after 25.02 s, basel
 - Reproduction on `76298b6`: `r5-replay-ci-startup-refusal.json` — failed — 2 errors in 0.02s — failures by kind: interface 2
@@ -96,7 +104,7 @@ CI's startup-refusal checks grepped for text the sanitised logs no longer print;
 A violated evaluation budget was not terminal across turns.
 
 - Fix: `0e582c7`
-- Regression on the candidate: `test_eval_terminal.py` (0, NOT ALL PASS), `test_eval_budget.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_eval_terminal.py` (2, all pass), `test_eval_budget.py` (31, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `76298b6`: `r5-replay-eval-budget-terminal.json` — failed — 6 failed, 27 passed in 1.03s — failures by kind: behavioural 6
 
@@ -105,7 +113,7 @@ A violated evaluation budget was not terminal across turns.
 Failed planning attempts lost their usage; transport failure had no planning summary.
 
 - Fix: `0e582c7`, `b872a71`
-- Regression on the candidate: `test_live_adapter_contract.py` (0, NOT ALL PASS), `test_audit_contract.py` (0, NOT ALL PASS), `test_eval_budget.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_live_adapter_contract.py` (29, all pass), `test_audit_contract.py` (16, all pass), `test_eval_budget.py` (31, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `76298b6`: `r5-replay-failed-attempt-accounting.json` — failed — 11 failed, 65 passed in 1.53s — failures by kind: behavioural 9, interface 2
 
@@ -114,7 +122,7 @@ Failed planning attempts lost their usage; transport failure had no planning sum
 Numbers, sizes and text past the reader's, digest's or columns' limits crashed ingestion.
 
 - Fix: `ad10165`
-- Regression on the candidate: `test_ingest_validation.py` (0, NOT ALL PASS), `test_ingest_contract.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_ingest_validation.py` (50, all pass), `test_ingest_contract.py` (57, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `76298b6`: `r5-replay-ingestion-boundaries.json` — failed — 9 failed, 98 passed in 2.08s — failures by kind: behavioural 9
 
@@ -123,7 +131,7 @@ Numbers, sizes and text past the reader's, digest's or columns' limits crashed i
 Structured logs kept identifier-shaped tokens, entities, addresses, preformatted messages and access paths.
 
 - Fix: `b189650`, `7526e69`
-- Regression on the candidate: `test_logs.py` (0, NOT ALL PASS), `test_log_hygiene.py` (0, NOT ALL PASS), `test_log_allowlist.py` (0, NOT ALL PASS), `test_log_registry.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_logs.py` (13, all pass), `test_log_hygiene.py` (3, all pass), `test_log_allowlist.py` (7, all pass), `test_log_registry.py` (1, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `58b3d3e`: `r5-port-reproduced.json` — failed — 12 failed, 2 passed in 185.30s (0:03:05)
 - Reproduction on `76298b6`: `r5-replay-log-allowlist.json` — failed — 13 failed, 8 passed, 1 error in 1.22s — failures by kind: interface 1, behavioural 13
@@ -133,7 +141,7 @@ Structured logs kept identifier-shaped tokens, entities, addresses, preformatted
 The freshness read waited on the serving pool during an outage; shutdown ignored the configure() timeout.
 
 - Fix: `5290ec0`
-- Regression on the candidate: `test_telemetry.py` (0, NOT ALL PASS), `test_ingest_observability.py` (0, NOT ALL PASS), `test_telemetry_outages.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_telemetry.py` (20, all pass), `test_ingest_observability.py` (12, all pass), `test_telemetry_outages.py` (7, all pass)
 - Reproduction on `76298b6`: `r5-original-reproductions.json` — summary only (hand-assembled; not a command record)
 - Reproduction on `58b3d3e`: `r5-port-reproduced.json` — failed — 12 failed, 2 passed in 185.30s (0:03:05)
 - Reproduction on `76298b6`: `r5-replay-telemetry-outage-bounds.json` — failed — 11 failed, 24 passed, 1 error in 194.92s (0:03:14) — failures by kind: behavioural 8, interface 4
@@ -143,14 +151,14 @@ The freshness read waited on the serving pool during an outage; shutdown ignored
 The evidence recorder counted results from any output line.
 
 - Fix: `cb8f00b`
-- Regression on the candidate: `test_evidence_record_accuracy.py` (0, NOT ALL PASS)
+- Regression on the candidate: `test_evidence_record_accuracy.py` (16, all pass)
 - Reproduction on `76298b6`: `r5-replay-evidence-recorder-counts.json` — failed — 1 failed, 15 passed in 2.96s — failures by kind: behavioural 1 (recorded with the baseline's own recorder, so its counts field shows the defect (error: 680); the summary line is pytest's)
 
 ### ci-trivy-action-tag
 
 CI's image job could not start: trivy-action@0.28.0 no longer resolves.
 
-- Fix: `9519f28` (after the candidate; verified by hosted_ci:37651718276)
+- Fix: `9519f28`
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `eb65af3`: `hosted-ci:37650229833` — see evidence/external.json
 
@@ -158,7 +166,7 @@ CI's image job could not start: trivy-action@0.28.0 no longer resolves.
 
 CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load parallel VACUUM failed.
 
-- Fix: `7bca4ca` (after the candidate; verified by hosted_ci:37651718276)
+- Fix: `7bca4ca`
 - Regression on the candidate: none (CI configuration)
 - Reproduction on `9519f28`: `r5-ci-shm-reproduced.json` — failed — psycopg.errors.DiskFull: could not resize shared memory segm
 
@@ -166,41 +174,91 @@ CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load p
 
 A supplied sample question (growth month over month) could not be planned; the refusal named the grain by its code.
 
-- Fix: `fce6b93` (NOT IN CANDIDATE)
-- Regression on the candidate: `test_period_over_period.py` (0, NOT ALL PASS), `test_period_over_period_fixture.py` (0, NOT ALL PASS), `test_period_over_period_pipeline.py` (0, NOT ALL PASS)
+- Fix: `fce6b93`
+- Regression on the candidate: `test_period_over_period.py` (19, all pass), `test_period_over_period_fixture.py` (7, all pass), `test_period_over_period_pipeline.py` (3, all pass)
 - Reproduction on `1b59504`: `r5-k07-reproduced.json` — failed — 25 failed in 0.23s
 
 ### segment-share-population
 
 With an inferred market, a segment share's numerator covered all markets and its denominator only ours (59.67% reported for 26.43%); denominator-only rows lost their label.
 
-- Fix: `eb3ba13` (NOT IN CANDIDATE)
-- Regression on the candidate: `test_invariant_oracles.py` (0, NOT ALL PASS)
+- Fix: `eb3ba13`
+- Regression on the candidate: `test_invariant_oracles.py` (6, all pass)
 - Reproduction on `14ce17e`: `r5-ratio-population-reproduced.json` — failed — 2 failed, 4 passed in 2.08s
 
 ### territory-name-scope
 
 A geography reusing a territory or region name loaded, and scope -- bound by name -- widened to both.
 
-- Fix: `fa02451` (NOT IN CANDIDATE)
-- Regression on the candidate: `test_fixture_profiles.py` (0, NOT ALL PASS)
+- Fix: `fa02451`
+- Regression on the candidate: `test_fixture_profiles.py` (32, all pass)
 - Reproduction on `51cf05e`: `r5-territory-name-reproduced.json` — failed — 2 failed, 18 deselected in 2.82s
 
 ### classification-by-elimination
 
 Classification rule 1.0.0 read the generator's name suffixes and made every other brand_flag 0 product a branded competitor; on unseen data a segment share reported its upper bound (50.2%) as the share (27.2% known, 23.0% of unknown class).
 
-- Fix: `3cc4b14` (NOT IN CANDIDATE)
-- Regression on the candidate: `test_fixture_profiles.py` (0, NOT ALL PASS), `test_classification_authority.py` (0, NOT ALL PASS), `test_classification_mapping.py` (0, NOT ALL PASS), `test_semantics.py` (0, NOT ALL PASS)
+- Fix: `3cc4b14`
+- Regression on the candidate: `test_fixture_profiles.py` (32, all pass), `test_classification_authority.py` (2, all pass), `test_classification_mapping.py` (16, all pass), `test_semantics.py` (44, all pass)
 - Reproduction on `f26e8a8`: `r5-classification-reproduced.json` — failed — 7 failed in 2.86s
 
 ### calendar-not-extendable-at-load
 
 A dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loaded silently, and its first batch was rejected.
 
-- Fix: `2cc7bd9` (NOT IN CANDIDATE)
-- Regression on the candidate: `test_calendar_convention_at_load.py` (0, NOT ALL PASS)
+- Fix: `2cc7bd9`
+- Regression on the candidate: `test_calendar_convention_at_load.py` (3, all pass)
 - Reproduction on `b7aa31e`: `r5-calendar-convention-reproduced.json` — failed — 1 failed, 1 passed in 0.85s
+
+### telemetry-process-identity
+
+Two processes of one release (replicas, or the image's uvicorn --workers 2) exported the same metric series: the resource was service.name and service.version only, so each export overwrote the other's running total.
+
+- Fix: `4187419`
+- Regression on the candidate: `test_telemetry_identity.py` (1, all pass)
+- Reproduction on `c2e5915`: `r5-telemetry-identity-reproduced.json` — failed — 1 failed in 0.23s
+
+### alerts-that-could-not-fire
+
+Alerting checked only on paper: in the local drill (6 of 13 scenarios passed) a single audit loss, database error or pool timeout never paged (a counter first seen at its first increment is invisible to increase()), BatchRejected never fired (it read counters of the one-shot jobs process, exported once and expired), and a collector outage left no log line.
+
+- Fix: `4187419`
+- Regression on the candidate: `test_telemetry.py` (20, all pass), `test_ingest_observability.py` (12, all pass), `test_alert_rules.py` (3, all pass)
+- Reproduction on `b974af7`: `r5-drill-findings-reproduced.json` — failed — 3 failed in 0.19s
+- Reproduction on `b974af7`: `r5-ops-drill-before.json` — failed — drill: 6 passed, 7 failed -> /Users/manideep/src/pac-work/st (the drill itself (scripts/ops_drill.py) against a real collector and Prometheus; 6 passed, 7 failed)
+
+### collector-local-files
+
+The deployable collector configuration wrote every span and metric to local files (to /tmp by default) although its header said only when PAC_OTEL_FILE_DIR was set; and its file exporter truncated at each start, so the drill's sentinel scan covered only exports after the collector restart, not every exported trace as stated.
+
+- Fix: `fba626c`
+- Regression on the candidate: `test_collector_config.py` (2, all pass)
+- Reproduction on `952c6a9`: `r5-collector-files-reproduced.json` — failed — 2 failed in 0.06s
+- Reproduction on `952c6a9`: `r5-collector-restart-reproduced.json` — failed — {"configs": ["deploy/observability/otel-collector.yaml"], "b (evidence/probes/collector_restart_keeps_exports.py: the real collector, a span before a restart lost after it)
+
+### log-error-type-generic
+
+A database error was logged with error type Exception: the refused audit insert (InsufficientPrivilege) read the same as a lost connection or a constraint violation.
+
+- Fix: `9fb1d1f`
+- Regression on the candidate: `test_logs.py` (13, all pass)
+- Reproduction on `7366937`: `r5-log-error-type-reproduced.json` — failed — 1 failed in 0.05s
+
+### restore-new-cluster-procedure
+
+RUNBOOK §8's restore into a new cluster (bootstrap_db.py, then pg_restore) exited with 142 errors and restored no conversation, turn, run, attempt or clarification, while the database reported ready and answered questions; a stored answer was recomputed rather than replayed.
+
+- Fix: `6ced978`
+- Regression on the candidate: none (CI configuration)
+- Reproduction on `4be5d4e`: `r5-restore-new-cluster-reproduced.json` — failed — {"mode": "new_cluster", "source": "pac_release", "copy": "ph (scripts/restore_drill.py --new-cluster following the documented procedure; the drill itself is the regression check (r5-restore-new-cluster-fixed.json), not a pytest file)
+
+### ci-full-suite-not-strict
+
+CI's Full test suite step ran without the release gate: the tests on the coherent-market fixture database (the k-07 regressions among them) skipped on an empty fixture and the step stayed green.
+
+- Fix: `03316f3`
+- Regression on the candidate: none (CI configuration)
+- Reproduction on `cff458e`: `r5-ci-full-suite-gate-reproduced.json` — failed — {"step": "python -m pytest tests/integration/test_period_ove (evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push)
 
 ## Externally verified (hosted)
 
@@ -211,7 +269,6 @@ A dataset whose week labels follow the supplied generator's calendar-year conven
 
 ## Missing artifacts
 
-- full-suite JUnit for the candidate (not given)
 - r5-original-reproductions.json hashes r5-reproduced.log, which is not preserved
 - r5-original-reproductions.json hashes r5-logging-reproduced.log, which is not preserved
 - r5-original-reproductions.json hashes r5-telemetry-reproduced.log, which is not preserved
@@ -219,11 +276,7 @@ A dataset whose week labels follow the supplied generator's calendar-year conven
 
 ## Unresolved problems
 
-- k07-period-over-period: fix commit fce6b93 is after the candidate and nothing verifies it
-- segment-share-population: fix commit eb3ba13 is after the candidate and nothing verifies it
-- territory-name-scope: fix commit fa02451 is after the candidate and nothing verifies it
-- classification-by-elimination: fix commit 3cc4b14 is after the candidate and nothing verifies it
-- calendar-not-extendable-at-load: fix commit 2cc7bd9 is after the candidate and nothing verifies it
+- none
 
 Interface failures (ImportError, AttributeError, collection failure) mean the baseline
 lacked something the test calls; behavioural failures are wrong results or crashes. The

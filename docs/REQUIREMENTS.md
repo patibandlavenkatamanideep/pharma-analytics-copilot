@@ -1,9 +1,10 @@
 # Requirement matrix
 
 What the assignment asked for, what the code does, the evidence, and what is
-still missing. It describes the code on `post-assessment/release-risks`. The
+still missing. It describes the code on `codex/release-defects-oct06`. The
 commit each current result was measured on is recorded in
-[RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md), and counts are in
+[EVIDENCE_INDEX.md](EVIDENCE_INDEX.md) (earlier ones in
+[RELEASE_EVIDENCE.md](RELEASE_EVIDENCE.md)), and counts are in
 [TEST_INVENTORY.md](TEST_INVENTORY.md).
 
 **Historical** marks a result measured on an earlier build: the submitted

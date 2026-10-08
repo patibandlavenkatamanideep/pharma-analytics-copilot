@@ -27,13 +27,13 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 832 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 433` | 433 | pass, strict gate | `r5-final-security.json` (`7950e71`) |
-| **Total (pytest)** | `pytest tests -q` | **2222** | pass, no skips | `r5-final-pytest.json` (`7950e71`) |
-| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-final-component.json` (`7950e71`, 30 tests); 32 to be recorded on this pass's final candidate |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-final-browser.json` (`7950e71`) |
-| **Model evaluation** | see the table below | 62 checks | 61 pass / 1 fail | `r5-final-eval-*.json` (`7950e71`, offline) |
+| **Unit** | `pytest tests/unit -q` | 832 | pass, no skips | `r5-candidate-pytest.json` (`84dfc1e`); without a database too, `r5-candidate-unit-nodb.json` |
+| **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-candidate-pytest.json` (`84dfc1e`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 433` | 433 | pass, strict gate | `r5-candidate-security.json` (`84dfc1e`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2222** | pass, strict gate: no skips, no xfails | `r5-candidate-pytest.json` (`84dfc1e`) |
+| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-candidate-component.json` (`84dfc1e`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-candidate-browser.json` (`84dfc1e`) |
+| **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-candidate-eval-*.json` (`84dfc1e`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.
@@ -80,24 +80,25 @@ gate enforces, so the two cannot drift apart without the gate failing.
 
 Separated because they answer different questions and have very different
 standing. The live column is history: it was measured on an earlier build
-and prompt, and prompt 2.1.0 on this branch has not been run live
+and prompt, and prompt 2.3.0 on this branch has not been run live
 ([EVALUATION.md](EVALUATION.md)). Only `holdout2` was ever unseen at the moment it was first run,
 so it is the only figure that is not, to some degree, a measure of work
 done against the questions.
 
-| Suite | Checks | Offline (this branch) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
+| Suite | Checks | Offline (candidate `84dfc1e`) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
 |---|---:|---|---|---|
 | `evals/questions.yaml` — regression set | 38 | **38/38** | 37/38 | Developed against. A regression guard, not an accuracy estimate |
 | `evals/holdout.yaml` — held-out set 1 | 12 | **12/12** | 11/12 | Sealed, then run. Fixes were made afterwards, so it is no longer unseen |
-| `evals/holdout2.yaml` — held-out set 2 | 12 | **11/12** | 10/12 | First run scored **8/12**. That is the only unbiased figure in this table |
+| `evals/holdout2.yaml` — held-out set 2 | 12 | **12/12** (11/12 on `7950e71`) | 10/12 | First run scored **8/12**. That is the only unbiased figure in this table |
 
-Offline failure, `holdout2` / **k-07** — *"Is Zenovax volume growing or
-declining month over month?"*: the offline planner chooses
-`volume_growth` where the oracle expects `paid_pack_units`. The offline
-planner is a keyword matcher, so this is a limit of the stand-in rather than
-of the system; the live model answers it. Recorded as a failure regardless,
-because a suite that is allowed to explain away its own failures measures
-nothing.
+The offline failure on `7950e71`, `holdout2` / **k-07** — *"Is Zenovax
+volume growing or declining month over month?"* — was recorded as a failure
+rather than explained away as a limit of the keyword planner. Step 2 of the
+qualification found the cause (a monthly period-over-period request could not
+be planned), fixed it generally (`fce6b93`) with independent numerical tests,
+and kept the old outcome and oracle on record
+([QUALIFICATION_2026_10_07.md](QUALIFICATION_2026_10_07.md)). `holdout2` is
+spent: 12/12 now measures regressions, not unseen accuracy.
 
 A check that passes by correctly declining or clarifying is **right
 behaviour, not accuracy**, and the runner reports those separately.

@@ -1,163 +1,21 @@
 {
- "generated_at": "2026-10-07T21:25:15+00:00",
+ "generated_at": "2026-10-08T08:43:45+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "00c192e8b1cccc5a720a7efbb2ea7e95eae80134",
-   "tree": "87484f59687bab697011d89f54c21913bf069782",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
+   "tree": "4d30e9e6f22328779256088435c51ddd64eb653d",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": false
   },
   "candidate": {
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
-   "tree": "f9eaf48ad0180532f0c82ec7f6b8939e80125067",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
+   "tree": "4d30e9e6f22328779256088435c51ddd64eb653d",
    "is_ancestor_of_head": true
   },
   "delta_candidate_to_head": {
-   "by_class": {
-    "application and build": [
-     "app/analytics/compiler.py",
-     "app/analytics/metrics.yaml",
-     "app/analytics/plan.py",
-     "app/analytics/render.py",
-     "app/analytics/validator.py",
-     "app/data/classification.py",
-     "app/data/classification_supplied.json",
-     "app/data/loader.py",
-     "app/data/readiness.py",
-     "app/llm/planner.py",
-     "evidence/invariants.json",
-     "migrations/023_classification_authority.sql",
-     "pyproject.toml",
-     "scripts/build_profile_db.py",
-     "scripts/check_question_set.py",
-     "scripts/coverage_report.py",
-     "scripts/evidence_index.py",
-     "scripts/fixture_profile.py",
-     "scripts/load_data.py",
-     "scripts/readiness_report.py",
-     "web/src/App.jsx",
-     "web/src/ResultChart.jsx",
-     "web/src/__tests__/result-chart.test.jsx",
-     "web/src/__tests__/result-table.test.jsx"
-    ],
-    "deployment configuration": [
-     "compose.yaml"
-    ],
-    "documentation": [
-     "docs/API.md",
-     "docs/ASSUMPTIONS.md",
-     "docs/COVERAGE_BY_INVARIANT.md",
-     "docs/DATA_QUALITY.md",
-     "docs/EVALUATION.md",
-     "docs/EVIDENCE_INDEX.md",
-     "docs/INGESTION.md",
-     "docs/PRODUCTION_UPGRADE.md",
-     "docs/QUALIFICATION_2026_10_07.md",
-     "docs/REAL_FEED_ACCEPTANCE.md",
-     "docs/RELEASE_EVIDENCE.md",
-     "docs/REVIEW_2026_10_06.md",
-     "docs/RUNBOOK.md",
-     "docs/TEST_INVENTORY.md",
-     "evals/packet/AUTHORING.md",
-     "evals/packet/CONTAMINATION_LOG.md",
-     "evals/packet/PROTOCOL.md"
-    ],
-    "evaluation sets": [
-     "evals/packet/oracle_schema.json"
-    ],
-    "evidence data": [
-     "evidence/external.json",
-     "evidence/index.json",
-     "evidence/ledger.json",
-     "evidence/runs/r5-ci-shm-fixed.json",
-     "evidence/runs/r5-ci-shm-reproduced.json",
-     "evidence/runs/r5-final-boundary.json",
-     "evidence/runs/r5-final-browser.json",
-     "evidence/runs/r5-final-component.detail.json",
-     "evidence/runs/r5-final-component.json",
-     "evidence/runs/r5-final-eval-holdout.detail.json",
-     "evidence/runs/r5-final-eval-holdout.json",
-     "evidence/runs/r5-final-eval-holdout2.detail.json",
-     "evidence/runs/r5-final-eval-holdout2.json",
-     "evidence/runs/r5-final-eval-questions.detail.json",
-     "evidence/runs/r5-final-eval-questions.json",
-     "evidence/runs/r5-final-gitleaks.json",
-     "evidence/runs/r5-final-image-amd64.json",
-     "evidence/runs/r5-final-ingestion.json",
-     "evidence/runs/r5-final-npm-audit.json",
-     "evidence/runs/r5-final-pip-audit.json",
-     "evidence/runs/r5-final-pytest.json",
-     "evidence/runs/r5-final-release-gate-selftest.json",
-     "evidence/runs/r5-final-security.json",
-     "evidence/runs/r5-final-unit-nodb.json",
-     "evidence/runs/r5-final-web-build.json",
-     "evidence/runs/r5-k07-eval-holdout.detail.json",
-     "evidence/runs/r5-k07-eval-holdout.json",
-     "evidence/runs/r5-k07-eval-holdout2.detail.json",
-     "evidence/runs/r5-k07-eval-holdout2.json",
-     "evidence/runs/r5-k07-eval-questions.detail.json",
-     "evidence/runs/r5-k07-eval-questions.json",
-     "evidence/runs/r5-k07-fixed.json",
-     "evidence/runs/r5-k07-reproduced.json",
-     "evidence/runs/r5-profiles-fixed.json",
-     "evidence/runs/r5-ratio-population-fixed.json",
-     "evidence/runs/r5-ratio-population-reproduced.json",
-     "evidence/runs/r5-replay-ci-startup-behaviour.json",
-     "evidence/runs/r5-replay-ci-startup-behaviour.result.json",
-     "evidence/runs/r5-replay-ci-startup-refusal.json",
-     "evidence/runs/r5-replay-ci-startup-refusal.junit.xml",
-     "evidence/runs/r5-replay-eval-budget-terminal.json",
-     "evidence/runs/r5-replay-eval-budget-terminal.junit.xml",
-     "evidence/runs/r5-replay-evidence-recorder-counts.json",
-     "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml",
-     "evidence/runs/r5-replay-failed-attempt-accounting.json",
-     "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml",
-     "evidence/runs/r5-replay-ingestion-boundaries.json",
-     "evidence/runs/r5-replay-ingestion-boundaries.junit.xml",
-     "evidence/runs/r5-replay-log-allowlist.json",
-     "evidence/runs/r5-replay-log-allowlist.junit.xml",
-     "evidence/runs/r5-replay-telemetry-outage-bounds.json",
-     "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml",
-     "evidence/runs/r5-territory-name-reproduced.json",
-     "evidence/test_categories.json"
-    ],
-    "probe tooling": [
-     "evidence/probes/readiness_reports.sh",
-     "evidence/probes/replay_on_baseline.sh",
-     "evidence/probes/sanitize_junit.py",
-     "evidence/probes/shm_full_load.sh",
-     "evidence/probes/startup_refusal_on_baseline.py"
-    ],
-    "test code": [
-     "tests/integration/test_calendar_convention_at_load.py",
-     "tests/integration/test_classification_authority.py",
-     "tests/integration/test_fixture_profiles.py",
-     "tests/integration/test_invariant_oracles.py",
-     "tests/integration/test_period_over_period_fixture.py",
-     "tests/integration/test_period_over_period_pipeline.py",
-     "tests/integration/test_readiness_report.py",
-     "tests/unit/test_classification_mapping.py",
-     "tests/unit/test_eval_judge.py",
-     "tests/unit/test_evidence_index.py",
-     "tests/unit/test_invariant_coverage.py",
-     "tests/unit/test_period_over_period.py",
-     "tests/unit/test_prompt_version.py",
-     "tests/unit/test_question_set_check.py",
-     "tests/unit/test_segment_share.py",
-     "tests/unit/test_semantics.py"
-    ],
-    "workflow": [
-     ".github/workflows/ci.yml"
-    ]
-   },
-   "classes_needing_evidence": [
-    "application and build",
-    "deployment configuration",
-    "evaluation sets",
-    "test code",
-    "workflow"
-   ]
+   "by_class": {},
+   "classes_needing_evidence": []
   }
  },
  "versions": {
@@ -173,249 +31,286 @@
  },
  "datasets": [
   {
-   "dataset_id": "full-94491ffd38f6",
+   "dataset_id": "full-db5c2f1f1651",
    "load_mode": "full",
-   "fingerprint": "cba52562c89a4f8fd76c52a3",
+   "fingerprint": "1edc425858a2466a94d43657",
    "database": "pac_release"
   },
   {
-   "dataset_id": "seed-fa99907f4fe9",
+   "dataset_id": "seed-f9dd81d4da53",
    "load_mode": "seed",
-   "fingerprint": "a29d02f0c9b24ea00e05f664",
+   "fingerprint": "4fef158affd75813ac877020",
    "database": "pac_release_authtest"
   }
  ],
- "images": [
-  {
-   "file": "r5-final-image-amd64.json",
-   "ref": "pharma-analytics-copilot:smoke",
-   "inspected_with": "podman",
-   "id": "390a629596b886f42c2ed61039facffad8c552bc7493766b32fcbd18e0b4ec0e",
-   "digest": "sha256:73494114edd00a0925c7ae7a53b6c4a149bfb198f5e646c663d6c1669a8f5afc",
-   "platform": "linux/amd64",
-   "revision_label": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
-   "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
-  }
- ],
+ "images": [],
  "records": [
   {
-   "file": "evidence/runs/r5-final-boundary.json",
+   "file": "evidence/runs/r5-candidate-boundary.json",
    "claim": "The database security boundary is intact on the freshly provisioned release database",
    "status": "passed",
    "counts": null,
    "summary": "boundary intact",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:00:43+00:00",
+   "recorded_at": "2026-10-08T08:36:10+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-browser.json",
+   "file": "evidence/runs/r5-candidate-browser.json",
    "claim": "The browser journeys pass in real Chromium against a local server",
    "status": "passed",
    "counts": null,
-   "summary": "  10 passed (4.9s)",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "  10 passed (5.9s)",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:39+00:00",
+   "recorded_at": "2026-10-08T08:42:06+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-component.json",
+   "file": "evidence/runs/r5-candidate-component.json",
    "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed",
    "status": "passed",
    "counts": null,
-   "summary": "component gate satisfied: 27 passed, none skipped (floor 27)",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "component gate satisfied: 32 passed, none skipped (floor 32)",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:30+00:00",
+   "recorded_at": "2026-10-08T08:41:56+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-eval-holdout.json",
+   "file": "evidence/runs/r5-candidate-eval-holdout.json",
    "claim": "Held-out set 1, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:13+00:00",
+   "recorded_at": "2026-10-08T08:41:17+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-eval-holdout2.json",
+   "file": "evidence/runs/r5-candidate-eval-holdout2.json",
    "claim": "Held-out set 2, offline planner (measurement, spent set)",
-   "status": "failed",
+   "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:16+00:00",
+   "recorded_at": "2026-10-08T08:41:20+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-eval-questions.json",
+   "file": "evidence/runs/r5-candidate-eval-questions.json",
    "claim": "Regression set, offline planner (a gate; not natural-language accuracy)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:10+00:00",
+   "recorded_at": "2026-10-08T08:41:13+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-gitleaks.json",
+   "file": "evidence/runs/r5-candidate-gitleaks.json",
    "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
    "status": "passed",
    "counts": null,
-   "summary": "\u001b[90m12:05PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "\u001b[90m4:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:47+00:00",
+   "recorded_at": "2026-10-08T08:42:13+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-image-amd64.json",
-   "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
-   "status": "passed",
-   "counts": null,
-   "summary": "{\"release\": \"7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"checks\": [\"PASS: image builds (79 s)\", \"PASS: image is labelled with commit 7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"PASS: image size 302 MB\", \"PASS: image id 390a629596b886f42c2ed61039facffad8c552bc7493766b32fcbd18e0b4ec0e (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release 7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 25, \"failed\": 0}",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
-   "worktree_clean": true,
-   "limits": [
-    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
-    "seed data, not the full dataset; offline planner"
-   ],
-   "recorded_at": "2026-10-07T16:10:08+00:00",
-   "measures_candidate": true
-  },
-  {
-   "file": "evidence/runs/r5-final-ingestion.json",
+   "file": "evidence/runs/r5-candidate-ingestion.json",
    "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
    "status": "passed",
    "counts": {
-    "passed": 176
+    "passed": 177
    },
-   "summary": "176 passed in 18.37s",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "177 passed in 18.47s",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:01:37+00:00",
+   "recorded_at": "2026-10-08T08:37:17+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-npm-audit.json",
+   "file": "evidence/runs/r5-candidate-npm-audit.json",
    "claim": "No high or critical vulnerability in the production JavaScript dependencies",
    "status": "passed",
    "counts": null,
    "summary": "found 0 vulnerabilities",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:46+00:00",
+   "recorded_at": "2026-10-08T08:42:12+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-pip-audit.json",
+   "file": "evidence/runs/r5-candidate-pip-audit.json",
    "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)",
    "status": "passed",
    "counts": null,
    "summary": "No known vulnerabilities found",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:45+00:00",
+   "recorded_at": "2026-10-08T08:42:11+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-pytest.json",
-   "claim": "The full pytest suite passes",
+   "file": "evidence/runs/r5-candidate-pytest.json",
+   "claim": "The full pytest suite passes under the strict release gate, as CI runs it",
    "status": "passed",
    "counts": {
-    "passed": 2078
+    "passed": 2222
    },
-   "summary": "2078 passed, 5 warnings in 119.10s (0:01:59)",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "2222 passed, 5 warnings in 142.96s (0:02:22)",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:03:47+00:00",
+   "recorded_at": "2026-10-08T08:39:51+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-release-gate-selftest.json",
+   "file": "evidence/runs/r5-candidate-release-gate-selftest.json",
    "claim": "The release gate itself rejects unverified runs",
    "status": "passed",
    "counts": {
     "passed": 19
    },
-   "summary": "19 passed, 5 warnings in 4.83s",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "19 passed, 5 warnings in 4.73s",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:01+00:00",
+   "recorded_at": "2026-10-08T08:41:05+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-security.json",
+   "file": "evidence/runs/r5-candidate-security.json",
    "claim": "The security suite passes under the strict release gate at its CI floor",
    "status": "passed",
    "counts": {
-    "passed": 409
+    "passed": 433
    },
-   "summary": "409 passed in 33.33s",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "433 passed in 45.97s",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:01:18+00:00",
+   "recorded_at": "2026-10-08T08:36:57+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-unit-nodb.json",
+   "file": "evidence/runs/r5-candidate-unit-nodb.json",
    "claim": "With no PostgreSQL reachable, the whole unit suite passes",
    "status": "passed",
    "counts": {
-    "passed": 770
+    "passed": 832
    },
-   "summary": "770 passed, 5 warnings in 27.52s",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "832 passed, 5 warnings in 27.66s",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:04:26+00:00",
+   "recorded_at": "2026-10-08T08:40:29+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-final-web-build.json",
+   "file": "evidence/runs/r5-candidate-web-build.json",
    "claim": "The production frontend builds on Node 24 from the locked install",
    "status": "passed",
    "counts": null,
-   "summary": "\u2713 built in 231ms",
-   "sha": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+   "summary": "\u2713 built in 234ms",
+   "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-07T16:05:31+00:00",
+   "recorded_at": "2026-10-08T08:41:58+00:00",
    "measures_candidate": true
   }
  ],
  "tests": {
-  "junit": null
+  "junit": "evidence/runs/r5-candidate-pytest.junit.xml",
+  "by_category": {
+   "authorization_security": {
+    "tests": 361,
+    "passed": 361,
+    "meaning": "Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL."
+   },
+   "durability_recovery_concurrency": {
+    "tests": 107,
+    "passed": 107,
+    "meaning": "Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas."
+   },
+   "evaluation_harness": {
+    "tests": 112,
+    "passed": 112,
+    "meaning": "The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called."
+   },
+   "ingestion_contract": {
+    "tests": 187,
+    "passed": 187,
+    "meaning": "Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only."
+   },
+   "numerical_oracle": {
+    "tests": 115,
+    "passed": 115,
+    "meaning": "Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler."
+   },
+   "observability": {
+    "tests": 60,
+    "passed": 60,
+    "meaning": "Spans, metrics, log allowlisting and telemetry bounds, with in-memory exporters, a local receiver and simulated outages."
+   },
+   "planning_explain": {
+    "tests": 672,
+    "passed": 672,
+    "meaning": "Compiles a plan, passes the SQL validator and is PLANNED by PostgreSQL (EXPLAIN). No result value is checked: this establishes that combinations reach the database without error, not that any number is right."
+   },
+   "planning_semantics_unit": {
+    "tests": 450,
+    "passed": 450,
+    "meaning": "Deterministic plan, intent, entity, semantics, threshold, cohort and answer-shape logic without a database."
+   },
+   "release_tooling": {
+    "tests": 157,
+    "passed": 157,
+    "meaning": "The release gate, evidence records, documented counts, packaging, configuration encoding and the startup-refusal checker. Establishes the verification machinery, not product behaviour."
+   },
+   "rendering": {
+    "tests": 1,
+    "passed": 1,
+    "meaning": "What the response carries for display (chart metadata), from authorized rows."
+   }
+  },
+  "uncategorized_files": [],
+  "mapped_but_not_collected": [],
+  "files_in_two_categories": [],
+  "totals": {
+   "tests": 2222,
+   "passed": 2222
+  },
+  "record_counts": {
+   "passed": 2222
+  },
+  "junit_matches_record": true
  },
  "evaluations": [
   {
-   "set": "r5-final-eval-holdout.detail.json",
+   "set": "r5-candidate-eval-holdout.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "ab96e7f04dc6fa332a0a5c6fd183a5319fb7e7e338d1fdd45eb1ebbebc4c1917",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.1.0",
-   "dataset_id": "full-94491ffd38f6",
+   "prompt_version": "2.3.0",
+   "dataset_id": "full-db5c2f1f1651",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -430,40 +325,34 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-final-eval-holdout2.detail.json",
+   "set": "r5-candidate-eval-holdout2.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.1.0",
-   "dataset_id": "full-94491ffd38f6",
+   "prompt_version": "2.3.0",
+   "dataset_id": "full-db5c2f1f1651",
    "total": 12,
-   "passed": 11,
-   "failed": 1,
-   "failures": [
-    {
-     "id": "k-07",
-     "category": "wrong",
-     "reason": "plan.metric = 'volume_growth', expected 'paid_pack_units'"
-    }
-   ],
+   "passed": 12,
+   "failed": 0,
+   "failures": [],
    "by_category": {
-    "answer": 10,
+    "answer": 11,
     "refusal": 0,
     "unsupported": 1,
-    "wrong": 1,
+    "wrong": 0,
     "failure": 0
    },
    "detail_consistent": true
   },
   {
-   "set": "r5-final-eval-questions.detail.json",
+   "set": "r5-candidate-eval-questions.detail.json",
    "question_set_status": "regression",
    "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.1.0",
-   "dataset_id": "full-94491ffd38f6",
+   "prompt_version": "2.3.0",
+   "dataset_id": "full-db5c2f1f1651",
    "total": 38,
    "passed": 38,
    "failed": 0,
@@ -500,20 +389,20 @@
     {
      "file": "tests/security/test_checkpoint_loading.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 9,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/security/test_graph_durability.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 11,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/security/test_conversation_reliability.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 16,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -554,14 +443,14 @@
     {
      "file": "tests/unit/test_startup_refusal.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 9,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/security/test_startup_refusal.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 2,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -614,14 +503,14 @@
     {
      "file": "tests/integration/test_eval_terminal.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 2,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_eval_budget.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 31,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -672,20 +561,20 @@
     {
      "file": "tests/unit/test_live_adapter_contract.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 29,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/security/test_audit_contract.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 16,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_eval_budget.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 31,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -731,14 +620,14 @@
     {
      "file": "tests/unit/test_ingest_validation.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 50,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_ingest_contract.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 57,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -789,26 +678,26 @@
     {
      "file": "tests/unit/test_logs.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 13,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/security/test_log_hygiene.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 3,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_log_allowlist.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 7,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_log_registry.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 1,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -869,20 +758,20 @@
     {
      "file": "tests/unit/test_telemetry.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 20,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_ingest_observability.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 12,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_telemetry_outages.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 7,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -943,8 +832,8 @@
     {
      "file": "tests/unit/test_evidence_record_accuracy.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 16,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -977,7 +866,7 @@
     {
      "commit": "9519f28",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -999,7 +888,7 @@
     {
      "commit": "7bca4ca",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1026,7 +915,7 @@
     {
      "commit": "fce6b93",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1034,20 +923,20 @@
     {
      "file": "tests/unit/test_period_over_period.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 19,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_period_over_period_fixture.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 7,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_period_over_period_pipeline.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 3,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -1074,7 +963,7 @@
     {
      "commit": "eb3ba13",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1082,8 +971,8 @@
     {
      "file": "tests/integration/test_invariant_oracles.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 6,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -1111,7 +1000,7 @@
     {
      "commit": "fa02451",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1119,8 +1008,8 @@
     {
      "file": "tests/integration/test_fixture_profiles.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 32,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -1147,7 +1036,7 @@
     {
      "commit": "3cc4b14",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1155,26 +1044,26 @@
     {
      "file": "tests/integration/test_fixture_profiles.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 32,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/integration/test_classification_authority.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 2,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_classification_mapping.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 16,
+     "all_passed_on_candidate": true
     },
     {
      "file": "tests/unit/test_semantics.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 44,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -1201,7 +1090,7 @@
     {
      "commit": "2cc7bd9",
      "exists": true,
-     "in_candidate": false,
+     "in_candidate": true,
      "in_head": true
     }
    ],
@@ -1209,8 +1098,8 @@
     {
      "file": "tests/integration/test_calendar_convention_at_load.py",
      "exists": true,
-     "collected": 0,
-     "all_passed_on_candidate": false
+     "collected": 3,
+     "all_passed_on_candidate": true
     }
    ],
    "reproductions": [
@@ -1227,6 +1116,242 @@
      "measured": "b7aa31e608c0",
      "worktree_clean": true,
      "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "telemetry-process-identity",
+   "title": "Two processes of one release (replicas, or the image's uvicorn --workers 2) exported the same metric series: the resource was service.name and service.version only, so each export overwrote the other's running total",
+   "fix_commits": [
+    {
+     "commit": "4187419",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_telemetry_identity.py",
+     "exists": true,
+     "collected": 1,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-telemetry-identity-reproduced.json",
+     "baseline": "c2e5915",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed in 0.23s",
+     "measured": "c2e5915f981f",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "alerts-that-could-not-fire",
+   "title": "Alerting checked only on paper: in the local drill (6 of 13 scenarios passed) a single audit loss, database error or pool timeout never paged (a counter first seen at its first increment is invisible to increase()), BatchRejected never fired (it read counters of the one-shot jobs process, exported once and expired), and a collector outage left no log line",
+   "fix_commits": [
+    {
+     "commit": "4187419",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_telemetry.py",
+     "exists": true,
+     "collected": 20,
+     "all_passed_on_candidate": true
+    },
+    {
+     "file": "tests/integration/test_ingest_observability.py",
+     "exists": true,
+     "collected": 12,
+     "all_passed_on_candidate": true
+    },
+    {
+     "file": "tests/unit/test_alert_rules.py",
+     "exists": true,
+     "collected": 3,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-drill-findings-reproduced.json",
+     "baseline": "b974af7",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 3
+     },
+     "summary": "3 failed in 0.19s",
+     "measured": "b974af7d35f2",
+     "worktree_clean": true,
+     "dirty_files": 0
+    },
+    {
+     "artifact": "evidence/runs/r5-ops-drill-before.json",
+     "baseline": "b974af7",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "drill: 6 passed, 7 failed -> /Users/manideep/src/pac-work/step6/r5-ops-drill-before.detail.json",
+     "measured": "b974af7d35f2",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "the drill itself (scripts/ops_drill.py) against a real collector and Prometheus; 6 passed, 7 failed"
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "collector-local-files",
+   "title": "The deployable collector configuration wrote every span and metric to local files (to /tmp by default) although its header said only when PAC_OTEL_FILE_DIR was set; and its file exporter truncated at each start, so the drill's sentinel scan covered only exports after the collector restart, not every exported trace as stated",
+   "fix_commits": [
+    {
+     "commit": "fba626c",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_collector_config.py",
+     "exists": true,
+     "collected": 2,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-collector-files-reproduced.json",
+     "baseline": "952c6a9",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 2
+     },
+     "summary": "2 failed in 0.06s",
+     "measured": "952c6a9f8e08",
+     "worktree_clean": true,
+     "dirty_files": 0
+    },
+    {
+     "artifact": "evidence/runs/r5-collector-restart-reproduced.json",
+     "baseline": "952c6a9",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "{\"configs\": [\"deploy/observability/otel-collector.yaml\"], \"bytes_before_restart\": 374, \"bytes_after_restart\": 374, \"first_span_kept\": false, \"second_span_written\": true}",
+     "measured": "952c6a9f8e08",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "evidence/probes/collector_restart_keeps_exports.py: the real collector, a span before a restart lost after it"
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "log-error-type-generic",
+   "title": "A database error was logged with error type Exception: the refused audit insert (InsufficientPrivilege) read the same as a lost connection or a constraint violation",
+   "fix_commits": [
+    {
+     "commit": "9fb1d1f",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_logs.py",
+     "exists": true,
+     "collected": 13,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-log-error-type-reproduced.json",
+     "baseline": "7366937",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed in 0.05s",
+     "measured": "7366937daa68",
+     "worktree_clean": true,
+     "dirty_files": 0
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "restore-new-cluster-procedure",
+   "title": "RUNBOOK \u00a78's restore into a new cluster (bootstrap_db.py, then pg_restore) exited with 142 errors and restored no conversation, turn, run, attempt or clarification, while the database reported ready and answered questions; a stored answer was recomputed rather than replayed",
+   "fix_commits": [
+    {
+     "commit": "6ced978",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-restore-new-cluster-reproduced.json",
+     "baseline": "4be5d4e",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "{\"mode\": \"new_cluster\", \"source\": \"pac_release\", \"copy\": \"pharma_analytics_restored_src\", \"target\": \"pharma_analytics_restored\", \"procedure\": {\"roles_seconds\": 0.43, \"roles_exit\": 0, \"restore_seconds\": 42.44, \"restore_exit\": 1, \"restore_errors\": 142, \"first_errors\": [\"pg_restore: error: could not execute query: ERROR:  schema \\\"app_auth\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_conv\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_graph\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_ingest\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_meta\\\" already exists\"]}, \"dump_mb\": 39.8, \"timings\": {\"copy_source_seconds\": 14.55, \"dump_seconds\": 3.22, \"new_cluster_seconds\": 0.5, \"restore_to_ready_seconds\": 46.3}, \"checks\": {\"restore_clean\": false, \"row_counts_match\": false, \"generation_matches\": true, \"policies_and_rls_match\": true, \"grants_match\": true, \"memberships_match\": true, \"logins_can_connect\": true, \"boundary_intact\": true, \"ready\": true, \"answers_match\": true, \"cutoff_matches\": false, \"stored_answer_replays\": false, \"paused_clarification_resumes\": false}, \"errors\": {}, \"state\": {\"left\": {\"answered\": \"answered\", \"paused\": \"clarify\"}, \"after_restore\": {\"replayed\": false, \"replay_status\": \"answered\", \"replay_headline\": \"Gross revenue (wac): $250,766,926.42.\", \"resumed\": \"ConversationAccessError\"}}, \"cutoff\": {\"source_copy\": {\"audit\": \"2026-10-07 23:10:49.625907-04:00\", \"turn\": \"2026-10-07 23:10:49.624362-04:00\", \"run\": \"2026-10-07 23:10:49.320015-04:00\", \"dataset_published\": \"2026-10-07 21:58:43.297609-04:00\", \"sales_through\": \"2026-09-18\"}, \"restored\": {\"audit\": \"2026-10-07 23:10:49.625907-04:00\", \"turn\": null, \"run\": null, \"dataset_published\": \"2026-10-07 21:58:43.297609-04:00\", \"sales_through\": \"2026-09-18\"}}, \"sales_rows\": 2000000, \"differences\": {\"app_conv.conversations\": [80, 0], \"app_conv.turns\": [62, 0], \"app_conv.runs\": [81, 0], \"app_conv.run_attempts\": [83, 0], \"app_conv.clarifications\": [1, 0]}, \"memberships\": [\"pac_auth_login -> pac_auth\", \"pac_exec_login -> pac_rt_exec\", \"pac_scoped_login -> pac_rt_scoped\"], \"answers\": {\"exec: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 526,836 packs.\", 1], \"exec: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,811 packs.\", 10], \"exec: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 15 row(s).\", 15], \"ram: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 38,242 packs.\", 1], \"ram: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Jubilee Clinical Network leads with 1,766 packs.\", 10], \"ram: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 1 row(s).\", 1]}}",
+     "measured": "4be5d4e12f49",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "scripts/restore_drill.py --new-cluster following the documented procedure; the drill itself is the regression check (r5-restore-new-cluster-fixed.json), not a pytest file"
+    }
+   ],
+   "verified_by": null
+  },
+  {
+   "id": "ci-full-suite-not-strict",
+   "title": "CI's Full test suite step ran without the release gate: the tests on the coherent-market fixture database (the k-07 regressions among them) skipped on an empty fixture and the step stayed green",
+   "fix_commits": [
+    {
+     "commit": "03316f3",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-ci-full-suite-gate-reproduced.json",
+     "baseline": "cff458e",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "{\"step\": \"python -m pytest tests/integration/test_period_over_period_fixture.py -q\", \"empty_fixture_db\": {\"exit\": 0, \"counts\": {\"skipped\": 7}}, \"with_fixture_db\": {\"exit\": 0, \"counts\": {\"passed\": 7}}, \"step_notices_skipped_tests\": false}",
+     "measured": "cff458e33636",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push"
     }
    ],
    "verified_by": null
@@ -1273,17 +1398,10 @@
   ]
  },
  "missing": [
-  "full-suite JUnit for the candidate (not given)",
   "r5-original-reproductions.json hashes r5-reproduced.log, which is not preserved",
   "r5-original-reproductions.json hashes r5-logging-reproduced.log, which is not preserved",
   "r5-original-reproductions.json hashes r5-telemetry-reproduced.log, which is not preserved",
   "r5-original-reproductions.json hashes r5-ci-reproduced.json, which is not preserved"
  ],
- "problems": [
-  "k07-period-over-period: fix commit fce6b93 is after the candidate and nothing verifies it",
-  "segment-share-population: fix commit eb3ba13 is after the candidate and nothing verifies it",
-  "territory-name-scope: fix commit fa02451 is after the candidate and nothing verifies it",
-  "classification-by-elimination: fix commit 3cc4b14 is after the candidate and nothing verifies it",
-  "calendar-not-extendable-at-load: fix commit 2cc7bd9 is after the candidate and nothing verifies it"
- ]
+ "problems": []
 }

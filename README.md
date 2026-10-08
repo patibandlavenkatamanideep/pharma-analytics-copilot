@@ -2,12 +2,16 @@
 
 ### 🔗 Live (historical deployment of the submitted build): **https://44-217-117-172.sslip.io**
 
-> **This branch** (`post-assessment/release-risks`, which continues
-> `post-assessment/production-readiness`) is post-submission engineering.
-> The live URL runs an earlier build (commit `7aae7cf`), and none of this
-> branch is deployed. What this branch establishes, and what it does not, is in
-> **[`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md)**. It is not
-> production-ready, and that document says exactly why.
+> **This branch** (`codex/release-defects-oct06`, from `codex/nl2sql-readiness`)
+> is post-submission engineering. The live URL runs an earlier build (commit
+> `7aae7cf`), and none of this branch is deployed; GitHub has it up to
+> `69c62de`, and the commits after that are local. What it establishes, and
+> what it does not: **[`docs/QUALIFICATION_2026_10_07.md`](docs/QUALIFICATION_2026_10_07.md)**
+> (the qualification pass, step by step), [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md)
+> (generated from the records) and [`docs/RELEASE_HANDOFF.md`](docs/RELEASE_HANDOFF.md)
+> (the candidate, its CI path and what is deferred). Earlier records are in
+> [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). It is not
+> production-ready, and those documents say exactly why.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is

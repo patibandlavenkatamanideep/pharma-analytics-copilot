@@ -618,7 +618,7 @@ browser ──HTTPS──▶ Caddy ──▶ app (uvicorn, 2 workers)           
 
 | Verification | Status | Exactly what is needed, and the command |
 |---|---|---|
-| Hosted CI | Defined; never run on this branch | Authorization to push. Then: `git push origin post-assessment/release-risks` (CI starts on the push), `gh run watch`, and compare the image id and digest that CI built and scanned with any image later deployed |
+| Hosted CI | Defined; never run on this branch | Authorization to push. The current branch is `codex/release-defects-oct06`; its push procedure is in [RELEASE_HANDOFF.md](RELEASE_HANDOFF.md#pushing-when-authorized-not-done-here) (the command for `post-assessment/release-risks` that stood here is retired) |
 | Live evaluation of prompt 2.1.0 | Implemented and budget-bounded; never run | AWS credentials with Bedrock access to `us.anthropic.claude-opus-4-5-20251101-v1:0`, the contracted per-million-token rates, and approved caps. The commands are below |
 | A fresh, independent holdout | Not started | Questions and expected answers written by someone who has not seen the development sets, marked `status: "holdout"`, frozen with `scripts/freeze_holdout.py <file>`, and `evals/frozen.json` committed **before** the first run. Any written by this work would not be independent |
 | Staging and deployment parity | Nothing deployed | A staging environment and authorization to deploy this branch's CI-built image by digest; then [STAGING_VERIFICATION.md](STAGING_VERIFICATION.md) |

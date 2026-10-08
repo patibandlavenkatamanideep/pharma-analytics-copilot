@@ -1,0 +1,58 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T08:28:07+00:00",
+  "claim": "Reproduction at cff458e: CI's Full test suite step, as written, exits 0 when the fixture-dependent tests (the k-07 regressions) all skip on an empty fixture database",
+  "application": {
+    "sha": "cff458e336366404b9796ab05070d973fd0c27a4",
+    "tree": "f3f864fc827f0485071f28122940642dd11bddd4",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/ci_full_suite_gate.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.01
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"step\": \"python -m pytest tests/integration/test_period_over_period_fixture.py -q\", \"empty_fixture_db\": {\"exit\": 0, \"counts\": {\"skipped\": 7}}, \"with_fixture_db\": {\"exit\": 0, \"counts\": {\"passed\": 7}}, \"step_notices_skipped_tests\": false}"
+  },
+  "artifacts": [],
+  "limits": [
+    "the step's command run locally on one module; not a hosted CI run"
+  ]
+}

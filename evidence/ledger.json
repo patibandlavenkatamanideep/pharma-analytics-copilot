@@ -409,6 +409,21 @@
           "note": "scripts/restore_drill.py --new-cluster following the documented procedure; the drill itself is the regression check (r5-restore-new-cluster-fixed.json), not a pytest file"
         }
       ]
+    },
+    {
+      "id": "ci-full-suite-not-strict",
+      "title": "CI's Full test suite step ran without the release gate: the tests on the coherent-market fixture database (the k-07 regressions among them) skipped on an empty fixture and the step stayed green",
+      "fix_commits": [
+        "03316f3"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ci-full-suite-gate-reproduced.json",
+          "baseline": "cff458e",
+          "note": "evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push"
+        }
+      ]
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
