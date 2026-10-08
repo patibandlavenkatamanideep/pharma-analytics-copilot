@@ -1,0 +1,463 @@
+{
+ "region": "us-east-1",
+ "source": "AWS Price List bulk API, https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/index.json",
+ "offers": {
+  "AWSBudgets": {
+   "offerCode": "AWSBudgets",
+   "version": "20260911124529",
+   "publicationDate": "2026-09-11T12:45:29Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSBudgets/20260911124529/aws-other/index.json",
+   "sha256": "ba6647a1ca54cd1aa7b21e8ab5203b3f604f9e606822353b6eace5826cbc80e3",
+   "bytes": 4433
+  },
+  "AWSDataTransfer": {
+   "offerCode": "AWSDataTransfer",
+   "version": "20260916132208",
+   "publicationDate": "2026-09-16T13:22:08Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSDataTransfer/20260916132208/us-east-1/index.json",
+   "sha256": "00f81657d01946d02c905e32ca87cc6c23720b5de079b90fef5775243abcee80",
+   "bytes": 1468865
+  },
+  "AWSELB": {
+   "offerCode": "AWSELB",
+   "version": "20260911124544",
+   "publicationDate": "2026-09-11T12:45:44Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSELB/20260911124544/us-east-1/index.json",
+   "sha256": "c34f95e97c33d8b32b25eecb2e2008ba651a11ba3bc69794200f5749dcb9d463",
+   "bytes": 19068
+  },
+  "AWSSecretsManager": {
+   "offerCode": "AWSSecretsManager",
+   "version": "20260911124610",
+   "publicationDate": "2026-09-11T12:46:10Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AWSSecretsManager/20260911124610/us-east-1/index.json",
+   "sha256": "496d97748defb355700e90a56d999d9170be82b1e8afa6a099b3998accf113b3",
+   "bytes": 2904
+  },
+  "AmazonBedrockFoundationModels": {
+   "offerCode": "AmazonBedrockFoundationModels",
+   "version": "20261007183733",
+   "publicationDate": "2026-10-07T18:37:33Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/20261007183733/us-east-1/index.json",
+   "sha256": "d2cb7f0f0530586720a3cd92f6f5ead7a56eb6675489bf13435e15e1f7d80a84",
+   "bytes": 524412
+  },
+  "AmazonCloudWatch": {
+   "offerCode": "AmazonCloudWatch",
+   "version": "20261007115540",
+   "publicationDate": "2026-10-07T11:55:40Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonCloudWatch/20261007115540/us-east-1/index.json",
+   "sha256": "56cc88ec0074530e7a14c232c17e3bda0807468f1724c6a746e19f0f0330f5f5",
+   "bytes": 209537
+  },
+  "AmazonEC2-natgateway": {
+   "offerCode": "AmazonEC2",
+   "version": "20261007165408",
+   "publicationDate": "2026-10-07T16:54:08Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20261007165408/us-east-1/index.csv",
+   "sha256": "49879bc9fbabc794d6a123140ebd1d66acfedd8d7939fd830f0bec4f93c23cbe",
+   "bytes": 5007,
+   "note": "the NAT gateway rows of the AmazonEC2 us-east-1 CSV (the full file is several GB); its header lines, version included, are kept"
+  },
+  "AmazonECR": {
+   "offerCode": "AmazonECR",
+   "version": "20260911124425",
+   "publicationDate": "2026-09-11T12:44:25Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECR/20260911124425/us-east-1/index.json",
+   "sha256": "d3c56f6e2ca6d934398b32ae3c4bc21e59e741ebb877586edd8764b49a1a5edb",
+   "bytes": 5836
+  },
+  "AmazonECS": {
+   "offerCode": "AmazonECS",
+   "version": "20260911124425",
+   "publicationDate": "2026-09-11T12:44:25Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonECS/20260911124425/us-east-1/index.json",
+   "sha256": "36c229a6f64580ceed6389d2cf2f267bc7e872eff347a39ae6993cc7cab08c99",
+   "bytes": 1206040
+  },
+  "AmazonPrometheus": {
+   "offerCode": "AmazonPrometheus",
+   "version": "20260911124459",
+   "publicationDate": "2026-09-11T12:44:59Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonPrometheus/20260911124459/us-east-1/index.json",
+   "sha256": "0224aef3ae7c3f9fa7458ede6b6dcb96c20b2ec29aa35516066981994760b2bf",
+   "bytes": 12342
+  },
+  "AmazonRDS": {
+   "offerCode": "AmazonRDS",
+   "version": "20261006224050",
+   "publicationDate": "2026-10-06T22:40:50Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20261006224050/us-east-1/index.json",
+   "sha256": "79222b863d148fa1d3178a36440c0811e3aa489ae04af8a10e4aa56a26a8ae0b",
+   "bytes": 27411603
+  },
+  "AmazonVPC": {
+   "offerCode": "AmazonVPC",
+   "version": "20260917190528",
+   "publicationDate": "2026-09-17T19:05:28Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonVPC/20260917190528/us-east-1/index.json",
+   "sha256": "0c2d9d88dedc3ebb425a97c11a316f4e708945b6a6dd79955f52efd78ff0a42e",
+   "bytes": 80535
+  },
+  "awskms": {
+   "offerCode": "awskms",
+   "version": "20260911124601",
+   "publicationDate": "2026-09-11T12:46:01Z",
+   "url": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/awskms/20260911124601/us-east-1/index.json",
+   "sha256": "5d3a92a5efff96123b2197bc7575c0a79598ceca0d1abe3d695c0588ba8ea1d0",
+   "bytes": 10205
+  }
+ },
+ "prices": {
+  "fargate_vcpu_hour": {
+   "offer": "AmazonECS",
+   "usd": "0.0404800000",
+   "unit": "hours",
+   "sku": "8CESGAFWKAJ98PME",
+   "usagetype": "USE1-Fargate-vCPU-Hours:perCPU",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Fargate - vCPU - US East (N.Virginia)"
+  },
+  "fargate_gb_hour": {
+   "offer": "AmazonECS",
+   "usd": "0.0044450000",
+   "unit": "hours",
+   "sku": "PBZNQUSEXZUC34C9",
+   "usagetype": "USE1-Fargate-GB-Hours",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Fargate - Memory  - US East (N.Virginia)"
+  },
+  "fargate_storage_gb_hour": {
+   "offer": "AmazonECS",
+   "usd": "0.0001110000",
+   "unit": "GB-Hours",
+   "sku": "7KPDPTDSCT4J3Z64",
+   "usagetype": "USE1-Fargate-EphemeralStorage-GB-Hours",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Fargate - Ephemeral Storage - US East (N. Virginia)"
+  },
+  "alb_hour": {
+   "offer": "AWSELB",
+   "usd": "0.0225000000",
+   "unit": "Hrs",
+   "sku": "37CUWUT8GSNQEPUV",
+   "usagetype": "LoadBalancerUsage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.0225 per Application LoadBalancer-hour (or partial hour)"
+  },
+  "alb_lcu_hour": {
+   "offer": "AWSELB",
+   "usd": "0.0080000000",
+   "unit": "LCU-Hrs",
+   "sku": "P2XGEJ8N3KU52WA8",
+   "usagetype": "LCUUsage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.008 per used Application load balancer capacity unit-hour (or partial hour)"
+  },
+  "rds_t4g_micro_single_hour": {
+   "offer": "AmazonRDS",
+   "usd": "0.0160000000",
+   "unit": "Hrs",
+   "sku": "9HPEGXQTDDGH53C9",
+   "usagetype": "InstanceUsage:db.t4g.micro",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$ 0.016 per RDS db.t4g.micro Single-AZ instance hour (or partial hour) running PostgreSQL"
+  },
+  "rds_t4g_small_single_hour": {
+   "offer": "AmazonRDS",
+   "usd": "0.0320000000",
+   "unit": "Hrs",
+   "sku": "S9H3AXMBHSKRFJTA",
+   "usagetype": "InstanceUsage:db.t4g.small",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$ 0.032 per RDS db.t4g.small Single-AZ instance hour (or partial hour) running PostgreSQL"
+  },
+  "rds_t4g_small_multi_hour": {
+   "offer": "AmazonRDS",
+   "usd": "0.0650000000",
+   "unit": "Hrs",
+   "sku": "5SY529FVXY3EARD8",
+   "usagetype": "Multi-AZUsage:db.t4g.small",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$ 0.065 per RDS db.t4g.small Multi-AZ instance hour (or partial hour) running PostgreSQL"
+  },
+  "rds_gp3_single_gb_month": {
+   "offer": "AmazonRDS",
+   "usd": "0.1150000000",
+   "unit": "GB-Mo",
+   "sku": "KYVYY29G957PKY3B",
+   "usagetype": "RDS:GP3-Storage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.115 per GB-month of provisioned GP3 storage running PostgreSQL"
+  },
+  "rds_gp3_multi_gb_month": {
+   "offer": "AmazonRDS",
+   "usd": "0.2300000000",
+   "unit": "GB-Mo",
+   "sku": "J7S7KD4WFDNQWKNX",
+   "usagetype": "RDS:Multi-AZ-GP3-Storage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.23 per GB-month of provisioned GP3 storage for Multi-AZ deployments running PostgreSQL"
+  },
+  "rds_backup_gb_month": {
+   "offer": "AmazonRDS",
+   "usd": "0.0950000000",
+   "unit": "GB-Mo",
+   "sku": "6W8ECRFVDATCER7J",
+   "usagetype": "RDS:ChargedBackupUsage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.095 per additional GB-month of backup storage exceeding free allocation running PostgreSQL"
+  },
+  "rds_t4g_cpu_credit_vcpu_hour": {
+   "offer": "AmazonRDS",
+   "usd": "0.0750000000",
+   "unit": "vCPU-Hours",
+   "sku": "DXW9ERDR4STYT9D7",
+   "usagetype": "CPUCredits:db.t4g",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "USD 0.075 per vCPU-Hour of T4g CPU Credits"
+  },
+  "public_ipv4_hour": {
+   "offer": "AmazonVPC",
+   "usd": "0.0050000000",
+   "unit": "Hrs",
+   "sku": "4GQUNXTFWVSGPUZK",
+   "usagetype": "USE1-PublicIPv4:InUseAddress",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.005 per In-use public IPv4 address per hour"
+  },
+  "vpc_endpoint_hour": {
+   "offer": "AmazonVPC",
+   "usd": "0.0100000000",
+   "unit": "Hrs",
+   "sku": "EN2N5TATXE673A3B",
+   "usagetype": "USE1-VpcEndpoint-Hours",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.01 per VPC Endpoint Hour"
+  },
+  "vpc_endpoint_gb": {
+   "offer": "AmazonVPC",
+   "usd": "0.0100000000",
+   "unit": "GB",
+   "sku": "DQYYEZBCWSW5XS2R",
+   "usagetype": "USE1-VpcEndpoint-Bytes",
+   "beginRange": "0",
+   "endRange": "1048576",
+   "description": "$0.01 per GB for upto 1 PB monthly data processed by VPC Endpoints"
+  },
+  "nat_hour": {
+   "offer": "AmazonEC2-natgateway",
+   "usd": "0.0450000000",
+   "unit": "Hrs",
+   "sku": "M2YSHUBETB3JX4M4",
+   "usagetype": "NatGateway-Hours",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.045 per NAT Gateway Hour"
+  },
+  "nat_gb": {
+   "offer": "AmazonEC2-natgateway",
+   "usd": "0.0450000000",
+   "unit": "GB",
+   "sku": "59S5R83GFPUAGVR5",
+   "usagetype": "NatGateway-Bytes",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.045 per GB Data Processed by NAT Gateways"
+  },
+  "secret_month": {
+   "offer": "AWSSecretsManager",
+   "usd": "0.4000000000",
+   "unit": "Secrets",
+   "sku": "BJ3PQ9BYGU6P632F",
+   "usagetype": "USE1-AWSSecretsManager-Secrets",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.40 per Secret"
+  },
+  "secret_api_request": {
+   "offer": "AWSSecretsManager",
+   "usd": "0.0000050000",
+   "unit": "API Requests",
+   "sku": "4MDZ5VNEJPMUTG9B",
+   "usagetype": "USE1-AWSSecretsManagerAPIRequest",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.05 per 10000 API Requests"
+  },
+  "kms_request": {
+   "offer": "awskms",
+   "usd": "0.0000030000",
+   "unit": "Requests",
+   "sku": "MFEBZPX8NHM5FY7Z",
+   "usagetype": "us-east-1-KMS-Requests",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.03 per 10000 KMS requests in US East (N. Virginia)"
+  },
+  "ecr_gb_month": {
+   "offer": "AmazonECR",
+   "usd": "0.1000000000",
+   "unit": "GB-Mo",
+   "sku": "KJC988R4J65BDMTQ",
+   "usagetype": "TimedStorage-ByteHrs",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.10 per GB-month of data storage"
+  },
+  "logs_ingest_gb": {
+   "offer": "AmazonCloudWatch",
+   "usd": "0.5000000000",
+   "unit": "GB",
+   "sku": "96K55R2PV3ZZZ3AM",
+   "usagetype": "DataProcessing-Bytes",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.50 per GB custom log data ingested in Standard log class - US East (Northern Virginia)"
+  },
+  "logs_vended_gb": {
+   "offer": "AmazonCloudWatch",
+   "usd": "0.5000000000",
+   "unit": "GB",
+   "sku": "GHRXAWYBWDN7X39F",
+   "usagetype": "USE1-VendedLog-Bytes",
+   "beginRange": "0",
+   "endRange": "10240",
+   "description": "$0.50 per GB of vended logs ingested in Standard log class for the first 10TB - US East (Northern Virginia)"
+  },
+  "logs_storage_gb_month": {
+   "offer": "AmazonCloudWatch",
+   "usd": "0.0300000000",
+   "unit": "GB-Mo",
+   "sku": "JRHJQ2UMPUB5K73A",
+   "usagetype": "TimedStorage-ByteHrs",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.03 per GB-mo of log storage - US East (Northern Virginia)"
+  },
+  "amp_sample_free_tier": {
+   "offer": "AmazonPrometheus",
+   "usd": "0.0000000000",
+   "unit": "Metric Datapoints",
+   "sku": "HK3HTFXKS6PAXA6X",
+   "usagetype": "USE1-AMP:MetricSampleCount",
+   "beginRange": "0",
+   "endRange": "40000000",
+   "description": "$0.00 per metric samples for first 40M in US East (N. Virginia)"
+  },
+  "amp_sample": {
+   "offer": "AmazonPrometheus",
+   "usd": "0.0000000900",
+   "unit": "Metric Datapoints",
+   "sku": "HK3HTFXKS6PAXA6X",
+   "usagetype": "USE1-AMP:MetricSampleCount",
+   "beginRange": "40000000",
+   "endRange": "2000000000",
+   "description": "$0.90 per 10M metric samples up to 2B metric samples in US East (N. Virginia)"
+  },
+  "amp_query_sample": {
+   "offer": "AmazonPrometheus",
+   "usd": "0.0000000001",
+   "unit": "Metric Datapoints",
+   "sku": "X758FD8M7X4BMJUB",
+   "usagetype": "USE1-AMP:QuerySamplesProcessed",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.10 per 1B query samples processed in US East (N. Virginia)"
+  },
+  "amp_storage_free_tier": {
+   "offer": "AmazonPrometheus",
+   "usd": "0.0000000000",
+   "unit": "GB-Mo",
+   "sku": "6ATFFWG7N7GVWB4J",
+   "usagetype": "USE1-AMP:MetricStorageByteHrs",
+   "beginRange": "0",
+   "endRange": "10",
+   "description": "$0.00 per GB-Mo for the first 10GB per month of storage in US East (N. Virginia)"
+  },
+  "data_out_gb": {
+   "offer": "AWSDataTransfer",
+   "usd": "0.0900000000",
+   "unit": "GB",
+   "sku": "HQEH3ZWJVT46JHRG",
+   "usagetype": "DataTransfer-Out-Bytes",
+   "beginRange": "0",
+   "endRange": "10240",
+   "description": "$0.090 per GB - first 10 TB / month data transfer out beyond the global free tier"
+  },
+  "data_cross_az_gb": {
+   "offer": "AWSDataTransfer",
+   "usd": "0.0100000000",
+   "unit": "GB",
+   "sku": "PNUBVW4CPC8XA46W",
+   "usagetype": "DataTransfer-Regional-Bytes",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.010 per GB - regional data transfer - in/out/between EC2 AZs or using elastic IPs or ELB"
+  },
+  "budget_day": {
+   "offer": "AWSBudgets",
+   "usd": "0.0000000000",
+   "unit": "Budget-days",
+   "sku": "T2UVJ9XYT52FBFAF",
+   "usagetype": "BudgetsUsage",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "$0.00 for Budget-days"
+  },
+  "opus45_in_geo_mtok": {
+   "offer": "AmazonBedrockFoundationModels",
+   "usd": "5.5000000000",
+   "unit": "1M tokens",
+   "sku": "YKNFEHQXMAYYRR5M",
+   "usagetype": "USE1-MP:USE1_InputTokenCount-Units",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Marketplace software usage|us-east-1|Million Input Tokens Regional"
+  },
+  "opus45_out_geo_mtok": {
+   "offer": "AmazonBedrockFoundationModels",
+   "usd": "27.5000000000",
+   "unit": "1M tokens",
+   "sku": "FSNAMK2ES87BP8E6",
+   "usagetype": "USE1-MP:USE1_OutputTokenCount-Units",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Marketplace software usage|us-east-1|Million Response Tokens Regional"
+  },
+  "opus45_in_global_mtok": {
+   "offer": "AmazonBedrockFoundationModels",
+   "usd": "5.0000000000",
+   "unit": "1M tokens",
+   "sku": "SBNJ7M4RMAH648T8",
+   "usagetype": "USE1-MP:USE1_InputTokenCount_Global-Units",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Marketplace software usage|us-east-1|Million Input Tokens Global"
+  },
+  "opus45_out_global_mtok": {
+   "offer": "AmazonBedrockFoundationModels",
+   "usd": "25.0000000000",
+   "unit": "1M tokens",
+   "sku": "2QQDH5VJYCF777TE",
+   "usagetype": "USE1-MP:USE1_OutputTokenCount_Global-Units",
+   "beginRange": "0",
+   "endRange": "Inf",
+   "description": "AWS Marketplace software usage|us-east-1|Million Response Tokens Global"
+  }
+ }
+}
