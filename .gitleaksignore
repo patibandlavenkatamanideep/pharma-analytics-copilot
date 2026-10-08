@@ -4,7 +4,7 @@
 58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:201
 # The same public value (GPG_KEY 7169605F62C751356D054A26A821E680E5FA6305, the
 # CPython release signing key) in the 84dfc1e candidate's trivy reports,
-# committed in ef061f1 and later moved to evidence/release/ (a pure rename
+# committed in ef061f1 and later moved beside the records (a pure rename
 # adds no lines). Exact findings only.
 ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:50
 ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:201

@@ -48,7 +48,7 @@ SHA. A pull request to `main`, and any merge, need their own authorization.
 
 The bundle, its SHA-256 and a short inventory are delivered side by side, outside the
 repository: a file inside the bundle cannot carry the bundle's own checksum. The release
-manifest inside it (`evidence/release/manifest.json`) identifies the candidate, its
+manifest inside it (`evidence/runs/r5-manifest-84dfc1e.json`) identifies the candidate, its
 records, the image and the scans.
 
 ```bash

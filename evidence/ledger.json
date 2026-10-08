@@ -438,7 +438,8 @@
           "baseline": "47bf736",
           "note": "gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json"
         }
-      ]
+      ],
+      "verified_by": "evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242)"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

@@ -487,7 +487,7 @@ Node 24; the web build; 10 browser journeys in Chromium; pip-audit, `npm audit` 
 gitleaks over the history, clean; the linux/amd64 image, 25 checks (emulated with
 Rosetta in an arm64 podman VM).
 
-**Release manifest** (`evidence/release/manifest.json`, `scripts/release_manifest.py`):
+**Release manifest** (`evidence/runs/r5-manifest-84dfc1e.json`, `scripts/release_manifest.py`):
 the commit and tree; the SHA-256 of `requirements.lock`, `pyproject.toml`,
 `web/package-lock.json`, `web/package.json`, `Dockerfile` and `.dockerignore` as
 committed; the contract versions and prompt fingerprint (`5dd66431f2ba8230`); each
@@ -500,8 +500,8 @@ index for a single-platform build); trivy 0.58.1 with its database updated
 fix: passed, 0 findings) and the complete counts, none fixable: HIGH 44, MEDIUM 58, LOW
 61, UNKNOWN 2, CRITICAL 0; the reviewed exceptions (two exact gitleaks fingerprints,
 SUPPLY_CHAIN.md); the last hosted run; and the paths after the candidate, each classed:
-**no build input changed**. The scan reports are `evidence/release/trivy-gate.json`,
-`trivy-full.json` and `trivy-db.json`. The policy statement stays what the gate establishes: no
+**no build input changed**. The scan reports are `evidence/runs/r5-scan-84dfc1e-trivy-gate.json`,
+`-trivy-full.json` and `-trivy-db.json`. The policy statement stays what the gate establishes: no
 HIGH or CRITICAL vulnerability with a fix available; 44 HIGH without a fix remain in the
 base image's packages.
 
