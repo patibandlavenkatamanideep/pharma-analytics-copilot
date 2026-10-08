@@ -59,13 +59,24 @@ COPY scripts/ ./scripts/
 COPY pyproject.toml README.md ./
 COPY --from=web /build/dist ./web/dist
 
+# Amazon RDS's certificate authorities (pinned: deploy/aws/README.md), so a
+# managed database is reached with PGSSLMODE=verify-full and
+# PGSSLROOTCERT=/etc/ssl/certs/rds-global-bundle.pem. Public certificates.
+COPY deploy/aws/rds-global-bundle.pem /etc/ssl/certs/rds-global-bundle.pem
+
 # Run as a non-root user. Nothing in the image needs to write to it.
 # And no setuid or setgid file: the application never mounts, switches user or
 # changes a password, and a setuid-root mount, umount, su or newgrp (util-linux,
 # with open HIGH advisories in the image scan) would be a way from a
 # compromised application process to root.
-RUN useradd --system --uid 10001 --home /app appuser && chown -R appuser /app \
+RUN useradd --system --uid 10001 --home /app appuser \
+ && mkdir -p /app/schema/generated && chown -R appuser /app \
  && find / -xdev -type f -perm /6000 -exec chmod a-s {} +
+# The only path anything writes to: the one-shot task that generates the full
+# synthetic dataset (schema/generate_data.py). Deployed with a read-only root
+# filesystem, it is a volume, and a volume keeps this directory's owner.
+# Serving, migrations and the seed load write nothing.
+VOLUME ["/app/schema/generated"]
 USER appuser
 
 EXPOSE 8000

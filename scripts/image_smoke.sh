@@ -59,6 +59,11 @@ app_env=(-e PAC_DB_HOST="$DB" -e PAC_ENVIRONMENT=cloud -e PAC_LLM_PROVIDER=offli
          -e PAC_DB_AUTH_PASSWORD="$AUTH" -e PAC_DB_EXEC_PASSWORD="$EXEC"
          -e PAC_DB_SCOPED_PASSWORD="$SCOPED")
 jobs_env=("${app_env[@]}" -e PAC_DB_OWNER_PASSWORD="$OWNER")
+# Every container from the image runs as it is deployed: read-only root
+# filesystem (no tmpfs: Fargate has none, and nothing needs /tmp), no
+# capabilities, and no way to gain privilege (infra/aws-staging sets the same
+# on ECS). The image's one volume, /app/schema/generated, stays writable.
+harden=(--read-only --cap-drop ALL --security-opt no-new-privileges)
 
 # -- build ------------------------------------------------------------------
 # From the COMMIT, not the working directory: `git archive` of $RELEASE is the
@@ -158,13 +163,13 @@ for _ in $(seq 1 60); do $CLI exec "$DB" pg_isready -U postgres >/dev/null 2>&1 
 
 # -- refusals ---------------------------------------------------------------
 rc=0
-$CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline "$TAG" \
+$CLI run --rm "${plat[@]}" "${harden[@]}" --network "$NET" -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline "$TAG" \
   timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8000 > "$WORK/nodb.log" 2>&1 || rc=$?
 # Logs carry stable reasons, not exception text (app/logs.py).
 python3 scripts/assert_startup_refusal.py "$WORK/nodb.log" "$rc" database_unreachable \
   && pass "refuses to serve with no database" || fail "started without a database"
 
-$CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
+$CLI run --rm "${plat[@]}" "${harden[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
   -e PAC_ADMIN_DSN="postgresql://postgres:$SUPER@$DB:5432/postgres" \
   -e PAC_DB_OWNER_PASSWORD="$OWNER" -e PAC_DB_AUTH_PASSWORD="$AUTH" \
   -e PAC_DB_EXEC_PASSWORD="$EXEC" -e PAC_DB_SCOPED_PASSWORD="$SCOPED" \
@@ -173,13 +178,13 @@ $CLI run --rm "${plat[@]}" --network "$NET" -e PAC_DB_HOST="$DB" \
   || { tail -20 "$WORK/bootstrap.log"; fail "bootstrap from inside the image"; }
 
 rc=0
-$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
+$CLI run --rm "${plat[@]}" "${harden[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
   timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8001 > "$WORK/owner.log" 2>&1 || rc=$?
 python3 scripts/assert_startup_refusal.py "$WORK/owner.log" "$rc" owner_credential_present \
   && pass "refuses to serve while holding the owner credential" || fail "served with the owner credential"
 
 # -- serving ----------------------------------------------------------------
-$CLI run -d "${plat[@]}" --name "$APP" --network "$NET" -p "127.0.0.1:$PORT:8000" "${app_env[@]}" \
+$CLI run -d "${plat[@]}" "${harden[@]}" --name "$APP" --network "$NET" -p "127.0.0.1:$PORT:8000" "${app_env[@]}" \
   -e PAC_COOKIE_SECURE=false "$TAG" >/dev/null
 for _ in $(seq 1 60); do curl -sf "$BASE/health" >/dev/null && break; sleep 1; done
 release=$(curl -s "$BASE/health" | python3 -c "import json,sys; print(json.load(sys.stdin)['release'])")
@@ -193,19 +198,41 @@ grep -qiE "^x-request-id: [0-9a-f]{16}" "$WORK/headers.txt" \
   && pass "responses carry a server-generated X-Request-ID" || fail "X-Request-ID: $(grep -i x-request-id "$WORK/headers.txt")"
 user=$($CLI exec "$APP" id -un)
 [ "$user" != "root" ] && pass "runs as '$user', not root" || fail "runs as root"
-# As root, so no directory is unreadable; a failing find is a failure, not an
-# empty answer (as appuser it exits 1 and, under set -e, ended the script).
-privileged=$($CLI exec -u 0 "$APP" find / -xdev -type f -perm /6000 2>/dev/null || echo "find failed")
+# A property of the image, checked on the image: a throwaway container as root
+# with its capabilities, so no directory is unreadable (the hardened app
+# container's root has none, and as appuser find exits 1). A failing find is
+# a failure, not an empty answer.
+privileged=$($CLI run --rm "${plat[@]}" -u 0 --entrypoint find "$TAG" / -xdev -type f -perm /6000 \
+  2>/dev/null || echo "find failed")
 [ -z "$privileged" ] && pass "no setuid or setgid file" || fail "setuid or setgid: $(echo $privileged)"
+# The RDS certificate authorities, pinned (deploy/aws/README.md).
+ca_sum=$($CLI run --rm "${plat[@]}" "${harden[@]}" --entrypoint sha256sum "$TAG" \
+  /etc/ssl/certs/rds-global-bundle.pem 2>/dev/null | cut -d' ' -f1 || true)
+[ "$ca_sum" = "fe45bbebf92ad3e27a583bbb2ddd1553c521ed4d49af5514dc0a40372ea5395c" ] \
+  && pass "the pinned RDS CA bundle is in the image" || fail "RDS CA bundle: ${ca_sum:-missing}"
+# Under a read-only root, the dataset generator's directory is writable to the
+# application user (a volume) and nothing else is.
+writable=$($CLI run --rm "${plat[@]}" "${harden[@]}" --entrypoint python "$TAG" -c \
+  "import pathlib
+ok = []
+for d in ('/app/schema/generated', '/app', '/tmp', '/etc'):
+    try:
+        (pathlib.Path(d) / '.w').write_text('x'); ok.append(d)
+    except OSError:
+        pass
+print(' '.join(ok))" 2>/dev/null || echo "probe failed")
+[ "$writable" = "/app/schema/generated" ] \
+  && pass "read-only root: only /app/schema/generated is writable" \
+  || fail "writable under a read-only root: '${writable}'"
 
 # -- data, through the jobs path --------------------------------------------
-$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
+$CLI run --rm "${plat[@]}" "${harden[@]}" --network "$NET" "${jobs_env[@]}" "$TAG" \
   python scripts/load_data.py --mode seed > "$WORK/load.log" 2>&1 \
   && pass "seed data loaded by a jobs container" || { tail -20 "$WORK/load.log"; fail "load"; }
 for _ in $(seq 1 30); do [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && break; sleep 1; done
 [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ready")" = "200" ] && pass "ready once a dataset is published" || fail "not ready after load"
 
-$CLI run --rm "${plat[@]}" --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
+$CLI run --rm "${plat[@]}" "${harden[@]}" --network "$NET" "${jobs_env[@]}" -e SMOKE_PW="$USERPW" "$TAG" python -c "
 import os
 from app.auth.identity import set_credential
 from app.db import owner_transaction

@@ -367,7 +367,10 @@ jobs:
           PAC_DB_EXEC_PASSWORD: ci-exec-pw
           PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
+          # As deployed: read-only root (no tmpfs, as on Fargate), no
+          # capabilities, no privilege escalation (infra/aws-staging sets the same).
           docker run -d --name pac --network host \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
             -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
             -e PAC_DB_AUTH_PASSWORD="$PAC_DB_AUTH_PASSWORD" \
             -e PAC_DB_EXEC_PASSWORD="$PAC_DB_EXEC_PASSWORD" \
@@ -425,10 +428,13 @@ jobs:
           [ "$user" != "root" ] || { echo "container runs as root"; exit 1; }
 
       # A setuid-root binary would be a way from the application user to root.
-      # Searched as root, so no directory is unreadable; a failing find fails.
+      # Searched on the image, as root in a throwaway container (the running
+      # one has no capabilities), so no directory is unreadable; a failing
+      # find fails.
       - name: It carries no setuid or setgid file
         run: |
-          privileged=$(docker exec -u 0 pac find / -xdev -type f -perm /6000 2>/dev/null || echo "find failed")
+          privileged=$(docker run --rm -u 0 --entrypoint find pharma-analytics-copilot:ci \
+            / -xdev -type f -perm /6000 2>/dev/null || echo "find failed")
           [ -z "$privileged" ] || { echo "setuid or setgid: $privileged"; exit 1; }
 
       - name: Stop
