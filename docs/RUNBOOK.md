@@ -367,6 +367,36 @@ data restored runs exactly to the dump: its newest audit row, turn and run
 equal the source's when the dump began. Same host, local disk: not a
 production RTO.
 
+**A managed PostgreSQL (Amazon RDS) has no superuser.** Its administrator has
+`CREATEROLE` and `CREATEDB` only. `bootstrap_db.py` handles that: when the
+administrator is not a superuser it grants itself `SET` (not `INHERIT`) on
+`pac_owner`, which PostgreSQL 16 requires to create a database owned by it; no
+serving role changes. A non-superuser cannot `pg_restore --create` (the new
+database belongs to `pac_owner`, so the administrator could not create its
+schemas), so restore as the owner:
+
+```bash
+# Provisioning, as the RDS administrator (from a task inside the VPC):
+python3 scripts/bootstrap_db.py --no-env --admin-dsn "host=<rds> dbname=postgres user=<admin> sslmode=verify-full sslrootcert=<rds-ca.pem>"
+
+# Backup (RDS snapshots and point-in-time recovery are the primary mechanism;
+# this is the logical copy): as the owner, who reads its own tables in full.
+pg_dump -Fc -f pac.dump --role=pac_owner -h <rds> -U <admin> pharma_analytics
+
+# Restore into a new instance:
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn "<new instance, admin>"
+createdb -h <new> -U <admin> -O pac_owner pharma_analytics
+pg_restore -h <new> -U <admin> --role=pac_owner -d pharma_analytics -j 4 pac.dump
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn "<new instance, admin>"   # CONNECT for the logins
+```
+
+Verified by emulation, not on RDS: `evidence/probes/restricted_admin_provisioning.py`
+runs every step above as a role with exactly `CREATEROLE` and `CREATEDB` in
+clusters of its own, then the security boundary and an answer after
+provisioning and after the restore (`r5-rds-admin-fixed.json`; before the fix,
+bootstrap stopped at `CREATE DATABASE`: `r5-rds-admin-reproduced.json`). A
+snapshot or point-in-time restore on RDS itself is measured only in staging.
+
 The dump matters most for `app_auth`, `app_conv`, `app_meta` and
 `app_ingest`. The business data can be regenerated (`SEED = 42`), but
 incremental batches are not stored server-side. A source must keep its

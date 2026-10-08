@@ -16,9 +16,12 @@ outcome rather than stopping at the first failure:
 3. the runtime security boundary, and the attributes of every pac_ role;
 4. an answer through the pipeline, as a seeded executive;
 5. pg_dump of that database, as the owner (no superuser exists to take it);
-6. into a second new cluster, bootstrap_db.py --roles-only and
-   pg_restore --create, as the restricted administrator, then the boundary
-   and an answer again.
+6. into a second new cluster, as the restricted administrator:
+   bootstrap_db.py --roles-only; createdb -O pac_owner; pg_restore
+   --role=pac_owner (a non-superuser cannot restore with --create: the new
+   database belongs to pac_owner and the administrator could not create its
+   schemas); bootstrap_db.py --roles-only again, which grants CONNECT on the
+   now existing database; then the boundary and an answer again.
 
 An emulation on local PostgreSQL 16: it reproduces RDS's permission model
 for these statements, not RDS itself (parameter groups, TLS, IAM
@@ -177,10 +180,20 @@ def main() -> int:
             result["steps"].append(step("bootstrap_db.py --roles-only (new cluster)",
                                         [sys.executable, str(ROOT / "scripts" / "bootstrap_db.py"),
                                          "--roles-only", "--admin-dsn", b.admin_dsn()], eb, work))
-            result["steps"].append(step("pg_restore --create as the administrator",
-                                        ["pg_restore", "--create", "-d", "postgres", "-h", "127.0.0.1",
-                                         "-p", str(b.port), "-U", ADMIN, str(dump)],
+            # A non-superuser cannot pg_restore --create: the new database
+            # belongs to pac_owner, so the administrator could not create its
+            # schemas. Create it, restore as its owner, then grant CONNECT.
+            result["steps"].append(step("createdb -O pac_owner as the administrator",
+                                        ["createdb", "-h", "127.0.0.1", "-p", str(b.port), "-U", ADMIN,
+                                         "-O", "pac_owner", DB],
                                         {**eb, "PGPASSWORD": b.admin_pw}, work))
+            result["steps"].append(step("pg_restore --role=pac_owner as the administrator",
+                                        ["pg_restore", "-d", DB, "--role=pac_owner", "-j", "4",
+                                         "-h", "127.0.0.1", "-p", str(b.port), "-U", ADMIN, str(dump)],
+                                        {**eb, "PGPASSWORD": b.admin_pw}, work))
+            result["steps"].append(step("bootstrap_db.py --roles-only again (CONNECT)",
+                                        [sys.executable, str(ROOT / "scripts" / "bootstrap_db.py"),
+                                         "--roles-only", "--admin-dsn", b.admin_dsn()], eb, work))
             result["after_restore"] = check(eb, work)
             result["roles_after_restore"] = roles(b)
     except Exception as exc:
@@ -189,7 +202,7 @@ def main() -> int:
         for c in clusters:
             c.stop()
         shutil.rmtree(work, ignore_errors=True)
-    ok = (all(s["exit"] == 0 for s in result["steps"]) and len(result["steps"]) == 5
+    ok = (all(s["exit"] == 0 for s in result["steps"]) and len(result["steps"]) == 7
           and result.get("after_provisioning", {}).get("boundary_problems") == []
           and result.get("after_provisioning", {}).get("answer") == "answered"
           and result.get("after_restore", {}).get("boundary_problems") == []

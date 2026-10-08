@@ -77,6 +77,48 @@ def write_env(passwords: dict[str, str]) -> None:
     print(f"  wrote {ENV_FILE} (0600)")
 
 
+def allow_admin_to_set_owner(cur) -> None:
+    """Let a non-superuser administrator act as the owner, and nothing more.
+
+    A managed service such as Amazon RDS gives no superuser: its administrator
+    has CREATEROLE and CREATEDB. PostgreSQL 16 lets a role create a database
+    owned by another role, or restore objects owned by it, only if it can SET
+    ROLE to that role. The administrator gets exactly that on pac_owner -- SET,
+    without INHERIT, so it does not silently hold the owner's privileges -- as
+    the creator of pac_owner it may grant it. A superuser needs nothing and
+    gets nothing. The serving roles are untouched: none is a member of
+    pac_owner, which verify_runtime_role_safety() checks at every start.
+    """
+    cur.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
+    if cur.fetchone()[0]:
+        return
+    cur.execute("SELECT current_setting('server_version_num')::int >= 160000")
+    if cur.fetchone()[0]:
+        cur.execute("SELECT pg_has_role(current_user, %s, 'SET')", (OWNER,))
+        if not cur.fetchone()[0]:
+            cur.execute(sql.SQL("GRANT {} TO CURRENT_USER WITH INHERIT FALSE, SET TRUE")
+                        .format(sql.Identifier(OWNER)))
+    else:
+        cur.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (OWNER,))
+        if not cur.fetchone()[0]:
+            cur.execute(sql.SQL("GRANT {} TO CURRENT_USER").format(sql.Identifier(OWNER)))
+    print(f"  the administrator may SET ROLE {OWNER} (not a superuser)")
+
+
+def grant_connect(owner_dsn: str) -> None:
+    """The three logins may connect to the database; as its owner."""
+    with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute(
+            sql.SQL("GRANT CONNECT ON DATABASE {} TO {}, {}, {}").format(
+                sql.Identifier(DB_NAME),
+                sql.Identifier("pac_auth_login"),
+                sql.Identifier("pac_exec_login"),
+                sql.Identifier("pac_scoped_login"),
+            )
+        )
+    print(f"  CONNECT on {DB_NAME} granted to the logins")
+
+
 def create_login_roles(admin_dsn: str, passwords: dict[str, str]) -> None:
     print("== login roles ==")
     with psycopg.connect(admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
@@ -113,8 +155,9 @@ def main() -> int:
         "--roles-only",
         action="store_true",
         help="create the roles and their memberships and stop: no database, schema or "
-             ".env. For restoring a dump into a new cluster (docs/RUNBOOK.md §8), where "
-             "pg_restore --create brings the database, its schema, data and grants",
+             ".env. For restoring a dump into a new cluster (docs/RUNBOOK.md §8). If the "
+             "database already exists (restored without --create, as a non-superuser "
+             "administrator must), its logins are also granted CONNECT",
     )
     args = ap.parse_args()
 
@@ -138,6 +181,7 @@ def main() -> int:
                 ).format(sql.Identifier(OWNER), sql.Literal(passwords[OWNER]))
             )
         print(f"  {OWNER} ready")
+        allow_admin_to_set_owner(cur)
 
         # Privilege roles (NOLOGIN). Created here, in the administrative phase,
         # because pac_owner deliberately has no CREATEROLE.
@@ -154,7 +198,17 @@ def main() -> int:
 
     if args.roles_only:
         create_login_roles(args.admin_dsn, passwords)
-        print("  --roles-only: no database, schema or .env")
+        # Run again after a restore that did not bring the database's own
+        # grants (pg_restore without --create, as a non-superuser must):
+        # the logins then get CONNECT on the restored database.
+        with psycopg.connect(args.admin_dsn, autocommit=True) as conn:
+            exists = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s",
+                                  (DB_NAME,)).fetchone()
+        if exists:
+            from psycopg.conninfo import make_conninfo
+            grant_connect(make_conninfo(host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+                                        user=OWNER, password=passwords[OWNER]))
+        print("  --roles-only: no database, schema or .env created")
         return 0
 
     with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
@@ -200,16 +254,7 @@ def main() -> int:
                                     "PAC_SETUP_OWNER_DSN": owner_dsn})
 
     create_login_roles(args.admin_dsn, passwords)
-
-    with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(
-            sql.SQL("GRANT CONNECT ON DATABASE {} TO {}, {}, {}").format(
-                sql.Identifier(DB_NAME),
-                sql.Identifier("pac_auth_login"),
-                sql.Identifier("pac_exec_login"),
-                sql.Identifier("pac_scoped_login"),
-            )
-        )
+    grant_connect(owner_dsn)
 
     if args.no_env:
         print("  .env left untouched (--no-env)")
