@@ -22,6 +22,14 @@ addresses, then a different user signs in correctly from yet another one:
 
 Exit 0 when the untrusted proxy shows the lockout and the trusted one does
 not, i.e. when the configuration is what decides it.
+
+    python3 evidence/probes/client_address_behind_proxy.py --trust '' --out r.json
+
+With --trust, one configuration only, and the property itself: exit 0 when
+the other user's correct password is accepted. --trust '' (the load balancer
+untrusted, as an ALB is unless FORWARDED_ALLOW_IPS names it) fails: the
+defect. --trust 127.0.0.1 (the local proxy trusted, as staging trusts the
+VPC range) passes.
 """
 
 from __future__ import annotations
@@ -88,6 +96,8 @@ def run(trusted: str, user: dict) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=pathlib.Path, required=True)
+    ap.add_argument("--trust", default=None,
+                    help="one configuration only: the FORWARDED_ALLOW_IPS value to run with")
     args = ap.parse_args()
     from app.auth.identity import _hash_ip, set_credential
     from app.config import get_settings
@@ -107,6 +117,10 @@ def main() -> int:
                                                                         ("127.0.0.1", "198.51.100.7")]
     result: dict = {"database": db}
     try:
+        if args.trust is not None:
+            result["run"] = run(args.trust, user)
+            result["other_user_signed_in"] = result["run"]["other_user_correct_password"] == 200
+            return finish(args, result, result["other_user_signed_in"])
         result["untrusted_proxy"] = run("", user)
         with owner_transaction() as cur:          # each run starts from no recent failures
             cur.execute("DELETE FROM app_auth.login_attempts WHERE ip_hash = ANY(%s)", (hashes,))
@@ -122,9 +136,13 @@ def main() -> int:
         close_pools()
     result["lockout_without_trust"] = result["untrusted_proxy"]["other_user_correct_password"] == 429
     result["no_lockout_with_trust"] = result["trusted_proxy"]["other_user_correct_password"] == 200
+    return finish(args, result, result["lockout_without_trust"] and result["no_lockout_with_trust"])
+
+
+def finish(args, result: dict, ok: bool) -> int:
     args.out.write_text(json.dumps(result, indent=1) + "\n")
     print(json.dumps(result))
-    return 0 if result["lockout_without_trust"] and result["no_lockout_with_trust"] else 1
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":
