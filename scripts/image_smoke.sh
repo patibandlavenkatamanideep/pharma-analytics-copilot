@@ -100,11 +100,39 @@ $CLI volume create "$VOL" >/dev/null
 $CLI save -o "$WORK/image.tar" "$TAG" >/dev/null
 $CLI run --rm -i -v "$VOL:/scan" docker.io/library/alpine:3.20 sh -c 'cat > /scan/image.tar' \
   < "$WORK/image.tar"
-$CLI run --rm -v "$VOL:/scan" "$TRIVY_IMAGE" image --quiet --input /scan/image.tar \
+# One vulnerability database for the three trivy runs (a named cache volume),
+# so the gate, the complete count and the database's own dates describe the
+# same data.
+CACHE=pac-smoke-trivy-cache
+$CLI volume create "$CACHE" >/dev/null 2>&1 || true
+TRIVY=("$CLI" run --rm -v "$VOL:/scan" -v "$CACHE:/root/.cache/trivy" "$TRIVY_IMAGE")
+# The gate: HIGH and CRITICAL with a fix available.
+"${TRIVY[@]}" image --quiet --input /scan/image.tar \
   --severity HIGH,CRITICAL --ignore-unfixed --format json --output /scan/trivy.json \
   > "$WORK/trivy.log" 2>&1 || { tail -20 "$WORK/trivy.log"; fail "trivy ran"; }
+# Not a gate: every finding at every severity, fixed or not, so a release
+# can state complete counts rather than only what the gate looks at.
+"${TRIVY[@]}" image --quiet --skip-db-update --input /scan/image.tar --format json \
+  --output /scan/trivy-full.json > "$WORK/trivy-full.log" 2>&1 \
+  || { tail -20 "$WORK/trivy-full.log"; fail "trivy full scan ran"; }
+"${TRIVY[@]}" version --format json > "$WORK/trivy-db.json" 2>/dev/null || true
 $CLI run --rm -v "$VOL:/scan" docker.io/library/alpine:3.20 cat /scan/trivy.json > "$WORK/trivy.json"
+$CLI run --rm -v "$VOL:/scan" docker.io/library/alpine:3.20 cat /scan/trivy-full.json \
+  > "$WORK/trivy-full.json"
 $CLI volume rm -f "$VOL" >/dev/null 2>&1 || true
+python3 - "$WORK/trivy-full.json" "$WORK/trivy-db.json" <<'PY'
+import collections, json, sys
+r = json.load(open(sys.argv[1]))
+counts = collections.Counter(
+    (v["Severity"], "fixable" if v.get("FixedVersion") else "unfixed")
+    for t in r.get("Results", []) for v in (t.get("Vulnerabilities") or []))
+try:
+    db = json.load(open(sys.argv[2])).get("VulnerabilityDB") or {}
+except ValueError:
+    db = {}
+print("  trivy, every severity:", dict(sorted(counts.items())) or "none",
+      "| database updated", db.get("UpdatedAt"), "downloaded", db.get("DownloadedAt"))
+PY
 findings=$(python3 - "$WORK/trivy.json" <<'PY'
 import json, sys
 r = json.load(open(sys.argv[1]))
@@ -119,6 +147,8 @@ PY
 [ "$findings" = "0" ] && pass "trivy: no HIGH/CRITICAL vulnerability with a fix available" \
   || fail "trivy: $findings HIGH/CRITICAL vulnerabilities with a fix available"
 cp "$WORK/trivy.json" "${TRIVY_REPORT:-/dev/null}" 2>/dev/null || true
+cp "$WORK/trivy-full.json" "${TRIVY_FULL_REPORT:-/dev/null}" 2>/dev/null || true
+cp "$WORK/trivy-db.json" "${TRIVY_DB_REPORT:-/dev/null}" 2>/dev/null || true
 
 # -- database ---------------------------------------------------------------
 $CLI network create "$NET" >/dev/null

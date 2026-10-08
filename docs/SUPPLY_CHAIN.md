@@ -30,6 +30,12 @@ uv pip compile requirements.txt --universal --generate-hashes \
 | Secrets (`gitleaks`, every commit in history) | CI `supply-chain` job | any finding |
 | Image: OS packages and the Python environment (`trivy`) | CI `image` job | high or critical **with a fixed version available** |
 
+That gate is the policy, and all a passing scan establishes. Locally,
+`scripts/image_smoke.sh` also runs trivy unfiltered over the same image with
+the same database (every severity, fixed or not; not a gate) and records the
+database's own dates (`TRIVY_FULL_REPORT`, `TRIVY_DB_REPORT`), so a release
+manifest can state complete counts and when the advisories were current.
+
 What was run locally, and its result, is recorded:
 
 - `evidence/runs/r2-supply-chain.json`: pip-audit, npm audit and gitleaks.
