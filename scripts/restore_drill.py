@@ -126,12 +126,21 @@ def facts(db: str, cluster: Cluster = LOCAL) -> dict:
         policies = conn.execute("SELECT count(*) FROM pg_policies").fetchone()[0]
         rls = conn.execute("SELECT count(*) FILTER (WHERE relrowsecurity), "
                            "count(*) FILTER (WHERE relforcerowsecurity) FROM pg_class").fetchone()
+        # The ACLs themselves, from the catalog: information_schema shows only
+        # privileges involving roles the connecting user belongs to, so the
+        # same grants read differently to the local superuser and to a new
+        # cluster's.
         grants = conn.execute(
-            "SELECT count(*) FROM information_schema.role_table_grants "
-            "WHERE grantee LIKE 'pac_%'").fetchone()[0]
+            "SELECT count(*), md5(coalesce(string_agg(n.nspname || '.' || c.relname || '='"
+            " || c.relacl::text, ',' ORDER BY n.nspname, c.relname), '')) FROM pg_class c "
+            "JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relacl IS NOT NULL "
+            "AND n.nspname NOT IN ('pg_catalog', 'information_schema')").fetchone()
         column_grants = conn.execute(
-            "SELECT count(*) FROM information_schema.column_privileges "
-            "WHERE grantee LIKE 'pac_%'").fetchone()[0]
+            "SELECT count(*), md5(coalesce(string_agg(c.oid::regclass::text || '.' || a.attname"
+            " || '=' || a.attacl::text, ',' ORDER BY c.oid::regclass::text, a.attname), '')) "
+            "FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n "
+            "ON n.oid = c.relnamespace WHERE a.attacl IS NOT NULL "
+            "AND n.nspname NOT IN ('pg_catalog', 'information_schema')").fetchone()
         memberships = conn.execute(
             "SELECT m.rolname || ' -> ' || r.rolname FROM pg_auth_members am "
             "JOIN pg_roles r ON r.oid = am.roleid JOIN pg_roles m ON m.oid = am.member "
@@ -141,7 +150,8 @@ def facts(db: str, cluster: Cluster = LOCAL) -> dict:
             "'pac_exec_login', 'pac_scoped_login']) r "
             "WHERE has_database_privilege(r, current_database(), 'CONNECT')").fetchone()[0]
     return {"counts": counts, "generation": generation, "policies": policies,
-            "rls_tables": list(rls), "table_grants": grants, "column_grants": column_grants,
+            "rls_tables": list(rls), "table_grants": list(grants),
+            "column_grants": list(column_grants),
             "memberships": [m[0] for m in memberships], "connect": connect or []}
 
 
