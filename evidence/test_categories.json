@@ -153,6 +153,12 @@
         "tests/unit/test_evidence_index.py",
         "tests/unit/test_invariant_coverage.py"
       ]
+    },
+    "deployment_configuration": {
+      "meaning": "The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies.",
+      "files": [
+        "tests/unit/test_staging_infra.py"
+      ]
     }
   }
 }
