@@ -465,9 +465,11 @@ Stated explicitly so nothing is implied by omission.
   deployed.
 - **Cost: token usage measured, spend not priced.** The three live runs used
   **526,722 input / 18,572 output tokens** in total, as reported by the
-  provider and recorded per question in `evals/runs/`. Bedrock's per-token rate
-  is not quoted because it is billed by AWS at partner pricing, so the usage
-  counts are what can honestly be reported and the dollar figure is not.
+  provider and recorded per question in `evals/runs/`. AWS's price list
+  (`AmazonBedrockFoundationModels`, us-east-1, 2026-10-07) prices this model's
+  `us.` geographic profile, the one used, at $5.50 input / $27.50 output per
+  million tokens: **$3.41** at those rates. That is a list price applied to
+  measured usage, not the bill, which is not recorded here.
   (This list previously carried both "token usage measured" and "token usage
   ... not measured", two lines apart.)
 
@@ -495,8 +497,11 @@ Re-run on the final commit `7e91f9f` after the facility-count fix:
 `holdout2` lost one to a **statement timeout**, not a wrong answer — see
 below.
 
-Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens,
-**$3.82** at Opus 4.5 list pricing.
+Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens:
+**$4.20** at the price list's rate for the `us.` geographic profile these runs
+used ($5.50 / $27.50 per million tokens; infra/aws-staging/cost). This line
+said $3.82, which is the rate of the `global.` profile ($5 / $25), not of the
+profile used. Neither is the bill.
 
 ### The three misses, named
 

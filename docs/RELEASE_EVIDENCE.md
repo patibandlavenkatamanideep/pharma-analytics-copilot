@@ -655,7 +655,9 @@ The caps allow the expected spend plus one reservation. Each call reserves
 about 24,500 input tokens (the request's bound) and its `max_tokens`
 (4,096) of output, but is charged what it bills. Adjust the later caps from
 the smoke run's reported usage. For scale only: the September live runs
-cost $3.82 for 124 questions at the list price of the time.
+used 666,843 input / 19,521 output tokens for 124 questions, $4.20 at the
+2026-10-07 price list's rate for the `us.` profile they used (the $3.82 this
+line gave was the `global.` profile's rate; neither is the bill).
 
 ## Not established
 
