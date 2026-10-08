@@ -26,15 +26,32 @@ the first holds it (a database lock is the barrier, observed in
 pg_stat_activity, not a sleep); a refused audit insert; a burst of statement
 timeouts; a malformed batch, a batch with old events, a stopped feed and a
 resumed one; both application processes stopped and restarted; the collector
-killed and restarted while answers continue. Each expected alert must fire,
-and later clear. At the end every exported trace and metric, every Prometheus
-label value and every log is searched for sentinel values the drill sent in
-(a question, a key, an email, territory names, a revenue figure, a session
-cookie, the database passwords).
+killed and restarted while answers continue, and a process stopped while it
+is down. Each expected alert must fire, and later clear. At the end every
+exported trace and metric, every Prometheus label value and every log is
+searched for sentinel values the drill sent in (a question, a key, an email,
+territory names, a revenue figure, a session cookie, the database passwords),
+and the logs are checked for what diagnosis needs: one JSON object a line,
+stable event codes, allowlisted exception types, and ids that lead from a
+response to its log lines and from a log line to its trace.
+
+Recovery across processes, each with a database lock or an observed row as
+the barrier: a process killed while its request waits, and the same key
+taken over by the other process once the lease expires (committed once); two
+questions in one conversation on two processes (one waits its turn); a
+clarification asked on one process and answered on the other; pricing
+revoked between an answer and its replay on the other process; the rate
+limit after the user deletes their conversations; and on a third process
+with one query slot and one queue place, overload refused at once and a
+queued request cancelled from another process.
+
+The lease and request deadline are shortened (LEASE_S, DEADLINE_S) so a
+takeover does not wait two minutes; the third process keeps long ones so
+its queue holds while the drill acts.
 
 This is local evidence: one machine, one PostgreSQL, processes not
-containers, shortened alert windows. It is not a hosted collector, a hosted
-backend, an incident drill with on-call, or a load test.
+containers, shortened alert windows and lease. It is not a hosted collector,
+a hosted backend, an incident drill with on-call, or a load test.
 """
 
 from __future__ import annotations
@@ -65,7 +82,12 @@ OBS = ROOT / "deploy" / "observability"
 #: The deployable collector configuration, plus local JSON-lines files that
 #: append across restarts (the sentinel scan reads them after one).
 COLLECTOR_CONFIGS = [OBS / "otel-collector.yaml", OBS / "otel-collector.local-files.yaml"]
-DRILL_VERSION = "1.0.0"
+DRILL_VERSION = "1.1.0"
+#: Run lease and request deadline for app-1 and app-2 (defaults 120 s and
+#: 60 s). The deadline stays shorter than the lease, as config.py says it must.
+LEASE_S, DEADLINE_S = 15, 12
+#: Two facilities with one name, so a question about it needs a clarification.
+TWIN = "Drill Twin Facility"
 
 #: The drill's windows and thresholds, per alert. Each production rule is
 #: rewritten by these substitutions only; an alert missing here is a failure,
@@ -239,6 +261,7 @@ class Drill:
         self.procs: list[Proc] = []
         self.sentinels: dict[str, str] = {}
         self.asks: dict[str, int] = {"app-1": 0, "app-2": 0}
+        self.response_ids: list[str] = []
         self.started = time.monotonic()
         self.lock = threading.Lock()
 
@@ -331,7 +354,14 @@ class Drill:
                                           ("ram", "ram", 0, own, region),
                                           ("rate", "exec", 0, None, None),
                                           ("dup", "exec", 1, None, None),
-                                          *((f"w{i}", "exec", 0, None, None) for i in range(6))):
+                                          *((f"w{i}", "exec", 0, None, None) for i in range(6)),
+                                          # one per recovery scenario, so no limit is shared
+                                          ("kill", "exec", 0, None, None),
+                                          ("conv", "exec", 0, None, None),
+                                          ("clar", "exec", 1, None, None),
+                                          ("rev", "exec", 1, None, None),
+                                          ("quota", "exec", 0, None, None),
+                                          *((f"o{i}", "exec", 0, None, None) for i in range(3))):
             uid = f"drill-{key}-{tag}"
             email = f"{uid}-sentinelmail{tag}@test.invalid"
             rows.append((uid, email, f"Drill {key}", role, terr, reg, wac))
@@ -352,6 +382,18 @@ class Drill:
                            capture_output=True, timeout=120)
         if r.returncode != 0:
             raise RuntimeError(f"users: {r.stderr[-1500:]}")
+
+    def add_twins(self) -> None:
+        """Two facilities sharing TWIN as their name, before any process
+        builds its entity index."""
+        places = self.admin_sql("SELECT DISTINCT ON (zip) state, zip FROM organizations "
+                                "WHERE zip IS NOT NULL ORDER BY zip LIMIT 2")
+        tag = secrets.token_hex(3).upper()
+        self.twins = [f"DRILL-TW{i}-{tag}" for i in (1, 2)]
+        for org_id, (state, zip_code) in zip(self.twins, places):
+            self.admin_sql("INSERT INTO organizations (org_id, org_name, org_type, org_status, "
+                           "state, zip) VALUES (%s, %s, 'Facility', 'Active', %s, %s)",
+                           (org_id, TWIN, state, zip_code))
 
     def start_collector(self) -> None:
         self.otlp_port, self.prom_exp_port = free_port(), free_port()
@@ -441,22 +483,47 @@ class Drill:
         # a metric (app/telemetry.py); a feed outside it is reported as "other"
         # by counters and not at all by the freshness gauges.
         return {**self.base_env(), "PAC_OTEL_ENDPOINT": f"http://127.0.0.1:{self.otlp_port}",
-                "PAC_COOKIE_SECURE": "false", "PAC_OTEL_SOURCE_NAMES": "drill-feed"}
+                "PAC_COOKIE_SECURE": "false", "PAC_OTEL_SOURCE_NAMES": "drill-feed",
+                "PAC_RUN_LEASE_SECONDS": str(LEASE_S),
+                "PAC_REQUEST_DEADLINE_SECONDS": str(DEADLINE_S)}
+
+    def start_app(self, name: str, extra: dict[str, str] | None = None,
+                  wait: bool = True) -> Proc:
+        """A new process is a new instance: the questions counted for it
+        start again."""
+        if not hasattr(self, "apps"):
+            self.apps, self.app_ports = {}, {}
+        port = self.app_ports.setdefault(name, free_port())
+        proc = Proc(name, [sys.executable, "-m", "uvicorn", "app.api.main:app",
+                           "--host", "127.0.0.1", "--port", str(port),
+                           "--timeout-graceful-shutdown", "20",
+                           "--log-config", str(ROOT / "app" / "log_config.json")],
+                    {**self.app_env(), **(extra or {})}, self.work, self.logs).start()
+        self.apps[name] = proc
+        self.procs.append(proc)
+        with self.lock:
+            self.asks[name] = 0
+        if wait:
+            self.wait_ready(name)
+        return proc
+
+    def wait_ready(self, name: str) -> None:
+        port = self.app_ports[name]
+        wait_until(lambda: urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/ready", timeout=2).status == 200, f"{name} ready", 120)
 
     def start_apps(self) -> None:
-        self.apps: dict[str, Proc] = {}
-        self.app_ports = getattr(self, "app_ports", {"app-1": free_port(), "app-2": free_port()})
-        for name, port in self.app_ports.items():
-            proc = Proc(name, [sys.executable, "-m", "uvicorn", "app.api.main:app",
-                               "--host", "127.0.0.1", "--port", str(port),
-                               "--timeout-graceful-shutdown", "20",
-                               "--log-config", str(ROOT / "app" / "log_config.json")],
-                        self.app_env(), self.work, self.logs).start()
-            self.apps[name] = proc
-            self.procs.append(proc)
-        for name, port in self.app_ports.items():
-            wait_until(lambda port=port: urllib.request.urlopen(
-                f"http://127.0.0.1:{port}/ready", timeout=2).status == 200, f"{name} ready", 120)
+        for name in ("app-1", "app-2"):
+            self.start_app(name, wait=False)
+        for name in ("app-1", "app-2"):
+            self.wait_ready(name)
+
+    def stop_app(self, name: str, sig: int = signal.SIGTERM) -> int | None:
+        """Stopped for good: its series expire, so its questions no longer count."""
+        code = self.apps.pop(name).stop(sig)
+        with self.lock:
+            self.asks.pop(name, None)
+        return code
 
     def base(self, app: str) -> str:
         return f"http://127.0.0.1:{self.app_ports[app]}"
@@ -472,11 +539,22 @@ class Drill:
         return c
 
     def ask(self, client: Client, app: str, question: str, key: str | None = None,
-            timeout: float = 90) -> tuple[int, Any, dict]:
+            timeout: float = 90, conversation_id: str | None = None,
+            include_sql: bool = False) -> tuple[int, Any, dict]:
         with self.lock:
             self.asks[app] += 1
-        return client.call("POST", "/api/ask", {"question": question},
-                           headers={"Idempotency-Key": key} if key else None, timeout=timeout)
+        body: dict[str, Any] = {"question": question}
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        if include_sql:
+            body["include_sql"] = True        # the typed plan comes with it
+        out = client.call("POST", "/api/ask", body,
+                          headers={"Idempotency-Key": key} if key else None, timeout=timeout)
+        rid = {k.lower(): v for k, v in out[2].items()}.get("x-request-id")
+        if rid:
+            with self.lock:
+                self.response_ids.append(rid)
+        return out
 
     def prom_total(self, expr: str) -> float:
         return self.prom.scalar(expr) or 0.0
@@ -693,17 +771,274 @@ class Drill:
         return {"ok": through[0] == through[1] == latest, "data_through": through,
                 "database": latest}
 
+    # -- recovery across processes ---------------------------------------------------
+
+    def held_lock(self):
+        """An open transaction holding sales: every analytical query waits on
+        it, visibly, until it commits."""
+        import psycopg
+        conn = psycopg.connect(host="127.0.0.1", port=self.pg_port, dbname="pac_drill",
+                               user="pacdrill", password=self.admin_pw)
+        conn.execute("LOCK TABLE sales IN ACCESS EXCLUSIVE MODE")
+        return conn
+
+    def lock_waiters(self) -> int:
+        return self.admin_sql("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type = "
+                              "'Lock' AND datname = 'pac_drill'")[0][0]
+
+    def run_row(self, user: str, key: str) -> dict | None:
+        rows = self.admin_sql(
+            "SELECT run_id, status, conversation_id, lease_expires_at <= now() "
+            "FROM app_conv.runs WHERE owner_user_id = %s AND idempotency_key = %s",
+            (self.users[user]["user_id"], key))
+        if not rows:
+            return None
+        run_id, status, conversation_id, expired = rows[0]
+        return {"run_id": run_id, "status": status, "conversation_id": conversation_id,
+                "lease_expired": expired}
+
+    def turns_of(self, conversation_id: str) -> list[tuple]:
+        return self.admin_sql("SELECT seq, run_id FROM app_conv.turns "
+                              "WHERE conversation_id = %s ORDER BY seq", (conversation_id,))
+
+    def background(self, fn: Callable[[], Any]) -> tuple[threading.Thread, dict]:
+        out: dict = {}
+
+        def target():
+            t0 = time.monotonic()
+            try:
+                out["result"] = fn()
+            except Exception as exc:                  # a killed process drops the connection
+                out["error"] = type(exc).__name__
+            out["took_s"] = round(time.monotonic() - t0, 2)
+        worker = threading.Thread(target=target)
+        worker.start()
+        return worker, out
+
+    def s_worker_killed(self) -> dict:
+        """A process killed while its request waits. The same key on the other
+        process is refused while the lease lives, then taken over and
+        committed once; the restarted process replays that commit."""
+        q = "What is our total volume this quarter?"
+        c1 = self.sign_in("kill", "app-1")
+        c2 = c1.with_base(self.base("app-2"))
+        key = f"drill-kill-{secrets.token_hex(8)}"
+        conn = self.held_lock()
+        try:
+            worker, first = self.background(lambda: self.ask(c1, "app-1", q, key))
+            wait_until(lambda: self.lock_waiters() >= 1, "request waiting on the lock", 10, 0.05)
+            wait_until(lambda: self.run_row("kill", key), "its run recorded", 10, 0.05)
+            self.apps["app-1"].stop(signal.SIGKILL)
+        finally:
+            conn.commit()
+            conn.close()
+        worker.join(30)
+        try:
+            while_leased = self.ask(c2, "app-2", q, key)
+            wait_until(lambda: self.run_row("kill", key)["lease_expired"], "the lease expired",
+                       LEASE_S + 15, 0.5)
+            taken = self.ask(c2, "app-2", q, key)
+            row = self.run_row("kill", key)
+            turns = self.turns_of(row["conversation_id"])
+            attempts = self.admin_sql("SELECT count(*) FROM app_conv.run_attempts "
+                                      "WHERE run_id = %s", (row["run_id"],))[0][0]
+        finally:
+            self.start_app("app-1")
+        replay = self.ask(c1, "app-1", q, key)
+        same = (replay[0] == 200 and replay[1].get("replayed") is True
+                and replay[1].get("run_id") == taken[1].get("run_id"))
+        return {"ok": "error" in first and while_leased[0] == 409
+                and (while_leased[1] or {}).get("detail", {}).get("code") == "same_request_running"
+                and taken[0] == 200 and taken[1].get("status") == "answered"
+                and row["status"] == "succeeded" and len(turns) == 1 and turns[0][1] == row["run_id"]
+                and attempts == 2 and same,
+                "killed_request": first.get("error"),
+                "same_key_while_leased": [while_leased[0],
+                                          (while_leased[1] or {}).get("detail", {}).get("code")],
+                "taken_over": [taken[0], taken[1].get("status"), taken[1].get("replayed")],
+                "run_status": row["status"], "turns_committed": len(turns),
+                "attempts_counted": attempts, "replay_on_restarted_process_identical": same,
+                "lease_s": LEASE_S}
+
+    def s_overlapping_revisions(self) -> dict:
+        """Two questions in one conversation on two processes: the second is
+        refused while the first holds the conversation, then answered after
+        it; the turns stay in order, one per run."""
+        c1 = self.sign_in("conv", "app-1")
+        c2 = c1.with_base(self.base("app-2"))
+        status, body, _ = self.ask(c1, "app-1", "What is our total volume this quarter?")
+        cid = body["conversation_id"]
+        k2, k3 = (f"drill-conv-{secrets.token_hex(8)}" for _ in range(2))
+        conn = self.held_lock()
+        try:
+            worker, second = self.background(lambda: self.ask(
+                c1, "app-1", "What is our total volume last quarter?", k2, conversation_id=cid))
+            wait_until(lambda: self.lock_waiters() >= 1, "second question waiting on the lock",
+                       10, 0.05)
+            third = self.ask(c2, "app-2", "total paid pack units last quarter", k3,
+                             conversation_id=cid)
+        finally:
+            conn.commit()
+            conn.close()
+        worker.join(30)
+        retried = self.ask(c2, "app-2", "total paid pack units last quarter", k3,
+                           conversation_id=cid)
+        turns = self.turns_of(cid)
+        seqs, run_ids = [t[0] for t in turns], [t[1] for t in turns]
+        revision = self.admin_sql("SELECT revision FROM app_conv.conversations "
+                                  "WHERE conversation_id = %s", (cid,))[0][0]
+        second_r = second.get("result") or (None, {}, {})
+        return {"ok": status == 200 and second_r[0] == 200 and third[0] == 409
+                and (third[1] or {}).get("detail", {}).get("code") == "conversation_busy"
+                and retried[0] == 200 and len(turns) == 3 and seqs == sorted(set(seqs))
+                and len(set(run_ids)) == 3,
+                "first": status, "held": second_r[0],
+                "other_process_while_held": [third[0], (third[1] or {}).get("detail", {}).get("code")],
+                "other_process_after": retried[0], "turn_seqs": seqs,
+                "distinct_runs": len(set(run_ids)), "conversation_revision": revision}
+
+    def s_clarification_elsewhere(self) -> dict:
+        """A clarification asked on one process and answered on the other:
+        the paused thread resumes there, with the choice the user saw."""
+        c1 = self.sign_in("clar", "app-1")
+        c2 = c1.with_base(self.base("app-2"))
+        status, first, _ = self.ask(c1, "app-1", f"What was the volume for {TWIN} in the last 3 months?")
+        cid = (first or {}).get("conversation_id")
+        status2, second, _ = self.ask(c2, "app-2", "the second one", conversation_id=cid,
+                                      include_sql=True)
+        rows = self.admin_sql("SELECT status, choices FROM app_conv.clarifications "
+                              "WHERE conversation_id = %s", (cid,))
+        threads = self.admin_sql("SELECT count(*) FROM app_graph.checkpoints WHERE thread_id LIKE %s",
+                                 (f"{cid}.%",))[0][0]
+        plan = json.dumps((second or {}).get("plan"))
+        shown = [c.get("id") for c in (first or {}).get("choices") or []]
+        # "the second one" is the second choice as shown, and only that one.
+        order_kept = len(shown) == 2 and shown[1] in plan and shown[0] not in plan
+        return {"ok": (first or {}).get("status") == "clarify" and status2 == 200
+                and (second or {}).get("status") == "answered" and rows
+                and rows[0][0] == "resolved" and threads == 0 and order_kept,
+                "asked_on": "app-1", "answered_on": "app-2",
+                "statuses": [(first or {}).get("status"), (second or {}).get("status")],
+                "clarification": rows[0][0] if rows else None,
+                "second_choice_bound": order_kept, "checkpoints_left": threads}
+
+    def s_revocation(self) -> dict:
+        """Pricing revoked between an answer and its replay on the other
+        process: the replay is withheld, the history no longer shows the
+        figure, and a new question is answered under the new access."""
+        q = "What is our total revenue this quarter?"
+        c1 = self.sign_in("rev", "app-1")
+        c2 = c1.with_base(self.base("app-2"))
+        key = f"drill-rev-{secrets.token_hex(8)}"
+        status, body, _ = self.ask(c1, "app-1", q, key)
+        figure = re.findall(r"\$[\d,]+(?:\.\d+)?", json.dumps(body))
+        self.admin_sql("UPDATE users SET can_view_wac = 0 WHERE user_id = %s",
+                       (self.users["rev"]["user_id"],))
+        replay = self.ask(c2, "app-2", q, key)
+        h_status, history, _ = c2.call("GET", f"/api/conversations/{body['conversation_id']}")
+        fresh = self.ask(c2, "app-2", q)
+        leaked = [name for name, r in (("replay", replay[1]), ("history", history),
+                                       ("new question", fresh[1])) if "$" in json.dumps(r)]
+        return {"ok": status == 200 and bool(figure) and replay[0] == 403
+                and (replay[1] or {}).get("detail", {}).get("code") == "access_changed"
+                and not leaked,
+                "before": [status, "figure shown" if figure else "no figure"],
+                "replay_after_revocation": [replay[0], (replay[1] or {}).get("detail", {}).get("code")],
+                "history_status": h_status, "new_question": [fresh[0], (fresh[1] or {}).get("status")],
+                "figure_seen_after_revocation_in": leaked}
+
+    def s_quota_after_deletion(self) -> dict:
+        """The per-minute limit counts attempts, not conversations: deleting
+        every conversation refunds nothing, on either process."""
+        c1 = self.sign_in("quota", "app-1")
+        clients = {"app-1": c1, "app-2": c1.with_base(self.base("app-2"))}
+        conversations, codes = [], []
+        for i in range(20):
+            app = "app-1" if i % 2 == 0 else "app-2"
+            status, body, _ = self.ask(clients[app], app, "What is our total volume this quarter?")
+            codes.append(status)
+            conversations.append((body or {}).get("conversation_id"))
+        deleted = [clients["app-2" if i % 2 == 0 else "app-1"].call(
+            "DELETE", f"/api/conversations/{cid}")[0] for i, cid in enumerate(conversations)]
+        left = self.admin_sql("SELECT count(*) FROM app_conv.conversations WHERE owner_user_id = %s",
+                              (self.users["quota"]["user_id"],))[0][0]
+        after, body, headers = self.ask(clients["app-1"], "app-1", "What is our total volume this quarter?")
+        return {"ok": codes == [200] * 20 and deleted == [200] * 20 and left == 0 and after == 429,
+                "answered": codes.count(200), "deleted": deleted.count(200),
+                "conversations_left": left, "after_deletion": after,
+                "retry_after": {k.lower(): v for k, v in headers.items()}.get("retry-after")}
+
+    def s_overload_and_cancel(self) -> dict:
+        """A third process with one query slot and one queue place. One
+        question runs (held by the lock), one waits, and one more is refused
+        at once; the waiting one is cancelled from another process. Nothing
+        is committed for either; the refused one, retried, is answered."""
+        q = "What is our total volume this quarter?"
+        self.start_app("app-3", {"PAC_ADMISSION_QUERY_SLOTS": "1", "PAC_ADMISSION_QUERY_QUEUE": "1",
+                                 "PAC_ADMISSION_QUERY_WAIT_SECONDS": "45",
+                                 "PAC_REQUEST_DEADLINE_SECONDS": "60",
+                                 "PAC_RUN_LEASE_SECONDS": "120",
+                                 "PAC_STATEMENT_TIMEOUT_MS": "60000"})
+        try:
+            return self._overload_and_cancel(q)
+        finally:
+            if "app-3" in self.apps:
+                self.stop_app("app-3")
+
+    def _overload_and_cancel(self, q: str) -> dict:
+        users = ["o0", "o1", "o2"]
+        clients = {u: self.sign_in(u, "app-3") for u in users}
+        keys = {u: f"drill-{u}-{secrets.token_hex(8)}" for u in users}
+        conn = self.held_lock()
+        try:
+            running, r_out = self.background(lambda: self.ask(clients["o0"], "app-3", q, keys["o0"]))
+            wait_until(lambda: self.lock_waiters() >= 1, "one question running", 10, 0.05)
+            # Two more at once: one takes the queue place, the other is refused.
+            pending = {u: self.background(lambda u=u: self.ask(clients[u], "app-3", q, keys[u]))
+                       for u in ("o1", "o2")}
+            refused_user = wait_until(lambda: next(
+                (u for u, (_, out) in pending.items() if "result" in out), None),
+                "one refused at once", 10, 0.02)
+            queued_user = next(u for u in pending if u != refused_user)
+            refused = pending[refused_user][1]
+            # Cancelled by its owner from another process, by its key.
+            other = clients[queued_user].with_base(self.base("app-1"))
+            cancel = other.call("POST", "/api/runs/cancel", {"idempotency_key": keys[queued_user]})
+            pending[queued_user][0].join(10)
+            queued = pending[queued_user][1]
+        finally:
+            conn.commit()
+            conn.close()
+        running.join(60)
+        retried = self.ask(clients[refused_user], "app-3", q, keys[refused_user])
+        rows = {u: self.run_row(u, keys[u]) for u in users}
+        turns = {u: len(self.turns_of(rows[u]["conversation_id"])) for u in users if rows[u]}
+        rr = refused["result"]
+        q_result = queued.get("result") or (None, {}, {})
+        return {"ok": rr[0] == 503 and (rr[1] or {}).get("detail", {}).get("code") == "overloaded"
+                and {k.lower() for k in rr[2]} >= {"retry-after"} and refused["took_s"] < 2
+                and cancel[0] == 200 and q_result[0] == 200
+                and (q_result[1] or {}).get("status") == "cancelled"
+                and rows[queued_user]["status"] == "cancelled" and turns[queued_user] == 0
+                and r_out["result"][0] == 200 and retried[0] == 200
+                and retried[1].get("status") == "answered" and turns[refused_user] == 1,
+                "refused": [rr[0], (rr[1] or {}).get("detail", {}).get("code"), refused["took_s"]],
+                "cancel_from_other_process": cancel[0],
+                "queued_outcome": [q_result[0], (q_result[1] or {}).get("status"), queued.get("took_s")],
+                "running_outcome": r_out["result"][0], "refused_retried": [retried[0],
+                                                                          retried[1].get("status")],
+                "run_status": {("running", "queued", "refused")[i]: rows[u]["status"]
+                               for i, u in enumerate(["o0", queued_user, refused_user])},
+                "turns_committed": {("running", "queued", "refused")[i]: turns[u]
+                                    for i, u in enumerate(["o0", queued_user, refused_user])}}
+
     def s_missing_metrics(self) -> dict:
         """Every process that reports freshness stops: the absence must page."""
         for name in ("app-1", "app-2"):
             self.apps[name].stop()
         fired = self.wait_alert("FreshnessNotReported", "firing", 120)
-        self.start_apps()
-        # New processes, new instances: their running totals start again.
-        with self.lock:
-            self.asks = {name: 0 for name in self.asks}
+        self.start_apps()                  # new instances: their totals start again
         cleared = self.wait_alert("FreshnessNotReported", "inactive", 120)
-        # Restarted processes are new instances with new running totals.
         return {"fired_after_s": fired, "cleared_after_s": cleared}
 
     def s_collector_outage(self) -> dict:
@@ -738,17 +1073,27 @@ class Drill:
         export_failures = sum(len(re.findall(r'"event": "telemetry\.(?:metrics|spans)_dropped"',
                                              p.log.read_text(errors="replace")))
                               for p in self.apps.values())
+        # A process stopped while the collector is down: the final flush is
+        # bounded (2 x PAC_OTEL_TIMEOUT_S + 1 = 11 s), so the exit is too.
+        # uvicorn re-raises SIGTERM after its graceful shutdown, so a clean
+        # exit reports -15; a forced one (Proc.stop's SIGKILL) would be -9.
+        t0 = time.monotonic()
+        exit_code = self.apps["app-2"].stop(signal.SIGTERM, timeout=60)
+        shutdown_s = round(time.monotonic() - t0, 1)
         self.restart_collector()
         cleared = self.wait_alert("TelemetryPipelineDown", "inactive", 60)
+        self.start_app("app-2")
         totals_ok = self.totals_match(timeout=60)
         p95 = lambda xs: statistics.quantiles(xs, n=20)[-1]        # noqa: E731
         growth = {n: (rss_after[n] or 0) - (rss_before[n] or 0) for n in rss_before}
         return {"ok": all(p.alive() for p in self.apps.values()) and totals_ok
                 and p95(during) < p95(baseline) + 1.0 and max(growth.values()) < 64 * 1024
-                and export_failures >= 1,
+                and export_failures >= 1 and exit_code in (0, -signal.SIGTERM)
+                and shutdown_s < 20,
                 "answers_during_outage": len(during), "p95_s_baseline": round(p95(baseline), 3),
                 "p95_s_during": round(p95(during), 3), "rss_growth_kib": growth,
                 "export_failure_log_lines": export_failures,
+                "stopped_during_outage": {"exit_code": exit_code, "took_s": shutdown_s},
                 "TelemetryPipelineDown_fired_after_s": fired,
                 "TelemetryPipelineDown_cleared_after_s": cleared,
                 "totals_caught_up": totals_ok}
@@ -813,6 +1158,76 @@ class Drill:
                 + [f"{len(cookies)} session cookies", "database and user passwords"],
                 "leaks": [f"{k} in {h}" for k, h in found], "bytes_scanned": sizes}
 
+    def span_errors_by_run(self) -> dict[str, set[str]]:
+        """run id -> the error types recorded on any span of its traces,
+        from the collector's file export (OTLP JSON lines)."""
+        runs_of, errors_of = {}, {}
+        path = self.work / "otel" / "traces.jsonl"
+        for raw in path.read_text(errors="replace").splitlines():
+            try:
+                doc = json.loads(raw)
+            except ValueError:
+                continue
+            for rs in doc.get("resourceSpans", []):
+                for ss in rs.get("scopeSpans", []):
+                    for span in ss.get("spans", []):
+                        trace = span.get("traceId")
+                        attrs = {a["key"]: next(iter(a.get("value", {}).values()), None)
+                                 for a in span.get("attributes", [])}
+                        if attrs.get("pac.run_id"):
+                            runs_of.setdefault(trace, set()).add(attrs["pac.run_id"])
+                        kinds = errors_of.setdefault(trace, set())
+                        if (span.get("status") or {}).get("message"):
+                            kinds.add(span["status"]["message"])
+                        for event in span.get("events", []):
+                            for a in event.get("attributes", []):
+                                if a["key"] == "exception.type":
+                                    kinds.add(next(iter(a.get("value", {}).values()), ""))
+        out: dict[str, set[str]] = {}
+        for trace, run_ids in runs_of.items():
+            for run_id in run_ids:
+                out.setdefault(run_id, set()).update(errors_of.get(trace, set()))
+        return out
+
+    def s_logs(self) -> dict:
+        """What diagnosis needs survives the redaction: one JSON object a
+        line, a stable event code on every line, exception types from the
+        allowlist, and ids that lead from a response (X-Request-ID) to its
+        log line, and from that line (run_id) to its trace and the error
+        type the trace recorded."""
+        sys.path.insert(0, str(ROOT))
+        from app.logs import ERROR_TYPES, EVENTS
+        known = set(EVENTS.values()) | {"http.access", "server.started", "log.external"}
+        lines, not_json = [], 0
+        for path in sorted(self.logs.glob("app-*.log")):
+            for raw in path.read_text(errors="replace").splitlines():
+                if raw.strip():
+                    try:
+                        lines.append(json.loads(raw))
+                    except ValueError:
+                        not_json += 1
+        events: dict[str, int] = {}
+        for line in lines:
+            events[str(line.get("event"))] = events.get(str(line.get("event")), 0) + 1
+        unknown = sorted(e for e in events if e not in known)
+        error_types = sorted({line["error"]["type"] for line in lines
+                              if isinstance(line.get("error"), dict)})
+        failed = [line for line in lines if line.get("event") == "query.failed"]
+        responded = set(self.response_ids)
+        spans = self.span_errors_by_run()
+        to_response = [f for f in failed if f.get("http_id") in responded]
+        to_trace = [f for f in failed if f.get("request_id") and "QueryCanceled" in spans.get(
+            f.get("run_id"), set())]
+        return {"ok": bool(lines) and not_json == 0 and not unknown
+                and set(error_types) <= ERROR_TYPES | {"Exception"}
+                and len(failed) >= 12 and len(to_response) == len(failed)
+                and len(to_trace) == len(failed),
+                "lines": len(lines), "not_json": not_json, "events": events,
+                "unknown_events": unknown, "error_types": error_types,
+                "query_failed_lines": len(failed),
+                "linked_to_the_response_id": len(to_response),
+                "linked_to_a_trace_recording_QueryCanceled": len(to_trace)}
+
     # -- run ----------------------------------------------------------------------------
 
     def run(self) -> int:
@@ -820,6 +1235,7 @@ class Drill:
             self.start_postgres()
             self.bootstrap()
             self.make_users()
+            self.add_twins()
             self.start_collector()
             self.start_prometheus()
             self.start_apps()
@@ -835,6 +1251,18 @@ class Drill:
                          self.s_feed)
             self.attempt("both processes answer from the refreshed snapshot",
                          self.s_refresh_seen_by_both)
+            self.attempt("a process killed mid-request: the other takes the key over after "
+                         "the lease and commits once", self.s_worker_killed)
+            self.attempt("one conversation on two processes: the second question waits its "
+                         "turn", self.s_overlapping_revisions)
+            self.attempt("a clarification asked on one process is answered on the other",
+                         self.s_clarification_elsewhere)
+            self.attempt("pricing revoked: the replay on the other process is withheld, "
+                         "history and new answers show no figure", self.s_revocation)
+            self.attempt("deleting conversations refunds no rate, on either process",
+                         self.s_quota_after_deletion)
+            self.attempt("overload refused at once; a queued request cancelled from another "
+                         "process", self.s_overload_and_cancel)
             self.attempt("both processes stopped: FreshnessNotReported pages, then clears",
                          self.s_missing_metrics)
             self.attempt("the collector killed: answers continue, the outage pages, totals "
@@ -842,6 +1270,8 @@ class Drill:
             self.attempt("every alert that fired clears", self.s_alerts_clear)
             self.attempt("every dashboard query runs against the backend", self.s_dashboard)
             self.attempt("no sentinel reaches telemetry, Prometheus or a log", self.s_sentinels)
+            self.attempt("logs keep event codes, error types and ids that lead to the trace",
+                         self.s_logs)
         except Exception as exc:
             self.record("drill setup", False, error=f"{type(exc).__name__}: {str(exc)[:500]}")
         return 0 if self.results and all(r["status"] == "passed" for r in self.results) else 1
@@ -882,12 +1312,14 @@ def main() -> int:
         summary = {
             "drill_version": DRILL_VERSION,
             "label": "local evidence: one machine, one PostgreSQL cluster created for the drill, "
-                     "two application processes (not containers), a local collector and "
-                     "Prometheus with shortened alert windows; not a hosted backend or an "
-                     "on-call incident drill",
+                     "two application processes and a third for overload (not containers), a "
+                     "local collector and Prometheus with shortened alert windows and a "
+                     f"{LEASE_S} s run lease; not a hosted backend or an on-call incident drill",
             "tools": tools,
             "alerts_not_exercised": NOT_EXERCISED,
             "drill_rule_substitutions": {k: v["sub"] for k, v in DRILL_RULES.items()},
+            "shortened_settings": {"PAC_RUN_LEASE_SECONDS": LEASE_S,
+                                   "PAC_REQUEST_DEADLINE_SECONDS": DEADLINE_S},
             "passed": sum(r["status"] == "passed" for r in drill.results),
             "failed": sum(r["status"] == "failed" for r in drill.results),
             "results": drill.results,
