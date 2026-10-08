@@ -16,13 +16,14 @@ cluster, where the application roles already exist. Runs with the local
 PostgreSQL superuser for createdb and restore, as an operator would.
 
 New cluster (--new-cluster): the procedure in docs/RUNBOOK.md §8 for a lost
-host. A disposable copy of the source (<target>_src, in the local cluster)
+host. A disposable copy of the source (named <target>, in the local cluster)
 is first given application state -- an answer committed under an
 idempotency key and a clarification paused mid-conversation -- and its data
 cutoff is read: the newest audit row, turn, run and published dataset. The
 copy is dumped; a new cluster is created (initdb in a temporary directory,
 its own port, a superuser password generated here); the roles are created
-and the dump restored as RUNBOOK §8 says. Then the same-cluster checks, plus
+(bootstrap_db.py --roles-only) and the dump restored with pg_restore
+--create, as RUNBOOK §8 says. Then the same-cluster checks, plus
 the role memberships, the restored cutoff equal to the copy's, the stored
 answer replayed and the paused clarification resumed in the new cluster.
 Every step is timed; the cluster and the copy are removed at the end.
@@ -318,16 +319,18 @@ def start_cluster(work: pathlib.Path) -> Cluster:
 
 def restore_as_documented(cluster: Cluster, target: str, dump: pathlib.Path,
                           jobs: int) -> dict:
-    """docs/RUNBOOK.md §8, new cluster: scripts/bootstrap_db.py (without
-    --drop) for the roles, then pg_restore into the database."""
+    """docs/RUNBOOK.md §8, new cluster: the roles with scripts/bootstrap_db.py
+    --roles-only (no database, no schema), then pg_restore --create, which
+    creates the database as it was dumped -- its name, owner and CONNECT
+    grants -- and restores schema, data, policies and grants into it."""
     out: dict = {}
     t0 = time.perf_counter()
-    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "bootstrap_db.py"), "--no-env",
+    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "bootstrap_db.py"), "--roles-only",
                         "--admin-dsn", cluster.admin_dsn()], cwd=ROOT,
                        env=cluster.app_env(target), capture_output=True, text=True)
     out.update(roles_seconds=round(time.perf_counter() - t0, 2), roles_exit=r.returncode)
     t0 = time.perf_counter()
-    r = subprocess.run(["pg_restore", "-d", target, "-j", str(jobs), str(dump)],
+    r = subprocess.run(["pg_restore", "--create", "-d", "postgres", "-j", str(jobs), str(dump)],
                        env=cluster.tool_env(), capture_output=True, text=True)
     errors = [line for line in r.stderr.splitlines() if "error:" in line]
     out.update(restore_seconds=round(time.perf_counter() - t0, 2), restore_exit=r.returncode,
@@ -336,7 +339,9 @@ def restore_as_documented(cluster: Cluster, target: str, dump: pathlib.Path,
 
 
 def new_cluster(args) -> int:
-    copy = f"{args.target}_src"
+    # The copy carries the target's name, so pg_restore --create recreates it
+    # under that name in the new cluster, as a real restore keeps the original.
+    copy = args.target
     work = pathlib.Path(tempfile.mkdtemp(prefix="pac-restore-cluster-"))
     cluster = None
     timings: dict = {}

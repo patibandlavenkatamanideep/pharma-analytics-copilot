@@ -314,7 +314,7 @@ local disk. It does not demonstrate:
 - point-in-time recovery;
 - recovery after losing the host or its disk;
 - fetching a backup from off-host storage;
-- re-provisioning roles in a new cluster;
+- re-provisioning roles in a new cluster (measured since: `--new-cluster`, below);
 - repointing a deployment.
 
 A production RTO is the sum of those steps, measured in the target
@@ -324,10 +324,26 @@ day. Anything tighter needs WAL archiving with point-in-time recovery, or a
 managed database that provides it. Neither is configured here, and no RPO
 has been agreed.
 
-Restoring into a **new cluster** needs the roles first: run
-`scripts/bootstrap_db.py` (without `--drop`) before `pg_restore`, then
-re-provision logins. The drill restored within the same cluster, where
-the roles already existed, so that path is not measured.
+Restoring into a **new cluster** (the host or its disk is lost): roles are
+cluster-wide and are not in a database dump, so create them first, and
+nothing else, then let `pg_restore --create` bring the database exactly as
+it was dumped:
+
+```bash
+# The serving passwords from the secret store: PAC_DB_OWNER_PASSWORD,
+# PAC_DB_AUTH_PASSWORD, PAC_DB_EXEC_PASSWORD, PAC_DB_SCOPED_PASSWORD.
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn postgresql://<superuser>@<new-host>/postgres
+pg_restore --create -d postgres -j 4 pac-2026-10-01.dump      # as the superuser
+```
+
+Do **not** run `bootstrap_db.py` without `--roles-only` first, as this
+section said until 7 October 2026: it creates the database with every
+migration applied, and `pg_restore` into it then fails on every object that
+already exists (142 errors) and, with the foreign keys already in place,
+loads no conversation, turn, run, attempt or clarification at all, while the
+database still reports ready and answers questions
+(`r5-restore-new-cluster-reproduced.json`). `restore_drill.py --new-cluster`
+runs the procedure above against a new cluster and checks it.
 
 The dump matters most for `app_auth`, `app_conv`, `app_meta` and
 `app_ingest`. The business data can be regenerated (`SEED = 42`), but

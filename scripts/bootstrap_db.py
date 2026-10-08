@@ -77,6 +77,28 @@ def write_env(passwords: dict[str, str]) -> None:
     print(f"  wrote {ENV_FILE} (0600)")
 
 
+def create_login_roles(admin_dsn: str, passwords: dict[str, str]) -> None:
+    print("== login roles ==")
+    with psycopg.connect(admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        for login, privilege in LOGIN_ROLES.items():
+            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (login,))
+            stmt = "ALTER ROLE {} WITH LOGIN PASSWORD {}" if cur.fetchone() else (
+                "CREATE ROLE {} WITH LOGIN PASSWORD {} "
+                "NOSUPERUSER NOCREATEROLE NOCREATEDB NOBYPASSRLS"
+            )
+            cur.execute(
+                sql.SQL(stmt).format(sql.Identifier(login), sql.Literal(passwords[login]))
+            )
+            # Exactly one privilege role per login role: a scoped login has no
+            # membership path to pac_rt_exec, so SET ROLE cannot escalate it.
+            cur.execute(
+                sql.SQL("GRANT {} TO {}").format(
+                    sql.Identifier(privilege), sql.Identifier(login)
+                )
+            )
+            print(f"  {login} -> {privilege}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--admin-dsn", default=os.environ.get("PAC_ADMIN_DSN", "postgresql:///postgres"))
@@ -86,6 +108,13 @@ def main() -> int:
         action="store_true",
         help="do not write .env (use when provisioning a secondary database, so "
              "the application's own configuration is not repointed at it)",
+    )
+    ap.add_argument(
+        "--roles-only",
+        action="store_true",
+        help="create the roles and their memberships and stop: no database, schema or "
+             ".env. For restoring a dump into a new cluster (docs/RUNBOOK.md §8), where "
+             "pg_restore --create brings the database, its schema, data and grants",
     )
     args = ap.parse_args()
 
@@ -123,6 +152,12 @@ def main() -> int:
                 )
             print(f"  privilege role {privilege} ready")
 
+    if args.roles_only:
+        create_login_roles(args.admin_dsn, passwords)
+        print("  --roles-only: no database, schema or .env")
+        return 0
+
+    with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
         if args.drop:
             cur.execute(
                 sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(DB_NAME))
@@ -164,25 +199,7 @@ def main() -> int:
                    check=True, env={**os.environ, "PAC_DB_NAME": DB_NAME,
                                     "PAC_SETUP_OWNER_DSN": owner_dsn})
 
-    print("== login roles ==")
-    with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
-        for login, privilege in LOGIN_ROLES.items():
-            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (login,))
-            stmt = "ALTER ROLE {} WITH LOGIN PASSWORD {}" if cur.fetchone() else (
-                "CREATE ROLE {} WITH LOGIN PASSWORD {} "
-                "NOSUPERUSER NOCREATEROLE NOCREATEDB NOBYPASSRLS"
-            )
-            cur.execute(
-                sql.SQL(stmt).format(sql.Identifier(login), sql.Literal(passwords[login]))
-            )
-            # Exactly one privilege role per login role: a scoped login has no
-            # membership path to pac_rt_exec, so SET ROLE cannot escalate it.
-            cur.execute(
-                sql.SQL("GRANT {} TO {}").format(
-                    sql.Identifier(privilege), sql.Identifier(login)
-                )
-            )
-            print(f"  {login} -> {privilege}")
+    create_login_roles(args.admin_dsn, passwords)
 
     with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
         cur.execute(
