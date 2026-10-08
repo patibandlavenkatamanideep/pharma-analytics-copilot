@@ -500,13 +500,14 @@ index for a single-platform build); trivy 0.58.1 with its database updated
 fix: passed, 0 findings) and the complete counts, none fixable: HIGH 44, MEDIUM 58, LOW
 61, UNKNOWN 2, CRITICAL 0; the reviewed exceptions (two exact gitleaks fingerprints,
 SUPPLY_CHAIN.md); the last hosted run; and the paths after the candidate, each classed:
-**no build input changed**. The policy statement stays what the gate establishes: no
+**no build input changed**. The scan reports are `evidence/release/trivy-gate.json`,
+`trivy-full.json` and `trivy-db.json`. The policy statement stays what the gate establishes: no
 HIGH or CRITICAL vulnerability with a fix available; 44 HIGH without a fix remain in the
 base image's packages.
 
 **Documentation from the evidence index.** `docs/EVIDENCE_INDEX.md` is regenerated
-from the candidate's records and JUnit: 15 records, 21 defects in the ledger, 0
-problems; 4 hashes of original logs from the 6 October review that were never
+from the candidate's records and JUnit: 16 records (the image's among them), 21 defects
+in the ledger, 0 problems; 4 hashes of original logs from the 6 October review that were never
 preserved, stated as missing.
 
 **Bundle.** A Git bundle of `codex/release-defects-oct06` at the final HEAD, its
