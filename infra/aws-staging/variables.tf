@@ -208,6 +208,12 @@ variable "llm_output_usd_per_mtok" {
   default     = null
 }
 
+variable "llm_spend_limit_usd" {
+  description = "The website's model allowance in USD (PAC_LLM_SPEND_LIMIT_USD): one limit for every user, worker and task, enforced by the application before each model call. Required with llm_provider = \"bedrock\"; evaluation runs have their own cap, so set this to the model budget minus that cap."
+  type        = number
+  default     = null
+}
+
 # Single sign-on, once the owner has registered a client with the identity
 # provider (docs/RUNBOOK.md, "Single sign-on"). Null issuer: SSO is off and
 # local password sign-in is the only method.

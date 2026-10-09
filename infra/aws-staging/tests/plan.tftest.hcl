@@ -123,8 +123,8 @@ run "deployable_at_zero_tasks" {
     error_message = "the serving service starts at zero tasks until data is loaded"
   }
   assert {
-    condition     = toset(keys(aws_ecs_task_definition.job)) == toset(["bootstrap", "migrate", "load-seed", "load-full", "test-users", "boundary"])
-    error_message = "the six one-shot task definitions"
+    condition     = toset(keys(aws_ecs_task_definition.job)) == toset(["bootstrap", "migrate", "load-seed", "load-full", "dataset-check", "test-users", "boundary"])
+    error_message = "the seven one-shot task definitions"
   }
   assert {
     condition     = output.image == "123456789012.dkr.ecr.us-east-1.amazonaws.com/pac-staging@sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443"
@@ -205,6 +205,22 @@ run "an_unpinned_collector_is_refused" {
     image_digest         = "sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443"
     enable_observability = true
     collector_image      = "otel/opentelemetry-collector-contrib:0.162.0"
+  }
+
+  expect_failures = [aws_ecs_task_definition.app]
+}
+
+# A live model with no allowance: every user, worker and task would call it
+# without a spending limit.
+run "a_live_model_needs_an_allowance" {
+  command = plan
+
+  variables {
+    image_digest            = "sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443"
+    llm_provider            = "bedrock"
+    enable_bedrock          = true
+    llm_input_usd_per_mtok  = 5.5
+    llm_output_usd_per_mtok = 27.5
   }
 
   expect_failures = [aws_ecs_task_definition.app]

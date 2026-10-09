@@ -47,6 +47,8 @@ locals {
     ] : [], var.llm_input_usd_per_mtok != null && var.llm_output_usd_per_mtok != null ? [
     { name = "PAC_LLM_INPUT_USD_PER_MTOK", value = tostring(var.llm_input_usd_per_mtok) },
     { name = "PAC_LLM_OUTPUT_USD_PER_MTOK", value = tostring(var.llm_output_usd_per_mtok) },
+    ] : [], var.llm_spend_limit_usd != null ? [
+    { name = "PAC_LLM_SPEND_LIMIT_USD", value = tostring(var.llm_spend_limit_usd) },
     ] : [], var.oidc_issuer != null ? [
     { name = "PAC_OIDC_ENABLED", value = "true" },
     { name = "PAC_OIDC_ISSUER", value = var.oidc_issuer },
@@ -126,6 +128,21 @@ locals {
       env     = []
       secrets = [{ name = "PAC_TEST_USERS", valueFrom = aws_secretsmanager_secret.test_users.arn }]
     }
+    # The dataset the serving task will publish: the full synthetic load, at
+    # its known size, or this exits 1. Prints counts only.
+    dataset-check = {
+      command = ["python", "-c", join("\n", [
+        "from app.llm.planner import OfflinePlanner",
+        "from app.pipeline import Pipeline",
+        "d = Pipeline(OfflinePlanner()).current_dataset()",
+        "rows = d['row_counts']",
+        "print({'dataset': d['dataset_id'], 'mode': d['load_mode'], 'rows': rows})",
+        "ok = d['load_mode'] == 'full' and rows.get('sales') == 2000000 and rows.get('organizations') == 40000",
+        "raise SystemExit(0 if ok else 1)",
+      ])]
+      env     = []
+      secrets = []
+    }
     # The security boundary, after provisioning or a restore.
     boundary = {
       command = ["python", "-c", join("\n", [
@@ -170,6 +187,13 @@ resource "aws_ecs_task_definition" "app" {
     precondition {
       condition     = var.oidc_issuer == null || var.oidc_client_id != null
       error_message = "oidc_issuer needs oidc_client_id."
+    }
+    # A live model is called by every user, worker and task: never without
+    # the application's allowance and the rates that price it.
+    precondition {
+      condition = var.llm_provider != "bedrock" || (var.enable_bedrock && var.llm_spend_limit_usd != null
+      && var.llm_input_usd_per_mtok != null && var.llm_output_usd_per_mtok != null)
+      error_message = "llm_provider = \"bedrock\" needs enable_bedrock, llm_spend_limit_usd and both llm_*_usd_per_mtok rates."
     }
     precondition {
       condition     = anytrue([for tag in data.aws_ecr_image.deployed[0].image_tags : startswith(tag, "keep-")])

@@ -46,10 +46,14 @@ months. That adds four conditions:
   the site to everyone for the week. That needs a deliberate change to the module, which
   today refuses it; sign-in, the per-address lockout and the request limits still apply.
   A domain alone does not make the site reachable.
-* **Live NL2SQL is separate.** These estimates use the offline planner. A capped Bedrock
-  smoke evaluation (at most $2.75 at list rates) and a capped allowance for reviewers'
-  questions (about $30 per 1,000 at the measured tokens per question) would show more than
-  hosting alone; both need the owner's own token and dollar budget.
+* **Live NL2SQL is separate.** These estimates use the offline planner. A model budget
+  covers two things, each capped where it is spent: reviewers' questions, by the
+  application's shared allowance (`llm_spend_limit_usd`: one limit for every user, worker
+  and task, enforced before each model call, its repair included; RUNBOOK.md, "Model
+  allowance"), and the evaluation run, by its own token caps. A $5 budget, for example:
+  $3 for the website (about 100 questions at the measured ~$0.03 each, though each call
+  first reserves its worst case, ~$0.25) and a smoke evaluation capped at $2. Both need
+  the owner's own token and dollar budget; an AWS budget on Bedrock alerts as well.
 * **Record a walkthrough before teardown**, so the evidence outlasts the deployment.
 
 A week of the module's defaults ($22.07) plus a domain and a small model allowance can
@@ -96,8 +100,8 @@ refreshed from the then-current price list. Budgets send email; they do not stop
 ## What is created
 
 [PLAN_INVENTORY.md](../infra/aws-staging/PLAN_INVENTORY.md), from plans with a mocked
-provider: **62 resources** for the foundation, **70** once an image is set (the serving
-and six one-shot task definitions and the service). The real plan's counts must match;
+provider: **62 resources** for the foundation, **71** once an image is set (the serving
+and seven one-shot task definitions and the service). The real plan's counts must match;
 a difference is explained before apply.
 
 **IAM.** Two execution roles (serving: only the three serving roles' secrets and the
@@ -122,7 +126,7 @@ of customer-managed KMS keys, no Container Insights, no Performance Insights (LO
 | 3 | Secret values (`seed-secrets.sh`; nothing in Git, logs or Terraform) | this plan | "set" lines only |
 | 4 | Publish the image: requires the release integration pull request ([#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)) merged to `main`, by your review | PR approval | run summary: commit, tested image, registry digest |
 | 5 | Protect the image (`keep-` tag; retained up to 9,999 such images, not forever); task definitions at 0 tasks | this plan | an ECR lifecycle preview lists no `keep-` image for expiry; the plan refuses an unprotected digest |
-| 6 | `bootstrap` (restricted RDS administrator), `load-seed`, `boundary`, `test-users` | this plan | each exit code; logs hold no value |
+| 6 | `bootstrap` (restricted RDS administrator), `load-full` (the full synthetic dataset), `dataset-check`, `boundary`, `test-users` | this plan | each exit code; `dataset-check` prints the loaded counts and exits 1 unless 2,000,000 sales rows and 40,000 organizations; logs hold no value |
 | 7 | One serving task: Fargate volume ownership, readiness, verified TLS, the load balancer's path; browser sign-in, an answer, sign-out on the HTTPS URL | this plan | records naming commit, digest, configuration |
 | 8 | Lifecycle: teardown and recreate within the budget (secret generations, snapshot label, kept images) | this plan | the recreate succeeds |
 | 9 | Record a walkthrough of the live system first; then teardown at the end of the review week; residual costs as above | this plan | nothing left but what the owner chooses to keep. Charges already incurred can appear on a later bill, also after an account is closed |

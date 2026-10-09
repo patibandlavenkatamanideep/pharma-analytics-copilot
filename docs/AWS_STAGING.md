@@ -43,7 +43,7 @@ cleanup are in its README; the plan for approval is [STAGING_PLAN.md](STAGING_PL
 | Check | Result | Where | Record |
 |---|---|---|---|
 | Lock read-only, `fmt`, `validate`, mocked plans | passed | CI (`supply-chain`) on `e101db3` | run 37869897240 |
-| 10 mocked plans: the foundation without an image (62 resources), deployable at zero tasks (70), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector and an image without a `keep-` tag; secret generations, the snapshot label and the retention rule order | passed | local | `r5-staging-terraform-test-e101db3.json` |
+| 11 mocked plans: the foundation without an image (62 resources), deployable at zero tasks (71), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector and an image without a `keep-` tag; secret generations, the snapshot label and the retention rule order | passed | local | `r5-staging-terraform-test-e101db3.json` |
 | Every address each configuration would create | generated | local | `infra/aws-staging/PLAN_INVENTORY.md` |
 | `trivy config` 0.58.1 | only accepted findings (1 HIGH: internet-facing load balancer, limited to `allowed_cidrs`; 1 MEDIUM: IAM database authentication off; LOW: AWS-managed keys, no Container Insights or Performance Insights) | local, `4c90704` | `r5-staging-trivy-config.json` |
 | Security properties from source (15 tests) | passed | CI and local | `r5-rc-e101db3-pytest.json` |

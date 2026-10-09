@@ -35,7 +35,7 @@ Bedrock spend (its own token and dollar budget).
 | Sign-out | 4 scenarios under a controlled network: abandoned, applied but unanswered, refused, straight to another user | Chromium, local server | `r5-signout-refused-fixed.json` |
 | RDS restricted administrator; verified TLS; proxy trust | pass (emulated administrator; private CA; local proxy) | local | `r5-rds-admin-fixed.json`, `r5-db-tls-verify-full.json`, `r5-proxy-client-address-fixed.json` |
 | New-cluster restore; upgrade from `7950e71` | pass | local clusters | `r5-restore-new-cluster-e101db3.json`, `r5-upgrade-compatibility-e101db3.json` |
-| Staging plans | 62 resources for the foundation, 70 deployable; 10 configurations planned and refused as designed | mocked provider (also in CI) | `r5-staging-terraform-test-e101db3.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
+| Staging plans | 62 resources for the foundation, 71 deployable; 11 configurations planned and refused as designed (a live model without an allowance among the refusals) | mocked provider (also in CI) | `r5-staging-terraform-test-e101db3.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
 | Cost | ~$96/month low-cost; ~$213/month during failover tests | AWS public price list, us-east-1 | `infra/aws-staging/cost/ESTIMATE.md` |
 | **Blocked** | | | |
 | A pull request with a failing check being blocked | the first real one is #1; not yet observed failing | — | — |
