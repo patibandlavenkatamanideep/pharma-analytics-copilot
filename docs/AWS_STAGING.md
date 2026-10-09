@@ -139,7 +139,7 @@ including the browser security headers the load balancer now adds: the first run
 none of them (`r5-staging-headers-reproduced.json`).
 
 A walkthrough of the live site, as eight screenshots taken by Chromium through the public
-hostname, is kept in [`evidence/walkthrough/2026-10-09/`](../evidence/walkthrough/2026-10-09/):
+hostname, is kept in [`evidence/runs/walkthrough-2026-10-09/`](../evidence/runs/walkthrough-2026-10-09/):
 the sign-in page; the executive's top accounts, revenue ($250,766,926.42 for the rolling three
 months) and a brand's performance; the Northeast director asking for revenue and getting
 68,236 packs with the restriction stated; the same director's territories (New York Metro and
