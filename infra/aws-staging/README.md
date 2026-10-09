@@ -86,7 +86,11 @@ decisions above (it holds no secret).
    `terraform state show aws_acm_certificate.this` (`domain_validation_options`)
    at your DNS provider. The next step waits until the certificate is issued.
 3. **Foundation.** `terraform plan -var-file=staging.tfvars -out=foundation.plan`
-   with no `image_digest`, then `terraform apply foundation.plan`. Creates
+   with no `image_digest`. Reconcile it with [PLAN_INVENTORY.md](PLAN_INVENTORY.md):
+   `python3 ../../evidence/probes/staging_plan_check.py --var-file staging.tfvars`
+   accounts for every address the owner's variables add or remove and prints
+   counts only; anything unexplained (exit 1) is explained before apply. Then
+   `terraform apply foundation.plan`. Creates
    everything except task definitions and the service. Point `hostname` at
    `load_balancer_dns_name` if Route 53 does not.
 4. **Secret values.** `./seed-secrets.sh` (database roles). It prints names

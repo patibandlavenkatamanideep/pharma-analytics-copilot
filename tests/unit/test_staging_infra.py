@@ -338,3 +338,50 @@ def test_a_forged_forwarded_for_cannot_choose_the_client_address():
     assert client(load_balancer, "10.40.3.3, 198.51.100.9") == "198.51.100.9"
     # Not through the load balancer: the header is not believed at all.
     assert client("198.51.100.9", "203.0.113.5") == "198.51.100.9"
+
+
+def plan_check():
+    spec = importlib.util.spec_from_file_location(
+        "staging_plan_check", ROOT / "evidence" / "probes" / "staging_plan_check.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+OWNER = {"allowed_cidrs": ["203.0.113.7/32"], "public_sign_in": True, "model_budget_usd": 5,
+         "route53_zone_id": "Z1", "hostname": "staging.example.org", "image_digest": None,
+         "create_github_oidc_provider": True, "enable_flow_logs": True}
+
+
+def owner_plan(check, inventory: str) -> list[tuple[str, list[str]]]:
+    """What a real plan with OWNER's variables creates, per the inventory."""
+    planned = [a.replace("198.51.100.0/24", "203.0.113.7/32")
+               for a in check.section(inventory, "Every address in the foundation")]
+    planned += check.section(inventory, "Foundation with the public sign-in page")
+    planned += ["aws_budgets_budget.bedrock[0]", "aws_route53_record.app[0]",
+                'aws_route53_record.validation["staging.example.org"]']
+    return [(a, ["create"]) for a in planned]
+
+
+def test_a_real_plan_is_reconciled_with_the_inventory_address_by_address():
+    check = plan_check()
+    inventory = (INFRA / "PLAN_INVENTORY.md").read_text()
+    line, unexplained = check.reconcile(owner_plan(check, inventory), OWNER, inventory)
+    assert unexplained == []
+    assert line.startswith("plan: 68 to add, 0 to change, 0 to destroy; inventory foundation 63")
+    assert "+2 public sign-in, +1 Bedrock budget, +2 Route 53 records; allowed ranges 1" in line
+    assert "203.0.113.7" not in line and "staging.example.org" not in line
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda p: p + [("aws_instance.surprise", ["create"])],
+    lambda p: p[1:],
+    lambda p: p + [("aws_vpc.this", ["delete", "create"])],
+    lambda p: [(a.replace("203.0.113.7/32", "0.0.0.0/0"), x) for a, x in p] + [
+        ('aws_vpc_security_group_ingress_rule.alb_https["10.0.0.0/8"]', ["create"])],
+], ids=["unplanned-extra", "missing", "replacement", "extra-range"])
+def test_anything_the_inventory_does_not_account_for_is_unexplained(mutate):
+    check = plan_check()
+    inventory = (INFRA / "PLAN_INVENTORY.md").read_text()
+    line, unexplained = check.reconcile(mutate(owner_plan(check, inventory)), OWNER, inventory)
+    assert unexplained and not line.endswith("unexplained: none")

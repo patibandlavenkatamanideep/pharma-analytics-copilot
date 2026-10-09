@@ -111,7 +111,8 @@ refreshed from the then-current price list. Budgets send email; they do not stop
 [PLAN_INVENTORY.md](../infra/aws-staging/PLAN_INVENTORY.md), from plans with a mocked
 provider: **63 resources** for the foundation, **73** once an image is set (the serving
 and eight one-shot task definitions and the service), and 2 more with the public sign-in
-page. The real plan's counts must match; a difference is explained before apply.
+page. The real plan's counts must match; a difference is explained before apply
+(`evidence/probes/staging_plan_check.py` reconciles it address by address).
 
 **IAM.** Two execution roles (serving: only the three serving roles' secrets and the
 OIDC client secret; one-shot: every database secret and the RDS-managed administrator
