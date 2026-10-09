@@ -225,3 +225,14 @@ run "a_live_model_needs_an_allowance" {
 
   expect_failures = [aws_ecs_task_definition.app]
 }
+
+# A zero price makes every call free to the application's allowance.
+run "a_zero_model_price_is_refused" {
+  command = plan
+
+  variables {
+    llm_input_usd_per_mtok = 0
+  }
+
+  expect_failures = [var.llm_input_usd_per_mtok]
+}

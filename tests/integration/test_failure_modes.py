@@ -371,3 +371,39 @@ def test_an_allowance_without_rates_refuses_every_call(exec_user, allowance):
     result = pipe.ask(exec_user, QUESTION)
     assert planner._client.messages.requests == []
     assert result.status == "error" and "spend limit" in result.message
+
+
+@pytest.mark.xfail(strict=True, reason="model prices are not validated: zero, negative and NaN "
+                                       "rates are accepted")
+@pytest.mark.parametrize("bad", ["0", "-1", "nan", "inf"])
+def test_model_prices_must_be_finite_and_positive(bad, monkeypatch):
+    """A price of zero makes every reservation free, so the allowance never
+    runs down; a negative one refunds; NaN fails later, mid-request."""
+    import pydantic
+
+    from app.config import Settings
+
+    for name in ("PAC_LLM_INPUT_USD_PER_MTOK", "PAC_LLM_OUTPUT_USD_PER_MTOK"):
+        monkeypatch.setenv(name, bad)
+        with pytest.raises(pydantic.ValidationError):
+            Settings(_env_file=None)
+        monkeypatch.setenv(name, "5.5")
+
+
+@pytest.mark.xfail(strict=True, reason="a zero price makes every reservation free")
+def test_a_zero_price_cannot_make_the_allowance_free(allowance):
+    from app.llm.allowance import SharedAllowance
+
+    allowance("0.01")
+    with pytest.raises(ValueError):
+        meter = SharedAllowance(0.01, 0, 0)
+        # Were it accepted: a hundred worst-case calls, all granted, none counted.
+        assert all(meter.reserve(20_000, 4_096) for _ in range(100))
+
+
+def test_a_zero_limit_refuses_every_call(allowance):
+    from app.llm.allowance import SharedAllowance
+
+    allowance("0")
+    assert not SharedAllowance(0, 5.5, 27.5).reserve(1, 1)
+    assert allowance_row()["committed_microusd"] == 0
