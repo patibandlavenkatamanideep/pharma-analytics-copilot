@@ -70,6 +70,86 @@
       "conclusion": "success",
       "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240",
       "note": "all four jobs on the executable candidate, the Terraform step (lock read-only, fmt, validate, 10 mocked plans) included"
+    },
+    {
+      "run_id": 37871091642,
+      "commit": "a7e67541558487ea08a6f12b0712d6aab96aa2b7",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871091642",
+      "note": "all four jobs; evidence and the secret-scan exceptions after candidate e101db3"
+    },
+    {
+      "run_id": 37871119598,
+      "commit": "a7e67541558487ea08a6f12b0712d6aab96aa2b7",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871119598",
+      "note": "all four jobs, pull request #1"
+    },
+    {
+      "run_id": 37871400281,
+      "commit": "90cf034a60aa184989f5907abf23de5dd9cdcee3",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871400281",
+      "note": "all four jobs; index and manifest for e101db3"
+    },
+    {
+      "run_id": 37871404198,
+      "commit": "90cf034a60aa184989f5907abf23de5dd9cdcee3",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871404198",
+      "note": "all four jobs, pull request #1"
+    },
+    {
+      "run_id": 37873002241,
+      "commit": "c9be7802306d93baffb5386a7499b780f5cf35ee",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37873002241",
+      "note": "all four jobs; keep-* retention wording, lifecycle preview"
+    },
+    {
+      "run_id": 37873006154,
+      "commit": "c9be7802306d93baffb5386a7499b780f5cf35ee",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37873006154",
+      "note": "all four jobs, pull request #1"
+    },
+    {
+      "run_id": 37876986530,
+      "commit": "06d5ba1ab6f786810a60e86f9efbd7a86cd883df",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37876986530",
+      "note": "all four jobs; README, cost options A and B"
+    },
+    {
+      "run_id": 37876990527,
+      "commit": "06d5ba1ab6f786810a60e86f9efbd7a86cd883df",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37876990527",
+      "note": "all four jobs, pull request #1"
+    },
+    {
+      "run_id": 37877891634,
+      "commit": "a115002e327e030b0580e2abdba9b5f4794ab45a",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37877891634",
+      "note": "all four jobs; staging plan for a review week"
+    },
+    {
+      "run_id": 37877896006,
+      "commit": "a115002e327e030b0580e2abdba9b5f4794ab45a",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37877896006",
+      "note": "all four jobs, pull request #1"
     }
   ],
   "not_externally_verified": [

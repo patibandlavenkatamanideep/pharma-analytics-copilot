@@ -1,0 +1,65 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T10:54:49+00:00",
+  "claim": "At fb415ca: terraform test plans infra/aws-staging with a mocked AWS provider in 11 configurations, including the refusal of a live model without an allowance and the seven one-shot task definitions (dataset-check among them)",
+  "application": {
+    "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+    "tree": "a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "AWS_EC2_METADATA_DISABLED=true",
+      "AWS_ACCESS_KEY_ID=",
+      "AWS_SECRET_ACCESS_KEY=",
+      "AWS_PROFILE=",
+      "/Users/manideep/src/pac-work/tools/terraform/terraform",
+      "-chdir=infra/aws-staging",
+      "test",
+      "-no-color"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.75
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "Success! 11 passed, 0 failed."
+  },
+  "artifacts": [],
+  "limits": [
+    "a mocked provider: no credentials, no API call, nothing created"
+  ]
+}

@@ -630,6 +630,25 @@
         }
       ],
       "verified_by": "evidence/runs/r5-signout-refused-fixed.json (7a1a2bb: all 15 journeys; three consecutive local runs) and hosted CI on the candidate"
+    },
+    {
+      "id": "website-model-spend-unbounded",
+      "title": "The website path had no model spend allowance: Pipeline.spend was set only by evaluation tooling (scripts/run_evals.py's in-memory Budget), so a model budget capped an evaluation run but not reviewers' questions, across users, uvicorn workers, replicas and repair attempts; serving was bounded by per-user request quotas only",
+      "fix_commits": [
+        "c524d45"
+      ],
+      "regression_files": [
+        "tests/integration/test_failure_modes.py",
+        "tests/security/test_serving_credentials.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-website-allowance-reproduced.json",
+          "baseline": "d0fdf28",
+          "note": "test_a_configured_allowance_limits_what_the_website_spends, committed as a strict xfail and run with --runxfail: with an allowance below one call's bound (PAC_LLM_SPEND_LIMIT_USD and both rates), a question through the serving pipeline still reached the fake model transport and was answered. Found by review of the staging plan's $5 model allowance"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-website-allowance-fixed.json (fb415ca: the reproduction, six integration tests of the shared row -- settling, unreported usage, ten concurrent reservations against room for three, a bound violation, release, missing rates -- and two of the cloud startup refusal); the whole suite under the release gate at fb415ca"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
