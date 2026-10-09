@@ -237,3 +237,37 @@ def test_an_exhausted_evaluation_budget_makes_no_model_call(exec_user):
     assert result.status == "error" and "spend limit" in result.message
     assert planner._client.messages.requests == []
     assert audit_status(result.request_id) == "budget_exhausted"
+
+
+# ---------------------------------------------------------------------------
+# The website's model allowance: every user, worker, replica and retry
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def allowance(monkeypatch):
+    """Configure PAC_LLM_SPEND_LIMIT_USD (with the rates that price it) for
+    the pipelines built in one test, and restore the settings after it."""
+    from app.config import get_settings
+
+    def configure(limit_usd: str, input_rate: str = "5.5", output_rate: str = "27.5"):
+        monkeypatch.setenv("PAC_LLM_SPEND_LIMIT_USD", limit_usd)
+        monkeypatch.setenv("PAC_LLM_INPUT_USD_PER_MTOK", input_rate)
+        monkeypatch.setenv("PAC_LLM_OUTPUT_USD_PER_MTOK", output_rate)
+        get_settings.cache_clear()
+
+    yield configure
+    monkeypatch.undo()
+    get_settings.cache_clear()
+
+
+@pytest.mark.xfail(strict=True, reason="the website path has no spend allowance: Pipeline.spend "
+                                       "is set only by evaluation tooling")
+def test_a_configured_allowance_limits_what_the_website_spends(exec_user, allowance):
+    """An allowance below one call's bound: a question through the serving
+    pipeline asks the model nothing and says why. An evaluation script's token
+    cap does not reach this path; only the pipeline's own meter does."""
+    allowance("0.0001")
+    pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
+    result = pipe.ask(exec_user, QUESTION)
+    assert planner._client.messages.requests == []
+    assert result.status == "error" and "spend limit" in result.message

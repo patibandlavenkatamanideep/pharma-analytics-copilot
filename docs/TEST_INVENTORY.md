@@ -28,9 +28,9 @@ whether an answer is arithmetically right.
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 847 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`); without a database too, `r5-rc-e101db3-unit-nodb.json` |
-| **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Integration** | `pytest tests/integration -q` | 958 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | pass, strict gate | `r5-rc-e101db3-security.json` (`e101db3`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2240** | pass, strict gate: no skips, no xfails | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2241** | pass, strict gate: no skips, no xfails | `r5-rc-e101db3-pytest.json` (`e101db3`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-e101db3-component.json` (`e101db3`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-e101db3-browser.json` (`e101db3`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-e101db3-eval-*.json` (`e101db3`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
@@ -50,7 +50,7 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 220 do check results or behaviour:
+result. The other 221 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
@@ -62,7 +62,7 @@ result. The other 220 do check results or behaviour:
 - 11 run the real ingestion command against a local OTLP receiver, a
   hanging one and none, and check freshness after a feed stops
   (`tests/integration/test_ingest_observability.py`);
-- 11 inject provider and database failures, or an exhausted spend
+- 12 inject provider and database failures, or an exhausted spend or allowance
   (`tests/integration/test_failure_modes.py`);
 - 5 exercise admission control on the real request path
   (`tests/integration/test_admission_pipeline.py`).
