@@ -1,7 +1,8 @@
 # Restricted AWS staging — plan for approval
 
 **For approval before anything billable is created.** Prepared 9 October 2026 for
-candidate `fb415ca`; updated the same day with the owner's decisions. It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
+candidate `fb415ca`; updated the same day with the owner's decisions, for candidate `5536526`. **Approved by the owner on 9 October 2026 and deployed the same day**
+(candidate `a786bda`): the status is in [AWS_STAGING.md](AWS_STAGING.md). It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
 number below is either measured, taken from AWS's public price list, or marked as an
 assumption. Nothing in it has run on AWS.
 
@@ -26,7 +27,7 @@ costed extension below, enabled only when approved.
 | Dates | **seven days from 9 October**: live as soon as this plan is approved and deployed, torn down by **16 October 2026** |
 | Shape | the module's defaults: `db.t4g.small`, the full synthetic dataset, the app available all day ($3.15 a day, **$22.07 for 7 days**) |
 | Access | *"Anyone may reach the sign-in page, but only accounts I approve may use the application."* `public_sign_in = true` opens the load balancer's 443 and 80 to everyone, nothing else; each reviewer gets an account of their own from the owner's list (`seed-secrets.sh --reviewers`, the `reviewers` task); there is no sign-up |
-| Address | `pharma-copilot.click`, registered by the owner in Route 53 in `pac-staging` ($3 a year; renewal $3, auto-renew to be turned off); the site at `https://staging.pharma-copilot.click`. Its registration and hosted zone are verified read-only before the plan |
+| Address | `pharma-copilot.click`, registered by the owner in Route 53 in `pac-staging` ($3 a year; renewal $3, auto-renew to be turned off); the site at `https://staging.pharma-copilot.click`. Registration and hosted zone verified read-only (auto-renew off; delegation correct) |
 | Live model | **$5**: $3 for the website (`llm_spend_limit_usd = 3`, the shared allowance) and $2 for the evaluation (caps of 200,000 input and 30,000 output tokens, $1.93 at list prices; reruns counted) |
 | Total budget | **$40**, confirmed; `monthly_budget_usd = 40`. Budgets send email; they do not stop spending |
 | Owner | Venkata Manideep |

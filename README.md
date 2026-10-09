@@ -1,23 +1,25 @@
 # Pharma Analytics Copilot
 
-> **Not deployed today.** The September demo at `https://44-217-117-172.sslip.io`
-> (one EC2 host running commit `7aae7cf`) was taken down on 2 October 2026; its
-> server and address were deleted, so that URL no longer answers and cannot
-> come back (the address belonged to that server). Its record is kept under
-> [Status](#status) as history.
->
-> **This branch** (`codex/release-defects-oct06`) is the release line, on GitHub
-> with CI green on its head; [pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)
-> brings it to `main` and is open for review. Its executable candidate,
-> `fb415ca`, passed the full local release chain and all four hosted CI jobs.
-> **AWS staging is prepared, not deployed**: Terraform for a restricted
-> environment (ECS Fargate, RDS PostgreSQL, HTTPS load balancer), validated and
-> planned against a mocked provider, waiting for the owner's choices and
-> approval. Where things stand: **[`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)**;
-> the plan to approve: [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md); the
-> go/no-go: [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md) (not ready for a
-> pilot or production, and why); the evidence:
+> **Staging is live until 16 October 2026: https://staging.pharma-copilot.click.** Anyone may
+> reach the sign-in page; only accounts the owner approves can sign in (there
+> is no sign-up). It runs release `5536526` (image `sha256:bf04b0175a27…`) on AWS in
+> a dedicated account (ECS Fargate, RDS PostgreSQL, an HTTPS load balancer),
+> with the full 2,000,000-row synthetic dataset and the offline planner (no
+> live model yet). It is a review environment, not a pilot and not
+> production. Where things stand: **[`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)**;
+> the plan the owner approved: [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md); the
+> go/no-go: [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md); the evidence:
 > [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md), generated from the records.
+>
+> The September demo at `https://44-217-117-172.sslip.io` (one EC2 host running
+> commit `7aae7cf`) was taken down on 2 October 2026 and cannot come back (the
+> address belonged to that server). Its record is kept under [Status](#status)
+> as history.
+>
+> `main` holds the release line ([pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), merged by the
+> owner on 9 October); later work on `codex/release-defects-oct06` reaches it by
+> pull request. The executable candidate, `a786bda`, passed the full local release
+> chain and all four hosted CI jobs.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is

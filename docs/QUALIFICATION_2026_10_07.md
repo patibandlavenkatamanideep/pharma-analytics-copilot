@@ -745,3 +745,66 @@ the allowance; the serving role can update every counter, and a compromised serv
 holds the Bedrock permission anyway, so the claim is corrected and that application-level trust
 boundary accepted explicitly, with the AWS-side backstops named. The allowance is calculated
 from provider-reported usage and configured prices; it does not read the invoice.
+
+**Owner decisions and reviewers' access (9 October).** The owner chose seven days to 16
+October, the module's defaults, `pharma-copilot.click`, $5 for a live model ($3 website,
+$2 evaluation) and $40 in total, and: *"Anyone may reach the sign-in page, but only
+accounts I approve may use the application."* `public_sign_in` opens only the load
+balancer's 443 and 80 to everyone; each approved reviewer gets an account of their own
+with the scope of a named user (`scripts/provision_reviewers.py`, the `reviewers` task,
+`seed-secrets.sh --reviewers`), and a disabled or removed reviewer is signed out at once.
+Re-applying the list first signed out every reviewer whose password had not changed; a
+test reproduced it before the code was committed, and an unchanged credential is now
+left alone. `evidence/probes/staging_plan_check.py` reconciles a real plan with the
+inventory address by address and prints counts only.
+
+`d004a20` passed the full local chain and hosted CI (runs 37933355116, 37933360426). The
+read-only plan against the staging account, with the owner's variables, was 68 to add, 0
+to change, 0 to destroy, every address accounted for; the owner approved it and its spend,
+and it was applied from an exact archive of `d004a20`.
+
+**Applied, the plan was not empty (9 October).** Straight after the apply, the same
+module planned two in-place changes that are not changes: AWS stores `rds.force_ssl` with
+apply method pending-reboot, and IAM fills in the GitHub OIDC provider's thumbprint. Every
+later plan would have shown them, hiding real drift. Reproduced against the account
+(`r5-staging-plan-drift-reproduced.json`, exit 2) and by strict xfails at `c43f0d7`; fixed
+in `5536526` by declaring both as AWS stores them, and verified against the same account
+(`r5-staging-plan-drift-fixed.json`: 0 to add, 0 to change, 0 to destroy). Neither changed
+what is enforced: `rds.force_ssl` is 1 and in sync.
+
+**The candidate is now `5536526`:** the full local chain passed on it (strict suite 2277,
+security 450, ingestion 177, 857 without a database, 32 components, 15 browser journeys,
+62 offline checks, audits, the image's 28 checks with findings and packages identical to
+`fb415ca`'s, restore drill, upgrade compatibility, 13 mocked Terraform plans, trivy config
+with the public sign-in page), and hosted CI passed on it (push run 37936348151, pull
+request run 37936356463).
+
+**Publishing, and a second defect found on AWS (9 October).** The owner merged #1
+(`6b139a7`) and approved the `staging` environment for `publish-staging` on `5536526`. The
+run verified CI, built, scanned and tested the image, then failed to assume the publish
+role: the role trusted `repo:<owner>/<name>:environment:staging`, and this repository's
+tokens carry GitHub's immutable subject, `repo:<owner>@<id>/<name>@<id>:environment:staging`
+(run 37939037102, attempt 1; a strict xfail at `bb7d9b8`). Fixed in `facd0d4`
+(`github_subject_prefix`, a wildcard refused), applied as a single in-place change; the
+re-run, approved again by the owner, pushed `sha256:bf04b0175a27…`. A first local chain on
+`facd0d4` was **blocked**, not failed: a probe file written into the tree while it ran made
+every later record refuse (`--require-clean`); it was re-run clean.
+
+**Deployed (9 October).** The image was protected (`keep-20261009-5536526`; a lifecycle
+preview lists nothing for expiry), the task definitions and service added at zero tasks
+(10 addresses, exactly the inventory's), and the one-shot tasks run in order, each exit 0:
+`bootstrap`, `load-full`, `dataset-check` (full; 2,000,000 sales rows, 40,000
+organizations), `boundary` ("boundary intact"), `test-users`, `reviewers`. With one serving
+task, `https://staging.pharma-copilot.click` passed every live check but one: the public
+sign-in page carried no Strict-Transport-Security, nosniff or frame protection
+(`r5-staging-headers-reproduced.json`; a strict xfail at `4c4f5e1`). The load balancer adds
+them since `a786bda`, and the live check passed 13 of 13 (`r5-staging-headers-fixed.json`).
+Outstanding on AWS: the sign-in page from outside the allowed address, proxy trust from two
+networks, and the TLS negative run.
+
+**The candidate is now `a786bda`:** the full local chain passed on it (strict suite 2279,
+security 450, ingestion 177, 859 without a database, 32 components, 15 browser journeys, 62
+offline checks, audits, the image's 28 checks with findings and packages identical to
+`fb415ca`'s, restore drill, upgrade compatibility, 14 mocked Terraform plans, trivy config
+with the public sign-in page), and hosted CI passed on it (run 37957713810). The site serves
+`5536526`'s image; `a786bda` changes only the staging module and its tests since then.
