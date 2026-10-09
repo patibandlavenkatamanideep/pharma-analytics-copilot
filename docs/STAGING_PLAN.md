@@ -52,8 +52,12 @@ months. That adds four conditions:
   and task, enforced before each model call, its repair included; RUNBOOK.md, "Model
   allowance"), and the evaluation run, by its own token caps. A $5 budget, for example:
   $3 for the website (about 100 questions at the measured ~$0.03 each, though each call
-  first reserves its worst case, ~$0.25) and a smoke evaluation capped at $2. Both need
-  the owner's own token and dollar budget; an AWS budget on Bedrock alerts as well.
+  first reserves its worst case, ~$0.25) and $2 for evaluation: caps of 200,000 input and
+  30,000 output tokens are $1.93 at the `us.` profile's list prices (above the smoke run's
+  expected usage plus one call's reservation). The $2 counts every run: a rerun gets only
+  what remains, its caps computed from the earlier runs' recorded token counts. Both are
+  calculated from provider-reported usage and configured prices, not read from the
+  invoice; an AWS budget on Bedrock alerts as well.
 * **Record a walkthrough before teardown**, so the evidence outlasts the deployment.
 
 A week of the module's defaults ($22.07) plus a domain and a small model allowance can

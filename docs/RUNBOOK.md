@@ -114,20 +114,24 @@ export PAC_LLM_OUTPUT_USD_PER_MTOK=27.5
 
 Each call -- the repair attempt included -- first reserves the most its request
 can bill (its input bound and its `max_tokens`, at those rates) against one row,
-`app_meta.model_allowance`, in a single atomic update; the reservation then
-becomes what the provider billed, or stays at the reservation when usage is not
-reported. When the allowance cannot cover the next call, no call is made and the
-user is told the model's spend limit is exhausted. A call billed beyond its
-bound stops every further call until an operator looks. In the cloud
-environment the application refuses to start with `PAC_LLM_PROVIDER=bedrock`
-unless the limit and both rates are set; a limit without rates refuses every
-call.
+`app_meta.model_allowance`, in a single atomic update; the reservation is then
+replaced by the cost of the token usage the provider reported, at the configured
+prices, or stays at the reservation when usage is not reported. That is the
+application's own calculation, not the AWS invoice. When the allowance cannot
+cover the next call, no call is made and the user is told the model's spend limit
+is exhausted. A call whose reported usage exceeds its bound stops every further
+call until an operator looks. Prices must be finite and above zero (a zero price
+would make every call free to the allowance), and the limit finite and zero or
+more (zero refuses every call): anything else is refused when the settings are
+read. In the cloud environment the application refuses to start with
+`PAC_LLM_PROVIDER=bedrock` unless the limit and both prices are set; a limit
+without prices refuses every call.
 
 The evaluation runner's token caps are separate and apply only to its own
 calls: a model budget covering both is split, for example $5 = $3 for the
 website + an evaluation capped at $2.
 
-Read the total (any role that can read `app_meta`):
+Read the total (as the owner, or the auth role):
 
 ```sql
 SELECT committed_microusd / 1e6 AS committed_usd, calls, refused,
@@ -135,8 +139,15 @@ SELECT committed_microusd / 1e6 AS committed_usd, calls, refused,
 FROM app_meta.model_allowance WHERE allowance_id = 'serving';
 ```
 
-Start a new allowance, or clear a bound violation after investigating it, only
-as the owner (the serving roles cannot), and only deliberately:
+Start a new allowance, or clear a bound violation after investigating it, as the
+owner and deliberately. That is procedure, not a database boundary: the serving
+processes update these counters through the auth role, which may update every
+column of the row, so the allowance is an application-level control that trusts
+the serving process. A compromised serving process could reset it -- and it also
+holds the Bedrock permission itself, so no database rule would stop it spending.
+The backstops against that are the task role's scope (one model profile), the
+AWS budget alert on Bedrock, and removing the permission (`enable_bedrock =
+false`, or `llm_provider = "offline"`).
 
 ```sql
 UPDATE app_meta.model_allowance
@@ -145,8 +156,8 @@ SET committed_microusd = 0, calls = 0, refused = 0, bound_violations = 0,
 WHERE allowance_id = 'serving';
 ```
 
-The allowance bounds what the application asks for at its configured rates; the
-provider's bill is the truth. Keep an AWS budget on Bedrock as well
+The allowance bounds what the application asks for, as it calculates it from
+reported usage and configured prices; the provider's bill is the truth. Keep an AWS budget on Bedrock as well
 (`model_budget_usd` in infra/aws-staging): it alerts, it does not stop calls.
 
 ### Enabling single sign-on
