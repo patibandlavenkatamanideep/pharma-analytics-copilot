@@ -673,6 +673,29 @@
         }
       ],
       "verified_by": "evidence/runs/r5-allowance-prices-fixed.json and r5-staging-terraform-test-ff9fe0d.json (ff9fe0d: settings, meter and module refuse them; a zero limit refuses every call)"
+    },
+    {
+      "id": "staging-plan-not-empty-after-apply",
+      "title": "Applied to the staging account, the module's plan straight after the apply was not empty: AWS stores rds.force_ssl with apply method pending-reboot and IAM fills in the GitHub OIDC provider's thumbprint, so every later plan would propose two in-place changes that are not changes and hide real drift among them",
+      "fix_commits": [
+        "5536526"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-staging-plan-drift-reproduced.json",
+          "baseline": "88bc879",
+          "note": "terraform plan -detailed-exitcode against the infrastructure applied from d004a20 in pac-staging (git archive d004a20; the module is unchanged at 88bc879): exit 2, 0 to add, 2 to change (aws_db_parameter_group.this, aws_iam_openid_connect_provider.github[0]); addresses only, no value"
+        },
+        {
+          "artifact": "evidence/runs/r5-staging-plan-drift-tests-reproduced.json",
+          "baseline": "c43f0d7",
+          "note": "Strict xfails run with --runxfail: the source declares neither apply_method pending-reboot nor ignore_changes for the thumbprint"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-staging-plan-drift-fixed.json (5536526, git archive 5536526 against the same applied infrastructure: 0 to add, 0 to change, 0 to destroy)"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

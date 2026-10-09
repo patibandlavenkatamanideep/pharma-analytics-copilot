@@ -1,0 +1,70 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T13:20:37+00:00",
+  "claim": "At d004a20's module (git archive d004a20; unchanged at this commit), applied to pac-staging: the plan straight after the apply is not empty -- AWS stores rds.force_ssl with apply method pending-reboot and fills in the GitHub OIDC provider's thumbprint, so every later plan would show two in-place changes that are not changes",
+  "application": {
+    "sha": "88bc879b548f61e656901f40a9da8ddfce35d671",
+    "tree": "52b57886904ef02a8b1ae26a16e1091c5fecf257",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "python3",
+      "-c",
+      "import json,subprocess,sys; p=subprocess.run(sys.argv[1:],capture_output=True,text=True); m=[json.loads(l) for l in p.stdout.splitlines() if l.startswith(\"{\")]; c=[x[\"change\"][\"resource\"][\"addr\"]+\" \"+x[\"change\"][\"action\"] for x in m if x.get(\"type\")==\"planned_change\"]; s=[x[\"@message\"] for x in m if x.get(\"type\")==\"change_summary\"]; print(\"; \".join(s+c) or \"plan failed: exit %d\" % p.returncode); sys.exit(p.returncode)",
+      "env",
+      "AWS_PROFILE=pac-staging-admin",
+      "/Users/manideep/src/pac-work/tools/terraform/terraform",
+      "-chdir=/Users/manideep/src/pac-work/deploy/src-d004a20/infra/aws-staging",
+      "plan",
+      "-json",
+      "-detailed-exitcode",
+      "-input=false",
+      "-lock=false",
+      "-var-file=staging.tfvars"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 6.0
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 2,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "Plan: 0 to add, 2 to change, 0 to destroy.; aws_iam_openid_connect_provider.github[0] update; aws_db_parameter_group.this update"
+  },
+  "artifacts": [],
+  "limits": [
+    "one account and region (pac-staging, us-east-1); a mocked provider cannot show AWS's normalisation",
+    "prints the change summary and the changing addresses only; no attribute value"
+  ]
+}
