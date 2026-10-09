@@ -373,8 +373,6 @@ def test_an_allowance_without_rates_refuses_every_call(exec_user, allowance):
     assert result.status == "error" and "spend limit" in result.message
 
 
-@pytest.mark.xfail(strict=True, reason="model prices are not validated: zero, negative and NaN "
-                                       "rates are accepted")
 @pytest.mark.parametrize("bad", ["0", "-1", "nan", "inf"])
 def test_model_prices_must_be_finite_and_positive(bad, monkeypatch):
     """A price of zero makes every reservation free, so the allowance never
@@ -390,7 +388,6 @@ def test_model_prices_must_be_finite_and_positive(bad, monkeypatch):
         monkeypatch.setenv(name, "5.5")
 
 
-@pytest.mark.xfail(strict=True, reason="a zero price makes every reservation free")
 def test_a_zero_price_cannot_make_the_allowance_free(allowance):
     from app.llm.allowance import SharedAllowance
 

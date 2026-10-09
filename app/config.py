@@ -3,9 +3,11 @@ sensitive is ever written to a file in this repository."""
 
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -97,6 +99,23 @@ class Settings(BaseSettings):
     # (app/llm/allowance.py). Unset: no allowance (the evaluation runner meters
     # its own spend). Set without both rates: every model call is refused.
     llm_spend_limit_usd: float | None = None
+
+    @field_validator("llm_input_usd_per_mtok", "llm_output_usd_per_mtok")
+    @classmethod
+    def _model_price(cls, value: float | None) -> float | None:
+        # Zero would make every reservation free, so the allowance never runs
+        # down; a negative price refunds; NaN fails later, mid-request.
+        if value is not None and not (math.isfinite(value) and value > 0):
+            raise ValueError("a model price must be a finite number above zero")
+        return value
+
+    @field_validator("llm_spend_limit_usd")
+    @classmethod
+    def _model_allowance(cls, value: float | None) -> float | None:
+        # Zero is allowed: it refuses every call.
+        if value is not None and not (math.isfinite(value) and value >= 0):
+            raise ValueError("the model allowance must be a finite number of dollars, zero or more")
+        return value
 
     # --- audit ------------------------------------------------------------------
     # best_effort (default): the audit row is written in its own transaction

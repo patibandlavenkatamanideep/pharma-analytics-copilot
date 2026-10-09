@@ -12,10 +12,18 @@ app_meta.model_allowance, in micro-dollars.
   at the configured rates, is added to the committed total in one atomic
   UPDATE, only if the total stays within the limit. Concurrent workers and
   replicas therefore cannot both take the last of it.
-* record_call(): after the call, the reservation is replaced by what the
-  provider billed; usage it did not report stays charged at the reservation.
+* record_call(): after the call, the reservation is replaced by the cost of
+  the token usage the provider reported, at the configured prices; usage it
+  did not report stays charged at the reservation. This is the application's
+  own calculation, not the AWS invoice, which remains the truth.
+* Who can change the row: the serving processes, through the auth role,
+  which may update every counter -- this is an application-level control,
+  trusted to the serving process. A compromised serving process could reset
+  it, but it also holds the Bedrock permission itself; the backstops against
+  that are the task role's scope (one model), the AWS budget alert on
+  Bedrock, and removing that permission (docs/RUNBOOK.md, "Model allowance").
 * release(): a call reserved but never sent gives its reservation back.
-* A call that billed more than its bound is a broken invariant: it is
+* A call whose reported usage exceeds its bound is a broken invariant: it is
   recorded, this run stops, and no further call is reserved anywhere until an
   operator looks (docs/RUNBOOK.md, "Model allowance").
 * Any failure to reach the row refuses the call: an unknown spend is never
@@ -34,6 +42,13 @@ ALLOWANCE_ID = "serving"
 class SharedAllowance:
     def __init__(self, limit_usd: float, input_usd_per_mtok: float, output_usd_per_mtok: float,
                  allowance_id: str = ALLOWANCE_ID):
+        # The same rules as the settings (app/config.py), for a meter built
+        # directly: a free or refunding price would make the limit meaningless.
+        if not (math.isfinite(limit_usd) and limit_usd >= 0):
+            raise ValueError("the model allowance must be a finite number of dollars, zero or more")
+        for price in (input_usd_per_mtok, output_usd_per_mtok):
+            if not (math.isfinite(price) and price > 0):
+                raise ValueError("a model price must be a finite number above zero")
         self.limit_micro = int(Decimal(str(limit_usd)) * 1_000_000)
         self.rate_in = Decimal(str(input_usd_per_mtok))
         self.rate_out = Decimal(str(output_usd_per_mtok))

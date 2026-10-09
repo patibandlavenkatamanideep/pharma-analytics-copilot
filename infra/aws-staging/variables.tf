@@ -200,18 +200,30 @@ variable "llm_input_usd_per_mtok" {
   description = "Contracted input rate (USD per million tokens) for the cost metric, pac.llm.cost. Null: no cost is estimated. The 2026-10-07 us-east-1 price list gives 5.50 for a us. (geographic) Opus 4.5 profile and 5.00 for global."
   type        = number
   default     = null
+  validation {
+    condition     = var.llm_input_usd_per_mtok == null || try(var.llm_input_usd_per_mtok > 0, false)
+    error_message = "llm_input_usd_per_mtok must be above zero: a zero price makes every call free to the allowance."
+  }
 }
 
 variable "llm_output_usd_per_mtok" {
   description = "Contracted output rate (USD per million tokens); 27.50 for a us. Opus 4.5 profile and 25.00 for global in the same price list."
   type        = number
   default     = null
+  validation {
+    condition     = var.llm_output_usd_per_mtok == null || try(var.llm_output_usd_per_mtok > 0, false)
+    error_message = "llm_output_usd_per_mtok must be above zero: a zero price makes every call free to the allowance."
+  }
 }
 
 variable "llm_spend_limit_usd" {
   description = "The website's model allowance in USD (PAC_LLM_SPEND_LIMIT_USD): one limit for every user, worker and task, enforced by the application before each model call. Required with llm_provider = \"bedrock\"; evaluation runs have their own cap, so set this to the model budget minus that cap."
   type        = number
   default     = null
+  validation {
+    condition     = var.llm_spend_limit_usd == null || try(var.llm_spend_limit_usd >= 0, false)
+    error_message = "llm_spend_limit_usd must be zero or more (zero refuses every call)."
+  }
 }
 
 # Single sign-on, once the owner has registered a client with the identity
