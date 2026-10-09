@@ -22,3 +22,9 @@ d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gat
 d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gate.json:generic-api-key:212
 d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:51
 d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:212
+# The same public value in the e101db3 candidate's trivy reports, committed in
+# 0716e85. Exact findings only.
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:51
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:212
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:51
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:212
