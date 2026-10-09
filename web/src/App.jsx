@@ -362,6 +362,7 @@ export default function App() {
   const [showSql, setShowSql] = useState(false);
   const [notice, setNotice] = useState(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const bottom = useRef(null);
   // The key of the question in flight, so Stop can cancel it on the server
   // before its run id is known.
@@ -454,13 +455,17 @@ export default function App() {
   const signOut = async () => {
     newIdentity();
     setDataset(null);
+    setSignOutFailed(false);
     setSigningOut(true);
     try {
       await api("/api/logout", { method: "POST", keepalive: true });
-    } catch {
-      setNotice("Sign-out could not be confirmed. Close the browser to end the session.");
-    } finally {
       setUser(null);
+    } catch (err) {
+      // 401: the session had already ended. Anything else: it may still be
+      // alive, so no sign-in form a reload would undo -- say so, and retry.
+      if (err.status === 401) setUser(null);
+      else setSignOutFailed(true);
+    } finally {
       setSigningOut(false);
     }
   };
@@ -600,6 +605,17 @@ export default function App() {
     return (
       <div className="login-shell">
         <p className="muted" role="status">Signing out…</p>
+      </div>
+    );
+  }
+  if (signOutFailed) {
+    return (
+      <div className="login-shell">
+        <div className="login" role="alert">
+          <p><strong>You are not signed out.</strong> The server did not confirm it, so
+            this browser may still be signed in.</p>
+          <button onClick={signOut}>Try again</button>
+        </div>
       </div>
     );
   }
