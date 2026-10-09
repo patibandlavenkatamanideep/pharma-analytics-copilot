@@ -32,7 +32,7 @@ whether an answer is arithmetically right.
 | **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | pass, strict gate | `r5-rc-e551650-security.json` (`e551650`) |
 | **Total (pytest)** | `pytest tests -q --release-gate` | **2240** | pass, strict gate: no skips, no xfails | `r5-rc-e551650-pytest.json` (`e551650`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-e551650-component.json` (`e551650`) |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 10 | pass, no skips | `r5-rc-e551650-browser.json` (`e551650`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 11 | pass, no skips | `r5-rc-e551650-browser.json` (`e551650`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-e551650-eval-*.json` (`e551650`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
 
 Unit and integration counts are what pytest collects, not what anyone

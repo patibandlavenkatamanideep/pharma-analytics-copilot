@@ -42,6 +42,26 @@ test("an identity change leaves nothing of the previous user on screen", async (
   expect(body).not.toMatch(/total revenue this quarter/i);
 });
 
+test("the sign-in form appears only once the server has ended the session", async ({ page }) => {
+  await signIn(page, EXEC);
+  // The revocation reaches the server late, as on a slow network.
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route("**/api/logout", async (route) => { await held; await route.continue(); });
+
+  await page.getByRole("button", { name: /sign out/i }).click();
+  // Until the server has answered, the page must not say the user is signed
+  // out: someone who reloads, or walks away from a shared computer, on the
+  // strength of the sign-in form would leave a live session behind.
+  await page.waitForTimeout(500);
+  await expect(page.getByLabel(/email/i)).toHaveCount(0);
+
+  release();
+  await expect(page.getByLabel(/email/i)).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel(/email/i)).toBeVisible();
+});
+
 test("a conversation belongs to the user who started it", async ({ browser }) => {
   const alice = await browser.newContext();
   const alicePage = await alice.newPage();
