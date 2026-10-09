@@ -50,7 +50,8 @@ cleanup are in its README; the plan for approval is [STAGING_PLAN.md](STAGING_PL
 | **`terraform plan` against an account; apply** | **blocked**: no AWS session; plan approval needed | — | — |
 
 Lifecycle, designed before the first teardown and verified only on AWS (STAGING_PLAN.md,
-stage 8): ECR never expires `keep-*` images and a deploy refuses an unprotected digest;
+stage 8): ECR retains `keep-*` images (up to 9,999 of them; a lifecycle preview confirms
+the rule order once the repository exists) and a deploy refuses an unprotected digest;
 secret names carry a generation, so a recreate inside the 7-day recovery window restores
 and imports or moves to the next generation; the final snapshot is named by an
 operator-chosen label.
@@ -71,7 +72,7 @@ questions at the `us.` profile's list rates. Budgets alert; they do not cap.
 | Image | built locally from `e101db3` for linux/amd64: config `68178125d860…` (podman, under emulation). A local image ID is not a registry digest |
 | Publishing | `publish-staging.yml`: publishes only a commit whose four CI checks passed; builds one single-platform manifest; scans it and runs the hardened journeys on it; checks the registry's manifest is that image; records source commit, tested image and registry digest. **Cannot be dispatched** until its file is on `main` (#1); never run |
 | Registry digest | **none** |
-| Retention | images tagged `keep-*` (the deployed and the recovery image) are never expired; others beyond the last 20 are |
+| Retention | images tagged `keep-*` (the deployed and the recovery image) are retained, up to 9,999 of them; others beyond the last 20 expire. To confirm with an ECR lifecycle preview once the repository exists |
 | Publishing identity | prepared: role `pac-staging-github-publish`, trusted only for this repository's `staging` environment; pushes images and nothing else. Not created |
 | Deploying identity | the owner's IAM Identity Center session applying a reviewed plan. Not exercised |
 | URL | **none** |

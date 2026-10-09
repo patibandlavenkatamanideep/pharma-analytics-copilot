@@ -80,7 +80,7 @@ of customer-managed KMS keys, no Container Insights, no Performance Insights (LO
 | 2 | Foundation (`terraform plan`, reviewed, then apply); certificate DNS validation | this plan | plan summary; TLS on the URL |
 | 3 | Secret values (`seed-secrets.sh`; nothing in Git, logs or Terraform) | this plan | "set" lines only |
 | 4 | Publish the image: requires the release integration pull request ([#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)) merged to `main`, by your review | PR approval | run summary: commit, tested image, registry digest |
-| 5 | Protect the image (`keep-` tag); task definitions at 0 tasks | this plan | plan refuses anything else |
+| 5 | Protect the image (`keep-` tag; retained up to 9,999 such images, not forever); task definitions at 0 tasks | this plan | an ECR lifecycle preview lists no `keep-` image for expiry; the plan refuses an unprotected digest |
 | 6 | `bootstrap` (restricted RDS administrator), `load-seed`, `boundary`, `test-users` | this plan | each exit code; logs hold no value |
 | 7 | One serving task: Fargate volume ownership, readiness, verified TLS, the load balancer's path; browser sign-in, an answer, sign-out on the HTTPS URL | this plan | records naming commit, digest, configuration |
 | 8 | Lifecycle: teardown and recreate within the budget (secret generations, snapshot label, kept images) | this plan | the recreate succeeds |

@@ -173,7 +173,7 @@ resource "aws_ecs_task_definition" "app" {
     }
     precondition {
       condition     = anytrue([for tag in data.aws_ecr_image.deployed[0].image_tags : startswith(tag, "keep-")])
-      error_message = "The image_digest image must carry a keep- tag, so routine expiry cannot remove it while it is deployed (README.md, \"Deploy\")."
+      error_message = "The image_digest image must carry a keep- tag, so routine expiry of all but the last 20 images does not reach it while it is deployed (README.md, \"Deploy\")."
     }
     # A refusal, not a warning: a check block only warns, and the plan went on
     # to run the collector by tag (tests/plan.tftest.hcl).

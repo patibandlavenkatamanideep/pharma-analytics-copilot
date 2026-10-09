@@ -103,8 +103,19 @@ decisions above (it holds no secret).
    this image (a different build and, on Apple silicon, a different
    architecture): this run's gates are what qualify the digest.
 6. **Protect, then define the tasks.** Tag the image for keeping, so routine
-   expiry (the last 20 images) cannot remove it while it is deployed or is
-   the designated recovery image:
+   expiry (all but the last 20 images) does not reach it while it is deployed
+   or is the designated recovery image. `keep-*` images are retained up to
+   9,999 of them, not forever; two is the intended number. Once the repository
+   exists, confirm the rule order with a lifecycle preview, which lists what
+   the policy would expire and expires nothing:
+
+   ```sh
+   aws ecr start-lifecycle-policy-preview --repository-name pac-staging
+   aws ecr get-lifecycle-policy-preview --repository-name pac-staging \
+     --query 'previewResults[].{digest:imageDigest,tags:imageTags,rule:appliedRulePriority}'
+   ```
+
+   No image carrying a `keep-` tag may appear in the result. Then tag:
 
    ```sh
    m=$(aws ecr batch-get-image --repository-name pac-staging \

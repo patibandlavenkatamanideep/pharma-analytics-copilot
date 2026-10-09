@@ -65,7 +65,7 @@ the Terraform variables (no secret), the account and the region
 | Database TLS | `verify-full` with the pinned RDS bundle everywhere; `rds.force_ssl` | no defect; hosted unverified |
 | Migration privileges | the RDS administrator gets only `SET ROLE pac_owner`; migrations run as the owner and need nothing more | no defect |
 | Image digest pinning | application and jobs by digest. **Defect:** an unpinned collector was only warned about | fixed, reproduced first (`collector-pin-warning-only`) |
-| Image retention | ECR expired every image beyond the last 20, the deployed one included | designed around: `keep-*` images never expire; a deploy refuses an unprotected digest |
+| Image retention | ECR expired every image beyond the last 20, the deployed one included | designed around: `keep-*` images are retained (up to 9,999 of them, confirmed by a lifecycle preview on AWS); a deploy refuses an unprotected digest |
 | Publishing | the workflow would publish any dispatched commit and did not tie the pushed image to the tested one | designed around: CI must have passed on the exact commit; the registry manifest is compared with the tested image |
 | Teardown and recreate | fixed secret names stay reserved for 7 days; a fixed final-snapshot name blocks a second teardown | designed around: secret generations; an operator-chosen snapshot label. Verified only on AWS (stage 8) |
 | Rollback | forward-only migrations; ECS rolls back failed deployments; no earlier release is a rollback target | Residual: whether ECS's automatic rollback needs the previous task-definition revision active, which Terraform deregisters, is unverified |
