@@ -27,12 +27,33 @@ those is a separately costed extension below, enabled only when approved.
 | Owner | Venkata Manideep |
 | Alert email, testers' address | supplied; kept out of this public repository (they go only into the ignored variable file) |
 | Domain | **none** |
-| **Open: cost option** | **A** (smaller database, app always on: ~$2.76/day, ~$27.59 for 10 days) or **B** (app on only while reviewing: ~$1.87/day, ~$26.18 for 14 days); the module's defaults (~$3.15/day) exceed the budget beyond 9 days |
-| **Open: address** | buy a cheap domain in Route 53 (a valid certificate, no warnings; its price, typically a few dollars a year, shows before purchase) or a self-signed certificate (a browser warning for every reviewer; weaker proof of TLS) |
+| **Open: shape** | for a scheduled review week with the app available all day: the module's defaults (`db.t4g.small`, full dataset; $3.15/day, **$22.07 for 7 days**), or option A (`db.t4g.micro`, seed data; $2.76/day, $19.32 for 7 days); option B (app about 8 hours a day; $1.87/day, $13.09 for 7 days) only if reviewers keep known hours. None includes a domain, DNS hosting or model usage |
+| **Open: address** | an existing domain if the owner has one; otherwise a cheap one bought in Route 53 with auto-renew off (check the registration and renewal prices before buying); or, with no domain, CloudFront's own HTTPS hostname, which needs design changes (it moves the IP restriction to CloudFront and changes which client address the application sees, so the sign-in lockout must be re-verified); or a self-signed certificate, with a browser warning for every visitor |
 
 The September demo's `https://44-217-117-172.sslip.io` cannot be reused: that address
 belonged to the deleted EC2 host, the load balancer has no fixed address, and AWS issues
 certificates only for domains whose DNS the owner controls.
+
+## For a review week
+
+The owner's purpose is to show the work to reviewers for about a week, not to run it for
+months. That adds four conditions:
+
+* **Schedule it around actual reviewers**: every day it exists is billed whether anyone
+  visits or not.
+* **Reviewer access.** The module admits only `allowed_cidrs`, and refuses `0.0.0.0/0`.
+  Reviewers' addresses must be collected and added, or the owner decides explicitly to open
+  the site to everyone for the week. That needs a deliberate change to the module, which
+  today refuses it; sign-in, the per-address lockout and the request limits still apply.
+  A domain alone does not make the site reachable.
+* **Live NL2SQL is separate.** These estimates use the offline planner. A capped Bedrock
+  smoke evaluation (at most $2.75 at list rates) and a capped allowance for reviewers'
+  questions (about $30 per 1,000 at the measured tokens per question) would show more than
+  hosting alone; both need the owner's own token and dollar budget.
+* **Record a walkthrough before teardown**, so the evidence outlasts the deployment.
+
+A week of the module's defaults ($22.07) plus a domain and a small model allowance can
+exceed the $25–30 first stated; the owner confirms the total.
 
 ## Recommended shape
 
@@ -40,11 +61,11 @@ certificates only for domains whose DNS the owner controls.
 |---|---|---|
 | Compute | 1 Fargate task, 1 vCPU / 2 GB, linux/amd64 | the image's two uvicorn workers; one task is enough for smoke tests |
 | Egress | tasks in public subnets with a public address, inbound only from the load balancer (`egress_mode = "public_ip"`) | no NAT gateway ($34/month more); the security groups admit the tasks only from the load balancer (policy test), shown on AWS in stage 7 |
-| Database | RDS PostgreSQL 16, Single-AZ, 20 GB gp3, 7-day backups; **`db.t4g.micro` with the synthetic seed data** (options A and B) | fits the budget; `db.t4g.small` and the full 2,000,000-row dataset cost $0.38 a day more |
+| Database | RDS PostgreSQL 16, Single-AZ, 20 GB gp3, 7-day backups: **`db.t4g.small` with the full 2,000,000-row synthetic dataset** (the module's default), or `db.t4g.micro` with the seed data ($0.38 a day less) | the default shows the full dataset at its real size; micro saves about $2.70 a week |
 | Edge | internet-facing ALB, HTTPS only from the testers' address | `0.0.0.0/0` is refused |
 | Model | offline planner (`llm_provider = "offline"`) | no spend; Bedrock needs its own budget |
 | Telemetry | none hosted (`enable_observability = false`) | ~$22/month for one task; traces would still go only to a debug exporter |
-| Lifetime | 1–2 weeks, torn down after review | every day the load balancer and database exist is billed |
+| Lifetime | one scheduled review week, the app available all day; a walkthrough recorded; then torn down | every day the load balancer and database exist is billed |
 
 ## Cost
 
@@ -104,7 +125,7 @@ of customer-managed KMS keys, no Container Insights, no Performance Insights (LO
 | 6 | `bootstrap` (restricted RDS administrator), `load-seed`, `boundary`, `test-users` | this plan | each exit code; logs hold no value |
 | 7 | One serving task: Fargate volume ownership, readiness, verified TLS, the load balancer's path; browser sign-in, an answer, sign-out on the HTTPS URL | this plan | records naming commit, digest, configuration |
 | 8 | Lifecycle: teardown and recreate within the budget (secret generations, snapshot label, kept images) | this plan | the recreate succeeds |
-| 9 | Teardown at the end of the lifetime; residual costs as above | this plan | nothing left but what you choose to keep |
+| 9 | Record a walkthrough of the live system first; then teardown at the end of the review week; residual costs as above | this plan | nothing left but what the owner chooses to keep. Charges already incurred can appear on a later bill, also after an account is closed |
 
 **Rollback and recovery limits.** No earlier release is a rollback target
 (ROLLBACK_DECISION.md); a bad release is fixed forward. ECS rolls back a failed
@@ -122,7 +143,7 @@ means no failover is tested in this stage.
 | Alert recipient and resource owner | **done** (the address is kept out of this repository) |
 | Testers' networks | **done**: one address (kept out of this repository); a home address can change, and then the allowed list is updated |
 | Cost option (A or B) | **open** |
-| Hostname: a domain to buy, or a self-signed certificate | **open** |
+| Hostname: an existing domain, one to buy, CloudFront's hostname (design changes), or a self-signed certificate | **open** |
 | At approval: a second permission set, assigned to `pac-staging` only, able to create the approved resources | **open**; the read-only session cannot create anything |
 | A final-snapshot label (a date is enough) | at teardown |
 | Later, each its own approval: identity-provider registration and role mapping; feed samples and source contract; Bedrock model, destinations and token/dollar caps; service, freshness, RTO/RPO, audit-mode and retention targets | open |
