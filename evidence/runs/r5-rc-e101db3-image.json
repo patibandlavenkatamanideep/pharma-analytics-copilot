@@ -1,0 +1,67 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T01:38:29+00:00",
+  "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
+  "application": {
+    "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+    "tree": "1bf498b3ffc553f62fe9e8b9542faba4ddfe5779",
+    "branch": "HEAD",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "scripts/image_smoke.sh"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 173.96
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"release\": \"e101db3446513bb3a6f0c29151f37aceb944f82a\", \"checks\": [\"PASS: image builds (87 s)\", \"PASS: image is labelled with commit e101db3446513bb3a6f0c29151f37aceb944f82a\", \"PASS: image size 305 MB\", \"PASS: image id 68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release e101db3446513bb3a6f0c29151f37aceb944f82a\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 0 s (exit 0)\"], \"passed\": 28, \"failed\": 0}"
+  },
+  "artifacts": [],
+  "limits": [
+    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
+    "seed data, not the full dataset; offline planner"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191",
+    "digest": "sha256:4a8d3f853320029e8211b8542a5b1dbe6356154f22a253ebf0a5d39963848fba",
+    "platform": "linux/amd64",
+    "revision_label": "e101db3446513bb3a6f0c29151f37aceb944f82a"
+  }
+}

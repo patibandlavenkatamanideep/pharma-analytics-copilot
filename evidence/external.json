@@ -28,13 +28,90 @@
       "conclusion": "success",
       "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687",
       "note": "all four jobs; documentation-only change over 7bca4ca"
+    },
+    {
+      "run_id": 37865432807,
+      "commit": "e6cb25134971e326a3844c041e76afec8e8281a8",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37865432807",
+      "note": "first hosted run after 69c62de: supply-chain, image and frontend passed; test failed test_every_ledger_reference_exists (one-commit checkout; defect ci-ledger-check-shallow-checkout)"
+    },
+    {
+      "run_id": 37866339109,
+      "commit": "811713cd1a7f3405a0b5d5dea0086ea5beeece56",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866339109",
+      "note": "supply-chain failed the new Terraform step (provider lock held a darwin_arm64 package hash only; defect terraform-lock-single-platform); test failed as in 37865432807"
+    },
+    {
+      "run_id": 37866607406,
+      "commit": "f874b89e2cda28412b66de1dcb49aad2ea529469",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866607406",
+      "note": "test passed with the whole history (ci-ledger-check-shallow-checkout fixed); supply-chain failed as in 37866339109"
+    },
+    {
+      "run_id": 37866723060,
+      "commit": "aea40b26703a767a6d0ca6b600f8e4268e7336e9",
+      "conclusion": "failure",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866723060",
+      "note": "supply-chain (Terraform step included), image and frontend passed; test: strict suite 2240, security 436, ingestion 177 and offline sets passed; browser journeys 9 passed, 1 failed (defect signout-before-revocation)"
+    },
+    {
+      "run_id": 37868427618,
+      "commit": "81570178d873e36b5016fb0778327944508d9579",
+      "conclusion": "success",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37868427618",
+      "note": "all four jobs; first sign-out fix"
+    },
+    {
+      "run_id": 37869897240,
+      "commit": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+      "conclusion": "success",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240",
+      "note": "all four jobs on the executable candidate, the Terraform step (lock read-only, fmt, validate, 10 mocked plans) included"
     }
   ],
   "not_externally_verified": [
-    "a live model under prompt 2.1.0",
+    "a live model under prompt 2.3.0",
     "a real OIDC identity provider",
     "a real source feed",
-    "staging, deployed replicas, a real telemetry backend and alerting",
-    "a published registry image (CI builds the image; nothing is pushed to a registry)"
-  ]
+    "staging on AWS, deployed replicas, a real telemetry backend and alerting",
+    "a published registry image (CI builds the image; publish-staging has never run)"
+  ],
+  "repository_settings": {
+    "read_at": "2026-10-09",
+    "read_with": "the GitHub API as the repository owner (gh, read back after the owner authorised the change)",
+    "main_protection": {
+      "required_checks": [
+        "test (app 15368)",
+        "frontend (app 15368)",
+        "supply-chain (app 15368)",
+        "image (app 15368)"
+      ],
+      "up_to_date": true,
+      "pull_request_required": true,
+      "required_approvals": 0,
+      "dismiss_stale_reviews": true,
+      "administrators_included": true,
+      "force_pushes": false,
+      "deletions": false,
+      "conversation_resolution": true,
+      "rulesets": 0
+    },
+    "staging_environment": {
+      "required_reviewers": [
+        "patibandlavenkatamanideep"
+      ],
+      "administrators_can_bypass": false,
+      "deployment_branches": [
+        "main",
+        "codex/release-*"
+      ]
+    },
+    "registered_workflows": [
+      "CI (.github/workflows/ci.yml)"
+    ],
+    "not_yet_exercised": "a pull request with a failing check being blocked; a staging deployment through the environment"
+  }
 }

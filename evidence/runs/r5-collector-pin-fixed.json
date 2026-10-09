@@ -1,0 +1,64 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T00:41:17+00:00",
+  "claim": "At 2f937f4: terraform test plans infra/aws-staging with a mocked AWS provider in 8 configurations: foundation without an image, deployable at zero tasks by digest, NAT, failover, and the refusals of a world-open CIDR, a tag for a digest, SSO without a client id and an unpinned collector",
+  "application": {
+    "sha": "2f937f4574d31b735b84bc5bc3cb447f2cd60913",
+    "tree": "4c83d4a080002dce4c2086a22928c09f2782710c",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "AWS_EC2_METADATA_DISABLED=true",
+      "AWS_ACCESS_KEY_ID=",
+      "AWS_SECRET_ACCESS_KEY=",
+      "/Users/manideep/src/pac-work/tools/terraform/terraform",
+      "-chdir=infra/aws-staging",
+      "test",
+      "-no-color"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.14
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "Success! 8 passed, 0 failed."
+  },
+  "artifacts": [],
+  "limits": [
+    "a mocked provider: no credentials, no API call, nothing created; shows what each configuration plans and refuses, not that AWS accepts it"
+  ]
+}

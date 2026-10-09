@@ -1,0 +1,249 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-10-09T01:37:08.11806252Z",
+  "ArtifactName": "/scan/image.tar",
+  "ArtifactType": "container_image",
+  "Metadata": {
+    "OS": {
+      "Family": "debian",
+      "Name": "13.7"
+    },
+    "ImageID": "sha256:68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191",
+    "DiffIDs": [
+      "sha256:15f1c8eb1ab18eae260c7fb6296434cbe1ff0e1e30fd814ae92a80dd54005e62",
+      "sha256:285510654d1d6a26507ed6576cae8fa995ba16469050787032499e9a34cbe9f5",
+      "sha256:acbf34fa608c522642659b109edfd70959b7c26593ea51141f3d339cc1875cfd",
+      "sha256:d175833b7147479e4e08f4f5d9dd2055b5ee746dc2f73520462468538d168bf6",
+      "sha256:a8601bbcf496275e8cda45b8a806e65963fc5f4bbe04d777ce5718700e35fcd9",
+      "sha256:a761666de492e515c7d2d4e91d4e5c74474443c873fa416aaba0830e195da717",
+      "sha256:a0e431c9e54e14419d543fbb5ebc971b9b2a4e7fdfe5090911c942204b52acac",
+      "sha256:c8d8cdcb2dbb33a417b10a3a5b5b80334063ad47ccac01e4c7434e7252136953",
+      "sha256:607476002a04ac580b1ec373d9305be5583643a52e5a8a1ccd9b0f37666e67dd",
+      "sha256:f646929ad6f1ecf2edd04eab236a2f1b46adee11993dfe9af6171edd47e2c91c",
+      "sha256:b9c58b6dc020e7a30b07ade5f57cbf43a1d8ed7380c578577f6c23d650e9f410",
+      "sha256:0dd4e2b39e90fe06bbaae566331776520c395be8274652ef2a5c312c697e6466",
+      "sha256:2e96e719973e1973fd6a5e8425ef6baabb845286d1aaca5eb153fef0a99d5868",
+      "sha256:0de51b73512289e4860825e1f8334a1e4002eebba026e1be0c4b31cc722483f5",
+      "sha256:1799e1a73e6962c39b127e43bd8463e61cb850d17eb27e5f719691e362b37013"
+    ],
+    "ImageConfig": {
+      "architecture": "amd64",
+      "created": "2026-10-09T01:37:02.158495064Z",
+      "history": [
+        {
+          "created": "2026-10-05T00:00:00Z",
+          "created_by": "# debian.sh --arch 'amd64' out/ 'trixie' '@1791158400'",
+          "comment": "debuerreotype 0.17"
+        },
+        {
+          "created": "2026-10-06T01:55:29.7211836Z",
+          "created_by": "ENV PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T01:55:29.7211836Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tca-certificates \t\tnetbase \t\ttzdata \t; \tapt-get dist-clean # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-06T01:55:29.7211836Z",
+          "created_by": "ENV GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T01:55:29.7211836Z",
+          "created_by": "ENV PYTHON_VERSION=3.13.16",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T01:55:29.7211836Z",
+          "created_by": "ENV PYTHON_SHA256=f4b1bfb3c79b5bb11b8d228a12504163b4c0dab4d679828d8f5f26b6cb6ab35d",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T02:05:24.087527734Z",
+          "created_by": "RUN /bin/sh -c set -eux; \t\tsavedAptMark=\"$(apt-mark showmanual)\"; \tapt-get update; \tapt-get install -y --no-install-recommends \t\tdpkg-dev \t\tg++ \t\tgcc \t\tgnupg \t\tlibbluetooth-dev \t\tlibbz2-dev \t\tlibc6-dev \t\tlibdb-dev \t\tlibffi-dev \t\tlibgdbm-dev \t\tliblzma-dev \t\tlibncursesw5-dev \t\tlibreadline-dev \t\tlibsqlite3-dev \t\tlibssl-dev \t\tmake \t\ttk-dev \t\tuuid-dev \t\twget \t\txz-utils \t\tzlib1g-dev \t; \t\twget -O python.tar.xz \"https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz\"; \techo \"$PYTHON_SHA256 *python.tar.xz\" | sha256sum -c -; \twget -O python.tar.xz.asc \"https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc\"; \tGNUPGHOME=\"$(mktemp -d)\"; export GNUPGHOME; \tgpg --batch --keyserver hkps://keys.openpgp.org --recv-keys \"$GPG_KEY\"; \tgpg --batch --verify python.tar.xz.asc python.tar.xz; \tgpgconf --kill all; \trm -rf \"$GNUPGHOME\" python.tar.xz.asc; \tmkdir -p /usr/src/python; \ttar --extract --directory /usr/src/python --strip-components=1 --file python.tar.xz; \trm python.tar.xz; \t\tcd /usr/src/python; \tgnuArch=\"$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)\"; \t./configure \t\t--build=\"$gnuArch\" \t\t--enable-loadable-sqlite-extensions \t\t--enable-optimizations \t\t--enable-option-checking=fatal \t\t--enable-shared \t\t$(test \"${gnuArch%%-*}\" != 'riscv64' \u0026\u0026 echo '--with-lto') \t\t--with-ensurepip \t; \tnproc=\"$(nproc)\"; \tEXTRA_CFLAGS=\"$(dpkg-buildflags --get CFLAGS)\"; \tLDFLAGS=\"$(dpkg-buildflags --get LDFLAGS)\"; \tLDFLAGS=\"${LDFLAGS:-} -Wl,--strip-all\"; \tarch=\"$(dpkg --print-architecture)\"; arch=\"${arch##*-}\"; \tcase \"$arch\" in \t\tamd64|arm64) \t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer\"; \t\t\t;; \t\ti386) \t\t\t;; \t\t*) \t\t\tEXTRA_CFLAGS=\"${EXTRA_CFLAGS:-} -fno-omit-frame-pointer\"; \t\t\t;; \tesac; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:-}\" \t; \trm python; \tmake -j \"$nproc\" \t\t\"EXTRA_CFLAGS=${EXTRA_CFLAGS:-}\" \t\t\"LDFLAGS=${LDFLAGS:-} -Wl,-rpath='\\$\\$ORIGIN/../lib'\" \t\tpython \t; \tmake install; \t\tcd /; \trm -rf /usr/src/python; \t\tfind /usr/local -depth \t\t\\( \t\t\t\\( -type d -a \\( -name test -o -name tests -o -name idle_test \\) \\) \t\t\t-o \\( -type f -a \\( -name '*.pyc' -o -name '*.pyo' -o -name 'libpython*.a' \\) \\) \t\t\\) -exec rm -rf '{}' + \t; \t\tldconfig; \t\tapt-mark auto '.*' \u003e /dev/null; \tapt-mark manual $savedAptMark; \tfind /usr/local -type f -executable -not \\( -name '*tkinter*' \\) -exec ldd '{}' ';' \t\t| awk '/=\u003e/ { so = $(NF-1); if (index(so, \"/usr/local/\") == 1) { next }; gsub(\"^/(usr/)?\", \"\", so); printf \"*%s\\n\", so }' \t\t| sort -u \t\t| xargs -rt dpkg-query --search \t\t| awk 'sub(\":$\", \"\", $1) { print $1 }' \t\t| sort -u \t\t| xargs -r apt-mark manual \t; \tapt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \tapt-get dist-clean; \t\texport PYTHONDONTWRITEBYTECODE=1; \tpython3 --version; \tpip3 --version # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-06T02:05:24.190948597Z",
+          "created_by": "RUN /bin/sh -c set -eux; \tfor src in idle3 pip3 pydoc3 python3 python3-config; do \t\tdst=\"$(echo \"$src\" | tr -d 3)\"; \t\t[ -s \"/usr/local/bin/$src\" ]; \t\t[ ! -e \"/usr/local/bin/$dst\" ]; \t\tln -svT \"$src\" \"/usr/local/bin/$dst\"; \tdone # buildkit",
+          "comment": "buildkit.dockerfile.v0"
+        },
+        {
+          "created": "2026-10-06T02:05:24.190948597Z",
+          "created_by": "CMD [\"python3\"]",
+          "comment": "buildkit.dockerfile.v0",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T20:19:50.571922522Z",
+          "created_by": "/bin/sh -c #(nop) ARG PAC_RELEASE",
+          "comment": "FROM docker.io/library/python:3.13-slim",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T20:19:50.585695537Z",
+          "created_by": "/bin/sh -c #(nop) LABEL org.opencontainers.image.revision=$PAC_RELEASE       org.opencontainers.image.source=\"https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot\"",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T20:19:50.599948806Z",
+          "created_by": "/bin/sh -c #(nop) ENV PYTHONUNBUFFERED=1     PYTHONDONTWRITEBYTECODE=1     PIP_NO_CACHE_DIR=1     PYTHONPATH=/app     PAC_RELEASE=$PAC_RELEASE",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-06T20:19:50.626258244Z",
+          "created_by": "/bin/sh -c #(nop) WORKDIR /app",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-09T01:35:52.118322042Z",
+          "created_by": "|1 PAC_RELEASE=e101db3446513bb3a6f0c29151f37aceb944f82a /bin/sh -c apt-get update  \u0026\u0026 apt-get -y upgrade --no-install-recommends  \u0026\u0026 rm -rf /var/lib/apt/lists/*"
+        },
+        {
+          "created": "2026-10-09T01:35:52.21648528Z",
+          "created_by": "/bin/sh -c #(nop) COPY file:e0e4b885ad70c5fe7fa6890012a1ef080f31d6d8dae72aa5f3cb5aed12113ba9 in ./      "
+        },
+        {
+          "created": "2026-10-09T01:36:59.350017772Z",
+          "created_by": "|1 PAC_RELEASE=e101db3446513bb3a6f0c29151f37aceb944f82a /bin/sh -c pip install --no-cache-dir --require-hashes -r requirements.lock  \u0026\u0026 python -m pip uninstall -y pip"
+        },
+        {
+          "created": "2026-10-09T01:37:00.666643888Z",
+          "created_by": "/bin/sh -c #(nop) COPY dir:c0184d62fa219a54c5dd797f53ea94a09a93835319a6cb471e01eed49fc81170 in ./app/      "
+        },
+        {
+          "created": "2026-10-09T01:37:00.856709696Z",
+          "created_by": "/bin/sh -c #(nop) COPY dir:ee2cc769fbb228fe1ffddb36bc3002f2b442d0cfc121ff73d06cb3515a36fc0a in ./migrations/      "
+        },
+        {
+          "created": "2026-10-09T01:37:00.955434142Z",
+          "created_by": "/bin/sh -c #(nop) COPY dir:33c9531d5e9674578ed9f9dcc431b7b2a0bf7d5029fc7a3a05d5e808242300c2 in ./schema/      "
+        },
+        {
+          "created": "2026-10-09T01:37:01.072569543Z",
+          "created_by": "/bin/sh -c #(nop) COPY dir:e4e850ad4eda4406790e06b14b94ad2633c094cad27088efd8526f9892a0a879 in ./scripts/      "
+        },
+        {
+          "created": "2026-10-09T01:37:01.190977777Z",
+          "created_by": "/bin/sh -c #(nop) COPY multi:fe9e625ceb9fe937926ba89c77d4f6e0992cb32a3740d39622efb9a069079c7c in ./      "
+        },
+        {
+          "created": "2026-10-09T01:37:01.29034193Z",
+          "created_by": "/bin/sh -c #(nop) COPY dir:86c9e6058f4af888e3b58831d3e8ce5c7c0287f91715a397e6e48f54131de89d in ./web/dist      "
+        },
+        {
+          "created": "2026-10-09T01:37:01.396944499Z",
+          "created_by": "/bin/sh -c #(nop) COPY file:1cb869dcbfb45382dd335184ba017ab60a5251ce074de3fd1825d4dc11f6c44e in /etc/ssl/certs/rds-global-bundle.pem      "
+        },
+        {
+          "created": "2026-10-09T01:37:01.827171609Z",
+          "created_by": "|1 PAC_RELEASE=e101db3446513bb3a6f0c29151f37aceb944f82a /bin/sh -c useradd --system --uid 10001 --home /app appuser  \u0026\u0026 mkdir -p /app/schema/generated \u0026\u0026 chown -R appuser /app  \u0026\u0026 find / -xdev -type f -perm /6000 -exec chmod a-s {} +"
+        },
+        {
+          "created": "2026-10-09T01:37:01.881309268Z",
+          "created_by": "/bin/sh -c #(nop) VOLUME [\"/app/schema/generated\"]",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-09T01:37:01.950887675Z",
+          "created_by": "/bin/sh -c #(nop) USER appuser",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-09T01:37:02.018912458Z",
+          "created_by": "/bin/sh -c #(nop) EXPOSE 8000",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-09T01:37:02.090010574Z",
+          "created_by": "/bin/sh -c #(nop) HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=4).status==200 else 1)\"",
+          "empty_layer": true
+        },
+        {
+          "created": "2026-10-09T01:37:02.158721314Z",
+          "created_by": "/bin/sh -c #(nop) CMD [\"uvicorn\", \"app.api.main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--workers\", \"2\",      \"--timeout-graceful-shutdown\", \"65\", \"--log-config\", \"app/log_config.json\"]",
+          "empty_layer": true
+        }
+      ],
+      "os": "linux",
+      "rootfs": {
+        "type": "layers",
+        "diff_ids": [
+          "sha256:15f1c8eb1ab18eae260c7fb6296434cbe1ff0e1e30fd814ae92a80dd54005e62",
+          "sha256:285510654d1d6a26507ed6576cae8fa995ba16469050787032499e9a34cbe9f5",
+          "sha256:acbf34fa608c522642659b109edfd70959b7c26593ea51141f3d339cc1875cfd",
+          "sha256:d175833b7147479e4e08f4f5d9dd2055b5ee746dc2f73520462468538d168bf6",
+          "sha256:a8601bbcf496275e8cda45b8a806e65963fc5f4bbe04d777ce5718700e35fcd9",
+          "sha256:a761666de492e515c7d2d4e91d4e5c74474443c873fa416aaba0830e195da717",
+          "sha256:a0e431c9e54e14419d543fbb5ebc971b9b2a4e7fdfe5090911c942204b52acac",
+          "sha256:c8d8cdcb2dbb33a417b10a3a5b5b80334063ad47ccac01e4c7434e7252136953",
+          "sha256:607476002a04ac580b1ec373d9305be5583643a52e5a8a1ccd9b0f37666e67dd",
+          "sha256:f646929ad6f1ecf2edd04eab236a2f1b46adee11993dfe9af6171edd47e2c91c",
+          "sha256:b9c58b6dc020e7a30b07ade5f57cbf43a1d8ed7380c578577f6c23d650e9f410",
+          "sha256:0dd4e2b39e90fe06bbaae566331776520c395be8274652ef2a5c312c697e6466",
+          "sha256:2e96e719973e1973fd6a5e8425ef6baabb845286d1aaca5eb153fef0a99d5868",
+          "sha256:0de51b73512289e4860825e1f8334a1e4002eebba026e1be0c4b31cc722483f5",
+          "sha256:1799e1a73e6962c39b127e43bd8463e61cb850d17eb27e5f719691e362b37013"
+        ]
+      },
+      "config": {
+        "Cmd": [
+          "uvicorn",
+          "app.api.main:app",
+          "--host",
+          "0.0.0.0",
+          "--port",
+          "8000",
+          "--workers",
+          "2",
+          "--timeout-graceful-shutdown",
+          "65",
+          "--log-config",
+          "app/log_config.json"
+        ],
+        "Env": [
+          "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "GPG_KEY=7169605F62C751356D054A26A821E680E5FA6305",
+          "PYTHON_VERSION=3.13.16",
+          "PYTHON_SHA256=f4b1bfb3c79b5bb11b8d228a12504163b4c0dab4d679828d8f5f26b6cb6ab35d",
+          "PYTHONUNBUFFERED=1",
+          "PYTHONDONTWRITEBYTECODE=1",
+          "PIP_NO_CACHE_DIR=1",
+          "PYTHONPATH=/app",
+          "PAC_RELEASE=e101db3446513bb3a6f0c29151f37aceb944f82a"
+        ],
+        "Labels": {
+          "io.buildah.version": "1.42.2",
+          "org.opencontainers.image.revision": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+          "org.opencontainers.image.source": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot"
+        },
+        "User": "appuser",
+        "Volumes": {
+          "/app/schema/generated": {}
+        },
+        "WorkingDir": "/app",
+        "ExposedPorts": {
+          "8000/tcp": {}
+        }
+      }
+    }
+  },
+  "Results": [
+    {
+      "Target": "/scan/image.tar (debian 13.7)",
+      "Class": "os-pkgs",
+      "Type": "debian"
+    },
+    {
+      "Target": "Python",
+      "Class": "lang-pkgs",
+      "Type": "python-pkg"
+    }
+  ]
+}

@@ -512,6 +512,124 @@
         }
       ],
       "verified_by": "evidence/runs/r5-logout-cookie-fixed.json (e551650, over https://testserver with PAC_COOKIE_SECURE=true); the security suite under the release gate at 436"
+    },
+    {
+      "id": "staging-files-not-ignored",
+      "title": "infra/aws-staging/README.md's procedure writes staging.tfvars and saved plans (foundation.plan) into the module, and Git did not ignore either; a saved plan holds every variable's value and the provider's view of the account (state was ignored)",
+      "fix_commits": [
+        "2f937f4"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-tf-files-ignored-reproduced.json",
+          "baseline": "ac6f370",
+          "note": "test_files_the_procedure_creates_are_never_committed, committed as a strict xfail and run with --runxfail: git check-ignore did not list staging.tfvars, foundation.plan or deploy.tfplan"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-tf-files-ignored-fixed.json (2f937f4)"
+    },
+    {
+      "id": "collector-pin-warning-only",
+      "title": "With observability on, a collector image named by tag was only warned about: the module's sole guard was a check block, which in a plan or apply is a warning, and the task definition that runs the collector accepted the tag",
+      "fix_commits": [
+        "2f937f4"
+      ],
+      "regression_files": [
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-collector-pin-reproduced.json",
+          "baseline": "ac6f370",
+          "note": "terraform test with a mocked AWS provider: the run an_unpinned_collector_is_refused expected the task definition to fail and it did not (Missing expected failure); the other 7 runs passed"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-collector-pin-fixed.json (2f937f4: a precondition of the task definition; terraform test 8 of 8)"
+    },
+    {
+      "id": "ci-ledger-check-shallow-checkout",
+      "title": "CI's test job checked out one commit, and test_every_ledger_reference_exists, which checks that every fix commit the ledger names exists, failed there on 31 commits; every local run had the whole history. Added in bb33a5b, after 69c62de, it had never run in hosted CI",
+      "fix_commits": [
+        "f874b89"
+      ],
+      "regression_files": [
+        "evidence/probes/shallow_checkout_tests.sh"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37865432807",
+          "baseline": "e6cb251",
+          "kind": "hosted-ci-run"
+        },
+        {
+          "artifact": "evidence/runs/r5-shallow-checkout-reproduced.json",
+          "baseline": "6605d08",
+          "note": "the branch cloned at depth 1, the unit suite without a database: 1 failed (that test), 846 passed"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-shallow-checkout-fixed.json (f874b89, a whole-history clone: 847 passed) and hosted run 37866607406 on f874b89, whose test job passed"
+    },
+    {
+      "id": "terraform-lock-single-platform",
+      "title": "infra/aws-staging/.terraform.lock.hcl held a provider package hash (h1:) for darwin_arm64 only, as generated on the Mac; on CI's linux_amd64 runner, init with -lockfile=readonly verified the download but validate then refused the cached package",
+      "fix_commits": [
+        "aea40b2"
+      ],
+      "regression_files": [
+        ".github/workflows/ci.yml"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37866339109",
+          "baseline": "811713c",
+          "kind": "hosted-ci-run"
+        }
+      ],
+      "verified_by": "hosted run 37866723060 on aea40b2: the supply-chain job's Terraform step (lock read-only, fmt, validate, mocked plans) passed"
+    },
+    {
+      "id": "signout-before-revocation",
+      "title": "Sign out showed the sign-in form before the server had ended the session: signOut() cleared the screen, showed the form, then sent POST /api/logout, so leaving the page in between (a reload, a closed tab) could cancel the request and leave the session alive for the next person on that browser",
+      "fix_commits": [
+        "8157017"
+      ],
+      "regression_files": [
+        "web/e2e/journeys.spec.js"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37866723060",
+          "baseline": "aea40b2",
+          "kind": "hosted-ci-run"
+        },
+        {
+          "artifact": "evidence/runs/r5-signout-wait-reproduced.json",
+          "baseline": "cf9e823",
+          "note": "Real Chromium against the real server with /api/logout held by Playwright: the sign-in form appeared while the request was still held. The hosted failure was the identity-change journey navigating away right after Sign out and finding the previous user still signed in; it had passed on f874b89 and in every local run"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-signout-wait-fixed.json (8157017: 11 journeys; three consecutive local runs) and hosted run 37868427618 on 8157017, all four jobs"
+    },
+    {
+      "id": "signout-unconfirmed-presented-as-done",
+      "title": "A sign-out the server refused or never answered was presented as done: the page showed the sign-in form (with a notice) while the session was still alive, so a reload or the next person on that browser got the first user back",
+      "fix_commits": [
+        "7a1a2bb"
+      ],
+      "regression_files": [
+        "web/e2e/signout.spec.js"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-signout-refused-reproduced.json",
+          "baseline": "4738c5e",
+          "note": "Real Chromium against the real server with /api/logout answered 503 by Playwright: the sign-in form appeared and /api/me still answered for the first user. Found while testing failed sign-outs on 8157017, whose fix for the delayed case had introduced the notice"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-signout-refused-fixed.json (7a1a2bb: all 15 journeys; three consecutive local runs) and hosted CI on the candidate"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

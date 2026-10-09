@@ -1,0 +1,71 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T01:39:06+00:00",
+  "claim": "At e101db3: the release image's mutable build inputs (base tags, apt-get upgrade) as resolved for the tested image, its lower layers exactly the Python base's, and its Debian package list",
+  "application": {
+    "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+    "tree": "1bf498b3ffc553f62fe9e8b9542faba4ddfe5779",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "CONTAINER_CLI=podman",
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/image_build_inputs.py",
+      "pharma-analytics-copilot:smoke",
+      "--packages",
+      "/Users/manideep/src/pac-work/step10/r5-image-e101db3-packages.txt"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.62
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "}"
+  },
+  "artifacts": [],
+  "limits": [
+    "local podman engine on Apple silicon building linux/amd64 under emulation; a rebuild resolves the tags again"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191",
+    "digest": "sha256:4a8d3f853320029e8211b8542a5b1dbe6356154f22a253ebf0a5d39963848fba",
+    "platform": "linux/amd64",
+    "revision_label": "e101db3446513bb3a6f0c29151f37aceb944f82a"
+  }
+}
