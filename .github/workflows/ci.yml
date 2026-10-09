@@ -48,6 +48,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history: test_evidence_index checks that every fix
+          # commit the ledger names exists, and failed in a one-commit
+          # checkout (run 37865432807, evidence/probes/shallow_checkout_tests.sh).
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
