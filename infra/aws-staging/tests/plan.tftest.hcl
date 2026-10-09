@@ -23,6 +23,13 @@ mock_provider "aws" {
   }
 }
 
+# The deployed image exists and is protected from routine expiry, unless a
+# run says otherwise.
+override_data {
+  target = data.aws_ecr_image.deployed
+  values = { image_tags = ["d266c32", "keep-20261009-d266c32"] }
+}
+
 # Known at plan time, so the image reference can be read.
 override_resource {
   target          = aws_ecr_repository.app
@@ -39,6 +46,8 @@ variables {
   allowed_cidrs      = ["198.51.100.0/24"]
   monthly_budget_usd = 150
   alert_emails       = ["owner@example.com"]
+  # Test values throughout: none is an owner's decision.
+  final_snapshot_label = "test1"
 }
 
 run "foundation_without_an_image" {
@@ -60,6 +69,46 @@ run "foundation_without_an_image" {
     condition     = length(aws_nat_gateway.this) == 0 && length(aws_prometheus_workspace.this) == 0
     error_message = "the low-cost shape has no NAT gateway and no Prometheus workspace"
   }
+  assert {
+    condition     = aws_db_instance.this.final_snapshot_identifier == "pac-staging-final-test1"
+    error_message = "the final snapshot is named by the operator's label"
+  }
+  assert {
+    condition     = aws_secretsmanager_secret.db_role["owner"].name == "pac-staging/g1/db/owner" && aws_secretsmanager_secret.test_users.name == "pac-staging/g1/test-users"
+    error_message = "secret names carry the generation"
+  }
+  assert {
+    condition     = jsondecode(aws_ecr_lifecycle_policy.app.policy).rules[0].selection.tagPrefixList == ["keep-"] && jsondecode(aws_ecr_lifecycle_policy.app.policy).rules[0].rulePriority == 1
+    error_message = "keep-* images are selected first, so the last-20 rule cannot expire them"
+  }
+}
+
+run "a_new_secret_generation_renames_every_secret" {
+  command = plan
+
+  variables {
+    secret_generation = "g2"
+  }
+
+  assert {
+    condition     = alltrue([for s in aws_secretsmanager_secret.db_role : startswith(s.name, "pac-staging/g2/")]) && startswith(aws_secretsmanager_secret.oidc_client.name, "pac-staging/g2/")
+    error_message = "every secret moves to the new generation"
+  }
+}
+
+run "an_image_without_a_keep_tag_is_not_deployed" {
+  command = plan
+
+  variables {
+    image_digest = "sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443"
+  }
+
+  override_data {
+    target = data.aws_ecr_image.deployed
+    values = { image_tags = ["d266c32"] }
+  }
+
+  expect_failures = [aws_ecs_task_definition.app]
 }
 
 run "deployable_at_zero_tasks" {

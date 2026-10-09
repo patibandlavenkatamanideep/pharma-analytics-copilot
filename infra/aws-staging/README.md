@@ -48,6 +48,7 @@ storage there.
 | Testers' networks | `allowed_cidrs` (`0.0.0.0/0` is refused) | staging is not public |
 | Monthly budget and alert addresses | `monthly_budget_usd`, `alert_emails` | spend notifications |
 | Release image | `image_digest` (after publishing) | deployment is by digest only |
+| Final snapshot name | `final_snapshot_label` | set anew before each teardown, so a kept snapshot never blocks the next |
 | Model use | `llm_provider`, `enable_bedrock`, `model_budget_usd`, `llm_*_usd_per_mtok` | spend; off by default |
 | Single sign-on | `oidc_issuer`, `oidc_client_id`, `oidc_confidential_client` | needs a registration with the provider |
 | Observability | `enable_observability`, `collector_image` | about $47 a month for two tasks (cost) |
@@ -88,17 +89,35 @@ decisions above (it holds no secret).
    `load_balancer_dns_name` if Route 53 does not.
 4. **Secret values.** `./seed-secrets.sh` (database roles). It prints names
    and "set" only, and leaves a container that already holds a value alone.
-5. **Publish the image.** In GitHub, create the environment `staging` with a
-   required reviewer, set its variables `AWS_REGION`, `AWS_ACCOUNT_ID`,
-   `PAC_PUBLISH_ROLE_ARN` (output `github_publish_role_arn`) and
-   `PAC_ECR_REPOSITORY_URL` (output `ecr_repository_url`), and run
-   *publish-staging* on the release commit. It builds for linux/amd64 without
-   a cache, runs the same scan and hardened image journeys as CI, pushes, and
-   writes the registry digest to the run summary. The image a laptop
-   qualified is not this image (a different build and, on Apple silicon, a
-   different architecture): this run's gates are what qualify the digest.
-6. **Task definitions.** Set `image_digest` to that digest (keep
-   `app_desired_count = 0`), plan, apply.
+5. **Publish the image.** The GitHub environment `staging` exists (a required
+   reviewer; `main` and `codex/release-*` only). Set its variables
+   `AWS_REGION`, `AWS_ACCOUNT_ID`, `PAC_PUBLISH_ROLE_ARN` (output
+   `github_publish_role_arn`) and `PAC_ECR_REPOSITORY_URL` (output
+   `ecr_repository_url`), and run *publish-staging* on the release commit
+   (GitHub runs a manual workflow only once its file is on the default
+   branch). It refuses a commit whose four CI checks did not pass, builds for
+   linux/amd64 without a cache, runs the same scan and hardened image
+   journeys as CI on that image, pushes it, checks the registry's manifest is
+   the tested image, and writes the source commit, the tested image and the
+   registry digest to the run summary. The image a laptop qualified is not
+   this image (a different build and, on Apple silicon, a different
+   architecture): this run's gates are what qualify the digest.
+6. **Protect, then define the tasks.** Tag the image for keeping, so routine
+   expiry (the last 20 images) cannot remove it while it is deployed or is
+   the designated recovery image:
+
+   ```sh
+   m=$(aws ecr batch-get-image --repository-name pac-staging \
+         --image-ids imageDigest=<digest> --query 'images[0].imageManifest' --output text)
+   aws ecr put-image --repository-name pac-staging --image-manifest "$m" \
+         --image-tag keep-$(date -u +%Y%m%d)-<short sha>
+   ```
+
+   Then set `image_digest` (keep `app_desired_count = 0`), plan, apply. The
+   plan refuses a digest that is not in the repository or has no `keep-` tag.
+   Keep the tag on the deployed image and on the previous one (the recovery
+   image); remove older `keep-` tags (`aws ecr batch-delete-image` with that
+   tag removes the tag, not the image's other tags) so expiry can reclaim them.
 7. **Database.** Run the one-shot tasks in order, each to exit code 0:
    `bootstrap` (roles, database, migrations, graph store, logins — as the RDS
    administrator, which gets only `SET ROLE pac_owner`), `load-seed` or
@@ -156,14 +175,27 @@ the standby double the cost of the parts they double (cost).
 ## Tear down
 
 1. `app_desired_count = 0`, apply.
-2. `deletion_protection = false`, apply.
+2. `deletion_protection = false` and a `final_snapshot_label` never used
+   before (a date), apply. The final snapshot is
+   `pac-staging-final-<label>`, so one kept from an earlier teardown does not
+   block this one; nothing changes it between plans.
 3. Delete the images (`force_delete` is off so that a destroy cannot remove
    a released image unnoticed): `aws ecr batch-delete-image ...`, or keep the
    repository by removing it from state first.
-4. `terraform destroy`. RDS takes the final snapshot `pac-staging-final`;
-   secrets enter a 7-day recovery window; log groups are deleted.
+4. `terraform destroy`. RDS takes the final snapshot; secrets enter a 7-day
+   recovery window, during which their names stay taken; log groups are
+   deleted.
 5. Delete the final snapshot once nothing needs it (it is billed until
    then), and the state bucket last.
+
+**Recreating within 7 days of a teardown.** The secret names are still taken.
+Either restore them and adopt them (`aws secretsmanager restore-secret
+--secret-id pac-staging/g1/db/owner`, and so on, then `terraform import
+'aws_secretsmanager_secret.db_role["owner"]' <arn>`; their values come back
+with them), or set `secret_generation = "g2"` so every name is new and seed
+fresh values. Never force-delete a secret without recovery to make room.
+Both collisions are AWS behaviour that a mocked plan cannot show: the first
+staging cycle verifies them.
 
 If the GitHub OIDC provider is shared with other roles, create this stack
 with `create_github_oidc_provider = false` so the destroy leaves it.

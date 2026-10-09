@@ -143,6 +143,25 @@ variable "db_backup_retention_days" {
   default     = 7
 }
 
+variable "final_snapshot_label" {
+  description = "Names the snapshot RDS takes when the database is destroyed: <name>-final-<label>. Set it before each teardown to a value never used before (a date, 20261009), so an earlier final snapshot that is kept does not block the next teardown. No default: the operator chooses it."
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9-]{0,30}$", var.final_snapshot_label))
+    error_message = "final_snapshot_label is lowercase letters, digits and hyphens (at most 31)."
+  }
+}
+
+variable "secret_generation" {
+  description = "Part of every secret's name. Deleted secrets keep their names for 7 days; to recreate the stack inside that window without restoring them, move to the next generation (g2, g3, ...)."
+  type        = string
+  default     = "g1"
+  validation {
+    condition     = can(regex("^g[0-9]+$", var.secret_generation))
+    error_message = "secret_generation is g followed by a number."
+  }
+}
+
 variable "deletion_protection" {
   description = "Protects the database from deletion. Set false (and apply) only as the first step of teardown."
   type        = bool

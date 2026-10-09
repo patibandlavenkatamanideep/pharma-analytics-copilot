@@ -140,6 +140,17 @@ locals {
   }
 }
 
+# What the tasks run must exist in the repository and be protected from
+# routine expiry (ecr.tf): checked at every plan that deploys it. Named by
+# var.name, the repository's name, not by the resource: a data source that
+# depends on a resource with pending changes is read only at apply, after
+# the check should have stopped the plan.
+data "aws_ecr_image" "deployed" {
+  count           = local.deployable ? 1 : 0
+  repository_name = var.name
+  image_digest    = var.image_digest
+}
+
 resource "aws_ecs_task_definition" "app" {
   count                    = local.deployable ? 1 : 0
   family                   = "${var.name}-app"
@@ -159,6 +170,10 @@ resource "aws_ecs_task_definition" "app" {
     precondition {
       condition     = var.oidc_issuer == null || var.oidc_client_id != null
       error_message = "oidc_issuer needs oidc_client_id."
+    }
+    precondition {
+      condition     = anytrue([for tag in data.aws_ecr_image.deployed[0].image_tags : startswith(tag, "keep-")])
+      error_message = "The image_digest image must carry a keep- tag, so routine expiry cannot remove it while it is deployed (README.md, \"Deploy\")."
     }
     # A refusal, not a warning: a check block only warns, and the plan went on
     # to run the collector by tag (tests/plan.tftest.hcl).

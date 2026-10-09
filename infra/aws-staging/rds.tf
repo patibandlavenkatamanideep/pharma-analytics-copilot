@@ -65,7 +65,7 @@ resource "aws_db_instance" "this" {
   copy_tags_to_snapshot       = true
   deletion_protection         = var.deletion_protection
   skip_final_snapshot         = false
-  final_snapshot_identifier   = "${var.name}-final"
+  final_snapshot_identifier   = "${var.name}-final-${var.final_snapshot_label}"
   auto_minor_version_upgrade  = true
   allow_major_version_upgrade = false
   apply_immediately           = false

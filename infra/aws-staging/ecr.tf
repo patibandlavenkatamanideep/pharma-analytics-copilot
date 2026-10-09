@@ -15,14 +15,27 @@ resource "aws_ecr_repository" "app" {
   }
 }
 
+# Routine expiry keeps the last 20 images, but never one tagged keep-*: the
+# image deployed now and the one designated for recovery carry that tag
+# (README.md, "Deploy"). A running task does not prove a replacement task can
+# still pull its image. ECR does not let a lower-priority rule expire an image
+# that a higher-priority rule selects.
 resource "aws_ecr_lifecycle_policy" "app" {
   repository = aws_ecr_repository.app.name
   policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep the last 20 images"
-      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 20 }
-      action       = { type = "expire" }
-    }]
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Never expire an image marked for deployment or recovery (keep-*)"
+        selection    = { tagStatus = "tagged", tagPrefixList = ["keep-"], countType = "imageCountMoreThan", countNumber = 9999 }
+        action       = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Otherwise keep the last 20 images"
+        selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 20 }
+        action       = { type = "expire" }
+      },
+    ]
   })
 }
