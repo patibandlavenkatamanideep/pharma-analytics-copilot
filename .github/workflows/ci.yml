@@ -239,6 +239,27 @@ jobs:
           docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
             git /repo --redact --no-banner
 
+      # The AWS staging module: canonical form, valid, and its plans with a
+      # mocked AWS provider (infra/aws-staging/tests: no credentials, no API
+      # call, nothing created). Terraform comes from HashiCorp's release,
+      # checked against the SHA-256 in its terraform_1.16.5_SHA256SUMS (not
+      # its signature); the provider must match the committed lock file.
+      - name: Staging infrastructure (validate and mocked plans)
+        env:
+          TF_VERSION: "1.16.5"
+          TF_SHA256: 2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/terraform.zip" \
+            "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+          echo "${TF_SHA256}  $RUNNER_TEMP/terraform.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/terraform.zip" terraform -d "$RUNNER_TEMP/tf"
+          tf="$RUNNER_TEMP/tf/terraform"
+          "$tf" -chdir=infra/aws-staging init -backend=false -input=false -lockfile=readonly -no-color
+          "$tf" -chdir=infra/aws-staging fmt -check -recursive -no-color
+          "$tf" -chdir=infra/aws-staging validate -no-color
+          "$tf" -chdir=infra/aws-staging test -no-color
+
   image:
     runs-on: ubuntu-latest
 

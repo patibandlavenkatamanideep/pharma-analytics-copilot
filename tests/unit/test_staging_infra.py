@@ -211,3 +211,38 @@ def test_files_the_procedure_creates_are_never_committed():
     out = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "--no-index", *paths],
                          capture_output=True, text=True)
     assert sorted(set(paths) - set(out.stdout.split())) == []
+
+
+def test_a_forged_forwarded_for_cannot_choose_the_client_address():
+    """Staging trusts X-Forwarded-For from the VPC range (the load balancer),
+    which appends the address it received the connection from. uvicorn must
+    take the rightmost address outside that range -- the appended one -- or a
+    client could choose the address its failed sign-ins count against, and
+    either escape the lockout or lock out someone else. Read with the range
+    the module actually configures."""
+    import asyncio
+
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    vpc = re.search(r'variable "vpc_cidr" \{.*?default\s*=\s*"([^"]+)"',
+                    text("variables.tf"), re.S).group(1)
+    assert '{ name = "FORWARDED_ALLOW_IPS", value = var.vpc_cidr }' in text("ecs.tf")
+    seen = {}
+
+    async def app(scope, receive, send):
+        seen["client"] = scope["client"][0]
+
+    middleware = ProxyHeadersMiddleware(app, trusted_hosts=vpc)
+
+    def client(peer: str, forwarded: str) -> str:
+        scope = {"type": "http", "scheme": "http", "client": (peer, 40000),
+                 "headers": [(b"x-forwarded-for", forwarded.encode())]}
+        asyncio.run(middleware(scope, None, None))
+        return seen["client"]
+
+    load_balancer = "10.40.0.17"
+    assert client(load_balancer, "198.51.100.9") == "198.51.100.9"
+    assert client(load_balancer, "203.0.113.5, 198.51.100.9") == "198.51.100.9"
+    assert client(load_balancer, "10.40.3.3, 198.51.100.9") == "198.51.100.9"
+    # Not through the load balancer: the header is not believed at all.
+    assert client("198.51.100.9", "203.0.113.5") == "198.51.100.9"
