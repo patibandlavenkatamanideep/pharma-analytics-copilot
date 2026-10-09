@@ -84,6 +84,14 @@ resource "aws_lb_listener" "https" {
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = aws_acm_certificate_validation.this.certificate_arn
+
+  # Browser protections the application does not send, added to every
+  # response: HTTPS only for a year (this host; HTTP only redirects), no
+  # content-type guessing, never framed (the sign-in page is public).
+  routing_http_response_strict_transport_security_header_value = "max-age=31536000"
+  routing_http_response_x_content_type_options_header_value    = "nosniff"
+  routing_http_response_x_frame_options_header_value           = "DENY"
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.app.arn

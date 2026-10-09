@@ -419,7 +419,6 @@ def test_the_publish_role_trusts_the_subject_github_sends():
 # The sign-in page is reachable from anywhere (public_sign_in), so the load
 # balancer adds the browser protections the application does not send
 # (r5-staging-headers-reproduced.json: none of the three on the live site).
-@pytest.mark.xfail(strict=True, reason="reproduction: the live site sends no HSTS, nosniff or frame protection")
 def test_the_https_listener_adds_browser_security_headers():
     https = blocks(text("alb.tf"), "aws_lb_listener")["https"]
     assert re.search(r'routing_http_response_strict_transport_security_header_value\s*=\s*"max-age=\d{7,}"', https)
