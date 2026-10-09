@@ -8,14 +8,14 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `fb415ca013288a29f69f76f780fe80f65bd4078f` | `a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `7c624e205c0459d2fea69db6bd94ea92c341182f` | `cd242d38fa7c4704c99de2e529703bd6598983f5` |
+| Executable candidate (what the records measured) | `a786bdaab8510cf747218d013cd70dc5d6f76835` | `dba45c05ce6c14d1be23832d754e3f7a0f275733` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `09cc4b939560773f68d704c465e4fb88e3092a9e` | `552b5bee6c59cea31458054f10f50a5c540f95b7` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
 - **documentation** (9): `README.md`, `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/PILOT_DECISION.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/STAGING_PLAN.md`, `docs/TEST_INVENTORY.md` …
-- **evidence data** (36): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-gitleaks-exceptions-exact-f72ca58.json`, `evidence/runs/r5-image-fb415ca-build-inputs.detail.json`, `evidence/runs/r5-image-fb415ca-build-inputs.json`, `evidence/runs/r5-image-fb415ca-packages.txt`, `evidence/runs/r5-rc-fb415ca-boundary.json`, `evidence/runs/r5-rc-fb415ca-browser.json` …
+- **evidence data** (45): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-image-a786bda-build-inputs.detail.json`, `evidence/runs/r5-image-a786bda-build-inputs.json`, `evidence/runs/r5-image-a786bda-packages.txt`, `evidence/runs/r5-rc-a786bda-boundary.json`, `evidence/runs/r5-rc-a786bda-browser.json`, `evidence/runs/r5-rc-a786bda-component.detail.json` …
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -37,32 +37,32 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-rc-fb415ca-boundary.json` | passed | boundary intact | yes |
-| `r5-rc-fb415ca-browser.json` | passed |   15 passed (7.2s) | yes |
-| `r5-rc-fb415ca-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-rc-fb415ca-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-fb415ca-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-fb415ca-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-fb415ca-gitleaks.json` | passed | [90m7:02AM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-rc-fb415ca-image.json` | passed | {"release": "fb415ca013288a29f69f76f780fe80f65bd4078f", "checks": ["PASS: image builds (78 | yes |
-| `r5-rc-fb415ca-ingestion.json` | passed | 177 passed in 18.34s | yes |
-| `r5-rc-fb415ca-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-rc-fb415ca-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-rc-fb415ca-pytest.json` | passed | 2249 passed, 5 warnings in 143.36s (0:02:23) | yes |
-| `r5-rc-fb415ca-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.80s | yes |
-| `r5-rc-fb415ca-security.json` | passed | 438 passed in 46.43s | yes |
-| `r5-rc-fb415ca-unit-nodb.json` | passed | 847 passed, 5 warnings in 28.88s | yes |
-| `r5-rc-fb415ca-web-build.json` | passed | ✓ built in 229ms | yes |
+| `r5-rc-a786bda-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-a786bda-browser.json` | passed |   15 passed (7.2s) | yes |
+| `r5-rc-a786bda-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-a786bda-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a786bda-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a786bda-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-a786bda-gitleaks.json` | passed | [90m12:23PM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-a786bda-image.json` | passed | {"release": "a786bdaab8510cf747218d013cd70dc5d6f76835", "checks": ["PASS: image builds (81 | yes |
+| `r5-rc-a786bda-ingestion.json` | passed | 177 passed in 18.49s | yes |
+| `r5-rc-a786bda-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-a786bda-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-a786bda-pytest.json` | passed | 2279 passed, 5 warnings in 157.39s (0:02:37) | yes |
+| `r5-rc-a786bda-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.85s | yes |
+| `r5-rc-a786bda-security.json` | passed | 450 passed in 50.48s | yes |
+| `r5-rc-a786bda-unit-nodb.json` | passed | 859 passed, 5 warnings in 30.45s | yes |
+| `r5-rc-a786bda-web-build.json` | passed | ✓ built in 209ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-rc-fb415ca-pytest.junit.xml`: 2249 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-a786bda-pytest.junit.xml`: 2279 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
-| authorization_security | 366 | 366 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
-| deployment_configuration | 15 | 15 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
-| durability_recovery_concurrency | 114 | 114 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
+| authorization_security | 378 | 378 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
+| deployment_configuration | 27 | 27 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
+| durability_recovery_concurrency | 120 | 120 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
 | evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
 | ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
 | numerical_oracle | 115 | 115 | 0 | Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler. |
@@ -76,9 +76,9 @@ From `evidence/runs/r5-rc-fb415ca-pytest.junit.xml`: 2249 tests, each counted on
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-rc-fb415ca-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-fb415ca-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-fb415ca-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-a786bda-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-a786bda-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-a786bda-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -294,7 +294,7 @@ Provisioning assumed a PostgreSQL superuser: as a managed database's administrat
 Behind a load balancer that the server does not trust, every client has the load balancer's address, so 20 failed sign-ins by anyone refuse every user's correct password for 15 minutes (MAX_FAILURES_PER_IP); nothing in the deployment configuration set FORWARDED_ALLOW_IPS.
 
 - Fix: `5a49a34`
-- Regression on the candidate: `client_address_behind_proxy.py` (0, NOT ALL PASS), `test_staging_infra.py` (15, all pass)
+- Regression on the candidate: `client_address_behind_proxy.py` (0, NOT ALL PASS), `test_staging_infra.py` (27, all pass)
 - Reproduction on `128c558`: `r5-proxy-client-address-reproduced.json` — failed — {"database": "pac_release", "run": {"FORWARDED_ALLOW_IPS": " (The real server behind a local proxy with FORWARDED_ALLOW_IPS empty, i.e. the load balancer untrusted, as every deployment configuration before 5a49a34 left it: after 20 failures from 20 forwarded addresses another user's correct password is refused (429). The defect is configuration, so it is reproduced on the current code with the old configuration. r5-proxy-client-address.json (b4315bb) runs both configurations in one record)
 
 ### logout-cookie-attributes
@@ -310,7 +310,7 @@ Sign-out deleted the session cookie with delete_cookie(name, path='/'): the dele
 infra/aws-staging/README.md's procedure writes staging.tfvars and saved plans (foundation.plan) into the module, and Git did not ignore either; a saved plan holds every variable's value and the provider's view of the account (state was ignored).
 
 - Fix: `2f937f4`
-- Regression on the candidate: `test_staging_infra.py` (15, all pass)
+- Regression on the candidate: `test_staging_infra.py` (27, all pass)
 - Reproduction on `ac6f370`: `r5-tf-files-ignored-reproduced.json` — failed — 1 failed, 13 deselected in 0.07s (test_files_the_procedure_creates_are_never_committed, committed as a strict xfail and run with --runxfail: git check-ignore did not list staging.tfvars, foundation.plan or deploy.tfplan)
 
 ### collector-pin-warning-only
@@ -360,8 +360,44 @@ A sign-out the server refused or never answered was presented as done: the page 
 The website path had no model spend allowance: Pipeline.spend was set only by evaluation tooling (scripts/run_evals.py's in-memory Budget), so a model budget capped an evaluation run but not reviewers' questions, across users, uvicorn workers, replicas and repair attempts; serving was bounded by per-user request quotas only.
 
 - Fix: `c524d45`
-- Regression on the candidate: `test_failure_modes.py` (18, all pass), `test_serving_credentials.py` (6, all pass)
+- Regression on the candidate: `test_failure_modes.py` (24, all pass), `test_serving_credentials.py` (6, all pass)
 - Reproduction on `d0fdf28`: `r5-website-allowance-reproduced.json` — failed — 1 failed, 11 deselected in 1.04s (test_a_configured_allowance_limits_what_the_website_spends, committed as a strict xfail and run with --runxfail: with an allowance below one call's bound (PAC_LLM_SPEND_LIMIT_USD and both rates), a question through the serving pipeline still reached the fake model transport and was answered. Found by review of the staging plan's $5 model allowance)
+
+### allowance-prices-unvalidated
+
+The model allowance accepted model prices that make it meaningless: zero, negative, NaN and infinite rates passed the settings and the startup check (which asked only that they be set), a zero price made every reservation cost nothing so the allowance never ran down, and the staging module accepted a zero price.
+
+- Fix: `6115774`
+- Regression on the candidate: `test_failure_modes.py` (24, all pass), `plan.tftest.hcl` (0, NOT ALL PASS)
+- Reproduction on `10063bd`: `r5-allowance-prices-reproduced.json` — failed — 5 failed, 19 deselected in 0.47s (Strict xfails run with --runxfail: Settings accepted 0, -1, nan and inf for either rate; a SharedAllowance at zero prices granted a hundred worst-case reservations and counted none. Found by review of c524d45)
+- Reproduction on `10063bd`: `r5-allowance-prices-tf-reproduced.json` — failed — error but did not. (terraform test with a mocked provider: the run a_zero_model_price_is_refused failed (a zero input price was not refused))
+
+### staging-plan-not-empty-after-apply
+
+Applied to the staging account, the module's plan straight after the apply was not empty: AWS stores rds.force_ssl with apply method pending-reboot and IAM fills in the GitHub OIDC provider's thumbprint, so every later plan would propose two in-place changes that are not changes and hide real drift among them.
+
+- Fix: `5536526`
+- Regression on the candidate: `test_staging_infra.py` (27, all pass)
+- Reproduction on `88bc879`: `r5-staging-plan-drift-reproduced.json` — failed — Plan: 0 to add, 2 to change, 0 to destroy.; aws_iam_openid_c (terraform plan -detailed-exitcode against the infrastructure applied from d004a20 in pac-staging (git archive d004a20; the module is unchanged at 88bc879): exit 2, 0 to add, 2 to change (aws_db_parameter_group.this, aws_iam_openid_connect_provider.github[0]); addresses only, no value)
+- Reproduction on `c43f0d7`: `r5-staging-plan-drift-tests-reproduced.json` — failed — 2 failed, 23 deselected in 0.09s (Strict xfails run with --runxfail: the source declares neither apply_method pending-reboot nor ignore_changes for the thumbprint)
+
+### publish-role-legacy-oidc-subject
+
+The staging publish role trusted only GitHub's legacy OIDC subject (repo:<owner>/<name>:environment:staging); this repository's tokens carry the immutable subject (repo:<owner>@<owner id>/<name>@<repository id>:environment:staging), so AWS refused every token and nothing could be published.
+
+- Fix: `facd0d4`
+- Regression on the candidate: `test_staging_infra.py` (27, all pass), `plan.tftest.hcl` (0, NOT ALL PASS)
+- Reproduction on `5536526`: `hosted-ci:37939037102` — see evidence/external.json
+- Reproduction on `bb7d9b8`: `r5-publish-oidc-subject-reproduced.json` — failed — 1 failed, 25 deselected in 0.05s (Strict xfail run with --runxfail: the trust condition names only repo:${var.github_repository}, with no way to configure the subject GitHub sends)
+
+### public-sign-in-without-browser-security-headers
+
+With the sign-in page open to everyone, the live staging site sent no Strict-Transport-Security, X-Content-Type-Options or X-Frame-Options: later visits were not held to HTTPS and the sign-in page could be framed by another site. Nothing in the repository claimed the headers; for a public sign-in page they are the baseline.
+
+- Fix: `a786bda`
+- Regression on the candidate: `test_staging_infra.py` (27, all pass), `staging_live_check.py` (0, NOT ALL PASS)
+- Reproduction on `de4352d`: `r5-staging-headers-reproduced.json` — failed — {"checks": {"cross_site_post_refused": "pass", "director_rev (evidence/probes/staging_live_check.py against https://staging.pharma-copilot.click (image 5536526, infrastructure from facd0d4): 12 checks pass, security_headers fails with all three headers absent)
+- Reproduction on `4c4f5e1`: `r5-staging-headers-tests-reproduced.json` — failed — 1 failed, 26 deselected in 0.06s (Strict xfail run with --runxfail: the HTTPS listener sets none of the three)
 
 ## Externally verified (hosted)
 
@@ -387,6 +423,18 @@ The website path had no model spend allowance: Pipeline.spend was set only by ev
 - Run [37877896006](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37877896006) on `a115002`: **success** — all four jobs, pull request #1
 - Run [37920515182](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920515182) on `fb415ca`: **success** — all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included
 - Run [37920520480](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920520480) on `fb415ca`: **success** — all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included, pull request #1
+- Run [37922020684](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37922020684) on `731b986`: **success** — all four jobs; index and manifest for fb415ca
+- Run [37926181459](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37926181459) on `ff9fe0d`: **success** — all four jobs on the executable candidate ff9fe0d (model prices validated, the allowance's trust boundary documented)
+- Run [37926187963](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37926187963) on `ff9fe0d`: **success** — all four jobs on ff9fe0d, pull request #1
+- Run [37931490429](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931490429) on `0ca735f`: **success** — all four jobs on 0ca735f (reviewers' own accounts, the owner-gated public sign-in page); superseded as candidate by d004a20
+- Run [37931496647](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931496647) on `0ca735f`: **success** — all four jobs on 0ca735f, pull request #1
+- Run [37933355116](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933355116) on `d004a20`: **success** — all four jobs on the executable candidate d004a20 (reviewers' accounts, public sign-in page, the real plan reconciled with the inventory)
+- Run [37933360426](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933360426) on `d004a20`: **success** — all four jobs on d004a20, pull request #1
+- Run [37936348151](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936348151) on `5536526`: **success** — all four jobs on the executable candidate 5536526 (the staging module's plan after the apply is empty)
+- Run [37936356463](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936356463) on `5536526`: **success** — all four jobs on 5536526, pull request #1 (its merge gate)
+- Run [37939037102](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37939037102) on `5536526`: **success** — publish-staging. Attempt 1 failed at the publishing role's credentials (the role trusted only the legacy OIDC subject; ledger publish-role-legacy-oidc-subject); attempt 2, after the trust policy from facd0d4 was applied, built, scanned and tested the image and pushed it: sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c. Both attempts approved by the owner in the staging environment
+- Run [37940273033](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37940273033) on `facd0d4`: **success** — all four jobs on the executable candidate facd0d4 (the publish role trusts the subject GitHub sends)
+- Run [37957713810](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810) on `a786bda`: **success** — all four jobs on the executable candidate a786bda (the load balancer adds browser security headers)
 
 ## Missing artifacts
 
