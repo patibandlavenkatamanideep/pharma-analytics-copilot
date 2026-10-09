@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 859 | pass, no skips | `r5-rc-a786bda-pytest.json` (`a786bda`); without a database too, `r5-rc-a786bda-unit-nodb.json` |
+| **Unit** | `pytest tests/unit -q` | 860 | pass, no skips | `r5-rc-a786bda-pytest.json` (`a786bda`); without a database too, `r5-rc-a786bda-unit-nodb.json` |
 | **Integration** | `pytest tests/integration -q` | 970 | pass, no skips | `r5-rc-a786bda-pytest.json` (`a786bda`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 450` | 450 | pass, strict gate | `r5-rc-a786bda-security.json` (`a786bda`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2279** | pass, strict gate: no skips, no xfails | `r5-rc-a786bda-pytest.json` (`a786bda`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2280** | pass, strict gate: no skips, no xfails | `r5-rc-a786bda-pytest.json` (`a786bda`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-a786bda-component.json` (`a786bda`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-a786bda-browser.json` (`a786bda`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-a786bda-eval-*.json` (`a786bda`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
