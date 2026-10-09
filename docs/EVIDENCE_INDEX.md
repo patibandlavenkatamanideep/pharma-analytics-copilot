@@ -8,14 +8,14 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `e101db3446513bb3a6f0c29151f37aceb944f82a` | `1bf498b3ffc553f62fe9e8b9542faba4ddfe5779` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `16bb9b78fd318a1ac28393c66b8b6411e5042380` | `33eb5740b90dafa3ab930d16b04bc3071921fa39` |
+| Executable candidate (what the records measured) | `fb415ca013288a29f69f76f780fe80f65bd4078f` | `a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `7c624e205c0459d2fea69db6bd94ea92c341182f` | `cd242d38fa7c4704c99de2e529703bd6598983f5` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
-- **documentation** (8): `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/PILOT_DECISION.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/STAGING_PLAN.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
-- **evidence data** (44): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-collector-pin-fixed.json`, `evidence/runs/r5-collector-pin-reproduced.json`, `evidence/runs/r5-gitleaks-exceptions-exact-a7e6754.json`, `evidence/runs/r5-image-e101db3-build-inputs.detail.json`, `evidence/runs/r5-image-e101db3-build-inputs.json`, `evidence/runs/r5-image-e101db3-packages.txt` …
+- **documentation** (9): `README.md`, `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/PILOT_DECISION.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/STAGING_PLAN.md`, `docs/TEST_INVENTORY.md` …
+- **evidence data** (36): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-gitleaks-exceptions-exact-f72ca58.json`, `evidence/runs/r5-image-fb415ca-build-inputs.detail.json`, `evidence/runs/r5-image-fb415ca-build-inputs.json`, `evidence/runs/r5-image-fb415ca-packages.txt`, `evidence/runs/r5-rc-fb415ca-boundary.json`, `evidence/runs/r5-rc-fb415ca-browser.json` …
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -37,32 +37,32 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-rc-e101db3-boundary.json` | passed | boundary intact | yes |
-| `r5-rc-e101db3-browser.json` | passed |   15 passed (7.1s) | yes |
-| `r5-rc-e101db3-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-rc-e101db3-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e101db3-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e101db3-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e101db3-gitleaks.json` | passed | [90m9:35PM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-rc-e101db3-image.json` | passed | {"release": "e101db3446513bb3a6f0c29151f37aceb944f82a", "checks": ["PASS: image builds (87 | yes |
-| `r5-rc-e101db3-ingestion.json` | passed | 177 passed in 18.97s | yes |
-| `r5-rc-e101db3-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-rc-e101db3-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-rc-e101db3-pytest.json` | passed | 2240 passed, 5 warnings in 145.96s (0:02:25) | yes |
-| `r5-rc-e101db3-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.89s | yes |
-| `r5-rc-e101db3-security.json` | passed | 436 passed in 47.80s | yes |
-| `r5-rc-e101db3-unit-nodb.json` | passed | 847 passed, 5 warnings in 29.41s | yes |
-| `r5-rc-e101db3-web-build.json` | passed | ✓ built in 235ms | yes |
+| `r5-rc-fb415ca-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-fb415ca-browser.json` | passed |   15 passed (7.2s) | yes |
+| `r5-rc-fb415ca-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-fb415ca-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-fb415ca-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-fb415ca-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-fb415ca-gitleaks.json` | passed | [90m7:02AM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-fb415ca-image.json` | passed | {"release": "fb415ca013288a29f69f76f780fe80f65bd4078f", "checks": ["PASS: image builds (78 | yes |
+| `r5-rc-fb415ca-ingestion.json` | passed | 177 passed in 18.34s | yes |
+| `r5-rc-fb415ca-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-fb415ca-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-fb415ca-pytest.json` | passed | 2249 passed, 5 warnings in 143.36s (0:02:23) | yes |
+| `r5-rc-fb415ca-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.80s | yes |
+| `r5-rc-fb415ca-security.json` | passed | 438 passed in 46.43s | yes |
+| `r5-rc-fb415ca-unit-nodb.json` | passed | 847 passed, 5 warnings in 28.88s | yes |
+| `r5-rc-fb415ca-web-build.json` | passed | ✓ built in 229ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-rc-e101db3-pytest.junit.xml`: 2240 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-fb415ca-pytest.junit.xml`: 2249 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
-| authorization_security | 364 | 364 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
+| authorization_security | 366 | 366 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
 | deployment_configuration | 15 | 15 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
-| durability_recovery_concurrency | 107 | 107 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
+| durability_recovery_concurrency | 114 | 114 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
 | evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
 | ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
 | numerical_oracle | 115 | 115 | 0 | Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler. |
@@ -76,9 +76,9 @@ From `evidence/runs/r5-rc-e101db3-pytest.junit.xml`: 2240 tests, each counted on
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-rc-e101db3-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-e101db3-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-e101db3-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-fb415ca-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-fb415ca-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-fb415ca-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -355,6 +355,14 @@ A sign-out the server refused or never answered was presented as done: the page 
 - Regression on the candidate: `signout.spec.js` (0, NOT ALL PASS)
 - Reproduction on `4738c5e`: `r5-signout-refused-reproduced.json` — failed —   3 passed (22.0s) (Real Chromium against the real server with /api/logout answered 503 by Playwright: the sign-in form appeared and /api/me still answered for the first user. Found while testing failed sign-outs on 8157017, whose fix for the delayed case had introduced the notice)
 
+### website-model-spend-unbounded
+
+The website path had no model spend allowance: Pipeline.spend was set only by evaluation tooling (scripts/run_evals.py's in-memory Budget), so a model budget capped an evaluation run but not reviewers' questions, across users, uvicorn workers, replicas and repair attempts; serving was bounded by per-user request quotas only.
+
+- Fix: `c524d45`
+- Regression on the candidate: `test_failure_modes.py` (18, all pass), `test_serving_credentials.py` (6, all pass)
+- Reproduction on `d0fdf28`: `r5-website-allowance-reproduced.json` — failed — 1 failed, 11 deselected in 1.04s (test_a_configured_allowance_limits_what_the_website_spends, committed as a strict xfail and run with --runxfail: with an allowance below one call's bound (PAC_LLM_SPEND_LIMIT_USD and both rates), a question through the serving pipeline still reached the fake model transport and was answered. Found by review of the staging plan's $5 model allowance)
+
 ## Externally verified (hosted)
 
 - Run [37650229833](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833) on `eb65af3`: **failure** — image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed
@@ -367,6 +375,18 @@ A sign-out the server refused or never answered was presented as done: the page 
 - Run [37866723060](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866723060) on `aea40b2`: **failure** — supply-chain (Terraform step included), image and frontend passed; test: strict suite 2240, security 436, ingestion 177 and offline sets passed; browser journeys 9 passed, 1 failed (defect signout-before-revocation)
 - Run [37868427618](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37868427618) on `8157017`: **success** — all four jobs; first sign-out fix
 - Run [37869897240](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240) on `e101db3`: **success** — all four jobs on the executable candidate, the Terraform step (lock read-only, fmt, validate, 10 mocked plans) included
+- Run [37871091642](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871091642) on `a7e6754`: **success** — all four jobs; evidence and the secret-scan exceptions after candidate e101db3
+- Run [37871119598](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871119598) on `a7e6754`: **success** — all four jobs, pull request #1
+- Run [37871400281](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871400281) on `90cf034`: **success** — all four jobs; index and manifest for e101db3
+- Run [37871404198](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37871404198) on `90cf034`: **success** — all four jobs, pull request #1
+- Run [37873002241](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37873002241) on `c9be780`: **success** — all four jobs; keep-* retention wording, lifecycle preview
+- Run [37873006154](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37873006154) on `c9be780`: **success** — all four jobs, pull request #1
+- Run [37876986530](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37876986530) on `06d5ba1`: **success** — all four jobs; README, cost options A and B
+- Run [37876990527](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37876990527) on `06d5ba1`: **success** — all four jobs, pull request #1
+- Run [37877891634](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37877891634) on `a115002`: **success** — all four jobs; staging plan for a review week
+- Run [37877896006](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37877896006) on `a115002`: **success** — all four jobs, pull request #1
+- Run [37920515182](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920515182) on `fb415ca`: **success** — all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included
+- Run [37920520480](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920520480) on `fb415ca`: **success** — all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included, pull request #1
 
 ## Missing artifacts
 
