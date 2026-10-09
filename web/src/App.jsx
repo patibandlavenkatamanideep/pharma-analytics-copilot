@@ -361,6 +361,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [showSql, setShowSql] = useState(false);
   const [notice, setNotice] = useState(null);
+  const [signingOut, setSigningOut] = useState(false);
   const bottom = useRef(null);
   // The key of the question in flight, so Stop can cancel it on the server
   // before its run id is known.
@@ -444,11 +445,24 @@ export default function App() {
     }
   };
 
+  // The screen is cleared at once, but the sign-in form appears only when the
+  // server has ended the session. Shown first, it told whoever was at the
+  // keyboard they were signed out while leaving the page (a reload, a closed
+  // tab) could still cancel the request -- and the next person on a shared
+  // computer was signed in as the last. keepalive lets the request outlive
+  // the page.
   const signOut = async () => {
     newIdentity();
-    setUser(null);
     setDataset(null);
-    await api("/api/logout", { method: "POST" });
+    setSigningOut(true);
+    try {
+      await api("/api/logout", { method: "POST", keepalive: true });
+    } catch {
+      setNotice("Sign-out could not be confirmed. Close the browser to end the session.");
+    } finally {
+      setUser(null);
+      setSigningOut(false);
+    }
   };
 
   const replaceLast = (turn) => setTurns((t) => [...t.slice(0, -1), turn]);
@@ -582,6 +596,13 @@ export default function App() {
     }
   };
 
+  if (signingOut) {
+    return (
+      <div className="login-shell">
+        <p className="muted" role="status">Signing out…</p>
+      </div>
+    );
+  }
   if (!user) return <Login onSignedIn={(u) => { setNotice(null); signIn(u); }} notice={notice} />;
 
   return (

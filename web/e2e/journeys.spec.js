@@ -36,6 +36,9 @@ test("an identity change leaves nothing of the previous user on screen", async (
   await expect(page.getByText(/\$[\d,]+\.\d{2}/).first()).toBeVisible();
 
   await page.getByRole("button", { name: /sign out/i }).click();
+  // As a person does: the next sign-in starts from the sign-in form, which
+  // appears once the server has ended the first session.
+  await expect(page.getByLabel(/email/i)).toBeVisible();
   await signIn(page, RAM);
   const body = await page.locator("body").innerText();
   expect(body).not.toMatch(/\$[\d,]+\.\d{2}/);
