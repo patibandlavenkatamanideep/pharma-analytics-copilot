@@ -1,0 +1,138 @@
+{
+ "previous": "7950e71",
+ "previous_commit": "7950e71304ec1c6da7985f6fa9ec41a2b154da6f",
+ "state_left_by_previous": {
+  "answer_under_key": [
+   200,
+   "answered",
+   true
+  ],
+  "paused_clarification": [
+   200,
+   "clarify"
+  ],
+  "run_left_running": "running"
+ },
+ "schema_before": {
+  "columns": 288,
+  "classification_authority": null
+ },
+ "upgrade": {
+  "runs": [
+   {
+    "exit": 0,
+    "seconds": 0.37
+   },
+   {
+    "exit": 0,
+    "seconds": 0.36
+   }
+  ],
+  "schema_after": {
+   "columns": 300,
+   "classification_authority": [
+    "NO",
+    null
+   ]
+  }
+ },
+ "candidate_on_upgraded": {
+  "existing_session": 200,
+  "password_sign_in": 200,
+  "replay": [
+   200,
+   true,
+   true
+  ],
+  "resume_clarification": [
+   200,
+   "answered"
+  ],
+  "dead_run": [
+   200,
+   "answered",
+   null,
+   1
+  ],
+  "ram_rows": [
+   200,
+   "answered",
+   true,
+   "denied"
+  ],
+  "no_wac_revenue": [
+   200,
+   "answered",
+   false
+  ],
+  "sso_disabled": [
+   {
+    "password": true,
+    "oidc": false
+   },
+   404
+  ],
+  "audit_rows_total_with_run_id_with_mode": [
+   8,
+   6,
+   6
+  ],
+  "error_log_lines": 0
+ },
+ "previous_on_upgraded": {
+  "existing_session": 200,
+  "password_sign_in": 200,
+  "replay": [
+   200,
+   true,
+   true
+  ],
+  "resume_clarification": [
+   200,
+   "answered"
+  ],
+  "dead_run": [
+   200,
+   "answered",
+   true,
+   1
+  ],
+  "ram_rows": [
+   200,
+   "answered",
+   true,
+   "denied"
+  ],
+  "no_wac_revenue": [
+   200,
+   "answered",
+   false
+  ],
+  "sso_disabled": [
+   {
+    "password": true,
+    "oidc": false
+   },
+   404
+  ],
+  "audit_rows_total_with_run_id_with_mode": [
+   13,
+   6,
+   6
+  ],
+  "error_log_lines": 0
+ },
+ "previous_full_load_on_upgraded": {
+  "exit": 1,
+  "seconds": 0.2,
+  "message": "psycopg.errors.NotNullViolation: null value in column \"authority\" of relation \"product_classification\" violates not-null constraint",
+  "published_dataset": "unchanged"
+ },
+ "candidate_full_load_on_upgraded": {
+  "exit": 0,
+  "seconds": 0.2,
+  "message": null,
+  "published_dataset": "replaced"
+ },
+ "label": "local evidence: the previous release's source run as processes (not its image) against one new PostgreSQL cluster, seed data, offline planner"
+}

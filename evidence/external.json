@@ -190,6 +190,38 @@
       "event": "pull_request",
       "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37926187963",
       "note": "all four jobs on ff9fe0d, pull request #1"
+    },
+    {
+      "run_id": 37931490429,
+      "commit": "0ca735f6962f1c942561de3f9a9429722afd644a",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931490429",
+      "note": "all four jobs on 0ca735f (reviewers' own accounts, the owner-gated public sign-in page); superseded as candidate by d004a20"
+    },
+    {
+      "run_id": 37931496647,
+      "commit": "0ca735f6962f1c942561de3f9a9429722afd644a",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931496647",
+      "note": "all four jobs on 0ca735f, pull request #1"
+    },
+    {
+      "run_id": 37933355116,
+      "commit": "d004a20a79bc9cce7fd57b32ccebc536a739328c",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933355116",
+      "note": "all four jobs on the executable candidate d004a20 (reviewers' accounts, public sign-in page, the real plan reconciled with the inventory)"
+    },
+    {
+      "run_id": 37933360426,
+      "commit": "d004a20a79bc9cce7fd57b32ccebc536a739328c",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933360426",
+      "note": "all four jobs on d004a20, pull request #1"
     }
   ],
   "not_externally_verified": [
