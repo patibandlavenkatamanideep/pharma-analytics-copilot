@@ -1,0 +1,82 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T11:57:34+00:00",
+  "claim": "Held-out set 2, offline planner (measurement, spent set)",
+  "application": {
+    "sha": "ff9fe0d31b224e0fdf2020dfa4456d30c3460567",
+    "tree": "d18ef445a5de1e99e1a1226f7415c627e071beea",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-7583a85d170c",
+    "load_mode": "full",
+    "fingerprint": "1edc425858a2466a94d43657",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/run_evals.py",
+      "--provider",
+      "offline",
+      "--questions",
+      "evals/holdout2.yaml"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.92
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "  accuracy and must not be reported as one."
+  },
+  "artifacts": [],
+  "limits": null
+}

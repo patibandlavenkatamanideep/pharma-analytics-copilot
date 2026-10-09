@@ -649,6 +649,30 @@
         }
       ],
       "verified_by": "evidence/runs/r5-website-allowance-fixed.json (fb415ca: the reproduction, six integration tests of the shared row -- settling, unreported usage, ten concurrent reservations against room for three, a bound violation, release, missing rates -- and two of the cloud startup refusal); the whole suite under the release gate at fb415ca"
+    },
+    {
+      "id": "allowance-prices-unvalidated",
+      "title": "The model allowance accepted model prices that make it meaningless: zero, negative, NaN and infinite rates passed the settings and the startup check (which asked only that they be set), a zero price made every reservation cost nothing so the allowance never ran down, and the staging module accepted a zero price",
+      "fix_commits": [
+        "6115774"
+      ],
+      "regression_files": [
+        "tests/integration/test_failure_modes.py",
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-allowance-prices-reproduced.json",
+          "baseline": "10063bd",
+          "note": "Strict xfails run with --runxfail: Settings accepted 0, -1, nan and inf for either rate; a SharedAllowance at zero prices granted a hundred worst-case reservations and counted none. Found by review of c524d45"
+        },
+        {
+          "artifact": "evidence/runs/r5-allowance-prices-tf-reproduced.json",
+          "baseline": "10063bd",
+          "note": "terraform test with a mocked provider: the run a_zero_model_price_is_refused failed (a zero input price was not refused)"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-allowance-prices-fixed.json and r5-staging-terraform-test-ff9fe0d.json (ff9fe0d: settings, meter and module refuse them; a zero limit refuses every call)"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
