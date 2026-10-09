@@ -713,3 +713,25 @@ audits, the image's 28 checks, restore drill, upgrade compatibility), and hosted
 review. AWS staging waits for the owner's inputs and approval of
 [STAGING_PLAN.md](STAGING_PLAN.md); the go/no-go is in [PILOT_DECISION.md](PILOT_DECISION.md):
 no-go for a restricted pilot and for production.
+
+## The website's model allowance — 9 October 2026
+
+Review of the staging plan asked whether a $5 model allowance would cover
+reviewers' traffic across all users, workers and retries. It would not have: only the
+evaluation runner metered spend, in its own process's memory; serving requests were
+bounded by per-user request quotas, not by spend (`website-model-spend-unbounded`,
+reproduced at `d0fdf28`). `c524d45` adds one allowance shared through a database row by
+every worker and replica: each model call, the repair included, reserves its worst case
+in one atomic update before it is sent, then settles at what was billed; unreported
+usage stays charged; ten concurrent reservations against room for three get exactly
+three; a cloud deployment refuses to start with a live model and no allowance; the
+staging module refuses one in its plan. The same review moved staging to the full
+synthetic dataset with a one-shot `dataset-check` that fails unless 2,000,000 sales rows
+and 40,000 organizations were published.
+
+**The candidate is now `fb415ca`:** the full local chain passed on it (strict suite 2249,
+security 438, ingestion 177, 847 without a database, 32 components, 15 browser
+journeys, audits, the image's 28 checks with findings identical to `e101db3`'s, restore
+drill, upgrade compatibility, 11 mocked Terraform plans), and hosted CI passed on it (the
+pull request's run 37920520480; the push run 37920515182). The allowance has been
+exercised only with a fake model transport: no model has been called.

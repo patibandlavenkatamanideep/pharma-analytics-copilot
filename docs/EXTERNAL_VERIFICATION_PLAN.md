@@ -10,7 +10,8 @@ step needs an authorization that this repository's work does not have. Prepared 
 **Done 9 October 2026, as authorised.** The branch was pushed normally; the first hosted runs
 found three defects the local chain could not (a one-commit checkout, a single-platform
 provider lock, a sign-out race), each reproduced and fixed; run 37869897240 passed all four
-jobs on the executable candidate `e101db3` (`evidence/external.json` lists every run). The
+jobs on `e101db3`, and run 37920515182 on the executable candidate `fb415ca`, which adds the
+website's model allowance (`evidence/external.json` lists every run). The
 procedure, for each later candidate:
 
 ```bash

@@ -9,7 +9,7 @@
 > **This branch** (`codex/release-defects-oct06`) is the release line, on GitHub
 > with CI green on its head; [pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)
 > brings it to `main` and is open for review. Its executable candidate,
-> `e101db3`, passed the full local release chain and all four hosted CI jobs.
+> `fb415ca`, passed the full local release chain and all four hosted CI jobs.
 > **AWS staging is prepared, not deployed**: Terraform for a restricted
 > environment (ECS Fargate, RDS PostgreSQL, HTTPS load balancer), validated and
 > planned against a mocked provider, waiting for the owner's choices and

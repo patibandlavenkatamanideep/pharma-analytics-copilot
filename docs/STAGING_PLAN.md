@@ -1,7 +1,7 @@
 # Restricted AWS staging — plan for approval
 
 **For approval before anything billable is created.** Prepared 9 October 2026 for
-candidate `e101db3`. It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
+candidate `fb415ca`. It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
 number below is either measured, taken from AWS's public price list, or marked as an
 assumption. Nothing in it has run on AWS.
 

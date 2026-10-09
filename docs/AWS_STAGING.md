@@ -1,6 +1,6 @@
 # AWS staging — status
 
-**Status as of 9 October 2026.** Candidate `e101db3` on `codex/release-defects-oct06`,
+**Status as of 9 October 2026.** Candidate `fb415ca` on `codex/release-defects-oct06`,
 pushed to GitHub. Staging is **prepared, not deployed**: no AWS account access exists on
 this machine, and creating billable resources waits for an approved plan
 ([STAGING_PLAN.md](STAGING_PLAN.md)). Nothing below was run on AWS; local results are
@@ -12,7 +12,7 @@ named as local. Neither a restricted pilot nor production readiness can be claim
 | Item | State | Identity |
 |---|---|---|
 | Branch on GitHub | `the branch head, after the candidate: evidence and documentation only` (pushed normally; never forced) | `codex/release-defects-oct06` |
-| Executable candidate | `e101db3` | full local release chain: `r5-rc-e101db3-*.json` |
+| Executable candidate | `fb415ca` | full local release chain: `r5-rc-fb415ca-*.json` |
 | Hosted CI on the candidate | all four jobs passed | run [37869897240](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240) |
 | `main` | `c8aab5b`, protected (read back 9 October): pull request required; checks `test`, `frontend`, `supply-chain`, `image` bound to GitHub Actions (app 15368) and up to date; administrators included; no force-push or deletion; conversations resolved; 0 approvals (one maintainer) | `evidence/external.json` |
 | `staging` environment | required reviewer the owner; administrators cannot bypass; deployments from `main` and `codex/release-*` only | `evidence/external.json` |
@@ -28,7 +28,8 @@ retried away:
 | 37866607406 | `f874b89` | failure | `supply-chain` as above; `test` passed with the whole history |
 | 37866723060 | `aea40b2` | failure | `test`: a browser journey found the previous user signed in after Sign out |
 | 37868427618 | `8157017` | success | first sign-out fix |
-| 37869897240 | `e101db3` | success | the candidate: all four jobs, the Terraform step included |
+| 37869897240 | `e101db3` | success | the previous candidate: all four jobs, the Terraform step included |
+| 37920515182 | `fb415ca` | success | the candidate: the website's model allowance, the dataset check |
 
 **History.** On 8 October this document said GitHub's copy ended at `69c62de`, the
 last hosted run was 37653591687 and `main` had no protection; all three were true then.
@@ -42,11 +43,11 @@ cleanup are in its README; the plan for approval is [STAGING_PLAN.md](STAGING_PL
 
 | Check | Result | Where | Record |
 |---|---|---|---|
-| Lock read-only, `fmt`, `validate`, mocked plans | passed | CI (`supply-chain`) on `e101db3` | run 37869897240 |
-| 11 mocked plans: the foundation without an image (62 resources), deployable at zero tasks (71), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector and an image without a `keep-` tag; secret generations, the snapshot label and the retention rule order | passed | local | `r5-staging-terraform-test-e101db3.json` |
+| Lock read-only, `fmt`, `validate`, mocked plans | passed | CI (`supply-chain`) on `fb415ca` | run 37920515182 |
+| 11 mocked plans: the foundation without an image (62 resources), deployable at zero tasks (71), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector and an image without a `keep-` tag; secret generations, the snapshot label and the retention rule order | passed | local | `r5-staging-terraform-test-fb415ca.json` |
 | Every address each configuration would create | generated | local | `infra/aws-staging/PLAN_INVENTORY.md` |
 | `trivy config` 0.58.1 | only accepted findings (1 HIGH: internet-facing load balancer, limited to `allowed_cidrs`; 1 MEDIUM: IAM database authentication off; LOW: AWS-managed keys, no Container Insights or Performance Insights) | local, `4c90704` | `r5-staging-trivy-config.json` |
-| Security properties from source (15 tests) | passed | CI and local | `r5-rc-e101db3-pytest.json` |
+| Security properties from source (15 tests) | passed | CI and local | `r5-rc-fb415ca-pytest.json` |
 | **`terraform plan` against an account; apply** | **blocked**: no AWS session; plan approval needed | — | — |
 
 Lifecycle, designed before the first teardown and verified only on AWS (STAGING_PLAN.md,
@@ -69,7 +70,7 @@ questions at the `us.` profile's list rates. Budgets alert; they do not cap.
 
 | Item | State |
 |---|---|
-| Image | built locally from `e101db3` for linux/amd64: config `68178125d860…` (podman, under emulation). A local image ID is not a registry digest |
+| Image | built locally from `fb415ca` for linux/amd64: config `c30ad1e871e6…` (podman, under emulation). A local image ID is not a registry digest |
 | Publishing | `publish-staging.yml`: publishes only a commit whose four CI checks passed; builds one single-platform manifest; scans it and runs the hardened journeys on it; checks the registry's manifest is that image; records source commit, tested image and registry digest. **Cannot be dispatched** until its file is on `main` (#1); never run |
 | Registry digest | **none** |
 | Retention | images tagged `keep-*` (the deployed and the recovery image) are retained, up to 9,999 of them; others beyond the last 20 expire. To confirm with an ECR lifecycle preview once the repository exists |
@@ -86,11 +87,11 @@ Local results are named as local; "hosted" is filled only by a run on AWS.
 | RDS with a restricted administrator | as a role with only CREATEROLE and CREATEDB: failed before the fix (`739957a`), passed after (`4ab8fd7`): provisioning, boundary, an answer, restore into a new cluster | pass (emulated) | blocked |
 | No owner, superuser or BYPASSRLS for the serving application | the boundary check after provisioning and restore; the serving task gets only the serving roles' secrets | pass | blocked |
 | Certificate-verified TLS | a TLS-only cluster with its own CA; another CA and plaintext refused (`4a234e2`); the image pins the RDS bundle (checked by its smoke test) | pass (private CA) | blocked |
-| Non-root, capabilities dropped, read-only root | image smoke at `e101db3`, 28 checks: read-only root without tmpfs, every capability dropped, no-new-privileges, one writable volume, no setuid or setgid file | pass | blocked (Fargate volume ownership unverified) |
+| Non-root, capabilities dropped, read-only root | image smoke at `fb415ca`, 28 checks: read-only root without tmpfs, every capability dropped, no-new-privileges, one writable volume, no setuid or setgid file | pass | blocked (Fargate volume ownership unverified) |
 | Proxy trust | untrusted, 20 failures from other clients refuse a user's password (429); trusted, accepted (`128c558`); a forged `X-Forwarded-For` cannot choose the client (guard test) | pass (local proxy) | blocked |
 | Cookies and sign-out | Secure, HttpOnly, SameSite=Lax over HTTPS; sign-out shows the sign-in form only once the server has ended the session, never presents an unconfirmed sign-out as done, and leaves no figure, question or conversation id of the first user (15 journeys, `7a1a2bb`) | pass (local) | blocked |
 | OIDC | the security suite against an in-process provider | pass (local) | blocked: no registration with a real provider |
-| Model (Bedrock) | offline planner only | not run | blocked: no budget |
+| Model (Bedrock) | offline planner only; the website's shared allowance (one limit for every user, worker and task, enforced before each call) passes its tests with a fake model transport (`r5-website-allowance-fixed.json`) | allowance: pass (local) | blocked: no model budget yet |
 | Metrics and alerts | local collector and Prometheus; 588 series per process measured | pass (local) | blocked; traces go only to a debug exporter |
 
 ## On AWS, in addition to STAGING_VERIFICATION.md
@@ -112,7 +113,7 @@ stack, each local proof above becomes a hosted one as follows; record each with
 ## SUID/SGID and the eight Debian advisories
 
 The setuid/setgid assertion is kept in the image smoke and CI's image job. The image from
-`e101db3` has none. Its unfiltered scan (trivy 0.58.1, database of 2026-10-08 19:05Z)
+`fb415ca` has none. Its unfiltered scan (trivy 0.58.1, database of 2026-10-08 19:05Z)
 matches `e551650`'s exactly: 164 findings, the same 8 HIGH advisories, none fixable in
 Debian, none in Python packages, each reviewed against the deployed configuration in
 [VULNERABILITY_TRIAGE.md](VULNERABILITY_TRIAGE.md).

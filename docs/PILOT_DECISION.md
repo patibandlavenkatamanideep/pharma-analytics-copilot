@@ -9,7 +9,7 @@
 No result below is inferred from local test counts; each says where it ran.
 
 **Head.** Branch `codex/release-defects-oct06` on GitHub. Executable candidate
-**`e101db3`** (the last commit changing code, tests, configuration, workflow or build
+**`fb415ca`** (the last commit changing code, tests, configuration, workflow or build
 inputs); later commits change documentation, evidence and `.gitleaksignore` only.
 Release integration pull request [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)
 is open for review; it is not merged.
@@ -26,16 +26,16 @@ Bedrock spend (its own token and dollar budget).
 | | Result | Where it ran | Identity |
 |---|---|---|---|
 | **Independently verified** | | | |
-| CI, all four jobs, on the candidate | passed: `test` (strict suite 2240, security 436, ingestion 177, offline evaluations, 15 browser journeys), `frontend`, `supply-chain` (audits, secret scan, Terraform lock, fmt, validate, mocked plans), `image` (build, scan, hardened journeys) | GitHub Actions | run [37869897240](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240), `e101db3` |
+| CI, all four jobs, on the candidate | passed: `test` (strict suite 2249, security 438, ingestion 177, offline evaluations, 15 browser journeys), `frontend`, `supply-chain` (audits, secret scan, Terraform lock, fmt, validate, mocked plans), `image` (build, scan, hardened journeys) | GitHub Actions | run [37920515182](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920515182), `fb415ca` |
 | Branch protection on `main` | pull request required; the four checks, from GitHub Actions, up to date; administrators included; no force-push or deletion; conversations resolved; 0 approvals (one maintainer) | GitHub API, read back | `evidence/external.json` |
 | `staging` environment | required reviewer the owner; administrators cannot bypass; `main` and `codex/release-*` only | GitHub API, read back | `evidence/external.json` |
 | **Reported (local, this machine)** | | | |
-| Release chain on the candidate | passed every gate (the same suites as CI, plus 847 unit tests without a database and the gate's self-test) | macOS arm64, PostgreSQL 16.14, podman (linux/amd64 under emulation) | `r5-rc-e101db3-*.json` |
-| Image | built, scanned (8 HIGH base-image advisories, none fixable, none reachable in the deployed configuration), 28 hardened checks | podman, local | config `68178125d860…`; not a registry digest |
+| Release chain on the candidate | passed every gate (the same suites as CI, plus 847 unit tests without a database and the gate's self-test) | macOS arm64, PostgreSQL 16.14, podman (linux/amd64 under emulation) | `r5-rc-fb415ca-*.json` |
+| Image | built, scanned (8 HIGH base-image advisories, none fixable, none reachable in the deployed configuration), 28 hardened checks | podman, local | config `c30ad1e871e6…`; not a registry digest |
 | Sign-out | 4 scenarios under a controlled network: abandoned, applied but unanswered, refused, straight to another user | Chromium, local server | `r5-signout-refused-fixed.json` |
 | RDS restricted administrator; verified TLS; proxy trust | pass (emulated administrator; private CA; local proxy) | local | `r5-rds-admin-fixed.json`, `r5-db-tls-verify-full.json`, `r5-proxy-client-address-fixed.json` |
-| New-cluster restore; upgrade from `7950e71` | pass | local clusters | `r5-restore-new-cluster-e101db3.json`, `r5-upgrade-compatibility-e101db3.json` |
-| Staging plans | 62 resources for the foundation, 71 deployable; 11 configurations planned and refused as designed (a live model without an allowance among the refusals) | mocked provider (also in CI) | `r5-staging-terraform-test-e101db3.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
+| New-cluster restore; upgrade from `7950e71` | pass | local clusters | `r5-restore-new-cluster-fb415ca.json`, `r5-upgrade-compatibility-fb415ca.json` |
+| Staging plans | 62 resources for the foundation, 71 deployable; 11 configurations planned and refused as designed (a live model without an allowance among the refusals) | mocked provider (also in CI) | `r5-staging-terraform-test-fb415ca.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
 | Cost | ~$96/month low-cost; ~$213/month during failover tests | AWS public price list, us-east-1 | `infra/aws-staging/cost/ESTIMATE.md` |
 | **Blocked** | | | |
 | A pull request with a failing check being blocked | the first real one is #1; not yet observed failing | — | — |
