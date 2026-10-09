@@ -10,8 +10,12 @@ step needs an authorization that this repository's work does not have. Prepared 
 **Done 9 October 2026, as authorised.** The branch was pushed normally; the first hosted runs
 found three defects the local chain could not (a one-commit checkout, a single-platform
 provider lock, a sign-out race), each reproduced and fixed; run 37869897240 passed all four
-jobs on `e101db3`, and run 37920515182 on the executable candidate `fb415ca`, which adds the
-website's model allowance (`evidence/external.json` lists every run). The
+jobs on `e101db3`, run 37920515182 on `fb415ca` (the website's model allowance), runs
+37933355116 and 37933360426 on `d004a20` (reviewers' own accounts and the owner-gated public
+sign-in page), runs 37936348151 and 37936356463 on `5536526` (the staging plan after the apply is empty;
+its image is the one published, run 37939037102), 37940273033 on `facd0d4` (the publish
+role), and 37957713810 on the executable candidate `a786bda` (browser security headers;
+`evidence/external.json` lists every run). The
 procedure, for each later candidate:
 
 ```bash

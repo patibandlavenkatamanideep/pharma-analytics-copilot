@@ -673,6 +673,80 @@
         }
       ],
       "verified_by": "evidence/runs/r5-allowance-prices-fixed.json and r5-staging-terraform-test-ff9fe0d.json (ff9fe0d: settings, meter and module refuse them; a zero limit refuses every call)"
+    },
+    {
+      "id": "staging-plan-not-empty-after-apply",
+      "title": "Applied to the staging account, the module's plan straight after the apply was not empty: AWS stores rds.force_ssl with apply method pending-reboot and IAM fills in the GitHub OIDC provider's thumbprint, so every later plan would propose two in-place changes that are not changes and hide real drift among them",
+      "fix_commits": [
+        "5536526"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-staging-plan-drift-reproduced.json",
+          "baseline": "88bc879",
+          "note": "terraform plan -detailed-exitcode against the infrastructure applied from d004a20 in pac-staging (git archive d004a20; the module is unchanged at 88bc879): exit 2, 0 to add, 2 to change (aws_db_parameter_group.this, aws_iam_openid_connect_provider.github[0]); addresses only, no value"
+        },
+        {
+          "artifact": "evidence/runs/r5-staging-plan-drift-tests-reproduced.json",
+          "baseline": "c43f0d7",
+          "note": "Strict xfails run with --runxfail: the source declares neither apply_method pending-reboot nor ignore_changes for the thumbprint"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-staging-plan-drift-fixed.json (5536526, git archive 5536526 against the same applied infrastructure: 0 to add, 0 to change, 0 to destroy)"
+    },
+    {
+      "id": "publish-role-legacy-oidc-subject",
+      "title": "The staging publish role trusted only GitHub's legacy OIDC subject (repo:<owner>/<name>:environment:staging); this repository's tokens carry the immutable subject (repo:<owner>@<owner id>/<name>@<repository id>:environment:staging), so AWS refused every token and nothing could be published",
+      "fix_commits": [
+        "facd0d4"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py",
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37939037102",
+          "baseline": "5536526",
+          "kind": "hosted-ci-run",
+          "note": "publish-staging, attempt 1: CI verified, image built, scanned and its journeys passed; 'Expiring credentials for the publishing role' failed: Not authorized to perform sts:AssumeRoleWithWebIdentity (12 attempts)"
+        },
+        {
+          "artifact": "evidence/runs/r5-publish-oidc-subject-reproduced.json",
+          "baseline": "bb7d9b8",
+          "note": "Strict xfail run with --runxfail: the trust condition names only repo:${var.github_repository}, with no way to configure the subject GitHub sends"
+        }
+      ],
+      "verified_by": "hosted_ci:37939037102 attempt 2 (the same commit, after the trust policy from facd0d4 was applied: credentials, push and the registry check passed; digest sha256:bf04b0175a27...)",
+      "note": "an infrastructure trust-policy change; the published image is 5536526's, unchanged"
+    },
+    {
+      "id": "public-sign-in-without-browser-security-headers",
+      "title": "With the sign-in page open to everyone, the live staging site sent no Strict-Transport-Security, X-Content-Type-Options or X-Frame-Options: later visits were not held to HTTPS and the sign-in page could be framed by another site. Nothing in the repository claimed the headers; for a public sign-in page they are the baseline",
+      "fix_commits": [
+        "a786bda"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py",
+        "evidence/probes/staging_live_check.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-staging-headers-reproduced.json",
+          "baseline": "de4352d",
+          "note": "evidence/probes/staging_live_check.py against https://staging.pharma-copilot.click (image 5536526, infrastructure from facd0d4): 12 checks pass, security_headers fails with all three headers absent"
+        },
+        {
+          "artifact": "evidence/runs/r5-staging-headers-tests-reproduced.json",
+          "baseline": "4c4f5e1",
+          "note": "Strict xfail run with --runxfail: the HTTPS listener sets none of the three"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-staging-headers-fixed.json (a786bda applied: 13 of 13 live checks pass; the load balancer adds Strict-Transport-Security max-age=31536000, X-Content-Type-Options nosniff and X-Frame-Options DENY to every response; the plan after the apply is empty)",
+      "note": "found by checking the deployed site; a load-balancer setting, no image change. A Content-Security-Policy is not yet set: it must first be tested against the frontend"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."

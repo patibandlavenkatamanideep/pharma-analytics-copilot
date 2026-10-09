@@ -1,16 +1,16 @@
 {
- "generated_at": "2026-10-09T11:09:30+00:00",
+ "generated_at": "2026-10-09T16:32:02+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "7c624e205c0459d2fea69db6bd94ea92c341182f",
-   "tree": "cd242d38fa7c4704c99de2e529703bd6598983f5",
+   "sha": "09cc4b939560773f68d704c465e4fb88e3092a9e",
+   "tree": "552b5bee6c59cea31458054f10f50a5c540f95b7",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": true
   },
   "candidate": {
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
-   "tree": "a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "tree": "dba45c05ce6c14d1be23832d754e3f7a0f275733",
    "is_ancestor_of_head": true
   },
   "delta_candidate_to_head": {
@@ -32,40 +32,49 @@
     "evidence data": [
      "evidence/external.json",
      "evidence/ledger.json",
-     "evidence/runs/r5-gitleaks-exceptions-exact-f72ca58.json",
-     "evidence/runs/r5-image-fb415ca-build-inputs.detail.json",
-     "evidence/runs/r5-image-fb415ca-build-inputs.json",
-     "evidence/runs/r5-image-fb415ca-packages.txt",
-     "evidence/runs/r5-rc-fb415ca-boundary.json",
-     "evidence/runs/r5-rc-fb415ca-browser.json",
-     "evidence/runs/r5-rc-fb415ca-component.detail.json",
-     "evidence/runs/r5-rc-fb415ca-component.json",
-     "evidence/runs/r5-rc-fb415ca-eval-holdout.detail.json",
-     "evidence/runs/r5-rc-fb415ca-eval-holdout.json",
-     "evidence/runs/r5-rc-fb415ca-eval-holdout2.detail.json",
-     "evidence/runs/r5-rc-fb415ca-eval-holdout2.json",
-     "evidence/runs/r5-rc-fb415ca-eval-questions.detail.json",
-     "evidence/runs/r5-rc-fb415ca-eval-questions.json",
-     "evidence/runs/r5-rc-fb415ca-gitleaks.json",
-     "evidence/runs/r5-rc-fb415ca-image.json",
-     "evidence/runs/r5-rc-fb415ca-ingestion.json",
-     "evidence/runs/r5-rc-fb415ca-npm-audit.json",
-     "evidence/runs/r5-rc-fb415ca-pip-audit.json",
-     "evidence/runs/r5-rc-fb415ca-pytest.json",
-     "evidence/runs/r5-rc-fb415ca-pytest.junit.xml",
-     "evidence/runs/r5-rc-fb415ca-release-gate-selftest.json",
-     "evidence/runs/r5-rc-fb415ca-security.json",
-     "evidence/runs/r5-rc-fb415ca-unit-nodb.json",
-     "evidence/runs/r5-rc-fb415ca-web-build.json",
-     "evidence/runs/r5-restore-new-cluster-fb415ca.json",
-     "evidence/runs/r5-scan-fb415ca-trivy-db.json",
-     "evidence/runs/r5-scan-fb415ca-trivy-full.json",
-     "evidence/runs/r5-scan-fb415ca-trivy-gate.json",
-     "evidence/runs/r5-staging-terraform-test-fb415ca.json",
-     "evidence/runs/r5-upgrade-compatibility-fb415ca.detail.json",
-     "evidence/runs/r5-upgrade-compatibility-fb415ca.json",
-     "evidence/runs/r5-website-allowance-fixed.json",
-     "evidence/runs/r5-website-allowance-reproduced.json"
+     "evidence/runs/r5-image-a786bda-build-inputs.detail.json",
+     "evidence/runs/r5-image-a786bda-build-inputs.json",
+     "evidence/runs/r5-image-a786bda-packages.txt",
+     "evidence/runs/r5-rc-a786bda-boundary.json",
+     "evidence/runs/r5-rc-a786bda-browser.json",
+     "evidence/runs/r5-rc-a786bda-component.detail.json",
+     "evidence/runs/r5-rc-a786bda-component.json",
+     "evidence/runs/r5-rc-a786bda-eval-holdout.detail.json",
+     "evidence/runs/r5-rc-a786bda-eval-holdout.json",
+     "evidence/runs/r5-rc-a786bda-eval-holdout2.detail.json",
+     "evidence/runs/r5-rc-a786bda-eval-holdout2.json",
+     "evidence/runs/r5-rc-a786bda-eval-questions.detail.json",
+     "evidence/runs/r5-rc-a786bda-eval-questions.json",
+     "evidence/runs/r5-rc-a786bda-gitleaks.json",
+     "evidence/runs/r5-rc-a786bda-image.json",
+     "evidence/runs/r5-rc-a786bda-ingestion.json",
+     "evidence/runs/r5-rc-a786bda-npm-audit.json",
+     "evidence/runs/r5-rc-a786bda-pip-audit.json",
+     "evidence/runs/r5-rc-a786bda-pytest.json",
+     "evidence/runs/r5-rc-a786bda-pytest.junit.xml",
+     "evidence/runs/r5-rc-a786bda-release-gate-selftest.json",
+     "evidence/runs/r5-rc-a786bda-security.json",
+     "evidence/runs/r5-rc-a786bda-unit-nodb.json",
+     "evidence/runs/r5-rc-a786bda-web-build.json",
+     "evidence/runs/r5-restore-new-cluster-a786bda.json",
+     "evidence/runs/r5-scan-a786bda-trivy-db.json",
+     "evidence/runs/r5-scan-a786bda-trivy-full.json",
+     "evidence/runs/r5-scan-a786bda-trivy-gate.json",
+     "evidence/runs/r5-staging-headers-fixed.json",
+     "evidence/runs/r5-staging-headers-reproduced.json",
+     "evidence/runs/r5-staging-headers-tests-reproduced.json",
+     "evidence/runs/r5-staging-terraform-test-a786bda.json",
+     "evidence/runs/r5-staging-trivy-config-a786bda.json",
+     "evidence/runs/r5-upgrade-compatibility-a786bda.detail.json",
+     "evidence/runs/r5-upgrade-compatibility-a786bda.json",
+     "evidence/runs/walkthrough-2026-10-09/01-sign-in-page.png",
+     "evidence/runs/walkthrough-2026-10-09/02-executive-top-accounts.png",
+     "evidence/runs/walkthrough-2026-10-09/03-executive-revenue.png",
+     "evidence/runs/walkthrough-2026-10-09/04-executive-brand-performance.png",
+     "evidence/runs/walkthrough-2026-10-09/05-executive-signed-out.png",
+     "evidence/runs/walkthrough-2026-10-09/06-director-northeast-revenue-restricted.png",
+     "evidence/runs/walkthrough-2026-10-09/07-director-northeast-territories-in-scope.png",
+     "evidence/runs/walkthrough-2026-10-09/08-director-northeast-signed-out.png"
     ]
    },
    "classes_needing_evidence": [
@@ -86,13 +95,13 @@
  },
  "datasets": [
   {
-   "dataset_id": "full-b5960ff00c8b",
+   "dataset_id": "full-56238262863b",
    "load_mode": "full",
    "fingerprint": "1edc425858a2466a94d43657",
    "database": "pac_release"
   },
   {
-   "dataset_id": "seed-75472919a0ce",
+   "dataset_id": "seed-4e1650aaf799",
    "load_mode": "seed",
    "fingerprint": "4fef158affd75813ac877020",
    "database": "pac_release_authtest"
@@ -100,239 +109,239 @@
  ],
  "images": [
   {
-   "file": "r5-rc-fb415ca-image.json",
+   "file": "r5-rc-a786bda-image.json",
    "ref": "pharma-analytics-copilot:smoke",
    "inspected_with": "podman",
-   "id": "c30ad1e871e68eccb44f1f1e612d03cd48f5bee5c0c73db53fb889aac58db39c",
-   "digest": "sha256:9d79f7a7adfa0e7641085ff994fac71278fce0252dcc328b9e5a0c5a388e2da3",
+   "id": "c8521a6b5658375b6276e93402f3e81c690dc352278a0ab624a381e5b90a6f54",
+   "digest": "sha256:4b5cae8e6eb0ed7b217363673204413e63c3527fea9bed01cf838934decb2d8c",
    "platform": "linux/amd64",
-   "revision_label": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "revision_label": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
   }
  ],
  "records": [
   {
-   "file": "evidence/runs/r5-rc-fb415ca-boundary.json",
+   "file": "evidence/runs/r5-rc-a786bda-boundary.json",
    "claim": "The database security boundary is intact on the freshly provisioned release database",
    "status": "passed",
    "counts": null,
    "summary": "boundary intact",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T10:57:05+00:00",
+   "recorded_at": "2026-10-09T16:17:21+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-browser.json",
+   "file": "evidence/runs/r5-rc-a786bda-browser.json",
    "claim": "The browser journeys pass in real Chromium against a local server",
    "status": "passed",
    "counts": null,
    "summary": "  15 passed (7.2s)",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:34+00:00",
+   "recorded_at": "2026-10-09T16:23:14+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-component.json",
+   "file": "evidence/runs/r5-rc-a786bda-component.json",
    "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed",
    "status": "passed",
    "counts": null,
    "summary": "component gate satisfied: 32 passed, none skipped (floor 32)",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:23+00:00",
+   "recorded_at": "2026-10-09T16:23:03+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-eval-holdout.json",
+   "file": "evidence/runs/r5-rc-a786bda-eval-holdout.json",
    "claim": "Held-out set 1, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:14+00:00",
+   "recorded_at": "2026-10-09T16:22:54+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-eval-holdout2.json",
+   "file": "evidence/runs/r5-rc-a786bda-eval-holdout2.json",
    "claim": "Held-out set 2, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:18+00:00",
+   "recorded_at": "2026-10-09T16:22:58+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-eval-questions.json",
+   "file": "evidence/runs/r5-rc-a786bda-eval-questions.json",
    "claim": "Regression set, offline planner (a gate; not natural-language accuracy)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:11+00:00",
+   "recorded_at": "2026-10-09T16:22:50+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-gitleaks.json",
+   "file": "evidence/runs/r5-rc-a786bda-gitleaks.json",
    "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
    "status": "passed",
    "counts": null,
-   "summary": "\u001b[90m7:02AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "\u001b[90m12:23PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:41+00:00",
+   "recorded_at": "2026-10-09T16:23:23+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-image.json",
+   "file": "evidence/runs/r5-rc-a786bda-image.json",
    "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
    "status": "passed",
    "counts": null,
-   "summary": "{\"release\": \"fb415ca013288a29f69f76f780fe80f65bd4078f\", \"checks\": [\"PASS: image builds (78 s)\", \"PASS: image is labelled with commit fb415ca013288a29f69f76f780fe80f65bd4078f\", \"PASS: image size 305 MB\", \"PASS: image id c30ad1e871e68eccb44f1f1e612d03cd48f5bee5c0c73db53fb889aac58db39c (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release fb415ca013288a29f69f76f780fe80f65bd4078f\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 0 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "{\"release\": \"a786bdaab8510cf747218d013cd70dc5d6f76835\", \"checks\": [\"PASS: image builds (81 s)\", \"PASS: image is labelled with commit a786bdaab8510cf747218d013cd70dc5d6f76835\", \"PASS: image size 305 MB\", \"PASS: image id c8521a6b5658375b6276e93402f3e81c690dc352278a0ab624a381e5b90a6f54 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release a786bdaab8510cf747218d013cd70dc5d6f76835\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 0 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": [
     "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
     "seed data, not the full dataset; offline planner"
    ],
-   "recorded_at": "2026-10-09T11:05:29+00:00",
+   "recorded_at": "2026-10-09T16:26:14+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-ingestion.json",
+   "file": "evidence/runs/r5-rc-a786bda-ingestion.json",
    "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
    "status": "passed",
    "counts": {
     "passed": 177
    },
-   "summary": "177 passed in 18.34s",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "177 passed in 18.49s",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T10:58:12+00:00",
+   "recorded_at": "2026-10-09T16:18:32+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-npm-audit.json",
+   "file": "evidence/runs/r5-rc-a786bda-npm-audit.json",
    "claim": "No high or critical vulnerability in the production JavaScript dependencies",
    "status": "passed",
    "counts": null,
    "summary": "found 0 vulnerabilities",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:39+00:00",
+   "recorded_at": "2026-10-09T16:23:19+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-pip-audit.json",
+   "file": "evidence/runs/r5-rc-a786bda-pip-audit.json",
    "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)",
    "status": "passed",
    "counts": null,
    "summary": "No known vulnerabilities found",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:38+00:00",
+   "recorded_at": "2026-10-09T16:23:18+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-pytest.json",
+   "file": "evidence/runs/r5-rc-a786bda-pytest.json",
    "claim": "The full pytest suite passes under the strict release gate, as CI runs it",
    "status": "passed",
    "counts": {
-    "passed": 2249
+    "passed": 2279
    },
-   "summary": "2249 passed, 5 warnings in 143.36s (0:02:23)",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "2279 passed, 5 warnings in 157.39s (0:02:37)",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:00:46+00:00",
+   "recorded_at": "2026-10-09T16:21:20+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-release-gate-selftest.json",
+   "file": "evidence/runs/r5-rc-a786bda-release-gate-selftest.json",
    "claim": "The release gate itself rejects unverified runs",
    "status": "passed",
    "counts": {
     "passed": 19
    },
-   "summary": "19 passed, 5 warnings in 4.80s",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "19 passed, 5 warnings in 4.85s",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:02+00:00",
+   "recorded_at": "2026-10-09T16:22:38+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-security.json",
+   "file": "evidence/runs/r5-rc-a786bda-security.json",
    "claim": "The security suite passes under the strict release gate at its CI floor",
    "status": "passed",
    "counts": {
-    "passed": 438
+    "passed": 450
    },
-   "summary": "438 passed in 46.43s",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "450 passed in 50.48s",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T10:57:52+00:00",
+   "recorded_at": "2026-10-09T16:18:12+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-unit-nodb.json",
+   "file": "evidence/runs/r5-rc-a786bda-unit-nodb.json",
    "claim": "With no PostgreSQL reachable, the whole unit suite passes",
    "status": "passed",
    "counts": {
-    "passed": 847
+    "passed": 859
    },
-   "summary": "847 passed, 5 warnings in 28.88s",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "859 passed, 5 warnings in 30.45s",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:01:26+00:00",
+   "recorded_at": "2026-10-09T16:22:01+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-fb415ca-web-build.json",
+   "file": "evidence/runs/r5-rc-a786bda-web-build.json",
    "claim": "The production frontend builds on Node 24 from the locked install",
    "status": "passed",
    "counts": null,
-   "summary": "\u2713 built in 229ms",
-   "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "summary": "\u2713 built in 209ms",
+   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T11:02:24+00:00",
+   "recorded_at": "2026-10-09T16:23:04+00:00",
    "measures_candidate": true
   }
  ],
  "tests": {
-  "junit": "evidence/runs/r5-rc-fb415ca-pytest.junit.xml",
+  "junit": "evidence/runs/r5-rc-a786bda-pytest.junit.xml",
   "by_category": {
    "authorization_security": {
-    "tests": 366,
-    "passed": 366,
+    "tests": 378,
+    "passed": 378,
     "meaning": "Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL."
    },
    "deployment_configuration": {
-    "tests": 15,
-    "passed": 15,
+    "tests": 27,
+    "passed": 27,
     "meaning": "The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies."
    },
    "durability_recovery_concurrency": {
-    "tests": 114,
-    "passed": 114,
+    "tests": 120,
+    "passed": 120,
     "meaning": "Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas."
    },
    "evaluation_harness": {
@@ -380,23 +389,23 @@
   "mapped_but_not_collected": [],
   "files_in_two_categories": [],
   "totals": {
-   "tests": 2249,
-   "passed": 2249
+   "tests": 2279,
+   "passed": 2279
   },
   "record_counts": {
-   "passed": 2249
+   "passed": 2279
   },
   "junit_matches_record": true
  },
  "evaluations": [
   {
-   "set": "r5-rc-fb415ca-eval-holdout.detail.json",
+   "set": "r5-rc-a786bda-eval-holdout.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "ab96e7f04dc6fa332a0a5c6fd183a5319fb7e7e338d1fdd45eb1ebbebc4c1917",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-b5960ff00c8b",
+   "dataset_id": "full-56238262863b",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -411,13 +420,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-fb415ca-eval-holdout2.detail.json",
+   "set": "r5-rc-a786bda-eval-holdout2.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-b5960ff00c8b",
+   "dataset_id": "full-56238262863b",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -432,13 +441,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-fb415ca-eval-questions.detail.json",
+   "set": "r5-rc-a786bda-eval-questions.detail.json",
    "question_set_status": "regression",
    "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-b5960ff00c8b",
+   "dataset_id": "full-56238262863b",
    "total": 38,
    "passed": 38,
    "failed": 0,
@@ -1560,7 +1569,7 @@
     {
      "file": "tests/unit/test_staging_infra.py",
      "exists": true,
-     "collected": 15,
+     "collected": 27,
      "all_passed_on_candidate": true
     }
    ],
@@ -1632,7 +1641,7 @@
     {
      "file": "tests/unit/test_staging_infra.py",
      "exists": true,
-     "collected": 15,
+     "collected": 27,
      "all_passed_on_candidate": true
     }
    ],
@@ -1853,7 +1862,7 @@
     {
      "file": "tests/integration/test_failure_modes.py",
      "exists": true,
-     "collected": 18,
+     "collected": 24,
      "all_passed_on_candidate": true
     },
     {
@@ -1880,6 +1889,214 @@
     }
    ],
    "verified_by": "evidence/runs/r5-website-allowance-fixed.json (fb415ca: the reproduction, six integration tests of the shared row -- settling, unreported usage, ten concurrent reservations against room for three, a bound violation, release, missing rates -- and two of the cloud startup refusal); the whole suite under the release gate at fb415ca"
+  },
+  {
+   "id": "allowance-prices-unvalidated",
+   "title": "The model allowance accepted model prices that make it meaningless: zero, negative, NaN and infinite rates passed the settings and the startup check (which asked only that they be set), a zero price made every reservation cost nothing so the allowance never ran down, and the staging module accepted a zero price",
+   "fix_commits": [
+    {
+     "commit": "6115774",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/integration/test_failure_modes.py",
+     "exists": true,
+     "collected": 24,
+     "all_passed_on_candidate": true
+    },
+    {
+     "file": "infra/aws-staging/tests/plan.tftest.hcl",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-allowance-prices-reproduced.json",
+     "baseline": "10063bd",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 5
+     },
+     "summary": "5 failed, 19 deselected in 0.47s",
+     "measured": "10063bdf27a3",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Strict xfails run with --runxfail: Settings accepted 0, -1, nan and inf for either rate; a SharedAllowance at zero prices granted a hundred worst-case reservations and counted none. Found by review of c524d45"
+    },
+    {
+     "artifact": "evidence/runs/r5-allowance-prices-tf-reproduced.json",
+     "baseline": "10063bd",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "error but did not.",
+     "measured": "10063bdf27a3",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "terraform test with a mocked provider: the run a_zero_model_price_is_refused failed (a zero input price was not refused)"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-allowance-prices-fixed.json and r5-staging-terraform-test-ff9fe0d.json (ff9fe0d: settings, meter and module refuse them; a zero limit refuses every call)"
+  },
+  {
+   "id": "staging-plan-not-empty-after-apply",
+   "title": "Applied to the staging account, the module's plan straight after the apply was not empty: AWS stores rds.force_ssl with apply method pending-reboot and IAM fills in the GitHub OIDC provider's thumbprint, so every later plan would propose two in-place changes that are not changes and hide real drift among them",
+   "fix_commits": [
+    {
+     "commit": "5536526",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_staging_infra.py",
+     "exists": true,
+     "collected": 27,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-staging-plan-drift-reproduced.json",
+     "baseline": "88bc879",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "Plan: 0 to add, 2 to change, 0 to destroy.; aws_iam_openid_connect_provider.github[0] update; aws_db_parameter_group.this update",
+     "measured": "88bc879b548f",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "terraform plan -detailed-exitcode against the infrastructure applied from d004a20 in pac-staging (git archive d004a20; the module is unchanged at 88bc879): exit 2, 0 to add, 2 to change (aws_db_parameter_group.this, aws_iam_openid_connect_provider.github[0]); addresses only, no value"
+    },
+    {
+     "artifact": "evidence/runs/r5-staging-plan-drift-tests-reproduced.json",
+     "baseline": "c43f0d7",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 2
+     },
+     "summary": "2 failed, 23 deselected in 0.09s",
+     "measured": "c43f0d719eef",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Strict xfails run with --runxfail: the source declares neither apply_method pending-reboot nor ignore_changes for the thumbprint"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-staging-plan-drift-fixed.json (5536526, git archive 5536526 against the same applied infrastructure: 0 to add, 0 to change, 0 to destroy)"
+  },
+  {
+   "id": "publish-role-legacy-oidc-subject",
+   "title": "The staging publish role trusted only GitHub's legacy OIDC subject (repo:<owner>/<name>:environment:staging); this repository's tokens carry the immutable subject (repo:<owner>@<owner id>/<name>@<repository id>:environment:staging), so AWS refused every token and nothing could be published",
+   "fix_commits": [
+    {
+     "commit": "facd0d4",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_staging_infra.py",
+     "exists": true,
+     "collected": 27,
+     "all_passed_on_candidate": true
+    },
+    {
+     "file": "infra/aws-staging/tests/plan.tftest.hcl",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "hosted-ci:37939037102",
+     "baseline": "5536526",
+     "kind": "hosted-ci-run",
+     "status": "see evidence/external.json"
+    },
+    {
+     "artifact": "evidence/runs/r5-publish-oidc-subject-reproduced.json",
+     "baseline": "bb7d9b8",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed, 25 deselected in 0.05s",
+     "measured": "bb7d9b8bcbaf",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Strict xfail run with --runxfail: the trust condition names only repo:${var.github_repository}, with no way to configure the subject GitHub sends"
+    }
+   ],
+   "verified_by": "hosted_ci:37939037102 attempt 2 (the same commit, after the trust policy from facd0d4 was applied: credentials, push and the registry check passed; digest sha256:bf04b0175a27...)"
+  },
+  {
+   "id": "public-sign-in-without-browser-security-headers",
+   "title": "With the sign-in page open to everyone, the live staging site sent no Strict-Transport-Security, X-Content-Type-Options or X-Frame-Options: later visits were not held to HTTPS and the sign-in page could be framed by another site. Nothing in the repository claimed the headers; for a public sign-in page they are the baseline",
+   "fix_commits": [
+    {
+     "commit": "a786bda",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_staging_infra.py",
+     "exists": true,
+     "collected": 27,
+     "all_passed_on_candidate": true
+    },
+    {
+     "file": "evidence/probes/staging_live_check.py",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-staging-headers-reproduced.json",
+     "baseline": "de4352d",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "{\"checks\": {\"cross_site_post_refused\": \"pass\", \"director_revenue_no_pricing\": \"pass\", \"director_signs_in\": \"pass\", \"director_volume_scoped\": \"pass\", \"exec_revenue_answered\": \"pass\", \"exec_sees_full_dataset\": \"pass\", \"exec_signs_in\": \"pass\", \"health\": \"pass\", \"http_redirects_to_https\": \"pass\", \"ready\": \"pass\", \"security_headers\": \"FAIL\", \"signed_out_after_logout\": \"pass\", \"unknown_account_refused\": \"pass\"}, \"facts\": {\"dataset_mode\": \"full\", \"dataset_rows\": {\"organizations\": 40000, \"products\": 40, \"sales\": 2000000, \"users\": 23, \"zip_territory\": 29728}, \"director_revenue_status\": \"answered\", \"director_volume_status\": \"answered\", \"exec_revenue_status\": \"answered\", \"exec_role\": \"exec\", \"release\": \"5536526ebf876bc21f48c3a28f68ba9ed5719a37\", \"security_headers\": {\"Strict-Transport-Security\": null, \"X-Content-Type-Options\": null, \"X-Frame-Options\": null}}, \"failed\": [\"security_headers\"]}",
+     "measured": "de4352dd29ae",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "evidence/probes/staging_live_check.py against https://staging.pharma-copilot.click (image 5536526, infrastructure from facd0d4): 12 checks pass, security_headers fails with all three headers absent"
+    },
+    {
+     "artifact": "evidence/runs/r5-staging-headers-tests-reproduced.json",
+     "baseline": "4c4f5e1",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed, 26 deselected in 0.06s",
+     "measured": "4c4f5e1fa184",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Strict xfail run with --runxfail: the HTTPS listener sets none of the three"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-staging-headers-fixed.json (a786bda applied: 13 of 13 live checks pass; the load balancer adds Strict-Transport-Security max-age=31536000, X-Content-Type-Options nosniff and X-Frame-Options DENY to every response; the plan after the apply is empty)"
   }
  ],
  "external": {
@@ -2050,6 +2267,102 @@
     "event": "pull_request",
     "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920520480",
     "note": "all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included, pull request #1"
+   },
+   {
+    "run_id": 37922020684,
+    "commit": "731b986fed9ec7bd94dd9362343c2afe530e8aaa",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37922020684",
+    "note": "all four jobs; index and manifest for fb415ca"
+   },
+   {
+    "run_id": 37926181459,
+    "commit": "ff9fe0d31b224e0fdf2020dfa4456d30c3460567",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37926181459",
+    "note": "all four jobs on the executable candidate ff9fe0d (model prices validated, the allowance's trust boundary documented)"
+   },
+   {
+    "run_id": 37926187963,
+    "commit": "ff9fe0d31b224e0fdf2020dfa4456d30c3460567",
+    "conclusion": "success",
+    "event": "pull_request",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37926187963",
+    "note": "all four jobs on ff9fe0d, pull request #1"
+   },
+   {
+    "run_id": 37931490429,
+    "commit": "0ca735f6962f1c942561de3f9a9429722afd644a",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931490429",
+    "note": "all four jobs on 0ca735f (reviewers' own accounts, the owner-gated public sign-in page); superseded as candidate by d004a20"
+   },
+   {
+    "run_id": 37931496647,
+    "commit": "0ca735f6962f1c942561de3f9a9429722afd644a",
+    "conclusion": "success",
+    "event": "pull_request",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37931496647",
+    "note": "all four jobs on 0ca735f, pull request #1"
+   },
+   {
+    "run_id": 37933355116,
+    "commit": "d004a20a79bc9cce7fd57b32ccebc536a739328c",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933355116",
+    "note": "all four jobs on the executable candidate d004a20 (reviewers' accounts, public sign-in page, the real plan reconciled with the inventory)"
+   },
+   {
+    "run_id": 37933360426,
+    "commit": "d004a20a79bc9cce7fd57b32ccebc536a739328c",
+    "conclusion": "success",
+    "event": "pull_request",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933360426",
+    "note": "all four jobs on d004a20, pull request #1"
+   },
+   {
+    "run_id": 37936348151,
+    "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936348151",
+    "note": "all four jobs on the executable candidate 5536526 (the staging module's plan after the apply is empty)"
+   },
+   {
+    "run_id": 37936356463,
+    "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+    "conclusion": "success",
+    "event": "pull_request",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936356463",
+    "note": "all four jobs on 5536526, pull request #1 (its merge gate)"
+   },
+   {
+    "run_id": 37939037102,
+    "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+    "conclusion": "success",
+    "event": "workflow_dispatch",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37939037102",
+    "note": "publish-staging. Attempt 1 failed at the publishing role's credentials (the role trusted only the legacy OIDC subject; ledger publish-role-legacy-oidc-subject); attempt 2, after the trust policy from facd0d4 was applied, built, scanned and tested the image and pushed it: sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c. Both attempts approved by the owner in the staging environment"
+   },
+   {
+    "run_id": 37940273033,
+    "commit": "facd0d464bf151196f64301a82b63d8c63abc7ee",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37940273033",
+    "note": "all four jobs on the executable candidate facd0d4 (the publish role trusts the subject GitHub sends)"
+   },
+   {
+    "run_id": 37957713810,
+    "commit": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810",
+    "note": "all four jobs on the executable candidate a786bda (the load balancer adds browser security headers)"
    }
   ],
   "not_externally_verified": [

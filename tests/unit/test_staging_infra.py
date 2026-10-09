@@ -402,3 +402,25 @@ def test_the_github_provider_thumbprint_is_left_to_iam():
     provider = blocks(text("iam.tf"), "aws_iam_openid_connect_provider")["github"]
     assert re.search(r"ignore_changes\s*=\s*\[thumbprint_list\]", provider)
     assert 'url             = "https://token.actions.githubusercontent.com"' in provider
+
+
+# GitHub sends the immutable subject, repo:<owner>@<owner id>/<name>@<repository id>,
+# for repositories that use it; a role trusting only repo:<owner>/<name> refused
+# every token (hosted run 37939037102).
+def test_the_publish_role_trusts_the_subject_github_sends():
+    trust = blocks(text("iam.tf"), "aws_iam_policy_document")["publish_assume"]
+    sub = re.search(r'variable\s*=\s*"token.actions.githubusercontent.com:sub"\s*values\s*=\s*\[(.*?)\]', trust, re.S)
+    assert sub and 'coalesce(var.github_subject_prefix, "repo:${var.github_repository}")' in sub.group(1)
+    assert ':environment:${var.github_environment}' in sub.group(1)
+    prefix = blocks(text("variables.tf"), "github_subject_prefix")["github_subject_prefix"]
+    assert "use_immutable_subject" in prefix and re.search(r"^\s*default\s*=\s*null$", prefix, re.M)
+
+
+# The sign-in page is reachable from anywhere (public_sign_in), so the load
+# balancer adds the browser protections the application does not send
+# (r5-staging-headers-reproduced.json: none of the three on the live site).
+def test_the_https_listener_adds_browser_security_headers():
+    https = blocks(text("alb.tf"), "aws_lb_listener")["https"]
+    assert re.search(r'routing_http_response_strict_transport_security_header_value\s*=\s*"max-age=\d{7,}"', https)
+    assert re.search(r'routing_http_response_x_content_type_options_header_value\s*=\s*"nosniff"', https)
+    assert re.search(r'routing_http_response_x_frame_options_header_value\s*=\s*"DENY"', https)

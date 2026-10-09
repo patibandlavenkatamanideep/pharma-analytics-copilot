@@ -1,0 +1,40 @@
+{
+ "image": {
+  "ref": "pharma-analytics-copilot:smoke",
+  "id": "4d93f086d48654194027fb714ffab10288b336c0068a8934d316b326f7dc2a5b",
+  "digest": "sha256:cd917caa194fab9b3323a3b89f14083f1a660c33a3b9e2264a6e7c51358d0920",
+  "platform": "linux/amd64",
+  "revision_label": "facd0d464bf151196f64301a82b63d8c63abc7ee",
+  "layers": 15
+ },
+ "bases": {
+  "web stage": {
+   "tag": "docker.io/library/node:24-slim",
+   "id": "470015c1ab1577c19efce2e80cdad4afd9c682cf8f4dcf3dccae5abfd9113397",
+   "digest": "sha256:51b1100cc2a83d370c6a60952e3f2989c8a43159d0e38586e090f3b3326efefd",
+   "repo_digests": [
+    "docker.io/library/node@sha256:51b1100cc2a83d370c6a60952e3f2989c8a43159d0e38586e090f3b3326efefd",
+    "docker.io/library/node@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20"
+   ],
+   "platform": "linux/amd64",
+   "created": "2026-10-06T01:45:32.370525756Z"
+  },
+  "runtime": {
+   "tag": "docker.io/library/python:3.13-slim",
+   "id": "ce3ff9524414289fc922d9d5dc1de87abc77a39ff2ff5007435839f2af1d7569",
+   "digest": "sha256:8fb4cfa1a2616d7b8e0c2175cc6ad68f5729c34ea8488c0b360d2934b7be9024",
+   "repo_digests": [
+    "docker.io/library/python@sha256:8fb4cfa1a2616d7b8e0c2175cc6ad68f5729c34ea8488c0b360d2934b7be9024",
+    "docker.io/library/python@sha256:bf44cdfcb76cd3b41e879bc058fc37ec5872002ccfde7fcb765e218cde0cd79c"
+   ],
+   "platform": "linux/amd64",
+   "created": "2026-10-06T02:05:24.190948597Z",
+   "image_layers_start_with_it": true
+  }
+ },
+ "debian_packages": {
+  "count": 87,
+  "sha256": "27addeb9dffc8a1945789b00c531a6e83602fef6ed75aecdaf978b0c9bbb24d4",
+  "list": "/Users/manideep/src/pac-work/step10/r5-image-facd0d4-packages.check.txt"
+ }
+}

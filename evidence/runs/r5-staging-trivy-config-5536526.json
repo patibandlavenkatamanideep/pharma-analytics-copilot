@@ -1,0 +1,75 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T13:33:58+00:00",
+  "claim": "At 5536526: trivy config (0.58.1) on infra/aws-staging with public_sign_in = true (the owner's decision) reports only the accepted findings in infra/aws-staging/README.md: 1 HIGH internet-facing load balancer (AVD-AWS-0053), 1 MEDIUM IAM database authentication (AVD-AWS-0176), LOW KMS and insights items; no CRITICAL",
+  "application": {
+    "sha": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+    "tree": "0f481da388644fb398f1bbc6b7e8ac73f17fe1de",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "podman",
+      "run",
+      "--rm",
+      "-v",
+      "/Users/manideep/src/pharma-analytics-copilot/infra/aws-staging:/src:ro",
+      "-v",
+      "/Users/manideep/src/pac-work/public-sign-in.tfvars:/vars/public.tfvars:ro",
+      "docker.io/aquasec/trivy:0.58.1",
+      "config",
+      "--quiet",
+      "--tf-vars",
+      "/vars/public.tfvars",
+      "--format",
+      "template",
+      "--template",
+      "{{range .}}{{range .Misconfigurations}}{{.AVDID}}/{{.Severity}} {{end}}{{end}}",
+      "--exit-code",
+      "0",
+      "/src"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.48
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "AVD-AWS-0053/HIGH AVD-AWS-0033/LOW AVD-AWS-0017/LOW AVD-AWS-0017/LOW AVD-AWS-0034/LOW AVD-AWS-0017/LOW AVD-AWS-0017/LOW AVD-AWS-0133/LOW AVD-AWS-0176/MEDIUM AVD-AWS-0098/LOW AVD-AWS-0098/LOW AVD-AWS-0098/LOW AVD-AWS-0098/LOW AVD-AWS-0098/LOW AVD-AWS-0098/LOW AVD-AWS-0098/LOW"
+  },
+  "artifacts": [],
+  "limits": [
+    "static analysis of the Terraform source; says nothing about the applied resources"
+  ]
+}

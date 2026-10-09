@@ -259,3 +259,15 @@ run "a_public_sign_in_page_opens_only_the_load_balancer" {
     error_message = "and the HTTP redirect"
   }
 }
+
+# The publish role trusts one repository's subject; a wildcard would let any
+# repository's token in.
+run "a_wildcard_github_subject_is_refused" {
+  command = plan
+
+  variables {
+    github_subject_prefix = "repo:patibandlavenkatamanideep@*/*"
+  }
+
+  expect_failures = [var.github_subject_prefix]
+}

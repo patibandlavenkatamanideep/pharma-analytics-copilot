@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T13:51:14+00:00",
+  "claim": "At bb7d9b8: the publish role's trust policy names only the legacy subject repo:<owner>/<name>:environment:staging, with no way to configure the immutable one this repository's tokens carry (strict xfail run with --runxfail)",
+  "application": {
+    "sha": "bb7d9b8bcbaf6221f19d5ccbb3d5cdf9d89fbd8e",
+    "tree": "b1bc0dd58cf149c523e01a75f650edacdb5a8c65",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "--runxfail",
+      "-p",
+      "no:cacheprovider",
+      "tests/unit/test_staging_infra.py",
+      "-k",
+      "subject_github_sends"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.35
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 25 deselected in 0.05s"
+  },
+  "artifacts": [],
+  "limits": [
+    "reads the Terraform source; the account-side reproduction is hosted run 37939037102"
+  ]
+}

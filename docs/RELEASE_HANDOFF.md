@@ -10,11 +10,11 @@ the image's vulnerabilities are triaged in [VULNERABILITY_TRIAGE.md](VULNERABILI
 
 | | |
 |---|---|
-| Public GitHub | `codex/release-defects-oct06` pushed (normally; never forced) to its head. Hosted CI run [37920515182](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920515182) passed all four jobs on the executable candidate. `main` at `c8aab5b` |
-| Pull request | [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), the release integration into `main` (a fast-forward), open for review; not merged |
-| Executable candidate | **`fb415ca`**: the last commit that changes code, tests, configuration, dependencies, fixtures, workflow or build inputs. Every local gate, the image (`c30ad1e8…`) and the scans ran on it from a clean tree and fresh databases (`r5-rc-fb415ca-*.json`, `r5-manifest-fb415ca.json`), as did the restore drill, upgrade compatibility and the mocked Terraform plans. It adds to `e101db3` the website's model allowance (one limit for every user, worker and replica) and the staging dataset check; `e101db3` superseded `e551650` with sign-out that waits for the server and never presents an unconfirmed sign-out as done, CI defects found by hosted runs, browser-failure evidence, a gated publishing workflow and the staging lifecycle design ([AWS_STAGING.md](AWS_STAGING.md)); earlier candidates' records stay as history |
+| Public GitHub | `codex/release-defects-oct06` pushed (normally; never forced) to its head. Hosted CI run [37957713810](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810) passed all four jobs on the executable candidate. `main` at `6b139a7` (#1, merged by the owner) `main` at `c8aab5b` |
+| Pull request | [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), the release integration into `main`, merged by the owner on 9 October (merge commit `6b139a7`) |
+| Executable candidate | **`a786bda`**: the last commit that changes code, tests, configuration, dependencies, fixtures, workflow or build inputs. Every local gate, the image (`c8521a6b…`) and the scans ran on it from a clean tree and fresh databases (`r5-rc-a786bda-*.json`, `r5-manifest-a786bda.json`), as did the restore drill, upgrade compatibility and the mocked Terraform plans. It adds to `fb415ca`, from the deployment: browser security headers at the load balancer, a publish role that trusts the subject GitHub sends, a staging module whose plan after the apply is empty; the owner's access decision (a public sign-in page, reviewers' own accounts only) and the real plan's reconciliation with the inventory; `fb415ca` added to `e101db3` the website's model allowance (one limit for every user, worker and replica) and the staging dataset check; `e101db3` superseded `e551650` with sign-out that waits for the server and never presents an unconfirmed sign-out as done, CI defects found by hosted runs, browser-failure evidence, a gated publishing workflow and the staging lifecycle design ([AWS_STAGING.md](AWS_STAGING.md)); earlier candidates' records stay as history |
 | Final HEAD | the candidate plus evidence, documentation and exact secret-scan exceptions in `.gitleaksignore` for the candidates' own trivy reports (the public CPython key). The release manifest lists the delta and classes each path |
-| Qualifications | The first AWS deployment ([STAGING_PLAN.md](STAGING_PLAN.md)) uses synthetic data and the offline planner: it verifies AWS infrastructure, not live NL2SQL and not a pilot; live-model and pilot qualification are separate. `keep-*` images are retained up to 9,999 of them, not forever, to be confirmed by an ECR lifecycle preview |
+| Qualifications | Staging is deployed (https://staging.pharma-copilot.click, until 16 October; [AWS_STAGING.md](AWS_STAGING.md)) with synthetic data and the offline planner: it verifies AWS infrastructure, not live NL2SQL and not a pilot; it serves `5536526`'s image, whose application is identical to `a786bda`'s; live-model and pilot qualification are separate. `keep-*` images are retained up to 9,999 of them, not forever, to be confirmed by an ECR lifecycle preview |
 | Branch protection | `main` protected since 9 October: pull request, the four jobs below from GitHub Actions and up to date, administrators included, no force-push or deletion (read back, `evidence/external.json`) |
 
 ## The CI path
@@ -50,7 +50,7 @@ SHA. Any merge into `main` needs the owner's approval; pull request #1 is prepar
 
 The bundle, its SHA-256 and a short inventory are delivered side by side, outside the
 repository: a file inside the bundle cannot carry the bundle's own checksum. The release
-manifest inside it (`evidence/runs/r5-manifest-fb415ca.json`) identifies the candidate, its
+manifest inside it (`evidence/runs/r5-manifest-a786bda.json`) identifies the candidate, its
 records, the image and the scans.
 
 ```bash

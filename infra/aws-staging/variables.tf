@@ -59,6 +59,16 @@ variable "github_repository" {
   default     = "patibandlavenkatamanideep/pharma-analytics-copilot"
 }
 
+variable "github_subject_prefix" {
+  description = "The repository part of the subject GitHub puts in its OIDC tokens. A repository that uses immutable subjects (GET /repos/<owner>/<name>/actions/oidc/customization/sub: use_immutable_subject, sub_claim_prefix) sends repo:<owner>@<owner id>/<name>@<repository id>; set that here. Null: the legacy repo:<github_repository>. A mismatch makes the publish role refuse every token."
+  type        = string
+  default     = null
+  validation {
+    condition     = var.github_subject_prefix == null || can(regex("^repo:[^:*?]+$", var.github_subject_prefix))
+    error_message = "github_subject_prefix is repo:<owner>[@<id>]/<name>[@<id>], with no wildcard."
+  }
+}
+
 variable "github_environment" {
   description = "The GitHub environment a publishing workflow job must run in; the role trusts nothing else."
   type        = string

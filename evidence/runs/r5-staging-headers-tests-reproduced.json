@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T14:17:58+00:00",
+  "claim": "At 4c4f5e1: the HTTPS listener sets none of Strict-Transport-Security, X-Content-Type-Options nosniff and X-Frame-Options DENY (strict xfail run with --runxfail)",
+  "application": {
+    "sha": "4c4f5e1fa184d1fa7de32b7848a8494e07ae50b6",
+    "tree": "b2d268fe3037f00f6cbe82dce308e83efe149fc9",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "--runxfail",
+      "-p",
+      "no:cacheprovider",
+      "tests/unit/test_staging_infra.py",
+      "-k",
+      "browser_security_headers"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.36
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 26 deselected in 0.06s"
+  },
+  "artifacts": [],
+  "limits": [
+    "reads the Terraform source; the live reproduction is r5-staging-headers-reproduced.json"
+  ]
+}

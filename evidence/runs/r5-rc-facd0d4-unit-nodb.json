@@ -1,0 +1,71 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T14:11:39+00:00",
+  "claim": "With no PostgreSQL reachable, the whole unit suite passes",
+  "application": {
+    "sha": "facd0d464bf151196f64301a82b63d8c63abc7ee",
+    "tree": "e86b645b0ab01658dcae563e5773eda9439465ab",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": null,
+    "load_mode": null,
+    "fingerprint": null,
+    "row_counts": null,
+    "reporting_anchor": null,
+    "database": "none (unreadable: PoolTimeout)"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit",
+      "-q"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_HOST": "<set, value withheld>",
+      "PAC_DB_PORT": "51152"
+    },
+    "seed": null,
+    "duration_s": 41.34
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 858
+    },
+    "blocked_reason": null,
+    "summary": "858 passed, 5 warnings in 31.29s"
+  },
+  "artifacts": [],
+  "limits": null
+}

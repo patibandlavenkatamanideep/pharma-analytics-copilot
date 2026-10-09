@@ -222,6 +222,46 @@
       "event": "pull_request",
       "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37933360426",
       "note": "all four jobs on d004a20, pull request #1"
+    },
+    {
+      "run_id": 37936348151,
+      "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936348151",
+      "note": "all four jobs on the executable candidate 5536526 (the staging module's plan after the apply is empty)"
+    },
+    {
+      "run_id": 37936356463,
+      "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+      "conclusion": "success",
+      "event": "pull_request",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37936356463",
+      "note": "all four jobs on 5536526, pull request #1 (its merge gate)"
+    },
+    {
+      "run_id": 37939037102,
+      "commit": "5536526ebf876bc21f48c3a28f68ba9ed5719a37",
+      "conclusion": "success",
+      "event": "workflow_dispatch",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37939037102",
+      "note": "publish-staging. Attempt 1 failed at the publishing role's credentials (the role trusted only the legacy OIDC subject; ledger publish-role-legacy-oidc-subject); attempt 2, after the trust policy from facd0d4 was applied, built, scanned and tested the image and pushed it: sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c. Both attempts approved by the owner in the staging environment"
+    },
+    {
+      "run_id": 37940273033,
+      "commit": "facd0d464bf151196f64301a82b63d8c63abc7ee",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37940273033",
+      "note": "all four jobs on the executable candidate facd0d4 (the publish role trusts the subject GitHub sends)"
+    },
+    {
+      "run_id": 37957713810,
+      "commit": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+      "conclusion": "success",
+      "event": "push",
+      "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810",
+      "note": "all four jobs on the executable candidate a786bda (the load balancer adds browser security headers)"
     }
   ],
   "not_externally_verified": [
