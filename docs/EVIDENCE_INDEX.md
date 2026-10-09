@@ -8,15 +8,14 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `e551650f7ed2d797b25bf64f2b31d8d7b8451e56` | `fb7c3cde7eb9c0b48259d04dfed6d9c5efc44b10` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `95b1acc56bb2376063e9f14c8de47e6a1be63451` | `3a8f018d2406316f199debbe7f63097418d27af8` |
+| Executable candidate (what the records measured) | `e101db3446513bb3a6f0c29151f37aceb944f82a` | `1bf498b3ffc553f62fe9e8b9542faba4ddfe5779` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `16bb9b78fd318a1ac28393c66b8b6411e5042380` | `33eb5740b90dafa3ab930d16b04bc3071921fa39` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
-- **documentation** (7): `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/RUNBOOK.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
-- **evidence data** (56): `evidence/ledger.json`, `evidence/runs/r5-attempt-4c90704-uncategorised-test.json`, `evidence/runs/r5-db-tls-verify-full.detail.json`, `evidence/runs/r5-db-tls-verify-full.json`, `evidence/runs/r5-gitleaks-exceptions-exact-d5dcb04.json`, `evidence/runs/r5-image-e551650-build-inputs.detail.json`, `evidence/runs/r5-image-e551650-build-inputs.json`, `evidence/runs/r5-image-e551650-packages.txt` …
-- **probe tooling** (1): `evidence/probes/client_address_behind_proxy.py`
+- **documentation** (8): `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/PILOT_DECISION.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/STAGING_PLAN.md`, `docs/TEST_INVENTORY.md`, `docs/VULNERABILITY_TRIAGE.md`
+- **evidence data** (44): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-collector-pin-fixed.json`, `evidence/runs/r5-collector-pin-reproduced.json`, `evidence/runs/r5-gitleaks-exceptions-exact-a7e6754.json`, `evidence/runs/r5-image-e101db3-build-inputs.detail.json`, `evidence/runs/r5-image-e101db3-build-inputs.json`, `evidence/runs/r5-image-e101db3-packages.txt` …
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -38,31 +37,31 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-rc-e551650-boundary.json` | passed | boundary intact | yes |
-| `r5-rc-e551650-browser.json` | passed |   10 passed (4.7s) | yes |
-| `r5-rc-e551650-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-rc-e551650-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e551650-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e551650-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-e551650-gitleaks.json` | passed | [90m4:04PM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-rc-e551650-image.json` | passed | {"release": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56", "checks": ["PASS: image builds (82 | yes |
-| `r5-rc-e551650-ingestion.json` | passed | 177 passed in 18.66s | yes |
-| `r5-rc-e551650-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-rc-e551650-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-rc-e551650-pytest.json` | passed | 2238 passed, 5 warnings in 145.88s (0:02:25) | yes |
-| `r5-rc-e551650-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.92s | yes |
-| `r5-rc-e551650-security.json` | passed | 436 passed in 47.00s | yes |
-| `r5-rc-e551650-unit-nodb.json` | passed | 845 passed, 5 warnings in 29.11s | yes |
-| `r5-rc-e551650-web-build.json` | passed | ✓ built in 248ms | yes |
+| `r5-rc-e101db3-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-e101db3-browser.json` | passed |   15 passed (7.1s) | yes |
+| `r5-rc-e101db3-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-e101db3-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e101db3-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e101db3-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-e101db3-gitleaks.json` | passed | [90m9:35PM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-e101db3-image.json` | passed | {"release": "e101db3446513bb3a6f0c29151f37aceb944f82a", "checks": ["PASS: image builds (87 | yes |
+| `r5-rc-e101db3-ingestion.json` | passed | 177 passed in 18.97s | yes |
+| `r5-rc-e101db3-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-e101db3-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-e101db3-pytest.json` | passed | 2240 passed, 5 warnings in 145.96s (0:02:25) | yes |
+| `r5-rc-e101db3-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.89s | yes |
+| `r5-rc-e101db3-security.json` | passed | 436 passed in 47.80s | yes |
+| `r5-rc-e101db3-unit-nodb.json` | passed | 847 passed, 5 warnings in 29.41s | yes |
+| `r5-rc-e101db3-web-build.json` | passed | ✓ built in 235ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-rc-e551650-pytest.junit.xml`: 2238 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-e101db3-pytest.junit.xml`: 2240 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
 | authorization_security | 364 | 364 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
-| deployment_configuration | 13 | 13 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
+| deployment_configuration | 15 | 15 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
 | durability_recovery_concurrency | 107 | 107 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
 | evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
 | ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
@@ -77,9 +76,9 @@ From `evidence/runs/r5-rc-e551650-pytest.junit.xml`: 2238 tests, each counted on
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-rc-e551650-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-e551650-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-e551650-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-e101db3-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-e101db3-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-e101db3-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -295,7 +294,7 @@ Provisioning assumed a PostgreSQL superuser: as a managed database's administrat
 Behind a load balancer that the server does not trust, every client has the load balancer's address, so 20 failed sign-ins by anyone refuse every user's correct password for 15 minutes (MAX_FAILURES_PER_IP); nothing in the deployment configuration set FORWARDED_ALLOW_IPS.
 
 - Fix: `5a49a34`
-- Regression on the candidate: `client_address_behind_proxy.py` (0, NOT ALL PASS), `test_staging_infra.py` (13, all pass)
+- Regression on the candidate: `client_address_behind_proxy.py` (0, NOT ALL PASS), `test_staging_infra.py` (15, all pass)
 - Reproduction on `128c558`: `r5-proxy-client-address-reproduced.json` — failed — {"database": "pac_release", "run": {"FORWARDED_ALLOW_IPS": " (The real server behind a local proxy with FORWARDED_ALLOW_IPS empty, i.e. the load balancer untrusted, as every deployment configuration before 5a49a34 left it: after 20 failures from 20 forwarded addresses another user's correct password is refused (429). The defect is configuration, so it is reproduced on the current code with the old configuration. r5-proxy-client-address.json (b4315bb) runs both configurations in one record)
 
 ### logout-cookie-attributes
@@ -306,12 +305,68 @@ Sign-out deleted the session cookie with delete_cookie(name, path='/'): the dele
 - Regression on the candidate: `test_session_lifecycle.py` (9, all pass)
 - Reproduction on `11dd083`: `r5-logout-cookie-reproduced.json` — failed — 1 failed, 8 deselected in 0.42s (test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with, committed as a strict xfail and run with --runxfail: the deletion lacked secure and httponly. Found while proving cookie attributes for staging: no client in the suites, the image smoke or the browser journeys ran with Secure cookies)
 
+### staging-files-not-ignored
+
+infra/aws-staging/README.md's procedure writes staging.tfvars and saved plans (foundation.plan) into the module, and Git did not ignore either; a saved plan holds every variable's value and the provider's view of the account (state was ignored).
+
+- Fix: `2f937f4`
+- Regression on the candidate: `test_staging_infra.py` (15, all pass)
+- Reproduction on `ac6f370`: `r5-tf-files-ignored-reproduced.json` — failed — 1 failed, 13 deselected in 0.07s (test_files_the_procedure_creates_are_never_committed, committed as a strict xfail and run with --runxfail: git check-ignore did not list staging.tfvars, foundation.plan or deploy.tfplan)
+
+### collector-pin-warning-only
+
+With observability on, a collector image named by tag was only warned about: the module's sole guard was a check block, which in a plan or apply is a warning, and the task definition that runs the collector accepted the tag.
+
+- Fix: `2f937f4`
+- Regression on the candidate: `plan.tftest.hcl` (0, NOT ALL PASS)
+- Reproduction on `ac6f370`: `r5-collector-pin-reproduced.json` — failed — error but did not. (terraform test with a mocked AWS provider: the run an_unpinned_collector_is_refused expected the task definition to fail and it did not (Missing expected failure); the other 7 runs passed)
+
+### ci-ledger-check-shallow-checkout
+
+CI's test job checked out one commit, and test_every_ledger_reference_exists, which checks that every fix commit the ledger names exists, failed there on 31 commits; every local run had the whole history. Added in bb33a5b, after 69c62de, it had never run in hosted CI.
+
+- Fix: `f874b89`
+- Regression on the candidate: `shallow_checkout_tests.sh` (0, NOT ALL PASS)
+- Reproduction on `e6cb251`: `hosted-ci:37865432807` — see evidence/external.json
+- Reproduction on `6605d08`: `r5-shallow-checkout-reproduced.json` — failed — 1 failed, 846 passed, 5 warnings in 29.18s (the branch cloned at depth 1, the unit suite without a database: 1 failed (that test), 846 passed)
+
+### terraform-lock-single-platform
+
+infra/aws-staging/.terraform.lock.hcl held a provider package hash (h1:) for darwin_arm64 only, as generated on the Mac; on CI's linux_amd64 runner, init with -lockfile=readonly verified the download but validate then refused the cached package.
+
+- Fix: `aea40b2`
+- Regression on the candidate: `ci.yml` (0, NOT ALL PASS)
+- Reproduction on `811713c`: `hosted-ci:37866339109` — see evidence/external.json
+
+### signout-before-revocation
+
+Sign out showed the sign-in form before the server had ended the session: signOut() cleared the screen, showed the form, then sent POST /api/logout, so leaving the page in between (a reload, a closed tab) could cancel the request and leave the session alive for the next person on that browser.
+
+- Fix: `8157017`
+- Regression on the candidate: `journeys.spec.js` (0, NOT ALL PASS)
+- Reproduction on `aea40b2`: `hosted-ci:37866723060` — see evidence/external.json
+- Reproduction on `cf9e823`: `r5-signout-wait-reproduced.json` — failed —   10 passed (25.7s) (Real Chromium against the real server with /api/logout held by Playwright: the sign-in form appeared while the request was still held. The hosted failure was the identity-change journey navigating away right after Sign out and finding the previous user still signed in; it had passed on f874b89 and in every local run)
+
+### signout-unconfirmed-presented-as-done
+
+A sign-out the server refused or never answered was presented as done: the page showed the sign-in form (with a notice) while the session was still alive, so a reload or the next person on that browser got the first user back.
+
+- Fix: `7a1a2bb`
+- Regression on the candidate: `signout.spec.js` (0, NOT ALL PASS)
+- Reproduction on `4738c5e`: `r5-signout-refused-reproduced.json` — failed —   3 passed (22.0s) (Real Chromium against the real server with /api/logout answered 503 by Playwright: the sign-in form appeared and /api/me still answered for the first user. Found while testing failed sign-outs on 8157017, whose fix for the delayed case had introduced the notice)
+
 ## Externally verified (hosted)
 
 - Run [37650229833](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833) on `eb65af3`: **failure** — image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed
 - Run [37650599310](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650599310) on `9519f28`: **failure** — test job failed loading the full dataset (shared memory); image, frontend and supply-chain passed
 - Run [37651718276](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37651718276) on `7bca4ca`: **success** — all four jobs; application code of 7950e71; image built natively on linux/amd64, sha256:dc31d26e33be1562b4eeec41d4a4fbcd096c7133082cd0080513855b7f2511ee (image ID reported by the image test)
 - Run [37653591687](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687) on `69c62de`: **success** — all four jobs; documentation-only change over 7bca4ca
+- Run [37865432807](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37865432807) on `e6cb251`: **failure** — first hosted run after 69c62de: supply-chain, image and frontend passed; test failed test_every_ledger_reference_exists (one-commit checkout; defect ci-ledger-check-shallow-checkout)
+- Run [37866339109](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866339109) on `811713c`: **failure** — supply-chain failed the new Terraform step (provider lock held a darwin_arm64 package hash only; defect terraform-lock-single-platform); test failed as in 37865432807
+- Run [37866607406](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866607406) on `f874b89`: **failure** — test passed with the whole history (ci-ledger-check-shallow-checkout fixed); supply-chain failed as in 37866339109
+- Run [37866723060](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866723060) on `aea40b2`: **failure** — supply-chain (Terraform step included), image and frontend passed; test: strict suite 2240, security 436, ingestion 177 and offline sets passed; browser journeys 9 passed, 1 failed (defect signout-before-revocation)
+- Run [37868427618](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37868427618) on `8157017`: **success** — all four jobs; first sign-out fix
+- Run [37869897240](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240) on `e101db3`: **success** — all four jobs on the executable candidate, the Terraform step (lock read-only, fmt, validate, 10 mocked plans) included
 
 ## Missing artifacts
 

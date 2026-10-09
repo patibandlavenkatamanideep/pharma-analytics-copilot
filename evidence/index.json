@@ -1,16 +1,16 @@
 {
- "generated_at": "2026-10-08T20:16:46+00:00",
+ "generated_at": "2026-10-09T01:46:18+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "95b1acc56bb2376063e9f14c8de47e6a1be63451",
-   "tree": "3a8f018d2406316f199debbe7f63097418d27af8",
+   "sha": "16bb9b78fd318a1ac28393c66b8b6411e5042380",
+   "tree": "33eb5740b90dafa3ab930d16b04bc3071921fa39",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": true
   },
   "candidate": {
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
-   "tree": "fb7c3cde7eb9c0b48259d04dfed6d9c5efc44b10",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+   "tree": "1bf498b3ffc553f62fe9e8b9542faba4ddfe5779",
    "is_ancestor_of_head": true
   },
   "delta_candidate_to_head": {
@@ -21,72 +21,58 @@
     "documentation": [
      "docs/AWS_STAGING.md",
      "docs/EXTERNAL_VERIFICATION_PLAN.md",
+     "docs/PILOT_DECISION.md",
      "docs/QUALIFICATION_2026_10_07.md",
      "docs/RELEASE_HANDOFF.md",
-     "docs/RUNBOOK.md",
+     "docs/STAGING_PLAN.md",
      "docs/TEST_INVENTORY.md",
      "docs/VULNERABILITY_TRIAGE.md"
     ],
     "evidence data": [
+     "evidence/external.json",
      "evidence/ledger.json",
-     "evidence/runs/r5-attempt-4c90704-uncategorised-test.json",
-     "evidence/runs/r5-db-tls-verify-full.detail.json",
-     "evidence/runs/r5-db-tls-verify-full.json",
-     "evidence/runs/r5-gitleaks-exceptions-exact-d5dcb04.json",
-     "evidence/runs/r5-image-e551650-build-inputs.detail.json",
-     "evidence/runs/r5-image-e551650-build-inputs.json",
-     "evidence/runs/r5-image-e551650-packages.txt",
-     "evidence/runs/r5-logout-cookie-fixed.json",
-     "evidence/runs/r5-logout-cookie-reproduced.json",
-     "evidence/runs/r5-metric-series.detail.json",
-     "evidence/runs/r5-metric-series.json",
-     "evidence/runs/r5-proxy-client-address-fixed.detail.json",
-     "evidence/runs/r5-proxy-client-address-fixed.json",
-     "evidence/runs/r5-proxy-client-address-reproduced.detail.json",
-     "evidence/runs/r5-proxy-client-address-reproduced.json",
-     "evidence/runs/r5-proxy-client-address.detail.json",
-     "evidence/runs/r5-proxy-client-address.json",
-     "evidence/runs/r5-rc-e551650-boundary.json",
-     "evidence/runs/r5-rc-e551650-browser.json",
-     "evidence/runs/r5-rc-e551650-component.detail.json",
-     "evidence/runs/r5-rc-e551650-component.json",
-     "evidence/runs/r5-rc-e551650-eval-holdout.detail.json",
-     "evidence/runs/r5-rc-e551650-eval-holdout.json",
-     "evidence/runs/r5-rc-e551650-eval-holdout2.detail.json",
-     "evidence/runs/r5-rc-e551650-eval-holdout2.json",
-     "evidence/runs/r5-rc-e551650-eval-questions.detail.json",
-     "evidence/runs/r5-rc-e551650-eval-questions.json",
-     "evidence/runs/r5-rc-e551650-gitleaks.json",
-     "evidence/runs/r5-rc-e551650-image.json",
-     "evidence/runs/r5-rc-e551650-ingestion.json",
-     "evidence/runs/r5-rc-e551650-npm-audit.json",
-     "evidence/runs/r5-rc-e551650-pip-audit.json",
-     "evidence/runs/r5-rc-e551650-pytest.json",
-     "evidence/runs/r5-rc-e551650-pytest.junit.xml",
-     "evidence/runs/r5-rc-e551650-release-gate-selftest.json",
-     "evidence/runs/r5-rc-e551650-security.json",
-     "evidence/runs/r5-rc-e551650-unit-nodb.json",
-     "evidence/runs/r5-rc-e551650-web-build.json",
-     "evidence/runs/r5-rds-admin-fixed.detail.json",
-     "evidence/runs/r5-rds-admin-fixed.json",
-     "evidence/runs/r5-rds-admin-reproduced.detail.json",
-     "evidence/runs/r5-rds-admin-reproduced.json",
-     "evidence/runs/r5-restore-new-cluster-e551650.json",
-     "evidence/runs/r5-scan-e551650-trivy-db.json",
-     "evidence/runs/r5-scan-e551650-trivy-full.json",
-     "evidence/runs/r5-scan-e551650-trivy-gate.json",
-     "evidence/runs/r5-scan-staging-trivy-config.json",
-     "evidence/runs/r5-staging-actionlint.json",
-     "evidence/runs/r5-staging-cost-estimate.json",
-     "evidence/runs/r5-staging-policy-tests.json",
-     "evidence/runs/r5-staging-terraform-fmt.json",
-     "evidence/runs/r5-staging-terraform-validate.json",
-     "evidence/runs/r5-staging-trivy-config.json",
-     "evidence/runs/r5-upgrade-compatibility-e551650.detail.json",
-     "evidence/runs/r5-upgrade-compatibility-e551650.json"
-    ],
-    "probe tooling": [
-     "evidence/probes/client_address_behind_proxy.py"
+     "evidence/runs/r5-collector-pin-fixed.json",
+     "evidence/runs/r5-collector-pin-reproduced.json",
+     "evidence/runs/r5-gitleaks-exceptions-exact-a7e6754.json",
+     "evidence/runs/r5-image-e101db3-build-inputs.detail.json",
+     "evidence/runs/r5-image-e101db3-build-inputs.json",
+     "evidence/runs/r5-image-e101db3-packages.txt",
+     "evidence/runs/r5-rc-e101db3-boundary.json",
+     "evidence/runs/r5-rc-e101db3-browser.json",
+     "evidence/runs/r5-rc-e101db3-component.detail.json",
+     "evidence/runs/r5-rc-e101db3-component.json",
+     "evidence/runs/r5-rc-e101db3-eval-holdout.detail.json",
+     "evidence/runs/r5-rc-e101db3-eval-holdout.json",
+     "evidence/runs/r5-rc-e101db3-eval-holdout2.detail.json",
+     "evidence/runs/r5-rc-e101db3-eval-holdout2.json",
+     "evidence/runs/r5-rc-e101db3-eval-questions.detail.json",
+     "evidence/runs/r5-rc-e101db3-eval-questions.json",
+     "evidence/runs/r5-rc-e101db3-gitleaks.json",
+     "evidence/runs/r5-rc-e101db3-image.json",
+     "evidence/runs/r5-rc-e101db3-ingestion.json",
+     "evidence/runs/r5-rc-e101db3-npm-audit.json",
+     "evidence/runs/r5-rc-e101db3-pip-audit.json",
+     "evidence/runs/r5-rc-e101db3-pytest.json",
+     "evidence/runs/r5-rc-e101db3-pytest.junit.xml",
+     "evidence/runs/r5-rc-e101db3-release-gate-selftest.json",
+     "evidence/runs/r5-rc-e101db3-security.json",
+     "evidence/runs/r5-rc-e101db3-unit-nodb.json",
+     "evidence/runs/r5-rc-e101db3-web-build.json",
+     "evidence/runs/r5-restore-new-cluster-e101db3.json",
+     "evidence/runs/r5-scan-e101db3-trivy-db.json",
+     "evidence/runs/r5-scan-e101db3-trivy-full.json",
+     "evidence/runs/r5-scan-e101db3-trivy-gate.json",
+     "evidence/runs/r5-shallow-checkout-fixed.json",
+     "evidence/runs/r5-shallow-checkout-reproduced.json",
+     "evidence/runs/r5-signout-refused-fixed.json",
+     "evidence/runs/r5-signout-refused-reproduced.json",
+     "evidence/runs/r5-signout-wait-fixed.json",
+     "evidence/runs/r5-signout-wait-reproduced.json",
+     "evidence/runs/r5-staging-terraform-test-e101db3.json",
+     "evidence/runs/r5-tf-files-ignored-fixed.json",
+     "evidence/runs/r5-tf-files-ignored-reproduced.json",
+     "evidence/runs/r5-upgrade-compatibility-e101db3.detail.json",
+     "evidence/runs/r5-upgrade-compatibility-e101db3.json"
     ]
    },
    "classes_needing_evidence": [
@@ -107,13 +93,13 @@
  },
  "datasets": [
   {
-   "dataset_id": "full-56a5d9b253ef",
+   "dataset_id": "full-0b3c6fb9026d",
    "load_mode": "full",
    "fingerprint": "1edc425858a2466a94d43657",
    "database": "pac_release"
   },
   {
-   "dataset_id": "seed-ac6e164e46b9",
+   "dataset_id": "seed-52fbfede9699",
    "load_mode": "seed",
    "fingerprint": "4fef158affd75813ac877020",
    "database": "pac_release_authtest"
@@ -121,225 +107,225 @@
  ],
  "images": [
   {
-   "file": "r5-rc-e551650-image.json",
+   "file": "r5-rc-e101db3-image.json",
    "ref": "pharma-analytics-copilot:smoke",
    "inspected_with": "podman",
-   "id": "219ddd92d0acf8e3b20e2782b4d4ceee24824b7886e83a2d0bc22690d56af399",
-   "digest": "sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443",
+   "id": "68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191",
+   "digest": "sha256:4a8d3f853320029e8211b8542a5b1dbe6356154f22a253ebf0a5d39963848fba",
    "platform": "linux/amd64",
-   "revision_label": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "revision_label": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
   }
  ],
  "records": [
   {
-   "file": "evidence/runs/r5-rc-e551650-boundary.json",
+   "file": "evidence/runs/r5-rc-e101db3-boundary.json",
    "claim": "The database security boundary is intact on the freshly provisioned release database",
    "status": "passed",
    "counts": null,
    "summary": "boundary intact",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T19:58:40+00:00",
+   "recorded_at": "2026-10-09T01:29:52+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-browser.json",
+   "file": "evidence/runs/r5-rc-e101db3-browser.json",
    "claim": "The browser journeys pass in real Chromium against a local server",
    "status": "passed",
    "counts": null,
-   "summary": "  10 passed (4.7s)",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "  15 passed (7.1s)",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:10+00:00",
+   "recorded_at": "2026-10-09T01:35:26+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-component.json",
+   "file": "evidence/runs/r5-rc-e101db3-component.json",
    "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed",
    "status": "passed",
    "counts": null,
    "summary": "component gate satisfied: 32 passed, none skipped (floor 32)",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:02+00:00",
+   "recorded_at": "2026-10-09T01:35:15+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-eval-holdout.json",
+   "file": "evidence/runs/r5-rc-e101db3-eval-holdout.json",
    "claim": "Held-out set 1, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:03:53+00:00",
+   "recorded_at": "2026-10-09T01:35:06+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-eval-holdout2.json",
+   "file": "evidence/runs/r5-rc-e101db3-eval-holdout2.json",
    "claim": "Held-out set 2, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:03:56+00:00",
+   "recorded_at": "2026-10-09T01:35:09+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-eval-questions.json",
+   "file": "evidence/runs/r5-rc-e101db3-eval-questions.json",
    "claim": "Regression set, offline planner (a gate; not natural-language accuracy)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:03:50+00:00",
+   "recorded_at": "2026-10-09T01:35:03+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-gitleaks.json",
+   "file": "evidence/runs/r5-rc-e101db3-gitleaks.json",
    "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
    "status": "passed",
    "counts": null,
-   "summary": "\u001b[90m4:04PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "\u001b[90m9:35PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:17+00:00",
+   "recorded_at": "2026-10-09T01:35:34+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-image.json",
+   "file": "evidence/runs/r5-rc-e101db3-image.json",
    "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
    "status": "passed",
    "counts": null,
-   "summary": "{\"release\": \"e551650f7ed2d797b25bf64f2b31d8d7b8451e56\", \"checks\": [\"PASS: image builds (82 s)\", \"PASS: image is labelled with commit e551650f7ed2d797b25bf64f2b31d8d7b8451e56\", \"PASS: image size 305 MB\", \"PASS: image id 219ddd92d0acf8e3b20e2782b4d4ceee24824b7886e83a2d0bc22690d56af399 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release e551650f7ed2d797b25bf64f2b31d8d7b8451e56\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "{\"release\": \"e101db3446513bb3a6f0c29151f37aceb944f82a\", \"checks\": [\"PASS: image builds (87 s)\", \"PASS: image is labelled with commit e101db3446513bb3a6f0c29151f37aceb944f82a\", \"PASS: image size 305 MB\", \"PASS: image id 68178125d860c19be2da61758914e1e46fc9a475ce3a9ae83af3dfb78d3df191 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release e101db3446513bb3a6f0c29151f37aceb944f82a\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 0 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": [
     "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
     "seed data, not the full dataset; offline planner"
    ],
-   "recorded_at": "2026-10-08T20:07:44+00:00",
+   "recorded_at": "2026-10-09T01:38:29+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-ingestion.json",
+   "file": "evidence/runs/r5-rc-e101db3-ingestion.json",
    "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
    "status": "passed",
    "counts": {
     "passed": 177
    },
-   "summary": "177 passed in 18.66s",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "177 passed in 18.97s",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T19:59:48+00:00",
+   "recorded_at": "2026-10-09T01:31:01+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-npm-audit.json",
+   "file": "evidence/runs/r5-rc-e101db3-npm-audit.json",
    "claim": "No high or critical vulnerability in the production JavaScript dependencies",
    "status": "passed",
    "counts": null,
    "summary": "found 0 vulnerabilities",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:15+00:00",
+   "recorded_at": "2026-10-09T01:35:32+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-pip-audit.json",
+   "file": "evidence/runs/r5-rc-e101db3-pip-audit.json",
    "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)",
    "status": "passed",
    "counts": null,
    "summary": "No known vulnerabilities found",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:14+00:00",
+   "recorded_at": "2026-10-09T01:35:31+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-pytest.json",
+   "file": "evidence/runs/r5-rc-e101db3-pytest.json",
    "claim": "The full pytest suite passes under the strict release gate, as CI runs it",
    "status": "passed",
    "counts": {
-    "passed": 2238
+    "passed": 2240
    },
-   "summary": "2238 passed, 5 warnings in 145.88s (0:02:25)",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "2240 passed, 5 warnings in 145.96s (0:02:25)",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:02:25+00:00",
+   "recorded_at": "2026-10-09T01:33:38+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-release-gate-selftest.json",
+   "file": "evidence/runs/r5-rc-e101db3-release-gate-selftest.json",
    "claim": "The release gate itself rejects unverified runs",
    "status": "passed",
    "counts": {
     "passed": 19
    },
-   "summary": "19 passed, 5 warnings in 4.92s",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "19 passed, 5 warnings in 4.89s",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:03:40+00:00",
+   "recorded_at": "2026-10-09T01:34:54+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-security.json",
+   "file": "evidence/runs/r5-rc-e101db3-security.json",
    "claim": "The security suite passes under the strict release gate at its CI floor",
    "status": "passed",
    "counts": {
     "passed": 436
    },
-   "summary": "436 passed in 47.00s",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "436 passed in 47.80s",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T19:59:28+00:00",
+   "recorded_at": "2026-10-09T01:30:41+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-unit-nodb.json",
+   "file": "evidence/runs/r5-rc-e101db3-unit-nodb.json",
    "claim": "With no PostgreSQL reachable, the whole unit suite passes",
    "status": "passed",
    "counts": {
-    "passed": 845
+    "passed": 847
    },
-   "summary": "845 passed, 5 warnings in 29.11s",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "847 passed, 5 warnings in 29.41s",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:03:04+00:00",
+   "recorded_at": "2026-10-09T01:34:18+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-e551650-web-build.json",
+   "file": "evidence/runs/r5-rc-e101db3-web-build.json",
    "claim": "The production frontend builds on Node 24 from the locked install",
    "status": "passed",
    "counts": null,
-   "summary": "\u2713 built in 248ms",
-   "sha": "e551650f7ed2d797b25bf64f2b31d8d7b8451e56",
+   "summary": "\u2713 built in 235ms",
+   "sha": "e101db3446513bb3a6f0c29151f37aceb944f82a",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-08T20:04:03+00:00",
+   "recorded_at": "2026-10-09T01:35:16+00:00",
    "measures_candidate": true
   }
  ],
  "tests": {
-  "junit": "evidence/runs/r5-rc-e551650-pytest.junit.xml",
+  "junit": "evidence/runs/r5-rc-e101db3-pytest.junit.xml",
   "by_category": {
    "authorization_security": {
     "tests": 364,
@@ -347,8 +333,8 @@
     "meaning": "Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL."
    },
    "deployment_configuration": {
-    "tests": 13,
-    "passed": 13,
+    "tests": 15,
+    "passed": 15,
     "meaning": "The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies."
    },
    "durability_recovery_concurrency": {
@@ -401,23 +387,23 @@
   "mapped_but_not_collected": [],
   "files_in_two_categories": [],
   "totals": {
-   "tests": 2238,
-   "passed": 2238
+   "tests": 2240,
+   "passed": 2240
   },
   "record_counts": {
-   "passed": 2238
+   "passed": 2240
   },
   "junit_matches_record": true
  },
  "evaluations": [
   {
-   "set": "r5-rc-e551650-eval-holdout.detail.json",
+   "set": "r5-rc-e101db3-eval-holdout.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "ab96e7f04dc6fa332a0a5c6fd183a5319fb7e7e338d1fdd45eb1ebbebc4c1917",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-56a5d9b253ef",
+   "dataset_id": "full-0b3c6fb9026d",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -432,13 +418,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-e551650-eval-holdout2.detail.json",
+   "set": "r5-rc-e101db3-eval-holdout2.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-56a5d9b253ef",
+   "dataset_id": "full-0b3c6fb9026d",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -453,13 +439,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-e551650-eval-questions.detail.json",
+   "set": "r5-rc-e101db3-eval-questions.detail.json",
    "question_set_status": "regression",
    "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
    "provider": "offline",
    "measures_nl_accuracy": false,
    "prompt_version": "2.3.0",
-   "dataset_id": "full-56a5d9b253ef",
+   "dataset_id": "full-0b3c6fb9026d",
    "total": 38,
    "passed": 38,
    "failed": 0,
@@ -1581,7 +1567,7 @@
     {
      "file": "tests/unit/test_staging_infra.py",
      "exists": true,
-     "collected": 13,
+     "collected": 15,
      "all_passed_on_candidate": true
     }
    ],
@@ -1637,6 +1623,227 @@
     }
    ],
    "verified_by": "evidence/runs/r5-logout-cookie-fixed.json (e551650, over https://testserver with PAC_COOKIE_SECURE=true); the security suite under the release gate at 436"
+  },
+  {
+   "id": "staging-files-not-ignored",
+   "title": "infra/aws-staging/README.md's procedure writes staging.tfvars and saved plans (foundation.plan) into the module, and Git did not ignore either; a saved plan holds every variable's value and the provider's view of the account (state was ignored)",
+   "fix_commits": [
+    {
+     "commit": "2f937f4",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_staging_infra.py",
+     "exists": true,
+     "collected": 15,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-tf-files-ignored-reproduced.json",
+     "baseline": "ac6f370",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed, 13 deselected in 0.07s",
+     "measured": "ac6f370ccbce",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "test_files_the_procedure_creates_are_never_committed, committed as a strict xfail and run with --runxfail: git check-ignore did not list staging.tfvars, foundation.plan or deploy.tfplan"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-tf-files-ignored-fixed.json (2f937f4)"
+  },
+  {
+   "id": "collector-pin-warning-only",
+   "title": "With observability on, a collector image named by tag was only warned about: the module's sole guard was a check block, which in a plan or apply is a warning, and the task definition that runs the collector accepted the tag",
+   "fix_commits": [
+    {
+     "commit": "2f937f4",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "infra/aws-staging/tests/plan.tftest.hcl",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-collector-pin-reproduced.json",
+     "baseline": "ac6f370",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "error but did not.",
+     "measured": "ac6f370ccbce",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "terraform test with a mocked AWS provider: the run an_unpinned_collector_is_refused expected the task definition to fail and it did not (Missing expected failure); the other 7 runs passed"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-collector-pin-fixed.json (2f937f4: a precondition of the task definition; terraform test 8 of 8)"
+  },
+  {
+   "id": "ci-ledger-check-shallow-checkout",
+   "title": "CI's test job checked out one commit, and test_every_ledger_reference_exists, which checks that every fix commit the ledger names exists, failed there on 31 commits; every local run had the whole history. Added in bb33a5b, after 69c62de, it had never run in hosted CI",
+   "fix_commits": [
+    {
+     "commit": "f874b89",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "evidence/probes/shallow_checkout_tests.sh",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "hosted-ci:37865432807",
+     "baseline": "e6cb251",
+     "kind": "hosted-ci-run",
+     "status": "see evidence/external.json"
+    },
+    {
+     "artifact": "evidence/runs/r5-shallow-checkout-reproduced.json",
+     "baseline": "6605d08",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1,
+      "passed": 846
+     },
+     "summary": "1 failed, 846 passed, 5 warnings in 29.18s",
+     "measured": "6605d08e42ef",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "the branch cloned at depth 1, the unit suite without a database: 1 failed (that test), 846 passed"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-shallow-checkout-fixed.json (f874b89, a whole-history clone: 847 passed) and hosted run 37866607406 on f874b89, whose test job passed"
+  },
+  {
+   "id": "terraform-lock-single-platform",
+   "title": "infra/aws-staging/.terraform.lock.hcl held a provider package hash (h1:) for darwin_arm64 only, as generated on the Mac; on CI's linux_amd64 runner, init with -lockfile=readonly verified the download but validate then refused the cached package",
+   "fix_commits": [
+    {
+     "commit": "aea40b2",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": ".github/workflows/ci.yml",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "hosted-ci:37866339109",
+     "baseline": "811713c",
+     "kind": "hosted-ci-run",
+     "status": "see evidence/external.json"
+    }
+   ],
+   "verified_by": "hosted run 37866723060 on aea40b2: the supply-chain job's Terraform step (lock read-only, fmt, validate, mocked plans) passed"
+  },
+  {
+   "id": "signout-before-revocation",
+   "title": "Sign out showed the sign-in form before the server had ended the session: signOut() cleared the screen, showed the form, then sent POST /api/logout, so leaving the page in between (a reload, a closed tab) could cancel the request and leave the session alive for the next person on that browser",
+   "fix_commits": [
+    {
+     "commit": "8157017",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "web/e2e/journeys.spec.js",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "hosted-ci:37866723060",
+     "baseline": "aea40b2",
+     "kind": "hosted-ci-run",
+     "status": "see evidence/external.json"
+    },
+    {
+     "artifact": "evidence/runs/r5-signout-wait-reproduced.json",
+     "baseline": "cf9e823",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "  10 passed (25.7s)",
+     "measured": "cf9e823906bd",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Real Chromium against the real server with /api/logout held by Playwright: the sign-in form appeared while the request was still held. The hosted failure was the identity-change journey navigating away right after Sign out and finding the previous user still signed in; it had passed on f874b89 and in every local run"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-signout-wait-fixed.json (8157017: 11 journeys; three consecutive local runs) and hosted run 37868427618 on 8157017, all four jobs"
+  },
+  {
+   "id": "signout-unconfirmed-presented-as-done",
+   "title": "A sign-out the server refused or never answered was presented as done: the page showed the sign-in form (with a notice) while the session was still alive, so a reload or the next person on that browser got the first user back",
+   "fix_commits": [
+    {
+     "commit": "7a1a2bb",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "web/e2e/signout.spec.js",
+     "exists": true,
+     "collected": 0,
+     "all_passed_on_candidate": false
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-signout-refused-reproduced.json",
+     "baseline": "4738c5e",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "  3 passed (22.0s)",
+     "measured": "4738c5ef0888",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Real Chromium against the real server with /api/logout answered 503 by Playwright: the sign-in form appeared and /api/me still answered for the first user. Found while testing failed sign-outs on 8157017, whose fix for the delayed case had introduced the notice"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-signout-refused-fixed.json (7a1a2bb: all 15 journeys; three consecutive local runs) and hosted CI on the candidate"
   }
  ],
  "external": {
@@ -1669,15 +1876,92 @@
     "conclusion": "success",
     "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687",
     "note": "all four jobs; documentation-only change over 7bca4ca"
+   },
+   {
+    "run_id": 37865432807,
+    "commit": "e6cb25134971e326a3844c041e76afec8e8281a8",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37865432807",
+    "note": "first hosted run after 69c62de: supply-chain, image and frontend passed; test failed test_every_ledger_reference_exists (one-commit checkout; defect ci-ledger-check-shallow-checkout)"
+   },
+   {
+    "run_id": 37866339109,
+    "commit": "811713cd1a7f3405a0b5d5dea0086ea5beeece56",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866339109",
+    "note": "supply-chain failed the new Terraform step (provider lock held a darwin_arm64 package hash only; defect terraform-lock-single-platform); test failed as in 37865432807"
+   },
+   {
+    "run_id": 37866607406,
+    "commit": "f874b89e2cda28412b66de1dcb49aad2ea529469",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866607406",
+    "note": "test passed with the whole history (ci-ledger-check-shallow-checkout fixed); supply-chain failed as in 37866339109"
+   },
+   {
+    "run_id": 37866723060,
+    "commit": "aea40b26703a767a6d0ca6b600f8e4268e7336e9",
+    "conclusion": "failure",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37866723060",
+    "note": "supply-chain (Terraform step included), image and frontend passed; test: strict suite 2240, security 436, ingestion 177 and offline sets passed; browser journeys 9 passed, 1 failed (defect signout-before-revocation)"
+   },
+   {
+    "run_id": 37868427618,
+    "commit": "81570178d873e36b5016fb0778327944508d9579",
+    "conclusion": "success",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37868427618",
+    "note": "all four jobs; first sign-out fix"
+   },
+   {
+    "run_id": 37869897240,
+    "commit": "e101db3446513bb3a6f0c29151f37aceb944f82a",
+    "conclusion": "success",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240",
+    "note": "all four jobs on the executable candidate, the Terraform step (lock read-only, fmt, validate, 10 mocked plans) included"
    }
   ],
   "not_externally_verified": [
-   "a live model under prompt 2.1.0",
+   "a live model under prompt 2.3.0",
    "a real OIDC identity provider",
    "a real source feed",
-   "staging, deployed replicas, a real telemetry backend and alerting",
-   "a published registry image (CI builds the image; nothing is pushed to a registry)"
-  ]
+   "staging on AWS, deployed replicas, a real telemetry backend and alerting",
+   "a published registry image (CI builds the image; publish-staging has never run)"
+  ],
+  "repository_settings": {
+   "read_at": "2026-10-09",
+   "read_with": "the GitHub API as the repository owner (gh, read back after the owner authorised the change)",
+   "main_protection": {
+    "required_checks": [
+     "test (app 15368)",
+     "frontend (app 15368)",
+     "supply-chain (app 15368)",
+     "image (app 15368)"
+    ],
+    "up_to_date": true,
+    "pull_request_required": true,
+    "required_approvals": 0,
+    "dismiss_stale_reviews": true,
+    "administrators_included": true,
+    "force_pushes": false,
+    "deletions": false,
+    "conversation_resolution": true,
+    "rulesets": 0
+   },
+   "staging_environment": {
+    "required_reviewers": [
+     "patibandlavenkatamanideep"
+    ],
+    "administrators_can_bypass": false,
+    "deployment_branches": [
+     "main",
+     "codex/release-*"
+    ]
+   },
+   "registered_workflows": [
+    "CI (.github/workflows/ci.yml)"
+   ],
+   "not_yet_exercised": "a pull request with a failing check being blocked; a staging deployment through the environment"
+  }
  },
  "missing": [
   "r5-original-reproductions.json hashes r5-reproduced.log, which is not preserved",
