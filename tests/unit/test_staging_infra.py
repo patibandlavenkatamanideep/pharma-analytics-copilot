@@ -175,12 +175,23 @@ def test_publish_workflow_is_manual_scoped_and_pinned():
     assert wf["permissions"] == {"contents": "read"}
     job = wf["jobs"]["publish"]
     assert job["environment"] == "staging"
-    assert job["permissions"] == {"contents": "read", "id-token": "write"}
+    assert job["permissions"] == {"contents": "read", "checks": "read", "id-token": "write"}
     for step in job["steps"]:
         uses = step.get("uses", "")
         if uses and not uses.startswith("actions/"):
             assert re.fullmatch(r"[\w.-]+/[\w.-]+@[0-9a-f]{40}", uses), uses
-    assert "--no-cache" in WORKFLOW.read_text()
+    source = WORKFLOW.read_text()
+    assert "--no-cache" in source and "--provenance=false" in source
+    names = [step.get("name", step.get("uses", "")) for step in job["steps"]]
+    # Nothing is built before CI is known to have passed on this commit, and
+    # nothing is pushed before the image's own scan and journeys.
+    gate = names.index("CI passed on this commit")
+    assert gate < names.index("Build the image")
+    assert names.index("Image journeys on a freshly provisioned database") < names.index(
+        "Push, then check the registry holds the tested image")
+    ci_gate = job["steps"][gate]["run"]
+    assert all(c in ci_gate for c in ("test", "frontend", "supply-chain", "image", "15368"))
+    assert "is not the tested image" in source
 
 
 @pytest.fixture(scope="module")
