@@ -222,11 +222,25 @@ approximated.
 competitors — TAXOTERE, GEMZAR, ALIMTA, KEYTRUDA, AVASTIN are all `brand_flag = 0`. There is no
 generic/biosimilar classification column.
 
-**Handling.** A curated additive lookup (`migrations/003_derived_classification.sql`) classifies the
-40 supplied products by drug name (`% GENERIC` → generic, `% BIOSIMILAR` → biosimilar, else branded).
-It is clearly marked derived-not-supplied, is versioned with the metric registry, and the answer
-discloses that the classification is derived. Without it the request is refused as unsupported
-rather than answered with competitor volume relabelled as generic.
+**Handling (rule 2.0.0, 7 October 2026).** `brand_flag = 1` is `company_brand` (authority:
+the source). Every other class comes from a versioned **classification mapping** that names
+products by drug name within a market subcategory (authority: the mapping, recorded per product
+with its version and SHA-256), or is `unknown` (authority: none). The supplied dataset's mapping,
+`app/data/classification_supplied.json`, is curated from the tables of
+`docs/market_classification.md` and covers all 40 supplied products; another dataset brings its own
+(`product_classification.json` beside its files, or `scripts/load_data.py
+--classification-mapping`) or has none. A mapping that contradicts `brand_flag`, lists a key
+twice or uses another class is refused with the load. The published manifest records which
+mappings classified the products and how many are unknown, and every answer that uses a class
+names the mapping.
+
+An unknown product counts in its market and in no segment. A segment share carries that volume:
+the share is stated as a range, from "none of it is the segment" to "all of it is"; a market
+whose volume is all of unknown class has no share (unavailable, not 0%). Rule 1.0.0 classified by
+the generator's name suffixes and made every other `brand_flag = 0` product a branded competitor
+by elimination; on a dataset unlike the supplied one that reported, for example, 50.2% for a
+branded-competitor share that is known only to lie between 27.2% and 50.2%
+([QUALIFICATION_2026_10_07.md](QUALIFICATION_2026_10_07.md), step 4).
 
 ---
 
@@ -415,3 +429,27 @@ the schema that produced it.
 Work proceeds locally against PostgreSQL 16 with a deterministic offline planner
 so that every non-LLM layer is testable now. Nothing in this document claims a
 deployment or live measurement that has not occurred.
+
+## A20 — Each period against the one before it: blank rather than misleading
+
+Added 7 October 2026 for k-07 ("growing or declining month over month").
+`period_over_period` compares each period of a series with the immediately
+preceding period of the same grain.
+
+- **Zero or negative prior → no percentage.** From zero the percentage is
+  undefined; from a negative total its sign would invert the direction. The
+  absolute change is still given. A negative total cannot come from accepted
+  data today (ingestion refuses non-positive packs); the rule is defensive.
+- **Unknown, not zero.** A period a source did not cover is unknown, and so is
+  any change involving it. Nothing is imputed.
+- **Uneven periods are disclosed, not normalised.** A reporting month holds the
+  weeks ending in it, 4 or 5; a total moves with its week count. Rows carry
+  both periods' week counts. Per-week normalisation is not applied: the
+  supplied documents do not define it, and it would change what "volume" means.
+- **The accumulating period is provisional.** Where the window includes the
+  current month or quarter, its row and the headline say so. Weeks are
+  published whole, so no week is marked.
+- **Two-window growth is unchanged.** `volume_growth` still divides by the
+  prior window with `NULLIF(prior, 0)`; a negative prior window is not treated
+  specially there. Aligning it with this rule changes an existing metric and
+  needs the owner's agreement.

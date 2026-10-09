@@ -1,0 +1,65 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T11:45:21+00:00",
+  "claim": "At 10063bd: the staging module refuses a zero model price",
+  "application": {
+    "sha": "10063bdf27a3dafe1d2b0eb1f6916558ffa5c365",
+    "tree": "8078f516f20c6061478d94b69364b555d29851ae",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "AWS_EC2_METADATA_DISABLED=true",
+      "AWS_ACCESS_KEY_ID=",
+      "AWS_SECRET_ACCESS_KEY=",
+      "AWS_PROFILE=",
+      "/Users/manideep/src/pac-work/tools/terraform/terraform",
+      "-chdir=infra/aws-staging",
+      "test",
+      "-no-color"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.45
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "error but did not."
+  },
+  "artifacts": [],
+  "limits": [
+    "a reproduction: terraform test with a mocked provider; the new run fails here"
+  ]
+}

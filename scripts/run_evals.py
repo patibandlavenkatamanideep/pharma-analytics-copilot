@@ -122,15 +122,24 @@ CATEGORIES = {
 
 
 def categorise(spec: dict, result, ok: bool) -> str:
-    """Bucket one outcome. Failures split by whether the system broke."""
+    """Bucket one outcome. Failures split by whether the system broke.
+
+    A PASSED check is always one of answer / refusal / unsupported, and a
+    FAILED one always wrong / failure, so the categories sum to the pass and
+    fail totals. They used not to: a `plan` check whose request errored was
+    judged a pass AND bucketed as an execution failure, and the report said
+    38/38 passed beside a non-zero failure count.
+    """
     if not ok:
         return "failure" if result.status == "error" else "wrong"
+    if result.status == "error":
+        raise SpecificationError(
+            "a check passed although its request errored; an error is never a "
+            "correct outcome, so the judge for this spec is wrong")
     if result.status == "denied":
         return "refusal"
     if result.status == "clarify":
         return "unsupported"
-    if result.status == "error":
-        return "failure"
     # Answered, and accepted. If the expectation would also have accepted a
     # clarification or a refusal, this was an unsupported request handled
     # gracefully -- not a demonstration that the metric can be computed.
@@ -140,6 +149,24 @@ def categorise(spec: dict, result, ok: bool) -> str:
     if spec.get("type") == "volume_alternative":
         return "refusal"
     return "answer"
+
+
+def plan_mismatch(expected_plan: dict, actual: dict | None) -> str | None:
+    """Why the plan differs from what the spec expects, or None if it
+    matches. Interpretation only -- says nothing about execution."""
+    actual = actual or {}
+    for key, expected in expected_plan.items():
+        got = actual.get(key)
+        if isinstance(expected, dict):
+            for sub, value in expected.items():
+                if (got or {}).get(sub) != value:
+                    return f"plan.{key}.{sub} = {(got or {}).get(sub)!r}, expected {value!r}"
+        elif isinstance(expected, list):
+            if list(got or []) != expected:
+                return f"plan.{key} = {got!r}, expected {expected!r}"
+        elif got != expected:
+            return f"plan.{key} = {got!r}, expected {expected!r}"
+    return None
 
 
 def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
@@ -236,18 +263,20 @@ def judge(spec: dict, result, principal, tolerance: float) -> tuple[bool, str]:
     if kind == "plan":
         if not result.plan:
             return False, f"no plan produced ({result.status})"
-        for key, expected in spec["plan"].items():
-            actual = result.plan.get(key)
-            if isinstance(expected, dict):
-                for sub, value in expected.items():
-                    if (actual or {}).get(sub) != value:
-                        return False, f"plan.{key}.{sub} = {(actual or {}).get(sub)!r}, expected {value!r}"
-            elif isinstance(expected, list):
-                if list(actual or []) != expected:
-                    return False, f"plan.{key} = {actual!r}, expected {expected!r}"
-            elif actual != expected:
-                return False, f"plan.{key} = {actual!r}, expected {expected!r}"
-        return True, "plan matches"
+        if mismatch := plan_mismatch(spec["plan"], result.plan):
+            return False, mismatch
+        # A matching plan is a correct INTERPRETATION. It is not an answer:
+        # a compile failure carries its plan, so status="error" with no
+        # answer used to pass as "plan matches". The plan-only score is
+        # reported separately (plan_matched); the end-to-end check needs the
+        # request to have done what the spec expects.
+        want = spec.get("status", "answered")
+        if result.status != want:
+            return False, (f"plan matches, but the request ended {result.status!r}"
+                           f" where {want!r} was expected")
+        if want == "answered" and not result.answer:
+            return False, "plan matches, but no answer was produced"
+        return True, "plan matches and the request succeeded"
 
     if kind == "any_of":
         allowed = set(spec["allowed"])
@@ -361,9 +390,16 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
         return (ranking.get("limit") == spec["limit"],
                 f"limit {ranking.get('limit')}, expected {spec['limit']}")
     if kind == "frozen_cohort":
-        ids = ((result.plan or {}).get("filters") or {}).get("account_ids") or []
+        # The population actually APPLIED. Since 30 September the server binds
+        # the stored cohort to the query itself (the plan's account filter
+        # holds only 200 ids), so the plan no longer carries it -- and what
+        # matters was always what the query ran against, not what the plan
+        # said. Falls back to the plan's filter for runs recorded earlier.
+        applied = getattr(result, "applied_cohort", None)
+        ids = list(applied[1]) if applied else (
+            ((result.plan or {}).get("filters") or {}).get("account_ids") or [])
         if not ids:
-            return False, "cohort was not frozen into account_ids"
+            return False, "no cohort was applied to the follow-up"
         if (result.plan or {}).get("ranking"):
             return False, "frozen cohort was re-ranked"
         # "Frozen" means THESE accounts, not some accounts. Checking only that
@@ -390,6 +426,172 @@ def judge_turn(spec: dict, result, previous) -> tuple[bool, str]:
 
 
 # ---------------------------------------------------------------------------
+# Spend, and which sets may be run
+# ---------------------------------------------------------------------------
+
+FROZEN = ROOT / "evals" / "frozen.json"
+
+
+class Budget:
+    """Tokens a live run may spend, enforced at EVERY model call against what
+    that call can actually bill.
+
+    Before each call -- the plan and any repair alike -- the planner builds
+    the exact request and asks reserve(input, output) for its upper bound:
+    input from the request's own bytes (app/llm/token_bound.py, which states
+    the assumptions), output from its max_tokens. The call is sent only if
+    both fit in what is left. After it, record_call(usage, reservation)
+    charges what the provider reported; a call whose usage was not reported
+    is charged its whole reservation, never zero. While metered, the SDK's
+    own retries are off (planner.PlanningContext.spend), so every billable
+    call passes through here.
+
+    So the charged total cannot exceed either cap -- provided each call bills
+    no more than its bound. That proviso is checked, not assumed: a call
+    reporting more than it reserved is a bound violation, counted here, and
+    the planner stops the run at once (`violated`). The output side is the
+    provider's own guarantee (generation stops at max_tokens); the input
+    side is a conservative bound under stated assumptions, not a provider
+    count, and the record says so (as_dict()["input_bound_method"]).
+
+    can_afford_another() is scheduling, not enforcement: before starting a
+    question it asks for room for two calls (a plan and a repair) the size
+    of the largest reservation made so far, so a question is not begun that
+    the budget would cut off half-way. Before the first call nothing is
+    known, and the per-call check alone decides.
+    """
+
+    def __init__(self, max_input: int, max_output: int):
+        self.max_input, self.max_output = max_input, max_output
+        self.input = self.output = 0
+        self.calls = 0
+        self.unreported_calls = 0
+        self.refused_calls = 0
+        self.bound_violations = 0
+        self.largest_reservation = (0, 0)
+
+    def reserve(self, input_tokens: int, output_tokens: int) -> bool:
+        """May a call that can bill up to this much be sent?"""
+        if (not self.violated and self.input + input_tokens <= self.max_input
+                and self.output + output_tokens <= self.max_output):
+            self.largest_reservation = (max(self.largest_reservation[0], input_tokens),
+                                        max(self.largest_reservation[1], output_tokens))
+            return True
+        self.refused_calls += 1
+        return False
+
+    def record_call(self, usage: Any, reserved: tuple[int, int]) -> None:
+        self.calls += 1
+        reserved_input, reserved_output = reserved
+        reported_input = getattr(usage, "input_tokens", None)
+        reported_output = getattr(usage, "output_tokens", None)
+        charged_input = reported_input if reported_input is not None else reserved_input
+        charged_output = reported_output if reported_output is not None else reserved_output
+        if charged_input > reserved_input or charged_output > reserved_output:
+            self.bound_violations += 1
+        if reported_input is None or reported_output is None:
+            self.unreported_calls += 1
+        self.input += charged_input
+        self.output += charged_output
+
+    @property
+    def violated(self) -> bool:
+        return self.bound_violations > 0
+
+    def can_afford_another(self) -> bool:
+        largest_input, largest_output = self.largest_reservation
+        return (not self.violated and self.input + 2 * largest_input <= self.max_input
+                and self.output + 2 * largest_output <= self.max_output)
+
+    def as_dict(self) -> dict[str, Any]:
+        from app.llm import token_bound
+        return {"max_input_tokens": self.max_input, "max_output_tokens": self.max_output,
+                "charged_input_tokens": self.input, "charged_output_tokens": self.output,
+                "model_calls": self.calls,
+                "unreported_calls_charged_at_reservation": self.unreported_calls,
+                "calls_refused_by_budget": self.refused_calls,
+                "bound_violations": self.bound_violations,
+                "largest_input_reservation": self.largest_reservation[0],
+                "largest_output_reservation": self.largest_reservation[1],
+                "input_bound_method": token_bound.METHOD,
+                "output_bound_method": "the request's max_tokens"}
+
+
+def performance(results: list[dict[str, Any]], *, input_rate: float | None = None,
+                output_rate: float | None = None) -> dict[str, Any]:
+    """Latency, usage and cost over a run, reported apart from correctness.
+
+    Latency: nearest-rank p50 and p95, and the maximum, over every question's
+    wall time, answered or not. Usage: summed only as the provider reported
+    it. Questions whose usage went unreported are counted, never added as
+    zero, so a total with unknowns says so. Cost: only at the configured
+    contract rates (PAC_LLM_INPUT_USD_PER_MTOK / _OUTPUT_), and only for
+    reported usage. With no rates, no cost is shown: an invented price
+    would read as a measurement. A metered run's conservative CHARGED
+    totals are in the budget section."""
+    import math as _math
+
+    latencies = sorted(r["latency_ms"] for r in results if r.get("latency_ms") is not None)
+
+    def rank(p: float) -> int | None:
+        return latencies[max(0, _math.ceil(p * len(latencies)) - 1)] if latencies else None
+
+    live = [r for r in results if r.get("provider") not in (None, "offline")
+            and r.get("model_calls", 1) > 0]
+    known = [r for r in live if r.get("usage_known")]
+    tokens_in = sum(r.get("input_tokens") or 0 for r in live)
+    tokens_out = sum(r.get("output_tokens") or 0 for r in live)
+    priced = input_rate is not None and output_rate is not None
+    return {
+        "questions": len(results),
+        "latency_ms": {"p50": rank(0.50), "p95": rank(0.95),
+                       "max": latencies[-1] if latencies else None},
+        "usage": {"input_tokens": tokens_in, "output_tokens": tokens_out,
+                  "questions_with_reported_usage": len(known),
+                  "questions_with_unknown_usage": len(live) - len(known)},
+        "cost_usd": round((tokens_in * input_rate + tokens_out * output_rate) / 1e6, 4)
+        if priced and live else None,
+        "rates_usd_per_mtok": {"input": input_rate, "output": output_rate} if priced else None,
+    }
+
+
+def smoke_subset(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The first question of each family: the cheapest run that still touches
+    every kind of behaviour, to try before spending on whole sets."""
+    seen, out = set(), []
+    for q in questions:
+        family = q.get("family") or q["id"]
+        if family not in seen:
+            seen.add(family)
+            out.append(q)
+    return out
+
+
+def file_sha256(path: pathlib.Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def runnable(path: pathlib.Path, spec: dict[str, Any]) -> tuple[bool, str]:
+    """A set declares what it is. A holdout may run only as frozen -- the
+    questions and expected answers exactly as recorded in evals/frozen.json
+    before anyone saw the system's answers. Regression and spent sets run
+    freely; their scores are never quoted as accuracy on unseen questions."""
+    status = spec.get("status")
+    if status in ("regression", "spent"):
+        return True, status
+    if status != "holdout":
+        return False, f"{path.name} has no recognised status (regression | spent | holdout)"
+    frozen = json.loads(FROZEN.read_text()) if FROZEN.exists() else {}
+    entry = frozen.get(path.name)
+    if entry is None:
+        return False, (f"{path.name} is a holdout that has not been frozen; run "
+                       f"scripts/freeze_holdout.py {path} before evaluating it")
+    if entry["sha256"] != file_sha256(path):
+        return False, (f"{path.name} changed after it was frozen on {entry['frozen_at']}; "
+                       f"a changed holdout is a new set and needs a new name")
+    return True, "holdout"
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -401,14 +603,32 @@ def main() -> int:
     ap.add_argument("--tolerance", type=float, default=1e-9)
     ap.add_argument("--family", help="run only one family")
     ap.add_argument("--id", dest="only", help="run only one question id")
+    ap.add_argument("--smoke", action="store_true",
+                    help="only the first question of each family")
+    ap.add_argument("--max-input-tokens", type=int,
+                    help="spend cap; REQUIRED with --provider bedrock")
+    ap.add_argument("--max-output-tokens", type=int,
+                    help="spend cap; REQUIRED with --provider bedrock")
     args = ap.parse_args()
 
     if args.provider == "bedrock":
+        if not (args.max_input_tokens and args.max_output_tokens):
+            print("A live run needs a budget: --max-input-tokens and --max-output-tokens.",
+                  file=sys.stderr)
+            return 2
         print("Running against AWS Bedrock. THIS COSTS MONEY.\n")
+    budget = (Budget(args.max_input_tokens, args.max_output_tokens)
+              if args.provider == "bedrock" else None)
 
     import os
 
     os.environ["PAC_LLM_PROVIDER"] = args.provider
+    # A batch measurement, not a user: the per-user request limits exist to
+    # protect the service from one person's browser, and would throttle a run
+    # that asks dozens of questions as the same principal in seconds.
+    for name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+                 "PAC_USER_CONCURRENT_RUNS"):
+        os.environ.setdefault(name, "1000000")
     from app.config import get_settings
 
     get_settings.cache_clear()
@@ -420,7 +640,13 @@ def main() -> int:
 
     questions_path = pathlib.Path(args.questions)
     spec = yaml.safe_load(questions_path.read_text())
+    ok, set_status = runnable(questions_path, spec)
+    if not ok:
+        print(set_status, file=sys.stderr)
+        return 2
     questions = spec["questions"]
+    if args.smoke:
+        questions = smoke_subset(questions)
     if args.family:
         questions = [q for q in questions if q.get("family") == args.family]
     if args.only:
@@ -449,8 +675,14 @@ def main() -> int:
     # this never disturbs credentials that have been issued to anyone.
     principals = {row["role"]: principal_for_user_id(row["user_id"]) for row in rows}
 
+    from app.llm.planner import PROMPT_VERSION
+    from app.llm.prompt_fingerprint import prompt_fingerprint
+
     planner = build_planner()
     pipeline = Pipeline(planner)
+    # Every model call is metered: asked before, recorded after, with the
+    # SDK's retries off so none is billed unseen.
+    pipeline.spend = budget
     dataset = pipeline.current_dataset()
 
     from app.analytics.registry import get_registry
@@ -458,13 +690,22 @@ def main() -> int:
     results: list[dict[str, Any]] = []
     passed = failed = 0
 
+    not_run: list[str] = []
     for item in questions:
+        if budget is not None and (budget.violated or not budget.can_afford_another()):
+            # A violated bound stops everything: the cap can no longer be
+            # shown to hold for the next call.
+            not_run.append(item["id"])
+            continue
         principal = principals[item["principal"]]
         turns = item.get("turns") or [{"question": item["question"], "expect": item["expect"]}]
         conversation_id = None
         previous = None
 
         for index, turn in enumerate(turns):
+            if budget is not None and (budget.violated or not budget.can_afford_another()):
+                not_run.extend(f"{item['id']}.{i + 1}" for i in range(index, len(turns)))
+                break
             started = time.perf_counter()
             result = pipeline.ask(
                 principal, turn["question"],
@@ -490,7 +731,9 @@ def main() -> int:
             mark = "\033[32mPASS\033[0m" if ok else "\033[31mFAIL\033[0m"
             print(f"  {mark}  {label:<10} {turn['question'][:62]:<62} {reason[:60]}")
 
-            usage = getattr(planner, "last_usage", None) or {}
+            # From the result of THIS request, not from planner state.
+            planning = result.planning or {}
+            usage = planning.get("usage") or {}
             results.append({
                 "id": label,
                 "family": item.get("family"),
@@ -504,6 +747,10 @@ def main() -> int:
                 "passed": ok,
                 "reason": reason,
                 "category": categorise(turn["expect"], result, ok),
+                # Interpretation, scored apart from execution. None when the
+                # check is not about the plan.
+                "plan_matched": (None if turn["expect"].get("type") != "plan"
+                                 else plan_mismatch(turn["expect"]["plan"], result.plan) is None),
                 "plan": result.plan,
                 "sql": result.sql,
                 # The ANSWER is recorded too, not just the plan. Without it a
@@ -528,6 +775,13 @@ def main() -> int:
                 "timings": result.timings,
                 "input_tokens": usage.get("input_tokens"),
                 "output_tokens": usage.get("output_tokens"),
+                "usage_known": usage.get("known"),
+                "provider": planning.get("provider"),
+                "planner_attempts": len(planning.get("attempts") or []),
+                "attempts": planning.get("attempts") or [],
+                "unknown_usage_calls": planning.get("unknown_usage_calls", 0),
+                "model_calls": planning.get("calls", len(planning.get("attempts") or [])),
+                "planner_repaired": planning.get("repaired"),
             })
             previous = result
 
@@ -542,11 +796,27 @@ def main() -> int:
         "dataset_id": dataset["dataset_id"],
         "dataset_mode": dataset["load_mode"],
         "question_set_version": spec["version"],
+        "question_set_status": set_status,
+        "question_set_sha256": file_sha256(questions_path),
+        "smoke_subset": args.smoke,
+        "prompt_version": PROMPT_VERSION,
+        "prompt_fingerprint": prompt_fingerprint(),
+        "budget": budget.as_dict() if budget is not None else None,
+        "not_run_budget_exhausted": not_run,
         "metric_version": get_registry().version,
         "policy_version": "1.0.0",
         "total": total, "passed": passed, "failed": failed,
+        "performance": performance(results,
+                                   input_rate=get_settings().llm_input_usd_per_mtok,
+                                   output_rate=get_settings().llm_output_usd_per_mtok),
         "by_category": {
             key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES
+        },
+        "plan_extraction": {
+            "checks": sum(1 for r in results if r["plan_matched"] is not None),
+            "matched": sum(1 for r in results if r["plan_matched"]),
+            "matched_and_executed": sum(
+                1 for r in results if r["plan_matched"] and r["passed"]),
         },
         "results": results,
     }
@@ -555,6 +825,15 @@ def main() -> int:
     path.write_text(json.dumps(record, indent=2, default=str))
 
     counts = {key: sum(1 for r in results if r["category"] == key) for key in CATEGORIES}
+
+    # The totals and the categories are two views of the same checks. If they
+    # disagree, one of them is wrong, and a report that prints both lets the
+    # reader pick the flattering one.
+    if passed != counts["answer"] + counts["refusal"] + counts["unsupported"] \
+            or failed != counts["wrong"] + counts["failure"]:
+        raise SpecificationError(
+            f"totals do not reconcile: {passed} passed / {failed} failed vs "
+            f"categories {counts}")
 
     print(f"\n  {passed}/{total} behavioural checks passed"
           + (f", {failed} failed" if failed else ""))
@@ -565,9 +844,41 @@ def main() -> int:
     if answerable:
         print(f"\n  Question-answering: {counts['answer']}/{answerable} of the questions"
               " this system claims to be able to compute.")
+    plan_checks = [r for r in results if r["plan_matched"] is not None]
+    if plan_checks:
+        matched = [r for r in plan_checks if r["plan_matched"]]
+        executed = [r for r in matched if r["passed"]]
+        print(f"\n  Plan extraction, scored apart from execution: "
+              f"{len(matched)}/{len(plan_checks)} plans matched; "
+              f"{len(executed)} of those also ran to the expected outcome.")
     print(f"\n  {counts['unsupported']} check(s) passed by correctly declining or"
           " clarifying. That is right behaviour,\n  and it is NOT evidence that"
           " the requested figure can be computed.")
+    perf = record["performance"]
+    print(f"\n  Latency over {perf['questions']} question(s): p50 "
+          f"{perf['latency_ms']['p50']} ms, p95 {perf['latency_ms']['p95']} ms, "
+          f"max {perf['latency_ms']['max']} ms.")
+    if args.provider != "offline":
+        u = perf["usage"]
+        print(f"  Reported usage: {u['input_tokens']:,} input / {u['output_tokens']:,} output "
+              f"tokens over {u['questions_with_reported_usage']} question(s); "
+              f"{u['questions_with_unknown_usage']} with usage unreported.")
+        print("  Cost: " + (f"${perf['cost_usd']:.4f} at the configured rates" if
+                            perf["cost_usd"] is not None else
+                            "not computed -- no contract rates configured"))
+    if budget is not None:
+        b = budget.as_dict()
+        print(f"\n  Spend: {b['charged_input_tokens']:,} input / {b['charged_output_tokens']:,} "
+              f"output tokens charged against {b['max_input_tokens']:,} / "
+              f"{b['max_output_tokens']:,}; {b['unreported_calls_charged_at_reservation']} "
+              f"unreported call(s) charged at their reservation; {b['calls_refused_by_budget']} "
+              f"call(s) refused before sending.")
+        if budget.violated:
+            print(f"\n  BOUND VIOLATED: {b['bound_violations']} call(s) billed more than their "
+                  "preflight bound, so the cap was not provably kept. The run was stopped.")
+    if not_run:
+        print(f"\n  STOPPED BY BUDGET: {len(not_run)} question(s) not run: {', '.join(not_run)}."
+              "\n  The totals above cover only the questions that ran.")
     print(f"\n  written to {path.relative_to(ROOT)}")
     if args.provider == "offline":
         print(
@@ -577,7 +888,9 @@ def main() -> int:
             "  accuracy and must not be reported as one."
         )
     close_pools()
-    return 0 if failed == 0 else 1
+    # A run the budget cut short is not a pass, however its questions did.
+    violated = budget is not None and budget.violated
+    return 0 if failed == 0 and not not_run and not violated else 1
 
 
 if __name__ == "__main__":

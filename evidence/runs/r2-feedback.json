@@ -1,0 +1,104 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:26:10+00:00",
+  "claim": "Feedback on an answer is accepted only from its asker under current access, replaces earlier feedback, is exported and deleted with its conversation; the triage sample carries no user id, email, question text or comment unless comments are explicitly requested.",
+  "application": {
+    "sha": "66e62d2b92f1544306f9268922351614d5906407",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/api/main.py",
+      "app/conversation/feedback.py",
+      "app/conversation/privacy.py",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RETENTION.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "migrations/019_feedback.sql",
+      "scripts/failure_sample.py",
+      "tests/security/test_feedback.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-8e9a1468e021",
+    "load_mode": "seed",
+    "fingerprint": "a29d02f0c9b24ea00e05f664",
+    "row_counts": {
+      "sales": 271,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-15",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-20"
+    },
+    "database": "pharma_analytics_authtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/security/test_feedback.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 2.27
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 6
+    },
+    "blocked_reason": null,
+    "summary": "6 passed in 1.68s"
+  },
+  "artifacts": [],
+  "limits": [
+    "No triage process has been run on real feedback; the sample's redaction is tested, not its usefulness."
+  ]
+}

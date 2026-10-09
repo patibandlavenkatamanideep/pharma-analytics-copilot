@@ -1,0 +1,46 @@
+# Public Python base-image GPG fingerprint in historical Trivy image metadata.
+# Exact historical findings only; no file-wide or rule-wide exemption.
+58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:50
+58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:201
+# The same public value (GPG_KEY 7169605F62C751356D054A26A821E680E5FA6305, the
+# CPython release signing key) in the 84dfc1e candidate's trivy reports,
+# committed in ef061f1 and later moved beside the records (a pure rename
+# adds no lines). Exact findings only.
+ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:50
+ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:201
+ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy-full.json:generic-api-key:50
+ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy-full.json:generic-api-key:201
+# The same public value in the a9de92e candidate's trivy reports, committed in
+# fba91e8. Exact findings only.
+fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-gate.json:generic-api-key:50
+fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-gate.json:generic-api-key:201
+fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-full.json:generic-api-key:50
+fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-full.json:generic-api-key:201
+# The same public value in the e551650 candidate's trivy reports, committed in
+# d525241. Exact findings only.
+d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gate.json:generic-api-key:51
+d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gate.json:generic-api-key:212
+d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:51
+d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:212
+# The same public value in the e101db3 candidate's trivy reports, committed in
+# 0716e85. Exact findings only.
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:51
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:212
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:51
+0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:212
+# The same public value in the fb415ca candidate's trivy reports, committed in
+# 36f49bb. Exact findings only.
+36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-gate.json:generic-api-key:51
+36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-gate.json:generic-api-key:212
+36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-full.json:generic-api-key:51
+36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-full.json:generic-api-key:212
+# The same public value in the ff9fe0d candidate's trivy reports, committed in
+# 08c5c5c. Exact findings only.
+08c5c5c497e6cf7c13bc50045ed44c507de2be51:evidence/runs/r5-scan-ff9fe0d-trivy-gate.json:generic-api-key:51
+08c5c5c497e6cf7c13bc50045ed44c507de2be51:evidence/runs/r5-scan-ff9fe0d-trivy-gate.json:generic-api-key:212
+08c5c5c497e6cf7c13bc50045ed44c507de2be51:evidence/runs/r5-scan-ff9fe0d-trivy-full.json:generic-api-key:51
+08c5c5c497e6cf7c13bc50045ed44c507de2be51:evidence/runs/r5-scan-ff9fe0d-trivy-full.json:generic-api-key:212
+6bbcf4f1012fd1915a90645738d5fbafc2879075:evidence/runs/r5-scan-d004a20-trivy-full.json:generic-api-key:212
+6bbcf4f1012fd1915a90645738d5fbafc2879075:evidence/runs/r5-scan-d004a20-trivy-full.json:generic-api-key:51
+6bbcf4f1012fd1915a90645738d5fbafc2879075:evidence/runs/r5-scan-d004a20-trivy-gate.json:generic-api-key:212
+6bbcf4f1012fd1915a90645738d5fbafc2879075:evidence/runs/r5-scan-d004a20-trivy-gate.json:generic-api-key:51

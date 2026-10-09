@@ -1,0 +1,69 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T22:21:06+00:00",
+  "claim": "The local operations drill on b974af7 (before the step 6 fixes): which scenarios fail on unmodified telemetry",
+  "application": {
+    "sha": "b974af7d35f2369b448aa4f6b821a2a66b127042",
+    "tree": "211d2d90b7f0e5f5bee4f0d6365257823d092c2f",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": null,
+    "load_mode": null,
+    "fingerprint": null,
+    "row_counts": null,
+    "reporting_anchor": null,
+    "database": "pac_drill (unreadable: PoolTimeout)"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/ops_drill.py",
+      "--tools",
+      "/Users/manideep/src/pac-work/tools",
+      "--out",
+      "/Users/manideep/src/pac-work/step6/r5-ops-drill-before.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 489.75
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "drill: 6 passed, 7 failed -> /Users/manideep/src/pac-work/step6/r5-ops-drill-before.detail.json"
+  },
+  "artifacts": [],
+  "limits": [
+    "local evidence: one machine, one PostgreSQL cluster created for the drill, two processes not containers, shortened alert windows"
+  ]
+}

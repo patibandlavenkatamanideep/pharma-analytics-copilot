@@ -1,0 +1,83 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T08:20:21+00:00",
+  "claim": "Throughput of candidate 1e0312a at 8 concurrent clients for 60 s, on the same copy after VACUUM FULL: whether compaction restores the pre-publication rate",
+  "application": {
+    "sha": "262c7cdd81305dff7ccf5e51405a1c0bd5549b9c",
+    "tree": "cae72b3fee0e1f652f682b5f8ef66e0d2d8bf45a",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-eac45a752cb9",
+    "load_mode": "full",
+    "fingerprint": "ba325be6d251300ad4e8141d",
+    "row_counts": {
+      "sales": 2001000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 156,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-24",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-26"
+    },
+    "database": "pac_release_loadtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/sh",
+      "-c",
+      "caffeinate -dims /Users/manideep/.venvs/pac-release/bin/python scripts/load_test.py --levels 8 --seconds 60 --no-publication > /Users/manideep/src/pac-work/step7/r5-load-after-compaction.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pac_release_loadtest"
+    },
+    "seed": null,
+    "duration_s": 63.66
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": null
+  },
+  "artifacts": [],
+  "limits": [
+    "offline planner; closed loop, quotas lifted; one development machine (16 GiB, swap in use by other applications); one 60 s window"
+  ]
+}

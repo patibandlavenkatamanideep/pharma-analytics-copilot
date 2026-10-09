@@ -1,0 +1,19 @@
+{
+ "database": "pac_release",
+ "untrusted_proxy": {
+  "FORWARDED_ALLOW_IPS": "(empty)",
+  "failed_attempts": [
+   401
+  ],
+  "other_user_correct_password": 429
+ },
+ "trusted_proxy": {
+  "FORWARDED_ALLOW_IPS": "127.0.0.1",
+  "failed_attempts": [
+   401
+  ],
+  "other_user_correct_password": 200
+ },
+ "lockout_without_trust": true,
+ "no_lockout_with_trust": true
+}

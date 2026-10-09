@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T00:40:44+00:00",
+  "claim": "At ac6f370: the files infra/aws-staging/README.md's procedure creates (staging.tfvars, saved plans, local state) are ignored by Git",
+  "application": {
+    "sha": "ac6f370ccbcef2fc0f98aaf3a3260dbc97ec90be",
+    "tree": "64079c238429ab65124f91952cf02cff89240c21",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_staging_infra.py",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "-k",
+      "never_committed"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.43
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 13 deselected in 0.07s"
+  },
+  "artifacts": [],
+  "limits": [
+    "a reproduction: the strict-xfail test is run with --runxfail so the defect shows as a failure"
+  ]
+}

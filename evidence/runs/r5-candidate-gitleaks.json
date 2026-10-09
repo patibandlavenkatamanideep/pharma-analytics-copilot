@@ -1,0 +1,81 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T08:42:13+00:00",
+  "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
+  "application": {
+    "sha": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d",
+    "tree": "4d30e9e6f22328779256088435c51ddd64eb653d",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-f9dd81d4da53",
+    "load_mode": "seed",
+    "fingerprint": "4fef158affd75813ac877020",
+    "row_counts": {
+      "sales": 271,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-15",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-20"
+    },
+    "database": "pac_release_authtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/opt/homebrew/bin/gitleaks",
+      "git",
+      ".",
+      "--redact",
+      "--no-banner"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.85
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "\u001b[90m4:42AM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m"
+  },
+  "artifacts": [],
+  "limits": null
+}

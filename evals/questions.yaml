@@ -32,6 +32,10 @@
 
 version: "1.0.0"
 
+# regression | spent | holdout. scripts/run_evals.py refuses to run a
+# "holdout" set that is not frozen (scripts/freeze_holdout.py).
+status: "regression"   # a development set: re-run freely; never quoted as accuracy on unseen questions
+
 questions:
 
   # --- account performance and ranking -------------------------------------

@@ -1,0 +1,67 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T16:49:18+00:00",
+  "claim": "Final head: the component tests pass from a clean copy of web/ at this commit, installed with npm ci from the lockfile (as CI does).",
+  "application": {
+    "sha": "7292f421fbf7275bd0acdeb1647d14491e582f2b",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/runs/r2-final2-browser.json",
+      "evidence/runs/r2-final2-ingestion.json",
+      "evidence/runs/r2-final2-ledger.json",
+      "evidence/runs/r2-final2-security.json",
+      "evidence/runs/r2-image-pytest.json",
+      "evidence/runs/r2-image-smoke-eebc974.json",
+      "evidence/runs/r2-image-smoke.json"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/bash",
+      "-c",
+      "set -eo pipefail; rm -rf /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/webcopy; mkdir -p /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/webcopy; git archive HEAD web | tar -x -C /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/webcopy; cd /private/tmp/claude-501/-Users-manideep-Desktop-Projects-pharma-analytics-copilot/5a3597b0-631b-4e35-8e7a-4ada5c8c0b2f/scratchpad/webcopy/web; npm ci --no-fund --no-audit >/dev/null 2>&1; npx vitest run 2>&1 | grep -E 'Test Files|Tests '"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 2.96
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 21
+    },
+    "blocked_reason": null,
+    "summary": "      Tests  21 passed (21)"
+  },
+  "artifacts": [],
+  "limits": [
+    "Run in place, in the checkout under ~/Desktop, vitest's worker never started (no tests collected, 60 s timeout, twice): iCloud had evicted 2,705 files in web/node_modules to dataless placeholders. A clean copy outside iCloud passes; the failure is environmental and is reported, not hidden."
+  ]
+}

@@ -1,6 +1,23 @@
 # Pharma Analytics Copilot
 
-### 🔗 Live: **https://44-217-117-172.sslip.io**
+> **Not deployed today.** The September demo at `https://44-217-117-172.sslip.io`
+> (one EC2 host running commit `7aae7cf`) was taken down on 2 October 2026; its
+> server and address were deleted, so that URL no longer answers and cannot
+> come back (the address belonged to that server). Its record is kept under
+> [Status](#status) as history.
+>
+> **This branch** (`codex/release-defects-oct06`) is the release line, on GitHub
+> with CI green on its head; [pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)
+> brings it to `main` and is open for review. Its executable candidate,
+> `fb415ca`, passed the full local release chain and all four hosted CI jobs.
+> **AWS staging is prepared, not deployed**: Terraform for a restricted
+> environment (ECS Fargate, RDS PostgreSQL, HTTPS load balancer), validated and
+> planned against a mocked provider, waiting for the owner's choices and
+> approval. Where things stand: **[`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)**;
+> the plan to approve: [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md); the
+> go/no-go: [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md) (not ready for a
+> pilot or production, and why); the evidence:
+> [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md), generated from the records.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is
@@ -33,6 +50,16 @@ DDL, seed data and the generator are unmodified.
 | Check a requirement against its evidence | [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) |
 | See a real transcript, including the refusals | [`docs/DEMO.md`](docs/DEMO.md) — generated, not written |
 | Know what was found and fixed in review, and what is still open | [`docs/REMEDIATION.md`](docs/REMEDIATION.md) |
+| **See what this branch has proven, and what is blocked** | [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) |
+| **See how the 1 October review's findings were reproduced and fixed** | [`docs/REVIEW_2026_10_01.md`](docs/REVIEW_2026_10_01.md) |
+| **See what staging must prove before a release** | [`docs/STAGING_VERIFICATION.md`](docs/STAGING_VERIFICATION.md) |
+| **See where AWS staging stands, and its plan and cost** | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md), [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md), [`infra/aws-staging/`](infra/aws-staging/README.md) |
+| **See whether it is ready for a pilot** | [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md) |
+| Ingest new and corrected sales | [`docs/INGESTION.md`](docs/INGESTION.md) |
+| Observe it: traces, metrics, alerts | [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) |
+| Know what is remembered, for how long, and how to export or delete it | [`docs/RETENTION.md`](docs/RETENTION.md) |
+| Size it | [`docs/CAPACITY.md`](docs/CAPACITY.md) |
+| Check dependencies and scanning | [`docs/SUPPLY_CHAIN.md`](docs/SUPPLY_CHAIN.md) |
 
 ---
 
@@ -106,14 +133,18 @@ is the only coherent target for evaluating access control
 
 ## Tests
 
+Counts, what each layer establishes and what it does not, and the state of
+the browser and model-evaluation suites are in
+[docs/TEST_INVENTORY.md](docs/TEST_INVENTORY.md) — measured, not typed.
+
 ```bash
 python3 scripts/build_fixture_db.py          # separate coherent-market fixture
 python3 scripts/build_authtest_db.py         # disposable database for the auth tests
-python3 -m pytest tests -q                   # 368 tests
-python3 -m pytest tests/security -q --release-gate --min-tests 115  # release gate
+python3 -m pytest tests -q                   # counts: docs/TEST_INVENTORY.md
+python3 -m pytest tests/security -q --release-gate --min-tests 450  # release gate
 
-cd web && npm test                           # 6 jsdom component tests
-cd web && npm run test:e2e                   # 6 real-browser tests (Playwright)
+cd web && npm test                           # jsdom component tests (counts: docs/TEST_INVENTORY.md)
+python3 scripts/browser_journeys.py          # real-browser journeys against a local server
 
 python3 scripts/run_evals.py                              # regression set
 python3 scripts/run_evals.py --questions evals/holdout.yaml   # held-out set
@@ -128,10 +159,18 @@ The web tests are **Vitest component tests in jsdom**, not tests in a real
 browser: they render the React component and stub `fetch`. They exercise the
 identity-isolation logic, not rendering, CSS or actual browser behaviour.
 
-Run them from a checkout **outside `~/Desktop`**. Under `~/Desktop` macOS
-stalls the `node_modules` reads: collection takes 239,780 ms and later
-invocations hang at 0% CPU, against 59–108 ms from anywhere else. Same
-pathology that made a Python venv there take 82 s to `import psycopg`.
+They run here in about 400 ms. If a run ends after 60 s reporting *"Failed
+to start ... worker"* and no tests, the Vite cache has gone stale:
+
+```bash
+rm -rf web/node_modules/.vite
+```
+
+`npm test` now does that first, so this should not recur. It was
+misdiagnosed for some time as macOS stalling reads under `~/Desktop`; every
+fresh checkout used to test that theory also had a fresh cache, which made
+the wrong explanation look confirmed. A plain Node worker starts under this
+path in 11 ms.
 
 Expected values in the integration tests come from SQL written by hand in the
 test files, never from the compiler under test.
@@ -162,10 +201,11 @@ rotated.
 ```
 app/analytics/    metric registry, typed plan, period resolver, compiler, AST validator
 app/auth/         identity, sessions, policy
-app/data/         ingestion, manifest, derived classification
+app/data/         loading, incremental ingestion, manifest, derived classification
 app/conversation/ owner-scoped structured follow-up state
 app/llm/          Bedrock planner + deterministic offline planner
 app/pipeline.py   plan → authorize → compile → validate → execute → render → audit
+app/telemetry.py  OpenTelemetry traces and metrics, redacted before export
 app/api/          HTTP surface
 web/              React chat UI, served from the same origin
 migrations/       additive PostgreSQL schema, security policies, measured indexes
@@ -178,11 +218,18 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 
 ## Status
 
-Verified on the full dataset: ingestion, the authorization boundary (115 tests),
+**Current (this branch):** see [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)
+and [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). Everything below in
+this section is the **historical** record of the submitted build and its
+deployment in September 2026. It is kept as it was, and is not a claim
+about this branch; that deployment was taken down on 2 October 2026.
+
+Verified on the full dataset: ingestion, the authorization boundary,
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
-**Deployed** at <https://44-217-117-172.sslip.io> — one EC2 instance on AWS
+**Deployed** (until 2 October 2026; the URL no longer answers) at
+`https://44-217-117-172.sslip.io` — one EC2 instance on AWS
 with the app, PostgreSQL and Caddy under Docker Compose, real Let's Encrypt
 HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on Bedrock.
 `infra/smoke.sh` passed against it end to end on 2026-09-24.
@@ -196,7 +243,8 @@ an unknown product, `$250,766,926.42` for an Exec and no currency anywhere for
 a RAM.
 
 **Live accuracy, re-measured 2026-09-25 under the repaired judge**, against
-Claude Opus 4.5 on Bedrock:
+Claude Opus 4.5 on Bedrock, on commit `e9a7e75` with an unversioned prompt
+that predates 2.1.0. A re-run on `7e91f9f` scored 37/38, 11/12 and 10/12.
 
 | Set | Behavioural | Answers | Refusals | Unsupported | Incorrect |
 |---|---:|---:|---:|---:|---:|
@@ -220,9 +268,9 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| Live accuracy unmeasured under the repaired judge | Needs paid inference; the previous 37/38 is withdrawn, not restated |
+| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt. Prompt 2.3.0 on this branch has not been run live; it needs Bedrock access and an approved token and dollar budget ([EVALUATION.md](docs/EVALUATION.md)) |
 | One held-out miss, deliberately not fixed | "Which health systems have the most facilities?" resolves to `paid_pack_units` instead of `facility_count`. Fixing it would turn the held-out set into another development set |
-| Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
+| Not deployed; staging prepared, not applied | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md): the first stage is one task and a Single-AZ database with synthetic data and the offline planner, so it shows the AWS infrastructure, not live NL2SQL, redundancy or latency under concurrency ([DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven)) |
 
 This is not called production-ready while those remain.
 

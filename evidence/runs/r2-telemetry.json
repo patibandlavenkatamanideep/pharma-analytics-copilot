@@ -1,0 +1,84 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T02:15:49+00:00",
+  "claim": "Every request stage is traced under one trace correlated with the request and run; nothing protected (question text, identity, scope, results, SQL) is exported, with redaction enforced at the call site and again in the exporter; metric labels exclude identifiers; a raising, stalled or unreachable collector never fails or delays an answer; model calls are counted as the provider reported them and unknown usage is never zero.",
+  "application": {
+    "sha": "3e21db20a572fd8e5352b2e2ac30f8e4bb7de4fc",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "README.md",
+      "app/api/main.py",
+      "app/config.py",
+      "app/data/ingest.py",
+      "app/db.py",
+      "app/graph/turn.py",
+      "app/llm/planner.py",
+      "app/pipeline.py",
+      "app/telemetry.py",
+      "docs/OBSERVABILITY.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "requirements.txt",
+      "tests/hostile.py",
+      "tests/integration/test_telemetry_pipeline.py",
+      "tests/unit/test_telemetry.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_telemetry.py",
+      "tests/integration/test_telemetry_pipeline.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 10.5
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 20
+    },
+    "blocked_reason": null,
+    "summary": "20 passed in 1.35s"
+  },
+  "artifacts": [],
+  "limits": [
+    "In-memory exporters and a closed local port stand in for a collector; no real collector, backend or alerting system was run, and the proposed alert rules are unverified.",
+    "Logs are not covered: they are unstructured Python logging and are not redacted the way spans are."
+  ]
+}

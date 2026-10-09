@@ -1,0 +1,69 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:35:45+00:00",
+  "claim": "Supply chain, run locally: the hashed Python lock has no known vulnerability (pip-audit 2.7.3), the production JavaScript dependencies have none at high or above (npm audit), and no secret is present in any of the branch's commits (gitleaks 8.30.1). Found 13 known vulnerabilities in starlette 0.41.3 and python-multipart 0.0.20 first; fixed by upgrading fastapi to 0.142.2 (starlette 1.7.0) and python-multipart to 0.0.32.",
+  "application": {
+    "sha": "fdf4c5f58bcde088ecca45d3c0903d4281165a2a",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/RUNBOOK.md",
+      "docs/SUPPLY_CHAIN.md",
+      "requirements.lock",
+      "requirements.txt",
+      "scripts/restore_drill.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/bash",
+      "-c",
+      "set -eo pipefail; echo \"pip-audit:\"; uvx --from pip-audit==2.7.3 pip-audit --require-hashes --disable-pip -r requirements.lock 2>&1 | tail -1; echo \"npm audit:\"; (cd web && npm audit --omit=dev --audit-level=high 2>&1 | tail -1); echo \"gitleaks:\"; gitleaks git . --redact --no-banner 2>&1 | tail -1; echo \"all three scans clean\""
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.4
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "all three scans clean"
+  },
+  "artifacts": [],
+  "limits": [
+    "The image scan (trivy) was not run: the Docker daemon is not running on this machine. It is defined in CI and has not run there either, as nothing is pushed.",
+    "Advisory databases change daily; this is the state on 2026-10-01."
+  ]
+}

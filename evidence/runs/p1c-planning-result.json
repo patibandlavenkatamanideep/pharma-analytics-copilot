@@ -1,0 +1,93 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T02:27:33+00:00",
+  "claim": "Planning results are immutable and request-local; usage survives repair and is never reported as zero when unknown",
+  "application": {
+    "sha": "b72f89c2930c1b55ed72e2c892610b1893868c0e",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "pp/llm/planner.py",
+      "app/pipeline.py",
+      "scripts/run_evals.py",
+      "tests/security/test_api_contract.py",
+      "tests/unit/test_cohort_typing.py",
+      "tests/unit/test_live_adapter_contract.py",
+      "tests/unit/test_segment_share.py",
+      "tests/unit/test_specialty_and_periods.py",
+      "tests/unit/test_thresholds.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "fake",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests",
+      "-q"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 24.6
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 419
+    },
+    "blocked_reason": null,
+    "summary": "419 passed, 5 warnings in 24.32s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Fake transport only. No inference, no network."
+  ]
+}

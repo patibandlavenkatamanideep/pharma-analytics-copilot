@@ -1,0 +1,67 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-02T00:27:14+00:00",
+  "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
+  "application": {
+    "sha": "45db088989153067cba6788572138713e8f7a3b4",
+    "tree": "a7eabd8aa19f38aa8459c9fa9b7d52a3285eaede",
+    "branch": "HEAD",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "scripts/image_smoke.sh"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 204.49
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "WARNING: image platform (linux/amd64) does not match the expected platform (linux/arm64)"
+  },
+  "artifacts": [],
+  "limits": [
+    "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
+    "seed data, not the full dataset; offline planner"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "510b970d98fa3103123d1a00d964df5d73fded89629c83b5a286f78959f3dce9",
+    "digest": "sha256:d35069faac877eb12d77436ee2b6e005ef0aed527f1af3aa5227958dcde341e0",
+    "platform": "linux/amd64",
+    "revision_label": "45db088989153067cba6788572138713e8f7a3b4"
+  }
+}

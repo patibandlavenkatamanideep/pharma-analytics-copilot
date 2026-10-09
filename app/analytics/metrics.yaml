@@ -8,7 +8,7 @@
 # `sql` fragments are templates over a fixed set of pre-aggregated component
 # names owned by the compiler -- they are not user- or model-reachable strings.
 
-version: "1.4.0"
+version: "1.5.0"
 
 # --- shared component expressions -------------------------------------------
 components:
@@ -143,6 +143,12 @@ metrics:
     denominator_scope: "market_subcategory"
     denominator_population: "surrounding_market"
     zero_denominator: "null"
+    # Volume of products of unknown class (no source flag, no mapping entry:
+    # app/data/classification.py) is in the market and in no segment. It is
+    # carried as `unclassified`, with the range it allows: `value` if none of
+    # it is the segment, `value_upper` if all of it is. A market whose volume
+    # is all of unknown class has no share (NULL).
+    unknown_class_bound: true
     requires_wac: false
     quality_checks: ["conversion_factor_coverage", "derived_classification"]
     description: >

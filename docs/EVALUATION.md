@@ -3,6 +3,13 @@
 Actual results from an actual run. Where something has not been measured, this
 document says so rather than leaving an impression.
 
+> **This page is a dated snapshot, not a current count.** The numbers below
+> were measured when the section was written and are kept at their original
+> values on purpose, so that a later reading of the same run is not confused
+> with a new one. For what the suites contain *now*, and what each one does
+> and does not establish, see
+> [TEST_INVENTORY.md](TEST_INVENTORY.md).
+
 ```
 $ python3 -m pytest tests -q
 148 passed in 24.96s
@@ -338,7 +345,7 @@ throughout: **never produce a number that did not come from the database.**
 |---|---|---|
 | Provider returns an invalid plan twice | Useful error naming what to try; provider internals not leaked to the user | ✅ |
 | Provider timeout / unreachable | Propagates to a safe 500 rather than being swallowed into an answer | ✅ |
-| Any failed request | Still written to the audit trail, with status and reason | ✅ |
+| A failed request that reached the pipeline | Written to the audit trail with status and reason, best effort: a failed audit write is counted, not retried, and refusals before a run starts are counted in telemetry only ([AUDIT_DECISION.md](AUDIT_DECISION.md)) | ✅ |
 | Query exceeds the 5 s budget | Cancelled; advice to narrow, no partial result | ✅ |
 | Database unavailable | Reported; response contains no fabricated figure | ✅ |
 | No matching rows | "No data reported" — explicitly *not* a confirmed zero | ✅ |
@@ -458,9 +465,11 @@ Stated explicitly so nothing is implied by omission.
   deployed.
 - **Cost: token usage measured, spend not priced.** The three live runs used
   **526,722 input / 18,572 output tokens** in total, as reported by the
-  provider and recorded per question in `evals/runs/`. Bedrock's per-token rate
-  is not quoted because it is billed by AWS at partner pricing, so the usage
-  counts are what can honestly be reported and the dollar figure is not.
+  provider and recorded per question in `evals/runs/`. AWS's price list
+  (`AmazonBedrockFoundationModels`, us-east-1, 2026-10-07) prices this model's
+  `us.` geographic profile, the one used, at $5.50 input / $27.50 output per
+  million tokens: **$3.41** at those rates. That is a list price applied to
+  measured usage, not the bill, which is not recorded here.
   (This list previously carried both "token usage measured" and "token usage
   ... not measured", two lines apart.)
 
@@ -488,8 +497,11 @@ Re-run on the final commit `7e91f9f` after the facility-count fix:
 `holdout2` lost one to a **statement timeout**, not a wrong answer — see
 below.
 
-Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens,
-**$3.82** at Opus 4.5 list pricing.
+Cost: 124 questions across two runs, 666,843 input / 19,521 output tokens:
+**$4.20** at the price list's rate for the `us.` geographic profile these runs
+used ($5.50 / $27.50 per million tokens; infra/aws-staging/cost). This line
+said $3.82, which is the rate of the `global.` profile ($5 / $25), not of the
+profile used. Neither is the bill.
 
 ### The three misses, named
 
@@ -535,3 +547,209 @@ sets is held out with respect to the live model in a strict sense: the prompt
 and the metric registry were changed during development, and both reach it.
 `holdout2` is the closest thing to an unbiased estimate and scored **8/12 on
 its first offline run** before the fixes it prompted.
+
+## Running the next live evaluation (prompt 2.3.0)
+
+Every live result above was measured on earlier prompt text. Prompt 2.3.0
+(fingerprint `5dd66431f2ba8230`, recorded in every run; 2.2.0 was
+`ed8e49619d32de7b`, 2.1.0 `5ca5ddf08608fb64`) has never been run against a
+live model, and neither have 2.2.0 or 2.1.0. The plan with its inputs is
+[EXTERNAL_VERIFICATION_PLAN.md](EXTERNAL_VERIFICATION_PLAN.md) §4. When credentials and a budget exist, run it in this
+order. Each step is a decision point.
+
+**1. Smoke first, with a hard cap.** `--smoke` runs the first question of
+each family (16 checks on the regression set). A live run refuses to start
+without both caps:
+
+```bash
+python3 scripts/run_evals.py --provider bedrock --questions evals/questions.yaml \
+    --smoke --max-input-tokens 150000 --max-output-tokens 70000
+```
+
+The budget is enforced at **every model call**, against what that call
+can cost, not per question and not against a fixed estimate:
+
+- **Before each call**, the planner builds the exact request and reserves
+  its upper bound: input from the request's own bytes (system text with
+  the catalogue and any conversation state, every message including a
+  repair's correction, the tool schema), output from its `max_tokens`
+  (`app/llm/token_bound.py`). The call is sent only if both fit in what is
+  left. A request that cannot be shown to fit, including a first call
+  larger than the whole cap, is never sent. A repair is a call like any
+  other.
+- **The output bound is the provider's guarantee.** Generation stops at
+  `max_tokens`, so the configured value is reserved, whatever it is.
+- **The input bound is conservative, not exact.** It assumes a token
+  encodes at least one byte (true of byte-level BPE tokenisers; the
+  provider's tokeniser is not published) and that the provider's framing
+  fits a fixed allowance. On this pipeline's requests it is about 24,100 to
+  24,200 per first call, roughly five times the 4,670 measured live in
+  September. It is **checked**: a call that reports more than it reserved
+  is a bound violation, which stops the run at once, is printed, and is
+  recorded (`budget.bound_violations`). The provider's token-counting
+  endpoint would make the preflight exact. It is not used because it cannot
+  be verified offline.
+- **While metered, the SDK's own retries are off.** Every billable call
+  therefore passes through the check. A retried call would otherwise bill
+  invisibly, because the provider reports usage only for the last call.
+  The trade-off: a transient provider error fails that question instead of
+  being retried, and is recorded as such.
+- **A call whose usage was not reported** is charged its whole reservation,
+  never zero.
+- **So the charged total cannot exceed the caps** unless a call breaks its
+  bound, and if one does, the run stops and says so.
+- **A question starts only if a plan and a repair the size of the largest
+  reservation so far would both fit**, so none is cut off half-way. This is
+  scheduling; the per-call check is the enforcement.
+- **A run the budget cuts short** lists the questions it skipped and exits
+  non-zero, as does a run with a bound violation. Neither can pass as
+  complete.
+
+These rules are pinned by tests: `tests/unit/test_eval_budget.py`, and the
+exhausted-budget case in `tests/integration/test_failure_modes.py`.
+
+**Sizing the caps.** Each call reserves about 24,500 input tokens and
+`max_tokens` (4,096) output, but is charged what it bills. A cap therefore
+needs the expected spend **plus one reservation** of headroom, or the last
+questions are refused. The smoke caps above allow about 21 calls at the
+September cost. Expected spend for the smoke run is roughly 75,000 input
+and 3,000 output tokens on the old prompt. Prompt 2.1.0's system text is
+about 9 KB, and its real cost is what the smoke run will measure.
+
+**2. The regression sets.** `questions.yaml` (`status: regression`), and
+`holdout.yaml` and `holdout2.yaml` (both `status: spent`: they were run live
+and learned from). They measure whether known behaviour still holds under
+the new prompt. **Their scores are not accuracy on unseen questions** and
+must not be reported as such. For all three, budget about 300,000 input
+and 15,000 output tokens.
+
+**3. A genuine holdout.** This needs questions and expected answers written
+by someone who has not seen the system's development sets. Mark the file
+`status: "holdout"`, run `scripts/freeze_holdout.py <file>`, and commit
+`evals/frozen.json` **before** the first run. The commit is the evidence that
+the expectations predate the answers. `run_evals.py` refuses to run a holdout
+that is not frozen, or whose content changed after freezing. Run it once.
+After anything is learned from it, change its status to `spent`.
+
+Each run's record (`evals/runs/`) carries the provider and model id, the
+prompt version and fingerprint, the question set's status and SHA-256, every
+answer, latency and token usage per question, and the budget charged. Its
+`by_category` keeps correct answers, correct refusals, correct
+unsupported/clarification outcomes, wrong answers and execution failures
+apart. Its `performance` section, also printed, gives:
+
+- p50, p95 and maximum latency by nearest rank over every question;
+- the input and output tokens the provider reported, with the number of
+  questions whose usage went unreported, which are never counted as zero;
+- cost at the configured contract rates (`PAC_LLM_INPUT_USD_PER_MTOK`,
+  `PAC_LLM_OUTPUT_USD_PER_MTOK`), or none if no rates are set.
+
+A live report should quote all three sections. Correctness alone is not a
+result.
+
+
+## October 6 accounting changes (pending final candidate evidence)
+
+A violated bound is terminal both at scheduling and at the final call reservation.
+Remaining turns and questions are listed as not run; an incomplete run fails.
+Every outcome carries structured attempts, including failed plans, unavailable
+transports, cancellation after a call, deadlines and budget refusals. Metadata
+separates `no_call`, `unknown`, `partial` and `reported` usage from conservative
+budget charges. Reported portions remain counted when another attempt or token
+direction is unknown. Raw provider errors and validation text are never exported
+in this metadata. The prompt remains 2.1.0 and its fingerprint is unchanged.
+
+Hidden SDK transport retries are disabled in both metered and serving modes so
+one attempt means one transport call. The bounded invalid-plan repair remains;
+users can retry failed requests through the existing durable run/idempotency path.
+A crash after transport but before persistence can still lose usage evidence;
+provider invoice reconciliation remains necessary under best-effort audit. The
+UTF-8/NFKC input reservation remains an assumption, not a provider token guarantee.
+
+## k-07, 7 October 2026: each period against the one before it
+
+**Question** (`holdout2.yaml`, one of the supplied sample questions in
+`docs/product_analytics.md`): "Is Zenovax volume growing or declining month
+over month?" **Oracle**, written before the set was first run: a plan with
+metric `paid_pack_units` and dimension `period_mo`, a monthly series.
+
+**What happened.** The offline planner returned `volume_growth` (a two-window
+growth figure) broken down by `period_mo`. The compiler refuses that
+combination -- each side of a two-window comparison carries a different month,
+so nothing lines up -- and the answer was a clarification. The judge scored it
+`wrong`. The clarification also read "a mo-by-mo breakdown" and "volume by mo".
+
+**Root cause.** Intent mapping and a missing capability, not an obsolete
+oracle or a genuinely ambiguous question:
+
+- the planner's dimension rule read "month over month" as a monthly breakdown
+  while its metric rule did not count it as asking for a series, so "growing
+  or declining" chose two-window growth; the live prompt said the same ("Growth
+  is volume_growth and needs a comparison window");
+- no plan could express growth of each period against the previous one.
+
+**Change** (`plan.period_over_period`, planner contract 2.1.0, prompt 2.2.0).
+Four questions are now told apart:
+
+| Asked | Plan |
+|---|---|
+| a monthly series ("volume by month") | `paid_pack_units` by `period_mo` |
+| each month against the one before ("month over month", "MoM") | the same, with `period_over_period: true`: each month's value, the month before, the change and the percentage |
+| one window against another ("this quarter vs last") | `volume_growth` with a comparison window, unchanged |
+| a rolling average | `rolling`, unchanged |
+
+Semantics, from the dense calendar series: a month with no purchases where the
+source covered it is zero; a month a source did not cover is unknown and never
+imputed; the first month of the data has no prior; the window's first month is
+compared with the month before the window. The percentage is blank where the
+prior is zero or negative (the ingestion contract refuses non-positive packs,
+so a negative total is defensive only); the absolute change is still given.
+Only additive volumes and counts qualify. Reporting months hold 4 or 5 weeks, which
+is disclosed per row (`weeks`, `prior_weeks`), and the still-accumulating month
+is marked provisional in the row and the headline: on the release dataset,
+September 2026 had 3 of its weeks, and its "-40%" is mostly missing weeks.
+See [ASSUMPTIONS.md](ASSUMPTIONS.md) A20.
+
+**Verification.** 19 unit tests (paraphrases, explicit units, quarter and week
+grains, the four-way distinction, plan coherence, refusals, the validator's new
+`lag` and nothing beside it), 7 numerical tests on the fixture database against
+an oracle computed outside the compiler (first month, zero prior, negative
+prior, the month before the window, equivalents, two products, an uncovered
+month, a territory-scoped user with a nonempty scope), and 3 end-to-end tests
+of the sample question on the release dataset, national and territory-scoped,
+and 3 component tests of the table.
+Reproduction: `r5-k07-reproduced.json` (25 failed on unmodified code).
+
+**Evaluation results, offline planner** (not natural-language accuracy):
+
+| Set | Status | Before (`7950e71`, prompt 2.1.0) | After (prompt 2.2.0) |
+|---|---|---|---|
+| `questions.yaml` | regression | 38/38 | 38/38 |
+| `holdout.yaml` | spent | 12/12 | 12/12 |
+| `holdout2.yaml` | spent | 11/12 (k-07 `wrong`) | 12/12 |
+
+`holdout2` was already spent; it stays spent. Its 12/12 is a regression
+result, not a held-out estimate, and no oracle was changed: k-07's oracle was
+right. The oracle checks the plan's metric and dimensions only; the numbers
+behind the answer are checked by the tests above, not by the evaluation.
+
+## Correction, 7 October 2026: `holdout.yaml` was not fully held out
+
+`scripts/check_question_set.py` (the overlap check for new sets) found that 4 of
+`holdout.yaml`'s 12 questions are word for word the same as regression questions
+written a day earlier, and a fifth is a near-duplicate:
+
+| `holdout.yaml` | Same question as (`questions.yaml`) | Regression question added | Holdout created |
+|---|---|---|---|
+| h-05 | gpo-01 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-07 | src-02 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-08 | acc-03 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-09 | geo-01 | `ab13221`, 2026-09-23 | `3e2bd1b`, 2026-09-24 |
+| h-03 (near-duplicate) | hier-02 | | |
+
+So at most 7 of holdout 1's 12 questions were unseen when it was first run, and
+every score reported for it -- historical and current -- says less about
+generalisation than its label suggested. The figures are not changed; they stand
+as what was measured, with this note. The set was already `spent`. `holdout2.yaml`
+has no identical or near-duplicate question in either development set. The
+contamination log in `evals/packet/` records this.

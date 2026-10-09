@@ -1,0 +1,90 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T10:58:12+00:00",
+  "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
+  "application": {
+    "sha": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+    "tree": "a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-b5960ff00c8b",
+    "load_mode": "full",
+    "fingerprint": "1edc425858a2466a94d43657",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration/test_ingestion.py",
+      "tests/unit/test_ingest_calendar.py",
+      "tests/integration/test_ingest_contract.py",
+      "tests/integration/test_ingest_observability.py",
+      "tests/unit/test_ingest_validation.py",
+      "-q",
+      "--release-gate",
+      "--min-tests",
+      "176"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 18.78
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 177
+    },
+    "blocked_reason": null,
+    "summary": "177 passed in 18.34s"
+  },
+  "artifacts": [],
+  "limits": null
+}

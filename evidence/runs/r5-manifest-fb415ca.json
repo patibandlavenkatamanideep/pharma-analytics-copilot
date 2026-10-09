@@ -1,0 +1,311 @@
+{
+ "kind": "release-manifest",
+ "generated_at": "2026-10-09T11:09:31+00:00",
+ "branch": "codex/release-defects-oct06",
+ "source": {
+  "commit": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+  "tree": "a9a7917c5aaf58c0994b4b8b9cc6808da5b5fe86",
+  "committed_at": "2026-10-09T06:54:36-04:00",
+  "versions": {
+   "metric_registry": "1.5.0",
+   "metric_registry_digest": "0d7d9c41e3ad7392",
+   "policy": "1.0.0",
+   "schema_contract": "1.0.0",
+   "mapping": "1.0.0",
+   "classification_rules": "2.0.0",
+   "prompt": "2.3.0",
+   "planner": "2.1.0",
+   "graph": "1.0.0",
+   "suite": null,
+   "oracle": null
+  },
+  "prompt_fingerprint": "5dd66431f2ba8230",
+  "locks": {
+   "requirements.lock": "fe9f7b5d2100fd1e5adea16cb85190747915807852e221be85593820d87b77b0",
+   "pyproject.toml": "5854e598ef82de4a55f83de591ddc5aeeb667df76f3547f3a71d39a59d00ec9f",
+   "web/package-lock.json": "0fa16f380e10a846979f6752c6f9407e6295a89e2074f07efbd5c8d3a47bf604",
+   "web/package.json": "330b83e6eaf0e0c549f2a89da9e0caa670abc4f8e602d8032d66244ca869cfc2",
+   "Dockerfile": "f353d2f93fc5002e80bdb69b04b27a4d2f6e6f28d263002153016f5ce94ce45c",
+   ".dockerignore": "6a60e20e68b08e14e4a6ee6f293f3eea17fee97513fea0bd2345680ffadc9085"
+  },
+  "versions_valid_for_candidate": false
+ },
+ "after_candidate": {
+  "head": "7c624e205c0459d2fea69db6bd94ea92c341182f",
+  "head_tree": "cd242d38fa7c4704c99de2e529703bd6598983f5",
+  "commits_after_candidate": 3,
+  "paths_changed": 46,
+  "build_inputs_changed": [
+   ".gitleaksignore"
+  ],
+  "rule": "a path is a build input unless it starts with one of ['docs/', 'evidence/', 'README.md']"
+ },
+ "records": [
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-boundary.json",
+   "sha256": "2294d13444b647b63aeb212509068cdd625355772833af9744a1caffc24eb540",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "The database security boundary is intact on the freshly provisioned release database"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-browser.json",
+   "sha256": "c9f2daa0be4f38f4642361bb317266788dfd5610c168844084efda64c1f14e11",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "The browser journeys pass in real Chromium against a local server"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-component.json",
+   "sha256": "b4e1b600b582d20b7c721475a406b0ba2836c9318991cfb7a5bb81dc771f18f9",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-eval-holdout.json",
+   "sha256": "63609725df36211308159861ba8e21d4c57ab5588de6044008a99de7712f278a",
+   "role": "measurement",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "Held-out set 1, offline planner (measurement, spent set)"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-eval-holdout2.json",
+   "sha256": "f4f495c0926ad9abfe4a34b51041f427a06dd7daf2ba7b5307ebc625eed93ecf",
+   "role": "measurement",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "Held-out set 2, offline planner (measurement, spent set)"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-eval-questions.json",
+   "sha256": "da4f586f82cf7b0aa357a0b6eb592822d35b0d51f74a632270d33156e62b48de",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "Regression set, offline planner (a gate; not natural-language accuracy)"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-gitleaks.json",
+   "sha256": "603e58a33147832b24e5539b362837fd6fdfaa1ca7d8d687e4fad472f57f19d3",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-image.json",
+   "sha256": "6a69d3ec51ce9b6aea6c102f72b14aec09ccbaf3a14849064431c0e7edf5f3a8",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readi"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-ingestion.json",
+   "sha256": "c822c45ffdbced34ca6c9cb38bb6a98d4817f2c118bc23afc78fdbdc1f8b0af9",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": {
+    "passed": 177
+   },
+   "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-npm-audit.json",
+   "sha256": "3a20061acddfa42b095185c286cee8188b160d4ab4246190c0df6528e487fb34",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "No high or critical vulnerability in the production JavaScript dependencies"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-pip-audit.json",
+   "sha256": "c7cc5980b00272aa9fbc9a469c4ea98987c0fb6bec9e09c964c6452ef060e951",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-pytest.json",
+   "sha256": "2e887cd34b8137a8c7d3258c1ce36868c5466c00628a3730bcc4089680536037",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": {
+    "passed": 2249
+   },
+   "claim": "The full pytest suite passes under the strict release gate, as CI runs it"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-release-gate-selftest.json",
+   "sha256": "288683af07670cd4cbd65168f2dad2af1133fa3f7f3ba1c08dd3db10c8cd968c",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": {
+    "passed": 19
+   },
+   "claim": "The release gate itself rejects unverified runs"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-security.json",
+   "sha256": "2636a31224f6df33e3efc50676e87fd1332ae50ced9032cb71255f242be14f7a",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": {
+    "passed": 438
+   },
+   "claim": "The security suite passes under the strict release gate at its CI floor"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-unit-nodb.json",
+   "sha256": "137cf1f6b270e8222d8f70afd74eaf5ce438c633e2c826b67dfafd907d75a9c3",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": {
+    "passed": 847
+   },
+   "claim": "With no PostgreSQL reachable, the whole unit suite passes"
+  },
+  {
+   "path": "evidence/runs/r5-rc-fb415ca-web-build.json",
+   "sha256": "73391c3e1d4fadd4dce3110fe4d7ea470d46d11812f47f5b5dcb7cd1b372b6b2",
+   "role": "gate",
+   "measured": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+   "worktree_clean": true,
+   "status": "passed",
+   "counts": null,
+   "claim": "The production frontend builds on Node 24 from the locked install"
+  }
+ ],
+ "image": {
+  "ref": "pharma-analytics-copilot:smoke",
+  "platform": "linux/amd64",
+  "revision_label": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+  "config_id": "c30ad1e871e68eccb44f1f1e612d03cd48f5bee5c0c73db53fb889aac58db39c",
+  "config_id_is": "the local image ID: the SHA-256 of the image's configuration JSON, as the local engine reports it",
+  "manifest_digest": "sha256:9d79f7a7adfa0e7641085ff994fac71278fce0252dcc328b9e5a0c5a388e2da3",
+  "manifest_digest_is": "the digest of the image manifest in the local engine's store. Not a registry digest: nothing was pushed, and a registry computes its own when an image is pushed",
+  "oci_index_digest": null,
+  "oci_index_digest_is": "none: a single-platform local build has no index",
+  "registry_digest": null,
+  "published": false,
+  "smoke_record": "passed"
+ },
+ "scanner": {
+  "tool": "trivy",
+  "version": "0.58.1",
+  "database": {
+   "Version": 2,
+   "UpdatedAt": "2026-10-08T19:05:21.721409049Z",
+   "NextUpdate": "2026-10-09T19:05:21.721408648Z",
+   "DownloadedAt": "2026-10-08T20:06:12.239859219Z"
+  },
+  "gate": {
+   "policy": "no HIGH or CRITICAL vulnerability with a fixed version available",
+   "findings": 0,
+   "passed": true
+  },
+  "all_findings_by_severity": {
+   "LOW": {
+    "fixable": 0,
+    "unfixed": 61
+   },
+   "HIGH": {
+    "fixable": 0,
+    "unfixed": 44
+   },
+   "MEDIUM": {
+    "fixable": 0,
+    "unfixed": 58
+   },
+   "UNKNOWN": {
+    "fixable": 0,
+    "unfixed": 1
+   }
+  },
+  "scanned_at": "2026-10-09T11:04:07.936932473Z",
+  "image_id_scanned": "sha256:c30ad1e871e68eccb44f1f1e612d03cd48f5bee5c0c73db53fb889aac58db39c"
+ },
+ "exceptions": {
+  "gitleaks": [
+   "58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:50",
+   "58b3d3ec7c87012867ee02e409aad80e5a4c6d9a:evidence/runs/r3-final-trivy-amd64.json:generic-api-key:201",
+   "ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:50",
+   "ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy.json:generic-api-key:201",
+   "ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy-full.json:generic-api-key:50",
+   "ef061f1382527d951aa27e9a5ade6309d6a173ee:evidence/runs/r5-candidate-trivy-full.json:generic-api-key:201",
+   "fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-gate.json:generic-api-key:50",
+   "fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-gate.json:generic-api-key:201",
+   "fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-full.json:generic-api-key:50",
+   "fba91e8989f2c96ce35400e34831245ccca6ace6:evidence/runs/r5-scan-a9de92e-trivy-full.json:generic-api-key:201",
+   "d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gate.json:generic-api-key:51",
+   "d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-gate.json:generic-api-key:212",
+   "d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:51",
+   "d525241a242ae74770a8e4d0890f01fee309b38b:evidence/runs/r5-scan-e551650-trivy-full.json:generic-api-key:212",
+   "0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:51",
+   "0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-gate.json:generic-api-key:212",
+   "0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:51",
+   "0716e85a7d75432e541d6f79e1e9d4a05fcf0b92:evidence/runs/r5-scan-e101db3-trivy-full.json:generic-api-key:212",
+   "36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-gate.json:generic-api-key:51",
+   "36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-gate.json:generic-api-key:212",
+   "36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-full.json:generic-api-key:51",
+   "36f49bb06aed817b284bb9b01e803e2097c820bb:evidence/runs/r5-scan-fb415ca-trivy-full.json:generic-api-key:212"
+  ],
+  "gitleaks_reason": "exact fingerprints of public example values, reviewed in docs/SUPPLY_CHAIN.md",
+  "trivy": [],
+  "pip_audit": [],
+  "npm_audit": []
+ },
+ "hosted_ci": {
+  "last_hosted_runs": [
+   {
+    "run_id": 37920520480,
+    "commit": "fb415ca013288a29f69f76f780fe80f65bd4078f",
+    "conclusion": "success",
+    "event": "pull_request",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37920520480",
+    "note": "all four jobs on the executable candidate fb415ca (the website's model allowance), the Terraform step included, pull request #1"
+   }
+  ],
+  "candidate": "pending: not pushed (authorization required)"
+ },
+ "bundle": null,
+ "problems": [
+  "build inputs changed after the candidate: its records do not cover HEAD"
+ ]
+}

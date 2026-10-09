@@ -1,0 +1,1685 @@
+{
+  "run_at": "20261007T151849Z",
+  "provider": "offline",
+  "model_id": "offline-deterministic-planner",
+  "measures_nl_accuracy": false,
+  "dataset_id": "full-9f00c3a6f796",
+  "dataset_mode": "full",
+  "question_set_version": "2.0.0",
+  "question_set_status": "spent",
+  "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
+  "smoke_subset": false,
+  "prompt_version": "2.1.0",
+  "prompt_fingerprint": "5ca5ddf08608fb64",
+  "budget": null,
+  "not_run_budget_exhausted": [],
+  "metric_version": "1.4.0",
+  "policy_version": "1.0.0",
+  "total": 12,
+  "passed": 11,
+  "failed": 1,
+  "performance": {
+    "questions": 12,
+    "latency_ms": {
+      "p50": 66,
+      "p95": 228,
+      "max": 228
+    },
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "questions_with_reported_usage": 0,
+      "questions_with_unknown_usage": 0
+    },
+    "cost_usd": null,
+    "rates_usd_per_mtok": null
+  },
+  "by_category": {
+    "answer": 10,
+    "refusal": 0,
+    "unsupported": 1,
+    "wrong": 1,
+    "failure": 0
+  },
+  "plan_extraction": {
+    "checks": 2,
+    "matched": 1,
+    "matched_and_executed": 1
+  },
+  "results": [
+    {
+      "id": "k-01",
+      "family": "archetype",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Compare hospital vs clinic accounts by total volume",
+      "status": "answered",
+      "passed": true,
+      "reason": "2 group(s) match",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "archetype"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [
+            "Clinic",
+            "Hospital"
+          ],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT o.org_archetype AS dim0_id, o.org_archetype AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND o.org_archetype = ANY(%s)\nGROUP BY o.org_archetype, o.org_archetype\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Paid pack units by organization archetype, 2 row(s).",
+        "columns": [
+          "organization archetype",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": "Clinic",
+            "dim0_id": "Clinic",
+            "value": 220918.0,
+            "value_formatted": "220,918 packs"
+          },
+          {
+            "dim0": "Hospital",
+            "dim0_id": "Hospital",
+            "value": 192246.0,
+            "value_formatted": "192,246 packs"
+          }
+        ],
+        "row_count": 2,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units by organization archetype, 2 row(s).",
+      "latency_ms": 228,
+      "timings": {
+        "plan_ms": 6,
+        "db_ms": 69,
+        "total_ms": 219
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-02",
+      "family": "hierarchy",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How many specialty pharmacy accounts do we sell to?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 1093, got 1093",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "account_count",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [
+            "Specialty Pharmacy"
+          ],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT count(DISTINCT COALESCE(o.grandparent_org_id, o.org_id)) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND o.org_archetype = ANY(%s)\n",
+      "answer": {
+        "headline": "Number of accounts: 1,093 accounts.",
+        "columns": [
+          "number of accounts"
+        ],
+        "rows": [
+          {
+            "value": 1093,
+            "value_formatted": "1,093 accounts"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Number of accounts: 1,093 accounts.",
+      "latency_ms": 55,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 29,
+        "total_ms": 51
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-03",
+      "family": "three_forty_b",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How does 340B volume compare to non-340B volume?",
+      "status": "answered",
+      "passed": true,
+      "reason": "2 group(s) match",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "is_340b"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT o.is_340b AS dim0_id, o.is_340b AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\nGROUP BY o.is_340b, o.is_340b\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Paid pack units by 340B status, 2 row(s).",
+        "columns": [
+          "340B status",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": 0,
+            "dim0_id": 0,
+            "value": 424975.0,
+            "value_formatted": "424,975 packs"
+          },
+          {
+            "dim0": 1,
+            "dim0_id": 1,
+            "value": 59419.0,
+            "value_formatted": "59,419 packs"
+          }
+        ],
+        "row_count": 2,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units by 340B status, 2 row(s).",
+      "latency_ms": 92,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 61,
+        "total_ms": 84
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-04",
+      "family": "geography",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Compare account counts across all territories",
+      "status": "answered",
+      "passed": true,
+      "reason": "account_count, 15 row(s)",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "account_count",
+        "dimensions": [
+          "territory"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT z.territory_name AS dim0_id, z.territory_name AS dim0_label, count(DISTINCT COALESCE(o.grandparent_org_id, o.org_id)) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nLEFT JOIN zip_territory z ON z.zip = o.zip\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\nGROUP BY z.territory_name, z.territory_name\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Number of accounts by sales territory, 15 row(s).",
+        "columns": [
+          "sales territory",
+          "number of accounts"
+        ],
+        "rows": [
+          {
+            "dim0": "California North",
+            "dim0_id": "California North",
+            "value": 537,
+            "value_formatted": "537 accounts"
+          },
+          {
+            "dim0": "South Central",
+            "dim0_id": "South Central",
+            "value": 505,
+            "value_formatted": "505 accounts"
+          },
+          {
+            "dim0": "New England",
+            "dim0_id": "New England",
+            "value": 499,
+            "value_formatted": "499 accounts"
+          },
+          {
+            "dim0": "Mountain",
+            "dim0_id": "Mountain",
+            "value": 491,
+            "value_formatted": "491 accounts"
+          },
+          {
+            "dim0": "Southeast Gulf",
+            "dim0_id": "Southeast Gulf",
+            "value": 486,
+            "value_formatted": "486 accounts"
+          },
+          {
+            "dim0": "California South",
+            "dim0_id": "California South",
+            "value": 485,
+            "value_formatted": "485 accounts"
+          },
+          {
+            "dim0": "Great Lakes East",
+            "dim0_id": "Great Lakes East",
+            "value": 481,
+            "value_formatted": "481 accounts"
+          },
+          {
+            "dim0": "Pacific Northwest",
+            "dim0_id": "Pacific Northwest",
+            "value": 481,
+            "value_formatted": "481 accounts"
+          },
+          {
+            "dim0": "New York Metro",
+            "dim0_id": "New York Metro",
+            "value": 473,
+            "value_formatted": "473 accounts"
+          },
+          {
+            "dim0": "Texas",
+            "dim0_id": "Texas",
+            "value": 471,
+            "value_formatted": "471 accounts"
+          },
+          {
+            "dim0": "Mid-Atlantic West",
+            "dim0_id": "Mid-Atlantic West",
+            "value": 469,
+            "value_formatted": "469 accounts"
+          },
+          {
+            "dim0": "Southeast Atlantic",
+            "dim0_id": "Southeast Atlantic",
+            "value": 468,
+            "value_formatted": "468 accounts"
+          },
+          {
+            "dim0": "Upper Midwest",
+            "dim0_id": "Upper Midwest",
+            "value": 446,
+            "value_formatted": "446 accounts"
+          },
+          {
+            "dim0": "Great Lakes West",
+            "dim0_id": "Great Lakes West",
+            "value": 446,
+            "value_formatted": "446 accounts"
+          },
+          {
+            "dim0": "Mid-Atlantic East",
+            "dim0_id": "Mid-Atlantic East",
+            "value": 439,
+            "value_formatted": "439 accounts"
+          }
+        ],
+        "row_count": 15,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Number of accounts by sales territory, 15 row(s).",
+      "latency_ms": 227,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 193,
+        "total_ms": 218
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-05",
+      "family": "data_source",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How much hub dispense volume do we have for Zenovax?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 7150.0, got 7150.0",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "pap_volume",
+        "dimensions": [],
+        "filters": {
+          "product_names": [
+            "ZENOVAX"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND upper(p.drug_name) = ANY(%s)\n",
+      "answer": {
+        "headline": "Patient assistance (free drug) volume: 7,150 packs.",
+        "columns": [
+          "patient assistance (free drug) volume"
+        ],
+        "rows": [
+          {
+            "value": 7150.0,
+            "value_formatted": "7,150 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Patient assistance (free drug) volume: 7,150 packs.",
+      "latency_ms": 36,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 9,
+        "total_ms": 31
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-06",
+      "family": "product",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How is our oncology portfolio performing overall in pack units?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 368411.0, got 368411.0",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [
+            "Oncology"
+          ],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND p.specialty = ANY(%s)\n",
+      "answer": {
+        "headline": "Paid pack units: 368,411 packs.",
+        "columns": [
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "value": 368411.0,
+            "value_formatted": "368,411 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units: 368,411 packs.",
+      "latency_ms": 44,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 14,
+        "total_ms": 37
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-07",
+      "family": "periods",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Is Zenovax volume growing or declining month over month?",
+      "status": "clarify",
+      "passed": false,
+      "reason": "plan.metric = 'volume_growth', expected 'paid_pack_units'",
+      "category": "wrong",
+      "plan_matched": false,
+      "plan": {
+        "metric": "volume_growth",
+        "dimensions": [
+          "period_mo"
+        ],
+        "filters": {
+          "product_names": [
+            "ZENOVAX"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": {
+          "kind": "named",
+          "named": "r6m_prior",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": null,
+      "answer": null,
+      "alternative": null,
+      "message": "That combination cannot be answered as asked. A mo-by-mo breakdown cannot also be a two-window comparison: each side would be labelled with a different mo, so nothing lines up. Ask for the trend (\"volume by mo\") to see the series, or drop the mo breakdown to see one growth figure for the window.",
+      "latency_ms": 24,
+      "timings": {
+        "plan_ms": 0,
+        "total_ms": 20
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-08",
+      "family": "geography",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Show me Zenovax volume by territory",
+      "status": "answered",
+      "passed": true,
+      "reason": "15 group(s) match",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "territory"
+        ],
+        "filters": {
+          "product_names": [
+            "ZENOVAX"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT z.territory_name AS dim0_id, z.territory_name AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nJOIN products p ON p.ndc = s.ndc\nLEFT JOIN zip_territory z ON z.zip = o.zip\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND upper(p.drug_name) = ANY(%s)\nGROUP BY z.territory_name, z.territory_name\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Paid pack units by sales territory, 15 row(s).",
+        "columns": [
+          "sales territory",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": "California North",
+            "dim0_id": "California North",
+            "value": 6397.0,
+            "value_formatted": "6,397 packs"
+          },
+          {
+            "dim0": "Great Lakes East",
+            "dim0_id": "Great Lakes East",
+            "value": 5045.0,
+            "value_formatted": "5,045 packs"
+          },
+          {
+            "dim0": "Southeast Gulf",
+            "dim0_id": "Southeast Gulf",
+            "value": 5004.0,
+            "value_formatted": "5,004 packs"
+          },
+          {
+            "dim0": "Upper Midwest",
+            "dim0_id": "Upper Midwest",
+            "value": 4649.0,
+            "value_formatted": "4,649 packs"
+          },
+          {
+            "dim0": "Pacific Northwest",
+            "dim0_id": "Pacific Northwest",
+            "value": 4583.0,
+            "value_formatted": "4,583 packs"
+          },
+          {
+            "dim0": "Great Lakes West",
+            "dim0_id": "Great Lakes West",
+            "value": 4542.0,
+            "value_formatted": "4,542 packs"
+          },
+          {
+            "dim0": "New York Metro",
+            "dim0_id": "New York Metro",
+            "value": 4517.0,
+            "value_formatted": "4,517 packs"
+          },
+          {
+            "dim0": "South Central",
+            "dim0_id": "South Central",
+            "value": 4436.0,
+            "value_formatted": "4,436 packs"
+          },
+          {
+            "dim0": "New England",
+            "dim0_id": "New England",
+            "value": 4421.0,
+            "value_formatted": "4,421 packs"
+          },
+          {
+            "dim0": "Texas",
+            "dim0_id": "Texas",
+            "value": 4391.0,
+            "value_formatted": "4,391 packs"
+          },
+          {
+            "dim0": "Mid-Atlantic East",
+            "dim0_id": "Mid-Atlantic East",
+            "value": 4293.0,
+            "value_formatted": "4,293 packs"
+          },
+          {
+            "dim0": "Southeast Atlantic",
+            "dim0_id": "Southeast Atlantic",
+            "value": 4163.0,
+            "value_formatted": "4,163 packs"
+          },
+          {
+            "dim0": "Mid-Atlantic West",
+            "dim0_id": "Mid-Atlantic West",
+            "value": 3962.0,
+            "value_formatted": "3,962 packs"
+          },
+          {
+            "dim0": "Mountain",
+            "dim0_id": "Mountain",
+            "value": 3894.0,
+            "value_formatted": "3,894 packs"
+          },
+          {
+            "dim0": "California South",
+            "dim0_id": "California South",
+            "value": 3272.0,
+            "value_formatted": "3,272 packs"
+          }
+        ],
+        "row_count": 15,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units by sales territory, 15 row(s).",
+      "latency_ms": 71,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 41,
+        "total_ms": 63
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-09",
+      "family": "market_share",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Compare our market share across all market categories",
+      "status": "answered",
+      "passed": true,
+      "reason": "brand_market_share, 1 row(s)",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "brand_market_share",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "WITH num AS (\nSELECT SUM(s.pack_units * p.unit_conversion_factor) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\n), den AS (\nSELECT SUM(s.pack_units * p.unit_conversion_factor) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.mo_offset = ANY(%s) AND p.market_subcategory IN (SELECT DISTINCT market_subcategory FROM products WHERE brand_flag = 1)\n)\nSELECT n.value AS numerator, d.value AS denominator,\n       n.value / NULLIF(d.value, 0) AS value\nFROM num n CROSS JOIN den d\n",
+      "answer": {
+        "headline": "Market share is 146.00% (328,723.10 equivalents against a reported market of 225,147.08 equivalents).",
+        "columns": [
+          "market share"
+        ],
+        "rows": [
+          {
+            "numerator": 328723.1010000123,
+            "denominator": 225147.07800000097,
+            "value": 1.4600371629073992,
+            "value_formatted": "146.00%"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": [
+          "Market share here divides our distributor volume by the reported market total. In this dataset the market source contains only competitor products, so the denominator understates the true total market. Treat these percentages as indicative of relative position, not as a reliable share.",
+          "This value exceeds 100%, which is not a real market share. It means the reported market volume is smaller than our own shipments, so the sources are inconsistent rather than the share being genuine."
+        ]
+      },
+      "alternative": null,
+      "message": "Market share is 146.00% (328,723.10 equivalents against a reported market of 225,147.08 equivalents).",
+      "latency_ms": 60,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 33,
+        "total_ms": 56
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-10",
+      "family": "security",
+      "principal": {
+        "role": "director",
+        "scope": "Northeast",
+        "wac_authorized": false
+      },
+      "question": "Compare account counts across all territories",
+      "status": "answered",
+      "passed": true,
+      "reason": "note addresses 'region'",
+      "category": "unsupported",
+      "plan_matched": null,
+      "plan": {
+        "metric": "account_count",
+        "dimensions": [
+          "territory"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT z.territory_name AS dim0_id, z.territory_name AS dim0_label, count(DISTINCT COALESCE(o.grandparent_org_id, o.org_id)) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nLEFT JOIN zip_territory z ON z.zip = o.zip\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\nGROUP BY z.territory_name, z.territory_name\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Number of accounts by sales territory, 2 row(s).",
+        "columns": [
+          "sales territory",
+          "number of accounts"
+        ],
+        "rows": [
+          {
+            "dim0": "New England",
+            "dim0_id": "New England",
+            "value": 499,
+            "value_formatted": "499 accounts"
+          },
+          {
+            "dim0": "New York Metro",
+            "dim0_id": "New York Metro",
+            "value": 473,
+            "value_formatted": "473 accounts"
+          }
+        ],
+        "row_count": 2,
+        "truncated": false,
+        "scope_note": "Showing data for the Northeast region only.",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Number of accounts by sales territory, 2 row(s).",
+      "latency_ms": 104,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 53,
+        "total_ms": 99
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-11",
+      "family": "security",
+      "principal": {
+        "role": "ram",
+        "scope": "New York Metro",
+        "wac_authorized": false
+      },
+      "question": "Rank all our branded products by total pack units this year",
+      "status": "answered",
+      "passed": true,
+      "reason": "no pricing reached the response",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\n\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\n",
+      "answer": {
+        "headline": "Paid pack units: 35,689 packs.",
+        "columns": [
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "value": 35689.0,
+            "value_formatted": "35,689 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing data for the New York Metro territory only.",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units: 35,689 packs.",
+      "latency_ms": 66,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 21,
+        "total_ms": 61
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    },
+    {
+      "id": "k-12",
+      "family": "hierarchy",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How many active facilities does each health system have?",
+      "status": "answered",
+      "passed": true,
+      "reason": "plan matches and the request succeeded",
+      "category": "answer",
+      "plan_matched": true,
+      "plan": {
+        "metric": "facility_count",
+        "dimensions": [
+          "account"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": true,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT COALESCE(o.grandparent_org_id, o.org_id) AS dim0_id, COALESCE(o.grandparent_org_name, o.org_name) AS dim0_label, count(DISTINCT o.org_id) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND o.org_status = %s\nGROUP BY COALESCE(o.grandparent_org_id, o.org_id), COALESCE(o.grandparent_org_name, o.org_name)\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Number of facilities by top-level account (grandparent, or the facility if standalone), 5000 row(s).",
+        "columns": [
+          "top-level account (grandparent, or the facility if standalone)",
+          "number of facilities"
+        ],
+        "rows": [
+          {
+            "dim0": "Valley Medical Center",
+            "dim0_id": "GP0316",
+            "value": 101,
+            "value_formatted": "101 facilities"
+          },
+          {
+            "dim0": "Juniper Medical Alliance",
+            "dim0_id": "GP0415",
+            "value": 94,
+            "value_formatted": "94 facilities"
+          },
+          {
+            "dim0": "Silverton Health Services",
+            "dim0_id": "GP0209",
+            "value": 93,
+            "value_formatted": "93 facilities"
+          },
+          {
+            "dim0": "Harbor Health Services",
+            "dim0_id": "GP0460",
+            "value": 92,
+            "value_formatted": "92 facilities"
+          },
+          {
+            "dim0": "Summit Care Network",
+            "dim0_id": "GP0255",
+            "value": 87,
+            "value_formatted": "87 facilities"
+          },
+          {
+            "dim0": "Aspen Health Partners",
+            "dim0_id": "GP0106",
+            "value": 86,
+            "value_formatted": "86 facilities"
+          },
+          {
+            "dim0": "Daybreak Health Partners",
+            "dim0_id": "GP0433",
+            "value": 85,
+            "value_formatted": "85 facilities"
+          },
+          {
+            "dim0": "Meridian Care Network",
+            "dim0_id": "GP0263",
+            "value": 84,
+            "value_formatted": "84 facilities"
+          },
+          {
+            "dim0": "Olympic Health System",
+            "dim0_id": "GP0167",
+            "value": 84,
+            "value_formatted": "84 facilities"
+          },
+          {
+            "dim0": "Silverton Medical Group",
+            "dim0_id": "GP0315",
+            "value": 83,
+            "value_formatted": "83 facilities"
+          },
+          {
+            "dim0": "Westfield Health Network",
+            "dim0_id": "GP0351",
+            "value": 83,
+            "value_formatted": "83 facilities"
+          },
+          {
+            "dim0": "Heritage Health Services",
+            "dim0_id": "GP0187",
+            "value": 81,
+            "value_formatted": "81 facilities"
+          },
+          {
+            "dim0": "Imperial Health System",
+            "dim0_id": "GP0267",
+            "value": 81,
+            "value_formatted": "81 facilities"
+          },
+          {
+            "dim0": "Great Lakes Health System",
+            "dim0_id": "GP0002",
+            "value": 81,
+            "value_formatted": "81 facilities"
+          },
+          {
+            "dim0": "Alliance Health Alliance",
+            "dim0_id": "GP0173",
+            "value": 80,
+            "value_formatted": "80 facilities"
+          },
+          {
+            "dim0": "Ivywood Medical Alliance",
+            "dim0_id": "GP0449",
+            "value": 79,
+            "value_formatted": "79 facilities"
+          },
+          {
+            "dim0": "Valor Health System",
+            "dim0_id": "GP0065",
+            "value": 77,
+            "value_formatted": "77 facilities"
+          },
+          {
+            "dim0": "Dominion Care Network",
+            "dim0_id": "GP0192",
+            "value": 76,
+            "value_formatted": "76 facilities"
+          },
+          {
+            "dim0": "Vista Health Alliance",
+            "dim0_id": "GP0232",
+            "value": 76,
+            "value_formatted": "76 facilities"
+          },
+          {
+            "dim0": "Northwest Health Network",
+            "dim0_id": "GP0478",
+            "value": 76,
+            "value_formatted": "76 facilities"
+          }
+        ],
+        "row_count": 5001,
+        "truncated": true,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Number of facilities by top-level account (grandparent, or the facility if standalone), 5000 row(s).",
+      "latency_ms": 179,
+      "timings": {
+        "plan_ms": 0,
+        "db_ms": 117,
+        "total_ms": 145
+      },
+      "input_tokens": null,
+      "output_tokens": null,
+      "usage_known": false,
+      "provider": "offline",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "known": false
+          },
+          "error": null,
+          "called": false,
+          "reserved": null,
+          "charged": null,
+          "usage_state": "no_call"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 0,
+      "planner_repaired": false
+    }
+  ]
+}

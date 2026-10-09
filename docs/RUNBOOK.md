@@ -70,6 +70,15 @@ environment or `.env`. No secret is ever committed.
 | `PAC_MAX_RESULT_ROWS` | `5000` | result cap; the query fetches cap+1 to detect truncation |
 | `PAC_SESSION_TTL_HOURS` | `12` | |
 | `PAC_COOKIE_SECURE` | `true` | set `false` only for local HTTP |
+| `PAC_BUSINESS_TIMEZONE` | `America/New_York` | the day an ingested sale belongs to ([INGESTION.md](INGESTION.md)) |
+| `PAC_INGEST_MAX_QUARANTINE_RATIO` | `0.05` | above this share of invalid events a batch is rejected |
+| `PAC_AUDIT_MODE` | `best_effort` | `strict` commits each answer's audit row with the turn and withholds (503 `audit_unavailable`) an answer or replay that cannot be recorded; see [AUDIT_DECISION.md](AUDIT_DECISION.md) |
+| `PAC_OTEL_ENDPOINT` | unset | OTLP/HTTP collector; unset exports nothing ([OBSERVABILITY.md](OBSERVABILITY.md)) |
+| `PAC_RELEASE` | `dev` | release identifier reported with telemetry |
+| `PAC_LOG_FORMAT` / `PAC_LOG_LEVEL` | `json` / `INFO` | one sanitised JSON line per record ([OBSERVABILITY.md](OBSERVABILITY.md#logs)); `text` only for local work |
+| `PAC_ADMISSION_MAX_INFLIGHT_REQUESTS` | `24` | questions in flight per worker; beyond it, 503 `overloaded` at once |
+| `PAC_ADMISSION_QUERY_SLOTS` / `_QUEUE` / `_WAIT_SECONDS` | `4` / `16` / `10` | analytical queries running / waiting per worker, and the longest wait ([CAPACITY.md](CAPACITY.md#admission-control)) |
+| `PAC_CONVERSATION_RETENTION_DAYS`, `PAC_AUDIT_RETENTION_DAYS`, … | 180, 400, … | retention periods, applied by `scripts/prune_state.py` ([RETENTION.md](RETENTION.md)) |
 
 ### Enabling the live planner
 
@@ -91,6 +100,151 @@ Model IDs must be inference profiles (the `us.` or `global.` prefix) for the
 dated releases; bare IDs return
 `Invocation ... with on-demand throughput isn't supported`.
 
+### Model allowance
+
+A live model is called by every user, every uvicorn worker and every replica, so
+the website has one shared allowance, enforced before each model call
+(`app/llm/allowance.py`):
+
+```bash
+export PAC_LLM_SPEND_LIMIT_USD=3            # the website's share of the model budget
+export PAC_LLM_INPUT_USD_PER_MTOK=5.5       # contracted rates that price each call
+export PAC_LLM_OUTPUT_USD_PER_MTOK=27.5
+```
+
+Each call -- the repair attempt included -- first reserves the most its request
+can bill (its input bound and its `max_tokens`, at those rates) against one row,
+`app_meta.model_allowance`, in a single atomic update; the reservation is then
+replaced by the cost of the token usage the provider reported, at the configured
+prices, or stays at the reservation when usage is not reported. That is the
+application's own calculation, not the AWS invoice. When the allowance cannot
+cover the next call, no call is made and the user is told the model's spend limit
+is exhausted. A call whose reported usage exceeds its bound stops every further
+call until an operator looks. Prices must be finite and above zero (a zero price
+would make every call free to the allowance), and the limit finite and zero or
+more (zero refuses every call): anything else is refused when the settings are
+read. In the cloud environment the application refuses to start with
+`PAC_LLM_PROVIDER=bedrock` unless the limit and both prices are set; a limit
+without prices refuses every call.
+
+The evaluation runner's token caps are separate and apply only to its own
+calls: a model budget covering both is split, for example $5 = $3 for the
+website + an evaluation capped at $2.
+
+Read the total (as the owner, or the auth role):
+
+```sql
+SELECT committed_microusd / 1e6 AS committed_usd, calls, refused,
+       bound_violations, unreported_calls, updated_at
+FROM app_meta.model_allowance WHERE allowance_id = 'serving';
+```
+
+Start a new allowance, or clear a bound violation after investigating it, as the
+owner and deliberately. That is procedure, not a database boundary: the serving
+processes update these counters through the auth role, which may update every
+column of the row, so the allowance is an application-level control that trusts
+the serving process. A compromised serving process could reset it -- and it also
+holds the Bedrock permission itself, so no database rule would stop it spending.
+The backstops against that are the task role's scope (one model profile), the
+AWS budget alert on Bedrock, and removing the permission (`enable_bedrock =
+false`, or `llm_provider = "offline"`).
+
+```sql
+UPDATE app_meta.model_allowance
+SET committed_microusd = 0, calls = 0, refused = 0, bound_violations = 0,
+    unreported_calls = 0, updated_at = now()
+WHERE allowance_id = 'serving';
+```
+
+The allowance bounds what the application asks for, as it calculates it from
+reported usage and configured prices; the provider's bill is the truth. Keep an AWS budget on Bedrock as well
+(`model_budget_usd` in infra/aws-staging): it alerts, it does not stop calls.
+
+### Reviewers' accounts
+
+There is no sign-up. When the sign-in page is reachable by everyone
+(`public_sign_in` in infra/aws-staging), the accounts the owner approves are the
+only way in. Each reviewer gets an account of their own (`rev-` and a hash of
+the address) with the scope of an existing user the owner names, so row-level
+security shows them exactly what that user may see:
+
+```sh
+# reviewers.csv, kept outside the repository: email,name,like[,disabled]
+infra/aws-staging/seed-secrets.sh --reviewers reviewers.csv
+# then the one-shot task `reviewers` (scripts/provision_reviewers.py)
+```
+
+Run both again after editing the CSV. A reviewer already listed keeps their
+password and sessions; a new one gets a random password; one marked disabled,
+or dropped from the CSV, is disabled and signed out at once. Hand each password
+over privately, from the `reviewers` secret. Neither step prints a password;
+both print counts.
+
+### Enabling single sign-on
+
+Off by default. Password sign-in is unaffected either way.
+
+Emergency SSO disable: set `PAC_OIDC_ENABLED=false` on every serving replica,
+roll the unchanged reviewed image/configuration, and verify `/api/auth/methods`
+no longer offers SSO and the OIDC start/callback endpoints refuse it. Keep a
+separately verified password administrator available before this change. Disabling
+new SSO does not revoke already issued sessions: revoke affected users' sessions
+through the existing administrator procedure when responding to an identity
+incident. Do not roll back to a pre-browser-binding image: it reintroduces the
+login-CSRF defect. Preserve migrations 020–022 and checkpoint tables; verify any
+rollback candidate against the migrated schema and restrictive checkpoint loader
+before routing traffic. No older image is approved by this document alone.
+
+
+| Variable | Purpose |
+|---|---|
+| `PAC_OIDC_ENABLED` | `true` to offer SSO |
+| `PAC_OIDC_ISSUER` | the issuer exactly as the provider publishes it |
+| `PAC_OIDC_CLIENT_ID` / `PAC_OIDC_CLIENT_SECRET` | the registered client; a secret only for a confidential client |
+| `PAC_OIDC_REDIRECT_URI` | `https://<host>/api/auth/oidc/callback`, registered with the provider |
+| `PAC_OIDC_ALGORITHMS` | `RS256,ES256`; never `none` or HMAC |
+| `PAC_OIDC_LINK_BY_VERIFIED_EMAIL` | `false`; see `app/auth/oidc.py` before enabling |
+
+Accounts are linked by `(issuer, subject)` in `app_auth.identities`. An
+administrator creates the link.
+
+**Browser binding.** `GET /api/auth/oidc/start` sets an HttpOnly cookie,
+`__Host-pac_oidc` (Secure, `Path=/`, `SameSite=Lax`, 10 minutes). The
+callback is refused with `browser_mismatch` unless it arrives with that
+cookie, and the check happens before the code is exchanged. This is what
+stops a callback obtained in one browser from signing in another (login
+CSRF). Consequences for operators:
+
+- The application must be served over HTTPS with `PAC_COOKIE_SECURE=true`.
+  Without Secure the browser rejects a `__Host-` cookie.
+- The provider must return to the callback with a top-level `GET`, the
+  default `response_mode=query`. `form_post` is a cross-site POST, which
+  does not carry a `SameSite=Lax` cookie, so it is not supported.
+- Sign-ins started in two tabs of one browser can both finish. Starting in
+  one browser and finishing in another cannot.
+
+**Verifying with a real provider (staging).** The tests use an in-process
+provider (`tests/security/fake_idp.py`) that checks PKCE, nonce, signatures
+and single-use codes. They do not establish interoperability with a
+specific provider or its MFA policy. With a registered client on staging,
+check and record each of these:
+
+1. A linked user completes sign-in and `GET /api/me` shows the right role
+   and scope.
+2. The start response sets `__Host-pac_oidc` with `Secure; HttpOnly;
+   SameSite=Lax; Path=/` (browser developer tools).
+3. Copy the callback URL from browser A, before it loads, into a private
+   window B. B receives `400 browser_mismatch` and is not signed in. A can
+   still finish.
+4. Cancel at the provider. The callback answers `400 provider_declined`,
+   and going back to the same attempt answers `invalid_state`.
+5. Wait more than 10 minutes on the provider's page, then finish. The
+   callback answers `invalid_state`.
+6. Disable the account, then sign in again. The callback answers
+   `403 disabled`.
+7. The provider's signing-key rotation (where it can be triggered) is
+   picked up without a restart.
+
 ---
 
 ## 4. Daily operation
@@ -110,8 +264,8 @@ python3 scripts/load_data.py --mode seed
 python3 scripts/build_fixture_db.py
 
 # Tests
-python3 -m pytest tests -q               # 148
-python3 -m pytest tests/security -q --release-gate --min-tests 115
+python3 -m pytest tests -q               # counts: docs/TEST_INVENTORY.md
+python3 -m pytest tests/security -q --release-gate --min-tests 450
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,
@@ -140,6 +294,8 @@ enabled on `organizations` and `sales`, that the scoped role cannot read
 | Symptom | Cause | Fix |
 |---|---|---|
 | `no published dataset` | data never loaded, or the load failed | `scripts/load_data.py --mode full`; check `app_meta.dataset_manifest` for a `failed` row |
+| `/ready` says `database unavailable`, API returns `503 database_unavailable` | PostgreSQL unreachable, credentials wrong, or the pool exhausted | the server log names the error class; `pac.db.pool.timeouts` and `pac.db.errors{kind="unavailable"}` separate exhaustion from outage ([OBSERVABILITY.md](OBSERVABILITY.md)) |
+| `could not resize shared memory segment ... No space left on device` during a load or a large query | PostgreSQL runs in a container with Docker's default 64 MB of `/dev/shm`; parallel VACUUM and parallel queries need more | give the container more shared memory: `shm_size: 512mb` (as `compose.yaml` does) or `--shm-size=512m` |
 | `permission denied to create role` | running migrations as `pac_owner`, which deliberately has no `CREATEROLE` | run `scripts/bootstrap_db.py`; roles are created in its admin phase |
 | `privilege roles missing` | migration 004 ran before bootstrap | run `scripts/bootstrap_db.py` first |
 | A scoped user sees nothing | usually correct — their territory may match no ZIP | check `app_meta.dataset_manifest` warnings for `user_assignment_unmatched`; under seed data 10 of 23 users legitimately resolve to zero rows |
@@ -169,23 +325,247 @@ Relative periods are anchored to the manifest's reporting anchor, never the
 server clock, so a refresh moves the windows and the same question legitimately
 returns a new number.
 
+### Incremental batches
+
+New, corrected and deleted sales can be applied without a full reload, run
+from the jobs container:
+
+```bash
+python3 scripts/ingest.py batch-0001.json      # exit 1 if a batch was rejected
+```
+
+Each batch is reconciled against its declared totals, validated (invalid
+events quarantined with a reason), applied by event identity and version,
+and published as a new generation in one transaction. A replay changes
+nothing. A batch that adds a new week rewrites every fact's week offset;
+on the full dataset that took 124 s idle and about 7 minutes under load
+(320 s under load on the 7 October candidate), and readers kept answering
+throughout ([CAPACITY.md](CAPACITY.md)). It leaves the facts table and its
+indexes at twice their size; compact them in the same out-of-hours window
+(`VACUUM (FULL, ANALYZE) sales`, 33 s on the full dataset here, blocking
+readers; [INGESTION.md](INGESTION.md#measured-limits)). The contract, the outcomes table, recovery and the
+measurements are in [INGESTION.md](INGESTION.md).
+
+A full or seed load clears the ingestion ledger, so retained batches can be
+replayed onto the new base.
+
+Schedule a freshness check next to the feed, independent of it. For a
+daily feed:
+
+```bash
+python3 scripts/ingest.py --check-freshness --max-since-success 26h --source <feed>
+```
+
+Exit 3 means a missed run (`missed_run`), data that stopped moving
+(`stale_data`), a feed that never delivered (`never_delivered`) or batches
+rejected since the last accepted one (`batches_rejected`). The job
+also exports its batches and freshness when `PAC_OTEL_ENDPOINT` is set in
+the jobs container ([OBSERVABILITY.md](OBSERVABILITY.md#freshness)).
+
 ---
 
 ## 8. Backup and restore
 
 ```bash
-pg_dump -Fc pharma_analytics > pac-$(date +%F).dump
-pg_restore -d pharma_analytics --clean --if-exists pac-2026-09-23.dump
+# Backup: one consistent snapshot; readers and writers are not blocked.
+pg_dump -Fc -f pac-$(date +%F).dump pharma_analytics
+
+# Restore into a NEW database, check it, then point the app at it.
+createdb -O pac_owner pharma_analytics_restored
+pg_restore -d pharma_analytics_restored -j 4 pac-2026-10-01.dump
+PAC_DB_NAME=pharma_analytics_restored python3 -c \
+  "from app.db import verify_runtime_role_safety as v; print(v() or 'boundary intact')"
 ```
 
-Roles live outside the database, so re-run `scripts/bootstrap_db.py` (without
-`--drop`) after restoring into a fresh cluster, then re-provision logins. The
-business data can always be rebuilt from the generator with `SEED = 42`, so the
-dump matters mainly for `app_auth`, `app_conv` and `app_meta`.
+**Drill.** `scripts/restore_drill.py` does all of this against a disposable
+target and checks the result. Row counts, the published generation,
+row-level-security policies and grants must match the source. The runtime
+boundary check must pass, the restored database must report ready, and the
+same questions, asked as a RAM and as an Exec, must get the same answers.
+Measured on 2026-10-01 from a full-size copy (2,002,000 sales) on the
+development machine (`evidence/runs/r2-restore-drill.json`):
+
+| Step | Time |
+|---|---:|
+| `pg_dump -Fc` (45.5 MB) | 4.5 s |
+| `pg_restore -j 4` | 18.5 s |
+| Restore to ready, every check passed | **22.4 s** |
+
+This proves the **procedure**, not a recovery objective. The 22.4 s is a
+restore within one cluster on a developer machine, from a dump already on
+local disk. It does not demonstrate:
+
+- point-in-time recovery;
+- recovery after losing the host or its disk;
+- fetching a backup from off-host storage;
+- re-provisioning roles in a new cluster (measured since: `--new-cluster`, below);
+- repointing a deployment.
+
+A production RTO is the sum of those steps, measured in the target
+environment.
+**RPO** is the interval between backups: a nightly `pg_dump` loses up to a
+day. Anything tighter needs WAL archiving with point-in-time recovery, or a
+managed database that provides it. Neither is configured here, and no RPO
+has been agreed.
+
+Restoring into a **new cluster** (the host or its disk is lost): roles are
+cluster-wide and are not in a database dump, so create them first, and
+nothing else, then let `pg_restore --create` bring the database exactly as
+it was dumped:
+
+```bash
+# The serving passwords from the secret store: PAC_DB_OWNER_PASSWORD,
+# PAC_DB_AUTH_PASSWORD, PAC_DB_EXEC_PASSWORD, PAC_DB_SCOPED_PASSWORD.
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn postgresql://<superuser>@<new-host>/postgres
+pg_restore --create -d postgres -j 4 pac-2026-10-01.dump      # as the superuser
+```
+
+Do **not** run `bootstrap_db.py` without `--roles-only` first, as this
+section said until 7 October 2026: it creates the database with every
+migration applied, and `pg_restore` into it then fails on every object that
+already exists (142 errors) and, with the foreign keys already in place,
+loads no conversation, turn, run, attempt or clarification at all, while the
+database still reports ready and answers questions
+(`r5-restore-new-cluster-reproduced.json`). `restore_drill.py --new-cluster`
+runs the procedure above against a new cluster and checks it. Measured on
+7 October 2026 (`r5-restore-new-cluster-fixed.json`) with a full-size copy
+(2,000,000 sales) carrying application state:
+
+| Step | Time |
+|---|---:|
+| `pg_dump -Fc` (39.8 MB) | 3.2 s |
+| New cluster (`initdb`, start) | 0.5 s |
+| Roles (`--roles-only`) | 0.1 s |
+| `pg_restore --create -j 4` | 11.6 s |
+| Restore to ready, every check passed | **17.0 s** |
+
+Every check: row counts, generation, policies and RLS flags, every table and
+column ACL, role memberships, CONNECT for the three logins, the runtime
+boundary, readiness, the same answers as a RAM and an Exec, a stored answer
+replayed under its idempotency key and a paused clarification resumed. The
+data restored runs exactly to the dump: its newest audit row, turn and run
+equal the source's when the dump began. Same host, local disk: not a
+production RTO.
+
+**A managed PostgreSQL (Amazon RDS) has no superuser.** Its administrator has
+`CREATEROLE` and `CREATEDB` only. `bootstrap_db.py` handles that: when the
+administrator is not a superuser it grants itself `SET` (not `INHERIT`) on
+`pac_owner`, which PostgreSQL 16 requires to create a database owned by it; no
+serving role changes. A non-superuser cannot `pg_restore --create` (the new
+database belongs to `pac_owner`, so the administrator could not create its
+schemas), so restore as the owner:
+
+```bash
+# Provisioning, as the RDS administrator (from a task inside the VPC):
+python3 scripts/bootstrap_db.py --no-env --admin-dsn "host=<rds> dbname=postgres user=<admin> sslmode=verify-full sslrootcert=<rds-ca.pem>"
+
+# Backup (RDS snapshots and point-in-time recovery are the primary mechanism;
+# this is the logical copy): as the owner, who reads its own tables in full.
+pg_dump -Fc -f pac.dump --role=pac_owner -h <rds> -U <admin> pharma_analytics
+
+# Restore into a new instance:
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn "<new instance, admin>"
+createdb -h <new> -U <admin> -O pac_owner pharma_analytics
+pg_restore -h <new> -U <admin> --role=pac_owner -d pharma_analytics -j 4 pac.dump
+python3 scripts/bootstrap_db.py --roles-only --admin-dsn "<new instance, admin>"   # CONNECT for the logins
+```
+
+Verified by emulation, not on RDS: `evidence/probes/restricted_admin_provisioning.py`
+runs every step above as a role with exactly `CREATEROLE` and `CREATEDB` in
+clusters of its own, then the security boundary and an answer after
+provisioning and after the restore (`r5-rds-admin-fixed.json`; before the fix,
+bootstrap stopped at `CREATE DATABASE`: `r5-rds-admin-reproduced.json`). A
+snapshot or point-in-time restore on RDS itself is measured only in staging.
+
+The dump matters most for `app_auth`, `app_conv`, `app_meta` and
+`app_ingest`. The business data can be regenerated (`SEED = 42`), but
+incremental batches are not stored server-side. A source must keep its
+batches so they can be replayed after a restore ([INGESTION.md](INGESTION.md)).
+Restored backups still hold data users have since deleted until the backups
+themselves expire ([RETENTION.md](RETENTION.md)).
 
 ---
 
-## 9. What to check before calling a deployment good
+## 9. Connections, replicas and shutdown
+
+**Connection budget.** Each worker process opens these pools:
+
+| Pool | Role | Max |
+|---|---|---:|
+| exec | `pac_exec_login` | 8 |
+| scoped | `pac_scoped_login` | 8 |
+| auth | `pac_auth_login` | 4 |
+| graph (checkpoints) | `pac_auth_login` | 4 |
+| freshness (opened only when a collector is configured; `app/db.py` `freshness_pool`) | `pac_auth_login` | 1 |
+| **per worker** | | **25** |
+
+The image runs 2 workers, so one replica uses up to **50**. The jobs
+container (owner pool, max 4) runs alongside on demand. PostgreSQL's default
+`max_connections` is 100, which is therefore **one replica plus jobs**.
+Before adding replicas, either raise `max_connections` or put PgBouncer in
+transaction mode in front. Budget at least
+`replicas × workers × 25 + 4 + superuser_reserved_connections`. The scoped
+and exec pools are where requests queue under load (see
+[CAPACITY.md](CAPACITY.md)). Their size is the backpressure point. In the
+load profile, all 16 scoped connections were active from 16 clients
+upward, and that is where expensive questions began to hit the statement
+timeout. Raising the pool size moves the queue into the database rather
+than removing it; measure before changing it.
+
+**Concurrency budget.** Two kinds of limit, counted in different places:
+
+| Limit | Counted | Default | Across a deployment |
+|---|---|---|---|
+| Questions in flight | per worker process, in memory (`app/admission.py`) | 24 | × workers × replicas |
+| Analytical queries running / waiting | per worker process, in memory | 4 / 16 | × workers × replicas |
+| Requests per user per minute / hour | in PostgreSQL (`app_conv.run_attempts`) | 20 / 300 | one allowance per user, whatever the process count |
+| Concurrent requests per user | in PostgreSQL (live run leases) | 2 | one allowance per user |
+| Live requests per conversation | in PostgreSQL (run lease) | 1 | one per conversation |
+
+So one replica of the image (2 workers) runs at most 8 analytical queries
+at once on its 16 scoped and 16 exec connections, and admits 48 questions;
+a second replica doubles both, and the connections above. The per-user
+limits do not grow with replicas. The drill (`scripts/ops_drill.py`) shows
+both kinds on separate processes sharing one database: the user limits hold
+across processes, and a process with one query slot refuses its own
+overflow at once.
+
+**What is safe across replicas.** Every piece of shared state lives in
+PostgreSQL:
+
+- **Quotas:** counted in `app_conv.run_attempts`, under a per-user advisory
+  lock; deleting a conversation refunds nothing.
+- **One live request per conversation:** a run lease.
+- **One outcome per idempotency key:** a unique index.
+- **Sessions, clarifications and checkpoints.**
+- **Ingestion and loads:** one advisory publication lock.
+
+The in-process caches (vocabularies, entity indexes) are keyed by dataset
+id and scope, so a replica never serves another generation's names.
+Verified locally on separate processes of one host sharing one database
+(the drill); not verified: replicas on separate hosts or containers.
+
+**Shutdown.** On SIGTERM uvicorn lets in-flight requests finish for up to
+65 s, longer than the 60 s request deadline. Compose's `stop_grace_period`
+is 75 s. The app then flushes telemetry within its export timeout and
+closes its pools.
+
+`scripts/drain_check.py` measured this. With four slow answers in flight at
+the signal, all four were answered and the process exited 4 s later
+(`evidence/runs/r2-drain.json`).
+
+It also stops accepting new connections, but not at the instant of the
+signal. A request made 0.3 s after it was served in some runs and not in
+others. So take a replica out of the load balancer (or let readiness fail)
+before stopping it, rather than relying on the signal to turn traffic away.
+
+A request still running after the 65 s window loses its lease. Its
+idempotency key can be retried, and the retry resumes from the last
+checkpoint.
+
+---
+
+## 10. What to check before calling a deployment good
 
 - `/ready` returns a dataset id.
 - `verify_runtime_role_safety()` returns no problems.

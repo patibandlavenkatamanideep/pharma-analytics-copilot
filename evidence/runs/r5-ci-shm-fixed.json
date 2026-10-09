@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T16:23:13+00:00",
+  "claim": "The same full load into postgres:16-alpine with --shm-size 512m completes, the post-publication VACUUM included",
+  "application": {
+    "sha": "9519f281ae2f47957b4127ac25bad5333f956a02",
+    "tree": "8517979a1540131ec3dff6212896b3bec2246015",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "/Users/manideep/src/pac-work/shm_load.sh",
+      "pac-shm-512m",
+      "512m"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 89.77
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "     267 organization names are shared by more than one org_id; all grouping uses stable ids and names are labels only"
+  },
+  "artifacts": [],
+  "limits": [
+    "podman on an arm64 Mac (postgres:16-alpine arm64), not GitHub's runner"
+  ]
+}

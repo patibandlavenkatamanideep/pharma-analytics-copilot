@@ -23,25 +23,74 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+
+import psycopg
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.analytics.compiler import Compiler, CompileError
+from app import admission, logs, telemetry
+from app.analytics.compiler import (
+    CohortBinding, Compiler, CompileError, UnsupportedCombination)
 from app.analytics.entities import vocabulary_for
-from app.analytics.intent import blocking, find_gaps
+from app.analytics.intent import blocking, find_gaps, resolve_mentions
+from app.analytics.mentions import entity_index, normalise
+from app.conversation.continuity import Cohort, summarise_cohort
+from app.conversation.continuity import resolve as resolve_continuity
 from app.analytics.periods import PeriodError
 from app.analytics.registry import get_registry
 from app.analytics.render import Answer, GrainError, render
 from app.analytics.validator import SqlValidationError, validate
 from app.auth.policy import AuthorizationError, Principal, authorize, scope_note
 from app.config import get_settings
-from app.conversation.state import ConversationState, open_conversation, record_turn
-from app.db import ScopeBindingError, analytics_transaction, auth_transaction
-from app.llm.planner import Planner, PlannerError
+from app.conversation import runs
+from app.conversation.clarify import choice_from_reply
+from app.conversation.state import (
+    Finalised, StagedTurn, finalise, open_conversation)
+from app.db import (
+    GenerationChanged, ScopeBindingError, analytics_transaction, auth_transaction)
+from app.llm.planner import (
+    Planner, PlannerBudgetExhausted, PlannerError, PlannerOutOfTime, PlannerUnavailable,
+    typed_plan,
+)
+from app.analytics.plan import AnalyticalPlan
+from app.graph import (
+    GRAPH_VERSION, RECURSION_LIMIT, build_turn_graph, checkpointer,
+    disable_external_tracing)
+from app.graph.serde import CheckpointError
+from app.graph.state import validate_state
+from langgraph.errors import GraphRecursionError
+from langgraph.types import Command, interrupt
 
 log = logging.getLogger(__name__)
 
 POLICY_VERSION = "1.0.0"
+
+
+#: Every field the audit row carries. The pipeline may set only these keys
+#: (or a key in AUDIT_TRANSIENT); tests/security/test_audit_contract.py
+#: checks both that every set key is here and that every name here is a
+#: column, because a missing column fails the whole INSERT -- and the write
+#: is best-effort, so the entire row would vanish without a trace.
+AUDIT_COLUMNS = (
+    "request_id", "user_id", "role", "scope_kind", "scope_value", "wac_authorized",
+    "dataset_id", "metric_version", "policy_version", "plan_hash", "sql_hash",
+    "status", "denial_reason", "row_count", "db_ms", "total_ms", "model_id",
+    "input_tokens", "output_tokens",
+    "reason_codes", "intent_gaps", "turn_kind", "prompt_version",
+    "planner_attempts", "planner_repaired", "usage_known",
+    "run_id", "replay_of", "audit_mode",
+)
+
+#: Keys used while building the row and deliberately not stored.
+AUDIT_TRANSIENT = frozenset({"blocking_gaps"})
+
+
+class AuditUnavailable(Exception):
+    """Strict audit (PAC_AUDIT_MODE=strict): the audit row could not be
+    committed, so the answer is withheld. Nothing was committed for the run,
+    so a retry under the same idempotency key runs it again."""
+
+    retry_after = 5
 
 
 @dataclass
@@ -56,13 +105,108 @@ class PipelineResult:
     sql: str | None = None           # returned only when explicitly requested
     timings: dict[str, int] = field(default_factory=dict)
     request_id: str = ""
+    #: What THIS request's planning cost and which planner produced it.
+    #: Carried on the result rather than read back off the planner instance,
+    #: which under concurrency belonged to whichever call finished last.
+    planning: dict[str, Any] | None = None
+    #: For a clarification between real options -- an account name shared by
+    #: several accounts -- the options, as {id, label, detail}. The user picks
+    #: one instead of guessing at a spelling that would disambiguate.
+    choices: list[dict[str, str]] = field(default_factory=list)
+    #: Whether this turn is part of the conversation now:
+    #:   saved      -- committed, with its run outcome, atomically
+    #:   not_saved  -- nothing to record (a failure before any outcome)
+    #:   failed     -- an outcome existed and could not be recorded
+    #:   conflict   -- the conversation moved on; this was not recorded
+    #: Returned to the client, so the interface never implies a turn was
+    #: saved when it was not.
+    persistence: str = "not_saved"
+    run_id: str = ""
+    #: The response body, built once here so the copy stored for replay is
+    #: exactly what the client received.
+    payload: dict[str, Any] | None = None
+    #: The population the server froze into this answer, if any: (dimension,
+    #: ids). Kept on the result for evaluation and audit; not sent to the
+    #: client, which already has the previous answer's rows.
+    applied_cohort: tuple[str, tuple[str, ...]] | None = None
+
+
+def to_payload(result: PipelineResult, include_sql: bool) -> dict[str, Any]:
+    """The client-facing body. Also what is stored for idempotent replay."""
+    payload: dict[str, Any] = {
+        "status": result.status,
+        "conversation_id": result.conversation_id,
+        "message": result.message,
+        "request_id": result.request_id,
+        "run_id": result.run_id,
+        "persistence": result.persistence,
+    }
+    if result.alternative:
+        payload["alternative"] = result.alternative
+    if result.choices:
+        # Options the caller can already see: they came from the caller's own
+        # scoped index, so listing them discloses nothing new.
+        payload["choices"] = result.choices
+    if include_sql:
+        # The typed plan is returned alongside the SQL, under the same explicit
+        # request. It is strictly less sensitive than the SQL -- it names a
+        # metric key, dimensions and filter values, and by construction cannot
+        # contain a role, a scope, a table or a column -- and it is the thing
+        # actually worth inspecting, because it is what the model produced and
+        # what everything downstream was compiled from.
+        payload["plan"] = result.plan
+    if result.sql:
+        payload["sql"] = result.sql
+    if result.answer:
+        a = result.answer
+        payload["answer"] = {
+            "headline": a.headline,
+            "columns": a.columns,
+            "rows": a.table,
+            "scope_note": a.scope_note,
+            "period_note": a.period_note,
+            "warnings": a.warnings,
+            "notes": a.notes,
+            "row_count": a.row_count,
+            "truncated": a.truncated,
+            "unit": a.unit,
+            "dimensions": a.dimensions,
+            "data_through": a.data_through,
+        }
+    return payload
+
+
+class StaleState(RuntimeError):
+    """A checkpoint written under a graph version this process does not run."""
+
+
+class DeadlineExceeded(RuntimeError):
+    """The request's wall-clock budget ran out between steps."""
 
 
 class Pipeline:
+    #: A metered spend for model calls (PlanningContext.spend): the website's
+    #: allowance (PAC_LLM_SPEND_LIMIT_USD, shared by every worker and replica,
+    #: app/llm/allowance.py) when one is configured; evaluation tooling sets
+    #: its own. Per-user request quotas apply as well.
+    spend: Any = None
+
     def __init__(self, planner: Planner) -> None:
+        from app.llm import allowance
+
         self.planner = planner
         self.settings = get_settings()
+        self.spend = allowance.from_settings(self.settings)
         self.compiler = Compiler(max_rows=self.settings.max_result_rows)
+        self._graph = None
+        disable_external_tracing()
+
+    @property
+    def graph(self):
+        """Built on first use, so constructing a Pipeline needs no database."""
+        if self._graph is None:
+            self._graph = build_turn_graph(checkpointer())
+        return self._graph
 
     # -- dataset manifest ----------------------------------------------------
 
@@ -78,7 +222,9 @@ class Pipeline:
         with auth_transaction() as cur:
             cur.execute(
                 "SELECT dataset_id, load_mode, reporting_anchor, row_counts, warnings, "
-                "       published_at, source_coverage "
+                "       published_at, source_coverage, parent_dataset_id, "
+                "       (SELECT max(last_batch_at) FROM app_ingest.watermarks) "
+                "         AS last_ingest_at "
                 "FROM app_meta.dataset_manifest WHERE load_state = 'published' "
                 "ORDER BY published_at DESC LIMIT 1"
             )
@@ -89,6 +235,12 @@ class Pipeline:
 
     # -- main entry point ----------------------------------------------------
 
+    #: Refusals that are outcomes, not failures, and the status they are
+    #: counted under.
+    _REFUSALS = {"RunBusy": "busy", "IdempotencyConflict": "idempotency_conflict",
+                 "ReplayUnavailable": "access_changed", "QuotaExceeded": "rate_limited",
+                 "Overloaded": "overloaded", "AuditUnavailable": "audit_unavailable"}
+
     def ask(
         self,
         principal: Principal,
@@ -96,25 +248,331 @@ class Pipeline:
         *,
         conversation_id: str | None = None,
         include_sql: bool = False,
+        idempotency_key: str | None = None,
     ) -> PipelineResult:
-        request_id = uuid.uuid4().hex[:16]
+        """Answer one question, inside the request's span."""
         started = time.perf_counter()
-        timings: dict[str, int] = {}
+        status, persistence = "error", "not_saved"
+        refusals = (runs.RunBusy, runs.IdempotencyConflict, runs.ReplayUnavailable,
+                    runs.QuotaExceeded, admission.Overloaded, AuditUnavailable)
+        with telemetry.span("pac.ask", expected=refusals, **{
+                "pac.role": principal.role, "pac.release": self.settings.release,
+                "pac.registry_version": get_registry().version,
+                "pac.policy_version": POLICY_VERSION,
+                "pac.graph_version": GRAPH_VERSION}) as span:
+            try:
+                result = self._ask(principal, question, conversation_id=conversation_id,
+                                   include_sql=include_sql, idempotency_key=idempotency_key)
+                status, persistence = result.status, result.persistence
+                span.set(**{"pac.status": result.status, "pac.persistence": result.persistence,
+                            "pac.request_id": result.request_id, "pac.run_id": result.run_id,
+                            "pac.replayed": bool((result.payload or {}).get("replayed"))})
+                return result
+            except refusals as exc:
+                status = self._REFUSALS[type(exc).__name__]
+                raise
+            finally:
+                telemetry.count("pac.ask.outcomes", status=status, role=principal.role,
+                                persistence=persistence)
+                telemetry.observe("pac.ask.duration",
+                                  (time.perf_counter() - started) * 1000, status=status)
+
+    def _ask(
+        self,
+        principal: Principal,
+        question: str,
+        *,
+        conversation_id: str | None = None,
+        include_sql: bool = False,
+        idempotency_key: str | None = None,
+    ) -> PipelineResult:
+        """Outside the graph: everything that must not be repeated if a node
+        is replayed -- identifying the request, opening the conversation,
+        taking the run's lease. Inside it: everything else."""
         dataset = self.current_dataset()
-        anchor = dataset["reporting_anchor"]
+        telemetry.annotate(**{"pac.dataset_id": dataset["dataset_id"]})
+        request_hash = runs.payload_hash(question, conversation_id, include_sql)
+
+        # A retried request is recognised BEFORE a conversation is opened:
+        # the first turn of a new conversation arrives with no conversation
+        # id, and opening one first would start a second conversation for
+        # the same request. The key is scoped to the user; the conversation
+        # is part of the request hash.
+        if idempotency_key:
+            prior = runs.find(principal, idempotency_key)
+            if prior is not None:
+                if prior["payload_hash"] != request_hash:
+                    raise runs.IdempotencyConflict(
+                        "That request key was already used for a different question.")
+                conversation_id = prior["conversation_id"]
 
         # Continuation is bound to the dataset and the semantic contracts, not
         # only to who is asking: a refresh or a contract bump makes a carried
         # plan incomparable rather than merely old.
-        state = open_conversation(
-            principal, conversation_id,
-            dataset_id=dataset["dataset_id"],
-            metric_version=get_registry().version,
-            policy_version=POLICY_VERSION,
+        with telemetry.span("pac.state_load"):
+            state = open_conversation(
+                principal, conversation_id,
+                dataset_id=dataset["dataset_id"],
+                metric_version=get_registry().version,
+                policy_version=POLICY_VERSION,
+            )
+
+            # One live run per conversation, and one committed outcome per key.
+            # Raises RunBusy / IdempotencyConflict / ReplayUnavailable, which
+            # the API maps to 409 or 403.
+            run = runs.acquire(
+                principal, state.conversation_id,
+                revision=state.revision, request_hash=request_hash,
+                idempotency_key=idempotency_key,
+                lease_seconds=self.settings.run_lease_seconds,
+                retention_seconds=self.settings.idempotency_retention_seconds,
+                limits=(self.settings.user_requests_per_minute,
+                        self.settings.user_requests_per_hour,
+                        self.settings.user_concurrent_runs),
+            )
+        if run.replay is not None:
+            replayed = dict(run.replay)
+            if self.settings.audit_mode == "strict":
+                # Strict: a replay releases the answer again, so it is
+                # recorded before it is returned, or not returned.
+                self._record_replay(principal, run, replayed, dataset)
+            return PipelineResult(
+                status=replayed.get("status", "answered"),
+                conversation_id=replayed.get("conversation_id", state.conversation_id),
+                message=replayed.get("message", ""),
+                request_id=replayed.get("request_id", ""),
+                payload={**replayed, "replayed": True},
+                persistence="saved", run_id=run.run_id,
+            )
+
+        turn = Turn(self, principal, question, include_sql, dataset, state, run)
+        # Log lines from here on name the audit row and the run they belong to.
+        logs.bind(request_id=turn.request_id, run_id=run.run_id)
+        # Graph nodes parent their spans on this, whichever thread runs them.
+        turn.otel_parent = telemetry.current()
+        thread_id = self._fresh_thread(turn)
+        # durability="sync": each step's checkpoint is written before the next
+        # step starts, so a crash loses at most the step in flight. The
+        # default writes in the background and can lose a completed step too.
+        # Measured on a plain answered turn (offline planner, full dataset,
+        # 20 requests): 55.3 ms median, against 52.8 ms with background writes
+        # and 53.2 ms for the linear pipeline before the graph.
+        try:
+            # Loading for resume is part of the leased operation too. A bad
+            # checkpoint must not strand a running lease before invoke starts.
+            thread_id, graph_input = self._entry(turn)
+            turn.thread_id = thread_id
+            config = {"configurable": {"thread_id": thread_id},
+                      "recursion_limit": RECURSION_LIMIT}
+            try:
+                out = self.graph.invoke(graph_input, config, context=turn, durability="sync")
+            except StaleState:
+                # Retain the old checkpoint. An incompatible workflow is an
+                # explicit refusal, never a silent deletion and replan.
+                raise CheckpointError("Saved workflow version is unsupported") from None
+        except CheckpointError:
+            turn.finish(PipelineResult(
+                status="error", conversation_id=state.conversation_id,
+                message="The saved conversation could not be resumed. Please ask your question again."),
+                "checkpoint_invalid")
+            # Keep the corrupt thread for diagnosis/retention; never silently
+            # restart an untrusted saved plan or replay a completed side effect.
+            return turn.result
+        except runs.Cancelled:
+            if turn.result is None:
+                turn.finish(PipelineResult(
+                    status="cancelled", conversation_id=state.conversation_id,
+                    message="Cancelled."), "cancelled")
+                runs.fail(run, None, status="cancelled")
+            out = {}
+        except DeadlineExceeded:
+            if turn.result is None:
+                turn.finish(PipelineResult(
+                    status="error", conversation_id=state.conversation_id,
+                    message=("That question took too long to answer. Narrowing it "
+                             "usually helps -- a shorter period, one product, fewer "
+                             "groupings.")),
+                    "deadline_exceeded")
+            out = {}
+        except GraphRecursionError:
+            log.error("turn graph exceeded %s transitions (run %s)", RECURSION_LIMIT, run.run_id)
+            if turn.result is None:
+                turn.finish(PipelineResult(
+                    status="error", conversation_id=state.conversation_id,
+                    message="That question could not be completed. Please try again."),
+                    "graph_recursion")
+            out = {}
+        except Exception:
+            # Unexpected. The run is closed so its key can retry -- and the
+            # thread is KEPT, so a retry resumes from the last completed step
+            # rather than planning again.
+            if turn.result is None:
+                runs.fail(run, None)
+            raise
+
+        waiting = bool((out or {}).get("__interrupt__"))
+        if not waiting:
+            # A finished thread is pruned at once: its outcome is in the run
+            # and the turn, and a checkpoint is workflow state, not history.
+            self._forget(thread_id)
+        pending = state.pending_clarification
+        if pending and pending.graph_thread_id and pending.graph_thread_id != thread_id:
+            # A different question superseded the pending one; its paused
+            # thread can never be resumed now.
+            self._forget(pending.graph_thread_id)
+        return turn.result
+
+    # -- threads ---------------------------------------------------------------
+
+    def _entry(self, turn: "Turn") -> tuple[str, Any]:
+        """Which thread this request runs on, and with what input.
+
+        * A reply that picks one of a pending clarification's choices resumes
+          the thread that asked -- the choice is re-validated inside the graph
+          against THIS request's access.
+        * A retry of a run that failed mid-flight resumes that run's thread
+          from its last completed step.
+        * Anything else starts a new thread.
+        """
+        state = turn.state
+        pending = state.pending_clarification
+        if pending is not None:
+            picked = choice_from_reply(turn.question, pending.choices)
+            if picked is not None:
+                option = pending.choices[picked]
+                turn.resolving = pending.clarification_id
+                if pending.graph_thread_id and self._waiting(pending.graph_thread_id):
+                    return pending.graph_thread_id, Command(resume={"id": option["id"]})
+                # No paused thread to resume (pruned, or asked before the
+                # graph existed): run the original question with the choice
+                # bound. resolve re-validates it either way.
+                return self._fresh_thread(turn), turn.initial_state(
+                    question=pending.question,
+                    chosen={normalise(pending.slot_text or ""): option["id"]})
+
+        own = self._thread_for(turn.run.run_id, state.conversation_id)
+        if self._resumable(own):
+            return own, None
+        return self._fresh_thread(turn), turn.initial_state()
+
+    @staticmethod
+    def _thread_for(run_id: str, conversation_id: str) -> str:
+        return f"{conversation_id}.{run_id}"
+
+    def _fresh_thread(self, turn: "Turn") -> str:
+        return self._thread_for(turn.run.run_id, turn.state.conversation_id)
+
+    def _snapshot(self, thread_id: str):
+        snapshot = self.graph.get_state({"configurable": {"thread_id": thread_id}})
+        if snapshot.values:
+            validate_state(snapshot.values)
+        return snapshot
+
+    def _waiting(self, thread_id: str) -> bool:
+        snap = self._snapshot(thread_id)
+        return bool(snap.next) and any(t.interrupts for t in snap.tasks)
+
+    def _resumable(self, thread_id: str) -> bool:
+        """Checkpointed part-way through by a run that died, not paused."""
+        snap = self._snapshot(thread_id)
+        return bool(snap.next) and not any(t.interrupts for t in snap.tasks)
+
+    def _forget(self, thread_id: str) -> None:
+        try:
+            self.graph.checkpointer.delete_thread(thread_id)
+        except Exception:                                          # pragma: no cover
+            log.warning("could not prune checkpoint thread %s", thread_id, exc_info=True)
+
+    # -- audit -----------------------------------------------------------------
+
+    def _write_audit(self, audit: dict[str, Any]) -> None:
+        """Best effort: in its own transaction; a failure is logged and
+        counted, never raised. Hashes, counts, codes and timings only --
+        never WAC values, result rows, prompts or text from the question."""
+        try:
+            with telemetry.span("pac.audit"), auth_transaction() as cur:
+                self._insert_audit(cur, audit)
+        except Exception:
+            log.warning("failed to write audit row", exc_info=True)
+            telemetry.count("pac.persistence.failures", kind="audit")
+
+    def _insert_audit(self, cur: Any, audit: dict[str, Any]) -> None:
+        """The audit row, in the caller's transaction."""
+        # Derived before the write, so a code is present on every outcome
+        # path rather than only where someone remembered to add it.
+        codes = [audit.get("status")] + list(audit.get("blocking_gaps") or [])
+        audit["reason_codes"] = [c for c in dict.fromkeys(codes) if c]
+
+        unknown = set(audit) - set(AUDIT_COLUMNS) - AUDIT_TRANSIENT
+        if unknown:
+            # A key that is set and never persisted is a field that silently
+            # never reaches the audit trail. Six did, until 30 September.
+            log.error("audit keys with no column, dropped: %s", sorted(unknown))
+        columns = list(AUDIT_COLUMNS)
+        values = [audit.get(c) for c in columns]
+        placeholders = ", ".join(["%s"] * len(columns))
+        # Keyed by request: a node replayed after a crash cannot record the
+        # same request twice.
+        cur.execute(
+            f"INSERT INTO app_meta.query_audit ({', '.join(columns)}) "
+            f"VALUES ({placeholders}) ON CONFLICT (request_id) DO NOTHING",
+            values,
         )
 
-        audit: dict[str, Any] = {
-            "request_id": request_id,
+    def _record_replay(self, principal: Principal, run: Any, replayed: dict[str, Any],
+                       dataset: dict[str, Any]) -> None:
+        """Strict audit: a replayed answer is a release of its own."""
+        audit = {
+            "request_id": uuid.uuid4().hex[:16], "user_id": principal.user_id,
+            "role": principal.role, "scope_kind": principal.scope_kind,
+            "scope_value": principal.scope_value,
+            "wac_authorized": principal.wac_authorized,
+            "dataset_id": dataset["dataset_id"], "metric_version": get_registry().version,
+            "policy_version": POLICY_VERSION, "status": "replayed",
+            "run_id": run.run_id, "replay_of": replayed.get("request_id"),
+            "audit_mode": "strict",
+        }
+        try:
+            with telemetry.span("pac.audit"), auth_transaction() as cur:
+                self._insert_audit(cur, audit)
+        except Exception:
+            log.warning("replay withheld: its audit row could not be written", exc_info=True)
+            telemetry.count("pac.persistence.failures", kind="audit")
+            raise AuditUnavailable() from None
+
+
+class Turn:
+    """One request's context: who is asking, under which run, against which
+    snapshot. Passed to the graph as runtime context -- never checkpointed --
+    so identity and results stay out of workflow state.
+
+    The node_* methods are the pipeline's stages, unchanged in substance from
+    the linear version; the graph decides their order and makes them durable.
+    """
+
+    def __init__(self, pipe: Pipeline, principal: Principal, question: str,
+                 include_sql: bool, dataset: dict[str, Any], state, run) -> None:
+        self.pipe = pipe
+        self.principal = principal
+        self.question = question
+        self.include_sql = include_sql
+        self.dataset = dataset
+        self.anchor = dataset["reporting_anchor"]
+        self.state = state
+        self.run = run
+        self.thread_id = ""
+        self.otel_parent = None
+        self.request_id = uuid.uuid4().hex[:16]
+        self.started = time.perf_counter()
+        self.deadline_at = time.time() + pipe.settings.request_deadline_seconds
+        self.timings: dict[str, int] = {}
+        self.staged: StagedTurn | None = None
+        self.resolving: str | None = None
+        self.planning_summary: dict[str, Any] | None = None
+        self.result: PipelineResult | None = None
+        self.applied: tuple[str, tuple[str, ...]] | None = None
+        self.audit: dict[str, Any] = {
+            "request_id": self.request_id,
             "user_id": principal.user_id,
             "role": principal.role,
             "scope_kind": principal.scope_kind,
@@ -123,28 +581,267 @@ class Pipeline:
             "dataset_id": dataset["dataset_id"],
             "metric_version": get_registry().version,
             "policy_version": POLICY_VERSION,
+            "run_id": run.run_id,
+            "audit_mode": pipe.settings.audit_mode,
+        }
+        self._vocab = None
+        self._index = None
+        self._continuity: dict[str, Any] = {}
+
+    # -- shared, per request ---------------------------------------------------
+
+    @property
+    def vocab(self):
+        if self._vocab is None:
+            self._vocab = vocabulary_for(self.principal, self.dataset["dataset_id"])
+        return self._vocab
+
+    @property
+    def index(self):
+        if self._index is None:
+            self._index = entity_index(self.principal, self.dataset["dataset_id"], self.vocab)
+        return self._index
+
+    def continuity(self, question: str):
+        """One decision about what this turn is, shared by every planner and
+        recomputed from the conversation as it is NOW -- never read back from
+        a checkpoint, which could predate another committed turn."""
+        if question not in self._continuity:
+            state = self.state
+            cohort = None
+            if state.previous_cohort:
+                cohort = Cohort(
+                    dimension=state.previous_cohort_dimension or "",
+                    ids=tuple(state.previous_cohort),
+                    dataset_id=self.dataset["dataset_id"],
+                    complete=state.previous_cohort_complete,
+                    total_available=state.previous_cohort_total,
+                )
+            # Typed fields only: a model's free text from an earlier turn is
+            # not context for this one (see planner.typed_plan).
+            self._continuity[question] = resolve_continuity(
+                question, previous_plan=typed_plan(state.previous_plan), cohort=cohort)
+        return self._continuity[question]
+
+    def initial_state(self, *, question: str | None = None,
+                      chosen: dict[str, str] | None = None) -> dict[str, Any]:
+        q = question or self.question
+        return {
+            "graph_version": GRAPH_VERSION,
+            "dataset_id": self.dataset["dataset_id"],
+            "metric_version": get_registry().version,
+            "policy_version": POLICY_VERSION,
+            "question": q,
+            "effective_question": q,
+            "chosen": dict(chosen or {}),
+            "asking": None,
+            "named_accounts": [],
+            "plan": None,
+            "planning": None,
+            "disclosures": [],
+            "model_calls": 0,
         }
 
-        def finish(result: PipelineResult, status: str, **extra: Any) -> PipelineResult:
-            timings["total_ms"] = int((time.perf_counter() - started) * 1000)
-            result.timings = timings
-            result.request_id = request_id
-            audit.update(status=status, total_ms=timings["total_ms"], **extra)
-            self._write_audit(audit)
-            return result
+    def _stop_waiting(self) -> None:
+        """Between admission waits: a cancel or the deadline ends the wait."""
+        if time.time() > self.deadline_at:
+            raise DeadlineExceeded()
+        if runs.cancel_requested(self.run.run_id):
+            raise runs.Cancelled()
 
-        # --- 3-4. plan ------------------------------------------------------
-        # The dataset is already resolved for this request; passing it keeps
-        # the vocabulary cache keyed to the snapshot being queried without a
-        # second lookup.
-        vocab = vocabulary_for(principal, dataset["dataset_id"])
+    def guard(self, state: dict[str, Any]) -> None:
+        """Every node starts here. A checkpoint from another graph version is
+        restarted rather than resumed, and a request past its budget stops
+        between steps rather than starting a new one."""
+        validate_state(state)
+        if state.get("graph_version") != GRAPH_VERSION:
+            raise StaleState(state.get("graph_version"))
+        if time.time() > self.deadline_at:
+            raise DeadlineExceeded()
+        # Cooperative: checked between steps. A statement already running is
+        # bounded by its timeout rather than interrupted mid-scan.
+        if runs.cancel_requested(self.run.run_id):
+            raise runs.Cancelled()
+
+    # -- recording -------------------------------------------------------------
+
+    def stage(self, plan: dict[str, Any] | None, answer_text: str, status: str,
+              **extra: Any) -> None:
+        self.staged = StagedTurn(
+            question=self.question, plan=plan, answer_text=answer_text,
+            status=status, resolves_clarification=self.resolving, **extra)
+
+    def finish(self, result: PipelineResult, status: str, **extra: Any) -> PipelineResult:
+        timings = self.timings
+        timings["total_ms"] = int((time.perf_counter() - self.started) * 1000)
+        result.timings = timings
+        result.request_id = self.request_id
+        result.run_id = self.run.run_id
+        if result.planning is None:
+            result.planning = self.planning_summary
+        if self.applied and result.applied_cohort is None:
+            result.applied_cohort = self.applied
+
+        turn = self.staged
+        if turn is None:
+            # Nothing to record -- a failure before an outcome existed. The
+            # run is closed so its key can be retried.
+            result.persistence = "not_saved"
+            result.payload = to_payload(result, self.include_sql)
+            runs.fail(self.run, None)
+        else:
+            result.persistence = "saved"
+            result.payload = to_payload(result, self.include_sql)
+            strict = self.pipe.settings.audit_mode == "strict"
+            in_commit = None
+            if strict:
+                # The audit row commits with the turn and the run's outcome:
+                # all of them, or none (docs/AUDIT_DECISION.md).
+                self.audit.update(status=status, total_ms=timings["total_ms"], **extra)
+
+                def in_commit(cur: Any) -> None:
+                    self.pipe._insert_audit(cur, self.audit)
+            try:
+                with telemetry.span("pac.finalise", parent=self.otel_parent):
+                    done = finalise(self.principal, self.state, self.run, turn,
+                                    result.payload, audit=in_commit)
+            except Exception:
+                # Stated, not swallowed: the answer is returned, and the
+                # response says it was not saved, so nothing implies the next
+                # turn can build on it.
+                log.exception("failed to commit turn for run %s", self.run.run_id)
+                runs.fail(self.run, None)
+                done = Finalised(persisted=False, reason="error")
+                telemetry.count("pac.persistence.failures", kind="turn")
+            if strict and not done.persisted and not done.conflict:
+                # Nothing committed, the audit row included: the answer is
+                # not released. The run is closed as failed, so a retry under
+                # the same key runs it again (from its last checkpoint).
+                telemetry.count("pac.persistence.failures", kind="audit")
+                runs.fail(self.run, None)
+                raise AuditUnavailable()
+            if strict and done.persisted:
+                self.result = result
+                return result
+            if done.conflict:
+                # The conversation moved while this was being answered: a
+                # lease expired and another turn committed. The answer was
+                # planned against state that is no longer current, so it is
+                # withheld rather than shown as a continuation.
+                status = "conflict"
+                result = PipelineResult(
+                    status="conflict", conversation_id=self.state.conversation_id,
+                    message=("This conversation moved on while that was being "
+                             "answered. Ask again to continue from the latest turn."),
+                    request_id=self.request_id, run_id=self.run.run_id,
+                    timings=timings, persistence="conflict")
+                result.payload = to_payload(result, self.include_sql)
+            elif not done.persisted:
+                result.persistence = "failed"
+                result.payload = to_payload(result, self.include_sql)
+        self.audit.update(status=status, total_ms=timings["total_ms"], **extra)
+        self.pipe._write_audit(self.audit)
+        self.result = result
+        return result
+
+    def _clarify(self, message: str, *, reason: str | None = None,
+                 plan: dict[str, Any] | None = None, stage_plan: bool = False,
+                 **extra: Any) -> dict[str, Any]:
+        self.stage(plan if stage_plan else None, message, "clarify", **extra)
+        self.finish(PipelineResult(status="clarify",
+                                   conversation_id=self.state.conversation_id,
+                                   message=message, plan=plan,
+                                   choices=extra.get("clarification", {}) and
+                                   extra["clarification"]["choices"] or []),
+                    "clarify", **({"denial_reason": reason} if reason else {}))
+        return {"route": "end", "outcome": "clarify"}
+
+    # -- nodes -----------------------------------------------------------------
+
+    def node_resolve(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Continuity, then the entities the question names."""
+        self.guard(state)
+        question = state["effective_question"]
+        chosen = state.get("chosen") or {}
+
+        # A stored option is not a grant. The choice came from a clarification
+        # shown earlier -- possibly to a different request, possibly before
+        # access changed -- so it must still be in THIS caller's index.
+        for entity_id in chosen.values():
+            if entity_id not in self.index.account_ids:
+                return self._clarify(
+                    "That option is no longer available to you. Ask the question "
+                    "again to see current options.",
+                    reason="clarification_choice_unavailable")
+
+        continuity = self.continuity(question)
+        self.audit["turn_kind"] = continuity.kind.value
+        if continuity.clarification:
+            # An ambiguous reference is asked about, not guessed at.
+            return self._clarify(continuity.clarification,
+                                 reason=f"ambiguous:{continuity.kind.value}")
+
+        # Resolved on the server, under the caller's scope, BEFORE planning.
+        # An unknown or ambiguous name has no plan that could fix it, so it is
+        # asked about without spending a model call; and the ids of accounts
+        # the question names -- those ids and no others -- go to the planner,
+        # which never sees the account catalog.
+        mentions, unresolved = resolve_mentions(question, self.vocab, self.index,
+                                                resolved=chosen)
+        if unresolved:
+            self.audit["intent_gaps"] = [g.kind for g in unresolved]
+            self.audit["blocking_gaps"] = [g.kind for g in unresolved]
+            message = " ".join(g.message() for g in unresolved)
+            reason = ",".join(sorted({g.kind for g in unresolved}))
+            # One question at a time: the first ambiguous name is stored with
+            # the choices exactly as shown, so "the second one" means what the
+            # user saw second. A later ambiguity is asked about on the re-run.
+            asking = next((g for g in unresolved if g.choices), None)
+            if asking is None:
+                return self._clarify(message, reason=reason)
+            return {"route": "ask", "asking": {
+                "kind": asking.kind, "subject": asking.subject,
+                "message": message, "reason": reason,
+                "choices": [{"id": c[0], "label": c[1], "detail": c[2]}
+                            for c in asking.choices],
+            }}
+        return {"route": "plan", "named_accounts": [
+            [m.text, m.ids[0]] for m in mentions
+            if m.kind == "account" and len(m.ids) == 1 and not m.reference_only]}
+
+    def node_record_question(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Commit the clarify turn. Its own node, so it completes -- and is
+        checkpointed -- before the interrupt: LangGraph re-runs an
+        interrupted node from its top, and this must happen exactly once."""
+        self.guard(state)
+        asking = state["asking"]
+        self._clarify(asking["message"], reason=asking["reason"], clarification={
+            "kind": asking["kind"], "question": state["question"],
+            "slot_text": asking["subject"], "choices": asking["choices"],
+            "graph_thread_id": self.thread_id,
+        })
+        return {"route": "wait"}
+
+    def node_await_reply(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Pause until the user chooses. Nothing before the interrupt, because
+        everything before it would run again on resume."""
+        self.guard(state)
+        reply = interrupt({"choices": state["asking"]["choices"]})
+        subject = normalise(state["asking"]["subject"] or "")
+        return {"route": "resolve", "asking": None,
+                "chosen": {**(state.get("chosen") or {}), subject: reply["id"]}}
+
+    def node_plan(self, state: dict[str, Any]) -> dict[str, Any]:
         from app.llm.planner import PlanningContext
 
+        self.guard(state)
+        question = state["effective_question"]
+        vocab, principal, state_now = self.vocab, self.principal, self.state
         context = PlanningContext(
             role=principal.role,
             scope_description=principal.scope_description,
             wac_authorized=principal.wac_authorized,
-            reporting_anchor=anchor,
+            reporting_anchor=self.anchor,
             known_products=vocab.products,
             known_subcategories=vocab.subcategories,
             known_categories=vocab.categories,
@@ -155,250 +852,336 @@ class Pipeline:
             known_regions=vocab.regions,
             all_territories=vocab.all_territories,
             all_regions=vocab.all_regions,
-            previous_plan=state.previous_plan,
-            previous_cohort=state.previous_cohort,
-            previous_cohort_dimension=state.previous_cohort_dimension,
+            previous_plan=typed_plan(state_now.previous_plan),
+            previous_cohort=state_now.previous_cohort,
+            previous_cohort_dimension=state_now.previous_cohort_dimension,
+            previous_cohort_complete=state_now.previous_cohort_complete,
+            previous_cohort_total=state_now.previous_cohort_total,
+            continuity=self.continuity(question),
+            named_accounts=[tuple(x) for x in state.get("named_accounts") or []],
+            deadline_at=self.deadline_at,
+            spend=self.pipe.spend,
         )
-
         t0 = time.perf_counter()
         try:
-            plan = self.planner.plan(question, context)
+            planning = self.pipe.planner.plan(question, context)
+        except PlannerOutOfTime as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
+            # The same outcome as a deadline met between steps.
+            raise DeadlineExceeded() from None
+        except PlannerBudgetExhausted as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
+            self.finish(PipelineResult(
+                status="error", conversation_id=self.state.conversation_id,
+                message="Not run: the model's spend limit is exhausted.",
+            ), "budget_exhausted", denial_reason="budget_exhausted")
+            return {"route": "end", "outcome": "error"}
+        except PlannerUnavailable as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
+            log.warning("planner unavailable: %s", exc)
+            self.finish(PipelineResult(
+                status="error", conversation_id=self.state.conversation_id,
+                message=("The question service is busy or unreachable right now. "
+                         "Please try again in a moment."),
+            ), "planner_unavailable", denial_reason="provider_transport_error")
+            return {"route": "end", "outcome": "error"}
         except PlannerError as exc:
+            self._adopt_planning({"planning": getattr(exc, "planning", None)})
             log.warning("planner failed: %s", exc)
-            return finish(
-                PipelineResult(
-                    status="error", conversation_id=state.conversation_id,
-                    message=(
-                        "I could not interpret that question. Try naming the metric, the "
-                        "product or account, and the time period — for example "
-                        "'top 10 accounts by pack units last quarter'."
-                    ),
+            self.finish(PipelineResult(
+                status="error", conversation_id=self.state.conversation_id,
+                message=(
+                    "I could not interpret that question. Try naming the metric, the "
+                    "product or account, and the time period — for example "
+                    "'top 10 accounts by pack units last quarter'."
                 ),
-                "planner_error", denial_reason=str(exc)[:200],
-            )
-        timings["plan_ms"] = int((time.perf_counter() - t0) * 1000)
-        audit["plan_hash"] = plan.fingerprint()
+            ), "planner_error", denial_reason="planner_failure")
+            return {"route": "end", "outcome": "error"}
+        self.timings["plan_ms"] = int((time.perf_counter() - t0) * 1000)
 
-        usage = getattr(self.planner, "last_usage", None) or {}
-        if usage:
-            audit["input_tokens"] = usage.get("input_tokens")
-            audit["output_tokens"] = usage.get("output_tokens")
-        audit["model_id"] = getattr(self.planner, "model_id", "offline")
+        usage = planning.usage.as_dict()
+        telemetry.annotate(**{
+            "pac.provider": planning.provider, "pac.model_id": planning.model_id,
+            "pac.prompt_version": planning.prompt_version,
+            "pac.planner_version": planning.planner_contract_version,
+            "pac.attempts": len(planning.attempts), "pac.repaired": planning.repaired,
+            "pac.tokens.input": usage.get("input_tokens"),
+            "pac.tokens.output": usage.get("output_tokens"),
+            "pac.usage_known": usage.get("known")})
+        summary = planning.summary()
+        self._adopt_planning({"planning": summary})
+        # Checkpointed with the plan, so a run resumed after a crash reports
+        # the planning it did not have to repeat.
+        return {"route": "check", "plan": planning.plan.model_dump(mode="json"),
+                "planning": summary,
+                "model_calls": int(state.get("model_calls") or 0) + len(planning.attempts)}
 
-        # --- 4b. intent fidelity ---------------------------------------------
-        # Does the plan answer the question that was asked? A plan can be
-        # valid, compile cleanly and return a confident number for a DIFFERENT
-        # question, and nothing downstream can tell: the SQL, the scope and the
-        # rendering are all correct. Checked here rather than inside a planner
-        # so it holds for every planner, including a model that drops a filter
-        # it could not resolve.
-        gaps = find_gaps(question, plan, vocab)
-        audit["intent_gaps"] = [g.kind for g in gaps]
+    def _adopt_planning(self, state: dict[str, Any]) -> None:
+        """Request-local planning facts, from the checkpoint -- the plan may
+        have been made by the request that died, not this one."""
+        summary = state.get("planning") or {}
+        if not summary or self.planning_summary is not None:
+            return
+        self.planning_summary = summary
+        telemetry.annotate(**{
+            "pac.provider": summary.get("provider"), "pac.model_id": summary.get("model_id"),
+            "pac.prompt_version": summary.get("prompt_version"),
+            "pac.planner_version": summary.get("planner_contract_version"),
+            "pac.attempts": len(summary.get("attempts") or []),
+            "pac.repaired": summary.get("repaired"),
+            "pac.tokens.input": (summary.get("usage") or {}).get("input_tokens"),
+            "pac.tokens.output": (summary.get("usage") or {}).get("output_tokens"),
+            "pac.usage_known": (summary.get("usage") or {}).get("known"),
+        })
+        usage = summary.get("usage") or {}
+        # Written whether or not usage is known, so the audit distinguishes
+        # "no tokens reported" from "this field was never populated".
+        self.audit["input_tokens"] = usage.get("input_tokens")
+        self.audit["output_tokens"] = usage.get("output_tokens")
+        self.audit["usage_known"] = usage.get("known")
+        self.audit["model_id"] = summary.get("model_id") or summary.get("provider")
+        self.audit["prompt_version"] = summary.get("prompt_version")
+        self.audit["planner_attempts"] = len(summary.get("attempts") or [])
+        self.audit["planner_repaired"] = summary.get("repaired")
+
+    def node_check(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Does the plan answer the question -- and may this caller have it?"""
+        self.guard(state)
+        self._adopt_planning(state)
+        plan = AnalyticalPlan.model_validate(state["plan"])
+        question = state["effective_question"]
+        self.audit["plan_hash"] = plan.fingerprint()
+        self.audit.setdefault("turn_kind", self.continuity(question).kind.value)
+        telemetry.annotate(**{"pac.metric": plan.metric.value,
+                              "pac.turn_kind": self.audit["turn_kind"]})
+
+        # A plan can be valid, compile cleanly and return a confident number
+        # for a DIFFERENT question, and nothing downstream can tell. Checked
+        # here rather than inside a planner so it holds for every planner.
+        gaps = find_gaps(question, plan, self.vocab, self.index,
+                         resolved=state.get("chosen") or {})
         blockers = blocking(gaps)
+        self.audit["intent_gaps"] = [g.kind for g in gaps]
+        self.audit["blocking_gaps"] = [g.kind for g in blockers]
+        plan_json = plan.model_dump(mode="json")
         if blockers:
             # Answering would silently broaden the question: drop an
             # unresolvable product filter and the reply is the whole company's
             # volume presented as that product's.
-            message = " ".join(g.message() for g in blockers)
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], message, "clarify")
-            return finish(
-                PipelineResult(
-                    status="clarify", conversation_id=state.conversation_id,
-                    message=message, plan=plan.model_dump(mode="json"),
-                ),
-                "clarify", denial_reason="unresolved_entity",
-            )
-        disclosures = [g.message() for g in gaps]
-
-        # --- 5. clarify -----------------------------------------------------
+            return self._clarify(" ".join(g.message() for g in blockers),
+                                 reason=",".join(sorted({g.kind for g in blockers})),
+                                 plan=plan_json, stage_plan=True)
         if plan.clarification:
-            self._record(principal, state, question, None, [], plan.clarification, "clarify")
-            return finish(
-                PipelineResult(
-                    status="clarify", conversation_id=state.conversation_id,
-                    message=plan.clarification, plan=plan.model_dump(mode="json"),
-                ),
-                "clarify",
-            )
+            self.stage(None, plan.clarification, "clarify")
+            self.finish(PipelineResult(status="clarify",
+                                       conversation_id=self.state.conversation_id,
+                                       message=plan.clarification, plan=plan_json),
+                        "clarify")
+            return {"route": "end", "outcome": "clarify"}
 
-        # --- 6. authorize ---------------------------------------------------
+        # Current access, from THIS request's principal. Terminal: a refusal
+        # is never retried under different access.
         try:
-            authorize(plan, principal)
+            with telemetry.span("pac.policy", expected=(AuthorizationError,)):
+                authorize(plan, self.principal)
         except AuthorizationError as exc:
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], str(exc), "denied")
-            return finish(
-                PipelineResult(
-                    status="denied", conversation_id=state.conversation_id,
-                    message=str(exc), alternative=exc.alternative,
-                    plan=plan.model_dump(mode="json"),
-                ),
-                "denied", denial_reason=str(exc)[:200],
-            )
+            self.stage(plan_json, str(exc), "denied")
+            self.finish(PipelineResult(
+                status="denied", conversation_id=self.state.conversation_id,
+                message=str(exc), alternative=exc.alternative, plan=plan_json,
+            ), "denied", denial_reason="policy_denied")
+            return {"route": "end", "outcome": "denied"}
+        return {"route": "answer", "disclosures": [g.message() for g in gaps]}
 
-        # --- 7. compile -----------------------------------------------------
+    def node_answer(self, state: dict[str, Any]) -> dict[str, Any]:
+        """Compile, validate, execute, render and commit -- in one node, so
+        rows and headlines (which can carry revenue) never pass through a
+        checkpoint."""
+        self.guard(state)
+        self._adopt_planning(state)
+        principal = self.principal
+        plan = AnalyticalPlan.model_validate(state["plan"])
+        continuity = self.continuity(state["effective_question"])
+
+        # A frozen cohort is applied by the server, whole. The typed plan's
+        # filter holds 200 ids; a 500-account answer followed by "those same
+        # accounts" means all 500. Deterministic, after planning: whether the
+        # model copied ids into its plan or not, the population is the stored
+        # one, and any ids it did copy are replaced rather than intersected.
+        binding = None
+        if continuity.carries_cohort and continuity.cohort is not None:
+            binding = CohortBinding(dimension=continuity.cohort.dimension,
+                                    ids=tuple(continuity.cohort.ids))
+            self.applied = (binding.dimension, binding.ids)
+            field_name = continuity.cohort.filter_field
+            if field_name and getattr(plan.filters, field_name, None):
+                plan = plan.model_copy(update={
+                    "filters": plan.filters.model_copy(update={field_name: []})})
+        plan_json = plan.model_dump(mode="json")
+
+        def fail(message: str, status: str, reason: str, *,
+                 result_status: str = "error", staged: bool = False) -> dict[str, Any]:
+            if staged:
+                self.stage(plan_json, message, "error")
+            self.finish(PipelineResult(status=result_status,
+                                       conversation_id=self.state.conversation_id,
+                                       message=message, plan=plan_json),
+                        status, denial_reason=reason[:200])
+            return {"route": "end", "outcome": result_status}
+
         try:
-            query = self.compiler.compile(plan, anchor=anchor)
+            with telemetry.span("pac.compile", expected=(UnsupportedCombination,)):
+                query = self.pipe.compiler.compile(plan, anchor=self.anchor, cohort=binding)
+        except UnsupportedCombination as exc:
+            # Nothing is broken: the question combines things that have no
+            # defined meaning together. Reported as an error, it told the user
+            # the system had failed and counted as an execution failure.
+            return fail("That combination cannot be answered as asked. " + " ".join(exc.reasons),
+                        "unsupported_combination", str(exc), result_status="clarify")
         except (CompileError, PeriodError) as exc:
-            return finish(
-                PipelineResult(
-                    status="error", conversation_id=state.conversation_id,
-                    message=f"I could not build that query: {exc}",
-                    plan=plan.model_dump(mode="json"),
-                ),
-                "compile_error", denial_reason=str(exc)[:200],
-            )
-        audit["sql_hash"] = query.fingerprint()
+            return fail(f"I could not build that query: {exc}", "compile_error", str(exc))
+        self.audit["sql_hash"] = query.fingerprint()
 
-        # --- 8. validate ----------------------------------------------------
-        # Runs on the FINAL text, after every rewrite, and the same text is what
-        # executes below.
+        # Runs on the FINAL text, after every rewrite, and the same text is
+        # what executes below.
         try:
-            validate(query.sql, wac_authorized=principal.wac_authorized)
+            with telemetry.span("pac.validate"):
+                validate(query.sql, wac_authorized=principal.wac_authorized)
         except SqlValidationError as exc:
             log.error("compiler produced SQL that failed validation: %s", exc)
-            return finish(
-                PipelineResult(
-                    status="error", conversation_id=state.conversation_id,
-                    message="I could not run that safely, so I stopped before querying.",
-                    plan=plan.model_dump(mode="json"),
-                ),
-                "validation_error", denial_reason=str(exc)[:200],
-            )
+            return fail("I could not run that safely, so I stopped before querying.",
+                        "validation_error", str(exc))
 
-        # --- 9. execute -----------------------------------------------------
+        self.guard(state)
         t0 = time.perf_counter()
         try:
-            with analytics_transaction(
-                scope_kind=principal.scope_kind,
-                scope_value=principal.scope_value,
-                wac_authorized=principal.wac_authorized,
-            ) as cur:
+            # Admitted first: at most a few analytical queries run at once per
+            # worker, and the rest wait in arrival order -- for a bounded time,
+            # never past the deadline, and not at all once cancelled. A query
+            # that cannot be admitted is refused as overload, before it adds
+            # to the contention that would make it time out anyway.
+            wait_budget = min(self.pipe.settings.admission_query_wait_seconds,
+                              self.deadline_at - time.time())
+            with admission.query_gate().admitted(
+                    max_wait=max(wait_budget, 0.0), should_stop=self._stop_waiting), \
+                    telemetry.span("pac.sql", expected=(GenerationChanged,)) as sql_span, \
+                    analytics_transaction(
+                        scope_kind=principal.scope_kind,
+                        scope_value=principal.scope_value,
+                        wac_authorized=principal.wac_authorized,
+                        expect_generation=self.dataset["dataset_id"],
+                    ) as cur:
                 cur.execute(query.sql, query.params)
                 rows = cur.fetchall()
+                sql_span.set(**{"pac.row_count": len(rows)})
+        except admission.Overloaded as exc:
+            if time.time() >= self.deadline_at:
+                raise DeadlineExceeded() from None
+            # Recorded, then raised: the API answers 503 with Retry-After,
+            # and the run is closed as failed with its checkpoint kept, so a
+            # retry with the same key resumes here without planning again.
+            self.audit.update(status="overloaded", denial_reason="admission_overloaded")
+            self.pipe._write_audit(self.audit)
+            runs.fail(self.run, None)
+            raise
+        except (runs.Cancelled, DeadlineExceeded):
+            # Raised while queued for admission: handled by ask(), not a
+            # database failure.
+            raise
+        except GenerationChanged as exc:
+            # A refresh landed while this was being planned. The plan's
+            # vocabulary and calendar describe the old data, so it is not run.
+            # The run is closed as failed: a retry with the same key runs
+            # again, against the new generation.
+            log.info("generation changed mid-request (%s)", exc)
+            telemetry.count("pac.db.errors", kind="generation_changed")
+            self.finish(PipelineResult(
+                status="refresh", conversation_id=self.state.conversation_id,
+                message=("The data was refreshed while your question was being "
+                         "answered. Asking again will use the latest data."),
+            ), "generation_changed", denial_reason="generation_changed")
+            return {"route": "end", "outcome": "refresh"}
         except ScopeBindingError as exc:
-            return finish(
-                PipelineResult(
-                    status="denied", conversation_id=state.conversation_id,
-                    message=("Your account does not have a usable data scope, so no "
-                             "data can be shown."),
-                ),
-                "scope_error", denial_reason=str(exc)[:200],
-            )
+            self.finish(PipelineResult(
+                status="denied", conversation_id=self.state.conversation_id,
+                message=("Your account does not have a usable data scope, so no "
+                         "data can be shown."),
+            ), "scope_error", denial_reason="scope_error")
+            return {"route": "end", "outcome": "denied"}
         except Exception as exc:  # database timeout, cancellation, unavailability
             name = type(exc).__name__
             log.warning("query failed (%s): %s", name, exc)
+            # By type, not by name: "PoolTimeout" is no connection, not a
+            # slow query, and telling that user to narrow the question was
+            # wrong advice.
+            slow = isinstance(exc, psycopg.errors.QueryCanceled)
+            telemetry.count("pac.db.errors", kind="timeout" if slow else "unavailable")
             friendly = (
                 "That question took too long to answer. Narrowing it — a shorter time "
                 "period, a specific product, or fewer groupings — will usually work."
-                if "Timeout" in name or "QueryCanceled" in name
+                if slow
                 else "The data service is temporarily unavailable. Please try again."
             )
-            return finish(
-                PipelineResult(
-                    status="error", conversation_id=state.conversation_id,
-                    message=friendly, plan=plan.model_dump(mode="json"),
-                ),
-                "db_error", denial_reason=name,
-            )
-        timings["db_ms"] = int((time.perf_counter() - t0) * 1000)
-        audit["db_ms"] = timings["db_ms"]
-        audit["row_count"] = len(rows)
+            return fail(friendly, "db_error", name)
+        self.timings["db_ms"] = int((time.perf_counter() - t0) * 1000)
+        self.audit["db_ms"] = self.timings["db_ms"]
+        self.audit["row_count"] = len(rows)
 
-        # --- 10. render -----------------------------------------------------
         try:
-            answer = render(
-                rows, query, plan,
-                scope_note=scope_note(principal, plan),
-                max_rows=self.settings.max_result_rows,
-                source_coverage=dataset.get("source_coverage") or {},
-                max_bytes=self.settings.max_result_bytes,
-            )
+            with telemetry.span("pac.render") as render_span:
+                answer = render(
+                    rows, query, plan,
+                    scope_note=scope_note(principal, plan),
+                    max_rows=self.pipe.settings.max_result_rows,
+                    source_coverage=self.dataset.get("source_coverage") or {},
+                    max_bytes=self.pipe.settings.max_result_bytes,
+                )
+                render_span.set(**{"pac.truncated": bool(answer.truncated)})
         except GrainError as exc:
             # The rows are not at the grain the plan declared, so the table
-            # would read as more groups than there are. This is our bug, not
-            # the user's question -- but showing a wrong table is worse than
-            # showing none, so it fails closed and is logged with the plan.
-            log.error("grain violation for request %s: %s", request_id, exc)
-            self._record(principal, state, question, plan.model_dump(mode="json"),
-                         [], "internal consistency check failed", "error")
-            return finish(
-                PipelineResult(
-                    status="error", conversation_id=state.conversation_id,
-                    message=(
-                        "That result did not pass an internal consistency check, so "
-                        "it is not being shown. This has been logged."
-                    ),
-                    plan=plan.model_dump(mode="json"),
-                ),
-                "grain_error", denial_reason=str(exc)[:200],
-            )
-        if state.reset_reason:
-            answer.notes.insert(0, state.reset_reason)
+            # would read as more groups than there are. Fails closed.
+            log.error("grain violation for request %s: %s", self.request_id, exc)
+            return fail("That result did not pass an internal consistency check, so "
+                        "it is not being shown. This has been logged.",
+                        "grain_error", str(exc), staged=True)
+        # Bind freshness to the answer's snapshot, not a later /api/me refresh.
+        through = self.anchor.get("max_txn")
+        answer.data_through = str(through) if through is not None else None
+        if self.state.reset_reason:
+            answer.notes.insert(0, self.state.reset_reason)
         if plan.interpretation:
             answer.notes.insert(0, plan.interpretation)
         # Non-blocking gaps: the number is true, it just is not the whole
         # question. Said first, because it changes how the figure reads.
-        for disclosure in reversed(disclosures):
+        for disclosure in reversed(state.get("disclosures") or []):
+            answer.notes.insert(0, disclosure)
+        # An inherited filter is never applied silently.
+        for disclosure in reversed(continuity.disclosures):
             answer.notes.insert(0, disclosure)
 
-        # --- 11. persist ----------------------------------------------------
-        cohort = [
-            str(r["dim0_id"]) for r in rows[:200]
-            if r.get("dim0_id") is not None
-        ] if plan.dimensions else []
-        self._record(
-            principal, state, question, plan.model_dump(mode="json"),
-            cohort, answer.headline, "answered",
-            cohort_dimension=plan.dimensions[0].value if plan.dimensions else None,
+        # What a later "those" may refer to: the whole, distinct population
+        # shown -- bounded by the response cap and by nothing else. Committed
+        # by finish(), atomically with the turn.
+        summary = summarise_cohort(
+            rows,
+            dimension=plan.dimensions[0].value if plan.dimensions else None,
+            max_rows=self.pipe.settings.max_result_rows,
         )
-
-        return finish(
-            PipelineResult(
-                status="answered", conversation_id=state.conversation_id,
-                message=answer.headline, answer=answer,
-                interpretation=plan.interpretation,
-                plan=plan.model_dump(mode="json"),
-                # SQL is returned only on explicit request, and only the SQL
-                # this principal was authorized to run.
-                sql=query.sql if include_sql else None,
-            ),
-            "answered",
+        self.stage(
+            plan_json, answer.headline, "answered",
+            cohort_dimension=summary.dimension if summary else None,
+            cohort_ids=list(summary.ids) if summary else [],
+            cohort_complete=summary.complete if summary else True,
+            cohort_total=summary.total_available if summary else None,
         )
-
-    # -- helpers -------------------------------------------------------------
-
-    def _record(
-        self, principal: Principal, state: ConversationState, question: str,
-        plan: dict[str, Any] | None, cohort: list[str], answer_text: str, status: str,
-        cohort_dimension: str | None = None,
-    ) -> None:
-        try:
-            record_turn(
-                principal, state, question=question, plan=plan,
-                cohort=cohort, answer_text=answer_text, status=status,
-                cohort_dimension=cohort_dimension,
-            )
-        except Exception:                       # never fail a request on bookkeeping
-            log.warning("failed to persist conversation turn", exc_info=True)
-
-    def _write_audit(self, audit: dict[str, Any]) -> None:
-        """Hashes, counts and timings only -- never WAC values, result rows or prompts."""
-        columns = [
-            "request_id", "user_id", "role", "scope_kind", "scope_value", "wac_authorized",
-            "dataset_id", "metric_version", "policy_version", "plan_hash", "sql_hash",
-            "status", "denial_reason", "row_count", "db_ms", "total_ms", "model_id",
-            "input_tokens", "output_tokens",
-        ]
-        values = [audit.get(c) for c in columns]
-        placeholders = ", ".join(["%s"] * len(columns))
-        try:
-            with auth_transaction() as cur:
-                cur.execute(
-                    f"INSERT INTO app_meta.query_audit ({', '.join(columns)}) "
-                    f"VALUES ({placeholders})",
-                    values,
-                )
-        except Exception:
-            log.warning("failed to write audit row", exc_info=True)
+        self.finish(PipelineResult(
+            applied_cohort=self.applied,
+            status="answered", conversation_id=self.state.conversation_id,
+            message=answer.headline, answer=answer,
+            interpretation=plan.interpretation,
+            plan=plan_json,
+            # SQL is returned only on explicit request, and only the SQL this
+            # principal was authorized to run.
+            sql=query.sql if self.include_sql else None,
+        ), "answered")
+        return {"route": "end", "outcome": "answered"}

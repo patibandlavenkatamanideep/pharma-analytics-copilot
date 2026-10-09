@@ -1,0 +1,28 @@
+{
+ "steps": [
+  {
+   "step": "bootstrap_db.py (verify-full)",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "load_data.py --mode seed (verify-full)",
+   "exit": 0,
+   "errors": []
+  }
+ ],
+ "verify_full": {
+  "answer": "answered",
+  "boundary_problems": [],
+  "connections": 2,
+  "encrypted": 2,
+  "tls_version": "TLSv1.3"
+ },
+ "another_ca": {
+  "refused": "error connecting in 'pool-1': connection failed: connection to server at \"127.0.0.1\", port 63356 failed: SSL error: certificate verify failed"
+ },
+ "plaintext": {
+  "refused": "psycopg_pool.PoolTimeout: couldn't get a connection after 3.00 sec"
+ },
+ "passed": true
+}

@@ -323,3 +323,28 @@ footer input { flex: 1; }
   .bubble { max-width: 100%; }
   .turn.user .bubble { max-width: 90%; }
 }
+
+/* Clarification choices: the options the server stored, in its order. */
+.choices { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 4px; }
+.choice { text-align: left; padding: 8px 10px; border-radius: 8px; }
+.notice { background: #eef4ff; color: #1d3f8a; padding: 8px 10px; border-radius: 6px; font-size: 14px; }
+button.stop { background: #8a1c1c; }
+.sso { display: block; text-align: center; margin-top: 12px; font-size: 14px; }
+
+.feedback {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.result-chart { margin: 1rem 0; width: min(100%, 38rem); }
+.result-chart figcaption { display: grid; gap: .25rem; }
+.chart-rows { list-style: none; margin: 1rem 0; padding: 0; }
+.chart-rows li { margin: .6rem 0; }
+.chart-label { display: flex; justify-content: space-between; gap: 1rem; font-size: .85rem; }
+.chart-label span { overflow-wrap: anywhere; }
+.chart-label strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chart-rows svg { display: block; width: 100%; height: 18px; background: #f4f6f8; }
+.chart-zero { stroke: #546475; stroke-width: .4; }
+.chart-positive { fill: #205f89; }
+.chart-negative { fill: #a74525; }

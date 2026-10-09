@@ -1,0 +1,74 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T12:13:22+00:00",
+  "claim": "A plan that drops the ranking or breakdown a question asks for is caught for every planner: a missing ranking, a different top N or a missing breakdown is disclosed first in the answer, and the opposite end of a ranking is refused. The offline planner now ranks facilities, products and territories and keeps both grains of 'by X and Y'.",
+  "application": {
+    "sha": "d3ad12df45ce9a4615073ff398db6632cd4d4d96",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "app/analytics/intent.py",
+      "app/analytics/structure.py",
+      "app/llm/planner.py",
+      "docs/TEST_INVENTORY.md",
+      "tests/unit/test_answer_shape.py",
+      "tests/unit/test_intent_fidelity.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_answer_shape.py",
+      "tests/unit/test_intent_fidelity.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 0.41
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 54
+    },
+    "blocked_reason": null,
+    "summary": "54 passed in 0.06s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Phrase reading is a fixed table; a breakdown or ranking phrased outside it is not checked.",
+    "Found by running candidate load-test questions on the full dataset, not by a systematic search; other wrong-shape answers may remain."
+  ]
+}

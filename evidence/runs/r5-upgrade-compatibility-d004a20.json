@@ -1,0 +1,62 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T13:09:42+00:00",
+  "claim": "At d004a20: a database left by the previous release (7950e71) with live state upgrades with this candidate's migrations (twice, converging); this candidate serves it with that state intact; the previous release's behaviour on the upgraded database is measured",
+  "application": {
+    "sha": "d004a20a79bc9cce7fd57b32ccebc536a739328c",
+    "tree": "e73d6b8504556cefa6a4efded4f7cf7e97ed0520",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/upgrade_compatibility.py",
+      "--previous",
+      "7950e71",
+      "--out",
+      "/Users/manideep/src/pac-work/step10/r5-upgrade-compatibility-d004a20.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 13.98
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"previous\": \"7950e71\", \"previous_commit\": \"7950e71304ec1c6da7985f6fa9ec41a2b154da6f\", \"state_left_by_previous\": {\"answer_under_key\": [200, \"answered\", true], \"paused_clarification\": [200, \"clarify\"], \"run_left_running\": \"running\"}, \"schema_before\": {\"columns\": 288, \"classification_authority\": null}, \"upgrade\": {\"runs\": [{\"exit\": 0, \"seconds\": 0.37}, {\"exit\": 0, \"seconds\": 0.36}], \"schema_after\": {\"columns\": 300, \"classification_authority\": [\"NO\", null]}}, \"candidate_on_upgraded\": {\"existing_session\": 200, \"password_sign_in\": 200, \"replay\": [200, true, true], \"resume_clarification\": [200, \"answered\"], \"dead_run\": [200, \"answered\", null, 1], \"ram_rows\": [200, \"answered\", true, \"denied\"], \"no_wac_revenue\": [200, \"answered\", false], \"sso_disabled\": [{\"password\": true, \"oidc\": false}, 404], \"audit_rows_total_with_run_id_with_mode\": [8, 6, 6], \"error_log_lines\": 0}, \"previous_on_upgraded\": {\"existing_session\": 200, \"password_sign_in\": 200, \"replay\": [200, true, true], \"resume_clarification\": [200, \"answered\"], \"dead_run\": [200, \"answered\", true, 1], \"ram_rows\": [200, \"answered\", true, \"denied\"], \"no_wac_revenue\": [200, \"answered\", false], \"sso_disabled\": [{\"password\": true, \"oidc\": false}, 404], \"audit_rows_total_with_run_id_with_mode\": [13, 6, 6], \"error_log_lines\": 0}, \"previous_full_load_on_upgraded\": {\"exit\": 1, \"seconds\": 0.2, \"message\": \"psycopg.errors.NotNullViolation: null value in column \\\"authority\\\" of relation \\\"product_classification\\\" violates not-null constraint\", \"published_dataset\": \"unchanged\"}, \"candidate_full_load_on_upgraded\": {\"exit\": 0, \"seconds\": 0.2, \"message\": null, \"published_dataset\": \"replaced\"}, \"label\": \"local evidence: the previous release's source run as processes (not its image) against one new PostgreSQL cluster, seed data, offline planner\"}"
+  },
+  "artifacts": [],
+  "limits": [
+    "the previous release's source run as processes, not its container image; seed data; one machine; the previous release is not a rollback target (docs/ROLLBACK_DECISION.md)"
+  ]
+}

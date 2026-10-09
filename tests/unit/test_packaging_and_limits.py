@@ -130,9 +130,12 @@ def test_the_configured_default_is_actually_wired_up():
     """The setting existed and nothing read it."""
     import inspect
 
-    from app.pipeline import Pipeline
+    from app.pipeline import Turn
 
-    source = inspect.getsource(Pipeline.ask)
+    # Rendering moved from Pipeline.ask into the graph's answer node on
+    # 30 September; the check follows the code that calls render().
+    source = inspect.getsource(Turn.node_answer)
+    assert "render(" in source, "the answer node no longer renders; re-point this check"
     assert "max_result_bytes" in source, (
         "max_result_bytes is configured but the pipeline does not pass it"
     )

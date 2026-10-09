@@ -1,0 +1,20 @@
+{
+ "baseline": "76298b648634e4f340d6f2a27f33b19d55d760af",
+ "deadline_s": 25,
+ "cases": {
+  "no_database": {
+   "exit": 124,
+   "seconds": 25.02,
+   "baseline_grep_matched": false,
+   "structured_reasons": [],
+   "ci_step_would_pass": false
+  },
+  "owner_credential": {
+   "exit": 3,
+   "seconds": 0.78,
+   "baseline_grep_matched": false,
+   "structured_reasons": [],
+   "ci_step_would_pass": false
+  }
+ }
+}

@@ -1,0 +1,72 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T02:37:35+00:00",
+  "claim": "A synthetic secret planted in an environment override, a connection string or an exception message does not reach the evidence record or the CI log.",
+  "application": {
+    "sha": "f30c617e2a97acb6e71075b12a9496ea6e59c844",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "app/config.py",
+      "evidence/runs/p1d-dsn-encoding.json",
+      "evidence/runs/p1d-evidence-redaction.json",
+      "scripts/record_evidence.py",
+      "tests/unit/test_dsn_encoding.py",
+      "tests/unit/test_evidence_record_accuracy.py",
+      "tests/unit/test_evidence_redaction.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_evidence_redaction.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 7.64
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 37
+    },
+    "blocked_reason": null,
+    "summary": "37 passed in 7.43s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Covers the shapes enumerated in the test; a credential in a shape not listed, and not in an allowlisted variable, would be caught only by the name rule.",
+    "Says nothing about records written before this commit; those were reviewed by hand."
+  ]
+}

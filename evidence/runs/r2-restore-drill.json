@@ -1,0 +1,94 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:40:35+00:00",
+  "claim": "Backup and restore drill: a pg_dump of a full-size database restored into a fresh disposable database matches it in row counts, published generation, row-level-security policies and grants, passes the runtime boundary check, reports ready, and gives the same answers to the same questions as the source.",
+  "application": {
+    "sha": "05ff022c0bc3ff66c09d72e036f34090c8a9fb17",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/RUNBOOK.md",
+      "evidence/runs/r2-drain.json",
+      "scripts/drain_check.py",
+      "scripts/restore_drill.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-9779fd427612",
+    "load_mode": "full",
+    "fingerprint": "4fdc682dc1ec8c6dd2c2bba6",
+    "row_counts": {
+      "sales": 2002000,
+      "users": 35,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 37,
+      "max_wk": 157,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-10-01",
+      "max_period_mo": "2026-10",
+      "max_period_qtr": "2026-Q4",
+      "max_week_ending": "2026-10-03"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/restore_drill.py",
+      "--source",
+      "pharma_analytics_ingestscale",
+      "--target",
+      "pharma_analytics_restoretest"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 29.44
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"source\": \"pharma_analytics_ingestscale\", \"target\": \"pharma_analytics_restoretest\", \"dump_seconds\": 4.53, \"dump_mb\": 45.5, \"restore_seconds\": 18.46, \"restore_to_ready_seconds\": 22.4, \"checks\": {\"row_counts_match\": true, \"generation_matches\": true, \"policies_match\": true, \"grants_match\": true, \"boundary_intact\": true, \"ready\": true, \"answers_match\": true}, \"sales_rows\": 2002000, \"answers\": {\"exec: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 494,685 packs.\", 1], \"exec: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,721 packs.\", 10], \"exec: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 15 row(s).\", 15], \"ram: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 36,312 packs.\", 1], \"ram: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Jubilee Clinical Network leads with 1,606 packs.\", 10], \"ram: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 1 row(s).\", 1]}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Same PostgreSQL cluster: roles already existed. Restoring into a new cluster needs scripts/bootstrap_db.py first, which this drill did not exercise.",
+    "RTO here is restore-to-ready on one machine for a 2M-row database; RPO depends on backup frequency and is not measured.",
+    "The source was a disposable full-size copy, not the working database."
+  ]
+}

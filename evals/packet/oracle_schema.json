@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Evaluation question (one entry of a question set)",
+  "type": "object",
+  "required": [
+    "id",
+    "family",
+    "principal"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,40}$"
+    },
+    "family": {
+      "type": "string"
+    },
+    "principal": {
+      "enum": [
+        "exec",
+        "director",
+        "ram"
+      ],
+      "description": "scripts/run_evals.py runs one user per role; the Exec it uses has pricing access. An Exec without pricing is not yet expressible in a question set."
+    },
+    "question": {
+      "type": "string",
+      "minLength": 3
+    },
+    "turns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "question",
+          "expect"
+        ]
+      }
+    },
+    "note": {
+      "type": "string"
+    },
+    "expect": {
+      "type": "object",
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "sql",
+            "plan",
+            "nonempty",
+            "denied",
+            "warning",
+            "no_pricing",
+            "volume_alternative",
+            "any_of",
+            "keeps_dimension",
+            "keeps_ranking",
+            "frozen_cohort"
+          ]
+        },
+        "sql": {
+          "type": "string",
+          "description": "reference SQL written from the schema and definitions"
+        },
+        "compare": {
+          "enum": [
+            "scalar",
+            "rows",
+            "top_ids"
+          ]
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "plan": {
+          "type": "object"
+        },
+        "status": {
+          "enum": [
+            "answered",
+            "clarify",
+            "denied"
+          ]
+        }
+      }
+    },
+    "author": {
+      "type": "string",
+      "description": "who wrote the question and its oracle"
+    },
+    "written_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "consulted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "the specification files the author read"
+    }
+  },
+  "oneOf": [
+    {
+      "required": [
+        "question",
+        "expect"
+      ]
+    },
+    {
+      "required": [
+        "turns"
+      ]
+    }
+  ]
+}

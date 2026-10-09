@@ -88,7 +88,8 @@ def test_a_failed_request_is_still_audited(exec_user):
 
     assert after == before + 1
     assert row["status"] == "planner_error"
-    assert "provider exploded" in (row["denial_reason"] or "")
+    assert row["denial_reason"] == "planner_failure"
+    assert "provider exploded" not in str(row)
 
 
 # ---------------------------------------------------------------------------
@@ -101,8 +102,8 @@ def test_query_timeout_returns_advice_not_an_answer(pipeline, exec_user, monkeyp
 
     original = compiler_module.Compiler.compile
 
-    def slow(self, plan, *, anchor):
-        query = original(self, plan, anchor=anchor)
+    def slow(self, plan, *, anchor, cohort=None):
+        query = original(self, plan, anchor=anchor, cohort=cohort)
         # An unindexable cross product; the 5s budget will cancel it.
         query.sql = (
             "SELECT count(*) AS value FROM sales a, sales b "

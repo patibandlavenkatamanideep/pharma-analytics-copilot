@@ -1,0 +1,66 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T19:49:53+00:00",
+  "claim": "At 4c90704: the evidence-index tests pass, including that every test file is categorised in evidence/test_categories.json",
+  "application": {
+    "sha": "4c90704de91dbdf0b67fab3905d15c54e07f87fa",
+    "tree": "32928c47738f9ff58ef6ecf6bbc4f243deff2f92",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_evidence_index.py",
+      "-q",
+      "-p",
+      "no:cacheprovider"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.73
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1,
+      "passed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 1 passed in 0.32s"
+  },
+  "artifacts": [],
+  "limits": [
+    "recorded as a failed attempt: the release chain on 4c90704 was stopped during provisioning, before any gate ran, once this was found"
+  ]
+}

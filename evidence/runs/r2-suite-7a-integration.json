@@ -1,0 +1,80 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T12:03:45+00:00",
+  "claim": "The integration suite passes at its documented count.",
+  "application": {
+    "sha": "4e4110775409f119aff90404b1cf5eb13922afba",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/analytics/entities.py",
+      "app/api/main.py",
+      "app/llm/planner.py",
+      "app/pipeline.py",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/runs/r2-failure-modes.json",
+      "evidence/runs/r2-suite-7a-security.json",
+      "evidence/runs/r2-suite-7a-unit.json",
+      "tests/integration/test_failure_modes.py",
+      "tests/security/test_failure_responses.py",
+      "tests/unit/test_live_adapter_contract.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 37.56
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 812
+    },
+    "blocked_reason": null,
+    "summary": "812 passed in 31.37s"
+  },
+  "artifacts": [],
+  "limits": null
+}

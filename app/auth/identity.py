@@ -73,7 +73,6 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
     Every failure path raises the same message and does comparable work, so the
     response does not reveal whether an address is registered.
     """
-    settings = get_settings()
     normalized = (email or "").strip().lower()
     ip_hash = _hash_ip(ip)
 
@@ -136,15 +135,8 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
             except AuthorizationError as exc:
                 raise AuthenticationError(str(exc)) from None
 
-            token = secrets.token_urlsafe(TOKEN_BYTES)
-            expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
-            cur.execute(
-                "INSERT INTO app_auth.sessions "
-                "(token_hash, user_id, expires_at, user_agent, ip_hash) "
-                "VALUES (%s, %s, %s, %s, %s)",
-                (_token_hash(token), row["user_id"], expires_at,
-                 (user_agent or "")[:300] or None, ip_hash),
-            )
+            token, expires_at = issue_session(cur, row["user_id"],
+                                              user_agent=user_agent, ip_hash=ip_hash)
             # A success clears the budget, so a legitimate user who mistypes twice
             # and then signs in is not held to the failures.
             _record_attempt(cur, normalized, ip_hash, succeeded=True)
@@ -159,6 +151,23 @@ def authenticate(email: str, password: str, *, user_agent: str | None = None,
         raise
 
     return Session(token=token, user_id=principal.user_id, expires_at=expires_at), principal
+
+
+def issue_session(cur, user_id: str, *, user_agent: str | None,
+                  ip_hash: str | None) -> tuple[str, datetime]:
+    """Open a session for a user whose identity has just been verified --
+    by password or by an identity provider. One implementation, so every
+    sign-in path gets the same expiry, idle and rotation rules."""
+    settings = get_settings()
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.session_ttl_hours)
+    cur.execute(
+        "INSERT INTO app_auth.sessions "
+        "(token_hash, user_id, expires_at, user_agent, ip_hash, last_seen_at, rotated_at) "
+        "VALUES (%s, %s, %s, %s, %s, now(), now())",
+        (_token_hash(token), user_id, expires_at, (user_agent or "")[:300] or None, ip_hash),
+    )
+    return token, expires_at
 
 
 def _record_attempt(cur, email: str, ip_hash: str | None, *, succeeded: bool) -> None:
@@ -194,18 +203,33 @@ def purge_old_login_attempts(days: int = 30) -> int:
 
 
 def resolve(token: str | None) -> Principal | None:
-    """Resolve a session token to a principal, or None.
+    """Resolve a session token to a principal, or None."""
+    return resolve_session(token)[0]
+
+
+def resolve_session(token: str | None) -> tuple[Principal | None, bool]:
+    """Resolve a session token. Returns (principal, due_for_rotation).
 
     The users row is re-read here rather than cached in the session, so role,
     assignment and pricing permission are always current.
+
+    A session is live only if it is unrevoked, inside its absolute expiry,
+    used within the idle window, its credential is not disabled, and -- if it
+    was rotated out -- still inside the short grace period.
     """
     if not token:
-        return None
+        return None, False
+    settings = get_settings()
     with auth_transaction() as cur:
         cur.execute(
             """
             SELECT u.user_id, u.email, u.full_name, u.role, u.territory_name,
-                   u.region_name, u.can_view_wac
+                   u.region_name, u.can_view_wac,
+                   s.superseded_at IS NULL
+                     AND COALESCE(s.rotated_at, s.created_at)
+                         <= now() - make_interval(mins => %s) AS rotate,
+                   COALESCE(s.last_seen_at, s.created_at)
+                         <= now() - interval '60 seconds' AS touch
             FROM app_auth.sessions s
             JOIN users u ON u.user_id = s.user_id
             -- A disabled credential must also kill sessions already issued
@@ -217,18 +241,60 @@ def resolve(token: str | None) -> Principal | None:
               AND s.revoked_at IS NULL
               AND s.expires_at > now()
               AND c.disabled IS NOT TRUE
+              -- Idle: unused for the window means dead, absolute expiry or not.
+              AND COALESCE(s.last_seen_at, s.created_at)
+                  > now() - make_interval(mins => %s)
+              -- Rotated out: accepted only for the grace period.
+              AND (s.superseded_at IS NULL
+                   OR s.superseded_at > now() - make_interval(secs => %s))
             """,
-            (_token_hash(token),),
+            (settings.session_rotate_minutes, _token_hash(token),
+             settings.session_idle_minutes, settings.session_rotation_grace_seconds),
         )
         row = cur.fetchone()
+        if row is not None and row["touch"]:
+            # Throttled to once a minute: activity is what idle expiry
+            # measures, and a write per request would be most of the cost.
+            cur.execute("UPDATE app_auth.sessions SET last_seen_at = now() "
+                        "WHERE token_hash = %s", (_token_hash(token),))
     if row is None:
-        return None
+        return None, False
     try:
-        return build_principal(row)
+        return build_principal(row), bool(row["rotate"])
     except AuthorizationError:
         # A previously valid session whose account has since lost its
         # assignment resolves to nobody rather than to a default scope.
-        return None
+        return None, False
+
+
+def rotate(token: str) -> tuple[str, datetime] | None:
+    """Replace a token with a new one for the same session.
+
+    Returns (new token, absolute expiry) or None if another request rotated
+    it first. The expiry is COPIED, never extended: rotation limits how long
+    a leaked token is useful, it does not lengthen the session. The old
+    token is marked superseded rather than revoked, so requests already in
+    flight with it finish; it stops working after the grace period.
+    """
+    new_token = secrets.token_urlsafe(TOKEN_BYTES)
+    with auth_transaction() as cur:
+        # Claimed atomically: of two requests that both found the token due,
+        # exactly one rotates it.
+        cur.execute(
+            "UPDATE app_auth.sessions SET superseded_at = now() "
+            "WHERE token_hash = %s AND superseded_at IS NULL AND revoked_at IS NULL "
+            "RETURNING user_id, expires_at, user_agent, ip_hash",
+            (_token_hash(token),))
+        old = cur.fetchone()
+        if old is None:
+            return None
+        cur.execute(
+            "INSERT INTO app_auth.sessions (token_hash, user_id, expires_at, "
+            "  user_agent, ip_hash, last_seen_at, rotated_at) "
+            "VALUES (%s, %s, %s, %s, %s, now(), now())",
+            (_token_hash(new_token), old["user_id"], old["expires_at"],
+             old["user_agent"], old["ip_hash"]))
+    return new_token, old["expires_at"]
 
 
 def revoke(token: str | None) -> None:

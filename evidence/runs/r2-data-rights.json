@@ -1,0 +1,104 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T11:50:37+00:00",
+  "claim": "A user can export what they may currently see of their own data and delete every conversation they own -- turns, cohorts, clarifications, runs and checkpoints -- without touching anyone else's or the audit trail; a conversation in flight is not deleted; scheduled retention removes stale conversations with their threads and audit rows past the period.",
+  "application": {
+    "sha": "0a19036a1bdf8b6cf50c2ae74da14f5003a55fca",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/api/main.py",
+      "app/config.py",
+      "app/conversation/privacy.py",
+      "app/retention.py",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RETENTION.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "scripts/prune_state.py",
+      "tests/security/test_data_rights.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-13fdbeae2db0",
+    "load_mode": "seed",
+    "fingerprint": "a29d02f0c9b24ea00e05f664",
+    "row_counts": {
+      "sales": 271,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-15",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-20"
+    },
+    "database": "pharma_analytics_authtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/security/test_data_rights.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 1.84
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 9
+    },
+    "blocked_reason": null,
+    "summary": "9 passed in 1.25s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Retention periods are proposals; no regulation or contract was reviewed.",
+    "Backups and the telemetry collector keep their own copies on their own schedules; neither exists in this environment."
+  ]
+}

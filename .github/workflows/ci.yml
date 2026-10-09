@@ -12,8 +12,12 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # main, and the post-assessment branches, so their CI runs without
+    # waiting for a pull request.
+    branches: [main, "post-assessment/**", "production/nl2sql-readiness", "codex/**"]
   pull_request:
+  # Run on any branch from the Actions tab or `gh workflow run ci.yml --ref <branch>`.
+  workflow_dispatch:
 
 jobs:
   test:
@@ -26,7 +30,12 @@ jobs:
           POSTGRES_PASSWORD: ci-postgres
           POSTGRES_DB: postgres
         ports: ["5432:5432"]
+        # Docker gives a container 64 MB of /dev/shm. PostgreSQL's parallel
+        # VACUUM after a full load asks for more ("could not resize shared
+        # memory segment ... No space left on device"), and parallel queries
+        # use the same memory. compose.yaml sets the same size.
         options: >-
+          --shm-size=512m
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s --health-timeout 3s --health-retries 20
 
@@ -39,6 +48,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history: test_evidence_index checks that every fix
+          # commit the ledger names exists, and failed in a one-commit
+          # checkout (run 37865432807, evidence/probes/shallow_checkout_tests.sh).
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -48,8 +62,10 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
-          pip install -e .
+          # The same hashed set the image installs, then the test tools.
+          pip install --require-hashes -r requirements.lock
+          pip install pytest==8.3.4 pytest-asyncio==0.25.0 httpx==0.28.1
+          pip install --no-deps -e .
 
       - name: Bootstrap database, roles and security policies
         run: python scripts/bootstrap_db.py --drop
@@ -63,6 +79,18 @@ jobs:
       - name: Build the coherent-market fixture database
         run: python scripts/build_fixture_db.py
 
+      # tests/security mutates roles, territories and pricing permission, so
+      # it runs only against a disposable database. Without this step those
+      # tests SKIPPED in CI and the job still went green -- which is exactly
+      # what the strict gate below now refuses to allow.
+      - name: Build the disposable authorization-test database
+        run: python scripts/build_authtest_db.py
+
+      # Ingestion tests add, correct and delete sales and move the reporting
+      # anchor, so they get a database of their own.
+      - name: Build the disposable ingestion-test database
+        run: python scripts/build_ingesttest_db.py
+
       - name: Verify the security boundary is intact
         run: |
           python - <<'PY'
@@ -73,14 +101,96 @@ jobs:
           print("boundary intact")
           PY
 
-      - name: Security suite (release gate)
-        run: python -m pytest tests/security -q
+      # --release-gate turns any skip, collection error or unapproved xfail
+      # into a failure, and refuses a session in which nothing passed. Plain
+      # `pytest tests/security -q` exits 0 when every test skips for a
+      # missing database, which is a green tick for a run that checked
+      # nothing.
+      #
+      # PAC_SECURITY_MIN_TESTS is a SECONDARY guard against a narrowed
+      # selection. It is maintained deliberately: raise it when security
+      # tests are added. It is not the definition of the requirement --
+      # collected tests that skip still fail the gate.
+      - name: Security suite (release gate, strict)
+        env:
+          PAC_SECURITY_MIN_TESTS: "450"
+        run: |
+          python -m pytest tests/security -q \
+            --release-gate --min-tests "$PAC_SECURITY_MIN_TESTS"
 
+      # Strict for the same reason as the security suite: without its
+      # database every ingestion test skips, and a skip is not a pass.
+      # Includes the input contract and the jobs process's telemetry and
+      # freshness (review of 1 October 2026, R4 and R5).
+      - name: Incremental ingestion (strict)
+        run: |
+          python -m pytest tests/integration/test_ingestion.py tests/unit/test_ingest_calendar.py \
+            tests/integration/test_ingest_contract.py tests/integration/test_ingest_observability.py \
+            tests/unit/test_ingest_validation.py \
+            -q --release-gate --min-tests 176
+
+      # Strict too. Everything not in the two steps above runs here, among
+      # it the tests on the coherent-market fixture database (the k-07
+      # regressions): with that database built but left empty they skip,
+      # and without the gate the step stayed green
+      # (evidence/probes/ci_full_suite_gate.py).
       - name: Full test suite
-        run: python -m pytest tests -q
+        run: python -m pytest tests -q --release-gate
 
-      - name: Held-out question set (offline planner, no spend)
-        run: python scripts/run_evals.py
+      # This step used to be named "Held-out question set" and ran the
+      # default suite -- which is the regression set the system was
+      # developed against. It is a gate, and is named as one.
+      - name: Regression question set (offline planner, gate)
+        run: python scripts/run_evals.py --provider offline --questions evals/questions.yaml
+
+      # The held-out sets are MEASUREMENTS, not gates. Gating on a holdout
+      # turns it into a target, and a set tuned against stops being held out.
+      # continue-on-error keeps a failure visible on the run without blocking
+      # it; the record is uploaded below either way.
+      - name: Held-out set 1 (measurement, not a gate)
+        continue-on-error: true
+        run: python scripts/run_evals.py --provider offline --questions evals/holdout.yaml
+
+      - name: Held-out set 2 (measurement, not a gate)
+        continue-on-error: true
+        run: python scripts/run_evals.py --provider offline --questions evals/holdout2.yaml
+
+      - name: The release gate itself must reject unverified runs
+        run: python -m pytest tests/unit/test_release_gate_strict.py tests/unit/test_release_gate.py -q
+
+      # Real Chromium against the real server and the disposable database:
+      # sign-in, reload, sign-out, identity change, conversation ownership,
+      # clarification by choosing, an ended session. The runner provisions
+      # disposable identities and removes them afterwards.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Browser journeys (Playwright, Chromium)
+        run: |
+          npm --prefix web ci
+          npm --prefix web run build
+          (cd web && npx playwright install --with-deps chromium)
+          python scripts/browser_journeys.py
+
+      # On a failure: what the browser saw and what the server logged --
+      # screenshots, the page snapshot (error-context.md), each test's API
+      # timeline (method, path, status) and the server's sanitised JSON log.
+      # No Playwright trace: it holds request bodies and cookies, and this
+      # repository's artifacts are public. Synthetic data and throwaway
+      # identities only; kept 7 days.
+      - name: Keep browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-${{ github.sha }}
+          path: |
+            web/test-results/
+            web/e2e-logs/server.log
+            !web/test-results/**/trace.zip
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload evaluation record
         if: always()
@@ -96,15 +206,83 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm --prefix web ci
+      # The component tests used to exist and never run in CI: this job
+      # built the bundle and stopped. They are the only automated check of
+      # the identity-isolation logic in the browser.
+      # vitest fails on zero test files, but not on a suite that got smaller
+      # (a deleted file, an it.skip). The floor is maintained like the
+      # security floor, and the unit suite checks it equals the tests defined.
+      - name: Component tests (vitest, jsdom, gated)
+        env:
+          PAC_COMPONENT_MIN_TESTS: "32"
+        run: |
+          npm --prefix web test -- --reporter=default --reporter=json \
+            --outputFile=component-results.json
+          python3 scripts/check_component_results.py web/component-results.json \
+            "$PAC_COMPONENT_MIN_TESTS"
       - run: npm --prefix web run build
 
   # The container image is a deliverable, so it is built on every push rather
   # than trusted. Built and exercised, never pushed: no registry, no cloud, no
   # cost beyond runner minutes.
+  # Dependencies and secrets. Fails on a known vulnerability with a fix, and
+  # on any credential-shaped string anywhere in the history.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # the secret scan reads every commit
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Python dependencies against known vulnerabilities (pinned, hashed lock)
+        run: |
+          pip install pip-audit==2.7.3
+          pip-audit --require-hashes --disable-pip -r requirements.lock
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: JavaScript dependencies against known vulnerabilities
+        working-directory: web
+        run: |
+          npm ci --no-fund
+          npm audit --omit=dev --audit-level=high
+
+      - name: No secret in any commit
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /repo --redact --no-banner
+
+      # The AWS staging module: canonical form, valid, and its plans with a
+      # mocked AWS provider (infra/aws-staging/tests: no credentials, no API
+      # call, nothing created). Terraform comes from HashiCorp's release,
+      # checked against the SHA-256 in its terraform_1.16.5_SHA256SUMS (not
+      # its signature); the provider must match the committed lock file.
+      - name: Staging infrastructure (validate and mocked plans)
+        env:
+          TF_VERSION: "1.16.5"
+          TF_SHA256: 2bc2fcfff033265c9e02ca0351f01794eb122f62a9b2a49a3294b9e49eaab5e4
+          AWS_EC2_METADATA_DISABLED: "true"
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/terraform.zip" \
+            "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+          echo "${TF_SHA256}  $RUNNER_TEMP/terraform.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/terraform.zip" terraform -d "$RUNNER_TEMP/tf"
+          tf="$RUNNER_TEMP/tf/terraform"
+          "$tf" -chdir=infra/aws-staging init -backend=false -input=false -lockfile=readonly -no-color
+          "$tf" -chdir=infra/aws-staging fmt -check -recursive -no-color
+          "$tf" -chdir=infra/aws-staging validate -no-color
+          "$tf" -chdir=infra/aws-staging test -no-color
+
   image:
     runs-on: ubuntu-latest
 
@@ -115,7 +293,12 @@ jobs:
           POSTGRES_PASSWORD: ci-postgres
           POSTGRES_DB: postgres
         ports: ["5432:5432"]
+        # Docker gives a container 64 MB of /dev/shm. PostgreSQL's parallel
+        # VACUUM after a full load asks for more ("could not resize shared
+        # memory segment ... No space left on device"), and parallel queries
+        # use the same memory. compose.yaml sets the same size.
         options: >-
+          --shm-size=512m
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s --health-timeout 3s --health-retries 20
 
@@ -130,8 +313,32 @@ jobs:
           push: false
           load: true
           tags: pharma-analytics-copilot:ci
+          # The image carries the commit it was built from (/health, spans,
+          # the OCI revision label), so a running container can be tied to
+          # this run's test and evaluation records.
+          build-args: PAC_RELEASE=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # Known-vulnerable packages in the OS layer or the Python environment
+      # fail the build when a fixed version exists. Policy and exceptions:
+      # docs/SUPPLY_CHAIN.md.
+      #
+      # Pinned to a commit, not a tag. The tag this used, 0.28.0, no longer
+      # exists: upstream re-tagged its releases with a "v" prefix on
+      # 2026-03-20, and the job failed at "Set up job" on 7 October 2026.
+      # v0.28.0 cannot be pinned instead, because it calls
+      # aquasecurity/setup-trivy@v0.2.1, whose tag is also gone. v0.36.0 pins
+      # its own nested actions by commit, its commit is signed and verified,
+      # and it is outside GHSA-9p44-j4g5-cfx5 (affected 0.31.0-0.34.0). It
+      # runs trivy v0.70.0; scripts/image_smoke.sh runs trivy 0.58.1 locally.
+      - name: Scan the image for vulnerabilities with a fix available
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: pharma-analytics-copilot:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
       # The application refuses to serve unless it can verify the database
       # security boundary. That is deliberate -- a mis-provisioned deployment
@@ -139,16 +346,13 @@ jobs:
       # first assertion is that it does NOT come up without a database.
       - name: It refuses to start with no database
         run: |
+          rc=0
           docker run --rm --name pac-nodb \
             -e PAC_DB_HOST=127.0.0.1 -e PAC_LLM_PROVIDER=offline \
             pharma-analytics-copilot:ci \
-            timeout 25 uvicorn app.api.main:app --host 0.0.0.0 --port 8000 \
-            > nodb.log 2>&1 && echo "started anyway" || true
-          if grep -qiE "connection refused|boundary" nodb.log; then
-            echo "refused to serve without a database, as designed"
-          else
-            echo "expected a startup refusal; got:"; tail -20 nodb.log; exit 1
-          fi
+            timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8000 \
+            > nodb.log 2>&1 || rc=$?
+          python scripts/assert_startup_refusal.py nodb.log "$rc" database_unreachable
 
       # The image must also contain everything needed to provision, not just to
       # serve. Passwords are supplied as environment variables and --no-env
@@ -180,16 +384,38 @@ jobs:
             pharma-analytics-copilot:ci \
             python -c "import app.data.loader, app.pipeline, app.api.main; print('app package importable')"
 
-      - name: Start the container against the database
+      # The serving process must not hold the owner credential. In the cloud
+      # environment it refuses to start if given one: migrations and loads
+      # run in the one-shot jobs container instead.
+      - name: It refuses to serve while holding the owner credential
         env:
           PAC_DB_OWNER_PASSWORD: ci-owner-pw
           PAC_DB_AUTH_PASSWORD: ci-auth-pw
           PAC_DB_EXEC_PASSWORD: ci-exec-pw
           PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
         run: |
+          rc=0
+          docker run --rm --network host \
+            -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
+            -e PAC_DB_OWNER_PASSWORD -e PAC_DB_AUTH_PASSWORD \
+            -e PAC_DB_EXEC_PASSWORD -e PAC_DB_SCOPED_PASSWORD \
+            -e PAC_LLM_PROVIDER=offline \
+            pharma-analytics-copilot:ci \
+            timeout 25 uvicorn app.api.main:app --log-config app/log_config.json --host 0.0.0.0 --port 8001 \
+            > owner.log 2>&1 || rc=$?
+          python scripts/assert_startup_refusal.py owner.log "$rc" owner_credential_present
+
+      - name: Start the container against the database
+        env:
+          PAC_DB_AUTH_PASSWORD: ci-auth-pw
+          PAC_DB_EXEC_PASSWORD: ci-exec-pw
+          PAC_DB_SCOPED_PASSWORD: ci-scoped-pw
+        run: |
+          # As deployed: read-only root (no tmpfs, as on Fargate), no
+          # capabilities, no privilege escalation (infra/aws-staging sets the same).
           docker run -d --name pac --network host \
-            -e PAC_DB_HOST=127.0.0.1 \
-            -e PAC_DB_OWNER_PASSWORD="$PAC_DB_OWNER_PASSWORD" \
+            --read-only --cap-drop ALL --security-opt no-new-privileges \
+            -e PAC_DB_HOST=127.0.0.1 -e PAC_ENVIRONMENT=cloud \
             -e PAC_DB_AUTH_PASSWORD="$PAC_DB_AUTH_PASSWORD" \
             -e PAC_DB_EXEC_PASSWORD="$PAC_DB_EXEC_PASSWORD" \
             -e PAC_DB_SCOPED_PASSWORD="$PAC_DB_SCOPED_PASSWORD" \
@@ -225,6 +451,14 @@ jobs:
           [ "$code" = "200" ] || { echo "UI not served ($code)"; exit 1; }
           echo "UI served from the same origin"
 
+      - name: The running container reports the commit it was built from
+        run: |
+          release=$(curl -s http://127.0.0.1:8000/health | python3 -c "import json,sys; print(json.load(sys.stdin)['release'])")
+          [ "$release" = "${{ github.sha }}" ] || { echo "expected ${{ github.sha }}, got $release"; exit 1; }
+          label=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' pharma-analytics-copilot:ci)
+          [ "$label" = "${{ github.sha }}" ] || { echo "label is $label"; exit 1; }
+          echo "release $release"
+
       - name: Unauthenticated API access is refused
         run: |
           code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/me)
@@ -237,6 +471,27 @@ jobs:
           echo "running as: $user"
           [ "$user" != "root" ] || { echo "container runs as root"; exit 1; }
 
+      # A setuid-root binary would be a way from the application user to root.
+      # Searched on the image, as root in a throwaway container (the running
+      # one has no capabilities), so no directory is unreadable; a failing
+      # find fails.
+      - name: It carries no setuid or setgid file
+        run: |
+          privileged=$(docker run --rm -u 0 --entrypoint find pharma-analytics-copilot:ci \
+            / -xdev -type f -perm /6000 2>/dev/null || echo "find failed")
+          [ -z "$privileged" ] || { echo "setuid or setgid: $privileged"; exit 1; }
+
       - name: Stop
         if: always()
         run: docker rm -f pac || true
+
+      # The same image, end to end, as scripts/image_smoke.sh runs it locally:
+      # a FRESH database provisioned in one pass (the database a first
+      # deployment gets), data published by a jobs container, an Exec and a
+      # RAM signing in over real sessions, sign-out, a clean stop, and a
+      # second scan. The steps above never sign in, which is how a fresh
+      # database that refused every sign-in once went unnoticed.
+      - name: Image journeys on a freshly provisioned database
+        env:
+          PAC_SMOKE_IMAGE: pharma-analytics-copilot:ci
+        run: bash scripts/image_smoke.sh

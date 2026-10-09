@@ -1,0 +1,341 @@
+{
+ "report_version": "1.0.0",
+ "dataset_id": "full-30ed574cc870",
+ "load_mode": "full",
+ "real_data": false,
+ "overall": "attention",
+ "sections": {
+  "identifiers": {
+   "status": "ready",
+   "evidence": {
+    "products": 10,
+    "ndcs": 10,
+    "ndc_not_in_10_digit_form": 0,
+    "organizations": 42,
+    "drug_names_over_several_ndcs": 1,
+    "organization_names_shared_by_several_ids": 1
+   },
+   "notes": [
+    "Grouping uses ndc and org_id; names are labels only."
+   ]
+  },
+  "periods": {
+   "status": "ready",
+   "evidence": {
+    "weeks": 27,
+    "first_week_ending": "2020-09-26",
+    "last_week_ending": "2021-03-27",
+    "calendar": {
+     "extendable": true,
+     "month_rules": [
+      "week_ending_month"
+     ],
+     "week_ending_weekday": 5
+    },
+    "reporting_anchor": {
+     "max_mo": 6,
+     "max_wk": 26,
+     "min_mo": 0,
+     "min_wk": 0,
+     "max_txn": "2021-03-25",
+     "max_period_mo": "2021-03",
+     "max_period_qtr": "2021-Q1",
+     "max_week_ending": "2021-03-27"
+    },
+    "business_timezone": "America/New_York",
+    "gap_warnings": []
+   },
+   "notes": [
+    "Ingestion can add weeks by the convention recorded here.",
+    "Event timestamps must carry an offset; a sale's day is taken in the business timezone."
+   ]
+  },
+  "totals_and_overlap": {
+   "status": "attention",
+   "evidence": {
+    "by_source": [
+     {
+      "data_source": "distributor",
+      "rows": 1757,
+      "packs": 19118.0
+     },
+     {
+      "data_source": "hub_dispense",
+      "rows": 190,
+      "packs": 2077.0
+     },
+     {
+      "data_source": "market_data",
+      "rows": 1107,
+      "packs": 12476.0
+     }
+    ],
+    "market_data_company_rows": 313,
+    "months_missing_a_source": {
+     "2020-11": [
+      "market_data"
+     ],
+     "2020-12": [
+      "market_data"
+     ],
+     "2021-01": [
+      "market_data"
+     ],
+     "2021-03": [
+      "hub_dispense",
+      "market_data"
+     ]
+    },
+    "market_share_exceeds_one": true
+   },
+   "notes": [
+    "Some months lack a source; those months are unknown, not zero, for metrics that read it."
+   ]
+  },
+  "units": {
+   "status": "ready",
+   "evidence": {
+    "products_missing_conversion_factor": 0,
+    "equivalents_formula_conflict_rows": 714
+   },
+   "notes": [
+    "Volume is pack_units; equivalents are pack_units x unit_conversion_factor (A2)."
+   ]
+  },
+  "money": {
+   "status": "attention",
+   "evidence": {
+    "distributor_rows": 1757,
+    "priced": 1757,
+    "priced_outside_distributor": 0,
+    "negative": 0,
+    "wac_per_pack_by_ndc": [
+     {
+      "ndc": "70707-0002-01",
+      "p10": 201.12,
+      "p90": 218.44
+     },
+     {
+      "ndc": "70707-0010-01",
+      "p10": 905.73,
+      "p90": 986.52
+     },
+     {
+      "ndc": "70707-0300-01",
+      "p10": 4026.18,
+      "p90": 4365.85
+     }
+    ]
+   },
+   "notes": [
+    "WAC is read as the transaction's dollar amount, not a price per pack (A8). A narrow WAC-per-pack band within an NDC is consistent with that reading but cannot prove it; the data owner must confirm."
+   ]
+  },
+  "classifications": {
+   "status": "attention",
+   "evidence": {
+    "classification": {
+     "by_class": {
+      "generic": 1,
+      "unknown": 4,
+      "biosimilar": 1,
+      "company_brand": 3,
+      "branded_competitor": 1
+     },
+     "mappings": [
+      "orchard-customer 1.0.0 (sha256 7f0aec361c61)"
+     ],
+     "by_authority": {
+      "none": 4,
+      "source": 3,
+      "mapping": 3
+     },
+     "rule_versions": [
+      "2.0.0"
+     ],
+     "unknown_products": 4
+    }
+   },
+   "notes": [
+    "4 product(s) of unknown class; segment shares carry their volume as a range."
+   ]
+  },
+  "hierarchy": {
+   "status": "attention",
+   "evidence": {
+    "facilities": 31,
+    "standalone_facilities": 8,
+    "facilities_without_grandparent": 2,
+    "inactive": 1,
+    "organizations_without_territory": 1,
+    "sales_rows_without_territory": 70
+   },
+   "notes": [
+    "Accounts roll up to the top organization present; a facility outside every territory is visible only to Exec totals, labelled unmapped."
+   ]
+  },
+  "territory_access": {
+   "status": "ready",
+   "evidence": {
+    "users_by_role": [
+     {
+      "role": "director",
+      "users": 1
+     },
+     {
+      "role": "exec",
+      "users": 2
+     },
+     {
+      "role": "ram",
+      "users": 1
+     }
+    ],
+    "scoped_users_with_empty_scope": [],
+    "territories_without_a_user": [
+     "Basin South",
+     "Coastal Arc",
+     "Spruce Reach"
+    ]
+   },
+   "notes": [
+    "Scope binds by territory and region name; each name is unique (enforced at load). A scoped user whose name matches no territory sees nothing."
+   ]
+  },
+  "cadence": {
+   "status": "ready",
+   "evidence": {
+    "batches": [
+     {
+      "source_system": "orchard-feed",
+      "status": "no_change",
+      "batches": 1,
+      "last_attempt": "2026-10-07 17:24:40.568663-04:00"
+     },
+     {
+      "source_system": "orchard-feed",
+      "status": "published",
+      "batches": 3,
+      "last_attempt": "2026-10-07 17:24:40.571914-04:00"
+     },
+     {
+      "source_system": "orchard-feed",
+      "status": "rejected",
+      "batches": 1,
+      "last_attempt": "2026-10-07 17:24:40.571143-04:00"
+     }
+    ],
+    "watermarks": [
+     {
+      "source_system": "orchard-feed",
+      "watermark": "2021-03-25 15:00:00-04:00",
+      "last_batch_at": "2026-10-07 17:24:40.571914-04:00"
+     }
+    ]
+   },
+   "notes": [
+    "Synthetic batches establish handling, not a feed's real cadence or lateness."
+   ]
+  },
+  "correction_identity": {
+   "status": "ready",
+   "evidence": {
+    "ledger": [
+     {
+      "source_system": "orchard-feed",
+      "events": 87,
+      "corrected": 3,
+      "tombstoned": 2
+     }
+    ],
+    "quarantine_by_reason": [
+     {
+      "reason": "conflicting_versions",
+      "events": 1
+     },
+     {
+      "reason": "invalid_identity",
+      "events": 1
+     },
+     {
+      "reason": "non_positive_packs",
+      "events": 1
+     },
+     {
+      "reason": "unknown_organization",
+      "events": 1
+     }
+    ],
+    "rejected_by_code": [
+     {
+      "rejection_code": "control_totals",
+      "batches": 1
+     }
+    ],
+    "onboarding_reconciliation": {
+     "events_expected": 98,
+     "events_received_by_batches": 98,
+     "by_category": {
+      "accepted": 89,
+      "quarantined": 4,
+      "ignored_replay": 2,
+      "rejected": 3
+     },
+     "every_event_reconciled": true,
+     "categories_cover_every_event": true,
+     "base_total_packs": "33095",
+     "final_total_packs": "33671",
+     "expected_delta": "576.0",
+     "observed_delta": "576",
+     "totals_reconcile": true,
+     "anchor_before": "2021-03-20",
+     "anchor_after": "2021-03-27"
+    }
+   },
+   "notes": [
+    "Each event is identified by (source_system, source_event_id) with a version; a correction is a higher version, a deletion a tombstone. Without stable identity from the feed, neither can be applied."
+   ]
+  }
+ },
+ "thresholds": {
+  "max_packs_per_event": {
+   "value": 1000000,
+   "provisional": true
+  },
+  "max_wac_per_pack": {
+   "value": 10000000,
+   "provisional": true
+  },
+  "max_events_per_batch": {
+   "value": 100000,
+   "provisional": true
+  },
+  "max_identity_length": {
+   "value": 256,
+   "provisional": true
+  },
+  "ingest_max_quarantine_ratio": {
+   "value": 0.05,
+   "provisional": true
+  },
+  "business_timezone": {
+   "value": "America/New_York",
+   "provisional": true
+  }
+ },
+ "row_counts": {
+  "sales": 3054,
+  "users": 4,
+  "products": 10,
+  "organizations": 42,
+  "zip_territory": 12
+ },
+ "source_hashes": {
+  "sales.csv": "53b6abb4d40db297c370bcc6839ac9a04df4bd23ad4cd5a2a1c12e20fe75795c",
+  "products.csv": "cbcfa1da553a0927bc7914bb3ca437186e0c6ca4ba940b248b331d7aea48e368",
+  "organizations.csv": "e887c45e0a03dfbf38cb959e9de04af537da44533b5674ed74df7ea3569ed108",
+  "zip_territory.csv": "19792f8351a8e0e68e96b17b4bbc57f4af27c57bbed5ef3a8da71f4765e853a4",
+  "classification_mapping": "7f0aec361c61c646031986b21df99f168272486b3f7c51d01077a393d6b94eb9",
+  "batch:orchard-feed/orchard-b5": "54cf82a6a14689ca4da7778916c601a406c00e7b1ab4f26583cd1858971b50db"
+ }
+}

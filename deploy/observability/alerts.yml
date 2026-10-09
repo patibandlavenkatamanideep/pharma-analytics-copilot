@@ -1,0 +1,67 @@
+# Alert rules for the application's metrics (docs/OBSERVABILITY.md#alerts,
+# which lists the same rules; tests/unit/test_alert_rules.py keeps the two
+# equal). Prometheus names, as the collector's Prometheus exporter
+# translates the OpenTelemetry ones. Thresholds are starting points, not
+# agreed SLOs. Exercised locally by scripts/ops_drill.py with shortened
+# windows; never against a hosted backend.
+groups:
+  - name: pharma-analytics-copilot
+    rules:
+      - alert: SlowAnswers
+        expr: histogram_quantile(0.95, sum by (le) (rate(pac_ask_duration_milliseconds_bucket[10m]))) > 10000
+        for: 10m
+        annotations: {summary: "p95 answer time above 10 s"}
+      - alert: Errors
+        expr: sum(rate(pac_ask_outcomes_total{status="error"}[10m])) / sum(rate(pac_ask_outcomes_total[10m])) > 0.05
+        for: 10m
+        annotations: {summary: "More than 5% of questions fail"}
+      - alert: QueryTimeouts
+        expr: sum(rate(pac_db_errors_total{kind="timeout"}[10m])) / sum(rate(pac_ask_outcomes_total[10m])) > 0.02
+        for: 10m
+        annotations: {summary: "More than 2% of questions end in a statement timeout"}
+      - alert: ModelFailing
+        expr: sum(rate(pac_llm_attempts_total{outcome!="plan"}[15m])) / sum(rate(pac_llm_attempts_total[15m])) > 0.2
+        for: 15m
+        annotations: {summary: "Transport errors or invalid plans"}
+      - alert: UsageNotReported
+        expr: sum(rate(pac_llm_usage_unknown_total[1h])) > 0
+        for: 1h
+        annotations: {summary: "Model spend is not being measured"}
+      - alert: PoolSaturation
+        expr: histogram_quantile(0.95, sum by (le, pool) (rate(pac_db_pool_wait_milliseconds_bucket[5m]))) > 500
+        for: 5m
+        annotations: {summary: "Requests queue for connections"}
+      - alert: PoolExhausted
+        expr: sum(increase(pac_db_pool_timeouts_total[5m])) > 0
+        annotations: {summary: "A request found no connection"}
+      - alert: DatabaseErrors
+        expr: sum(increase(pac_db_errors_total{kind="unavailable"}[5m])) > 0
+        annotations: {summary: "Database unreachable"}
+      - alert: AuditLoss
+        expr: sum(increase(pac_persistence_failures_total{kind="audit"}[5m])) > 0
+        labels: {severity: page}
+        annotations: {summary: "A request went unaudited"}
+      - alert: TurnsNotSaved
+        expr: sum(increase(pac_persistence_failures_total{kind="turn"}[15m])) > 3
+        annotations: {summary: "Conversations not being recorded"}
+      - alert: MissedIngestionRun
+        expr: max by (source) (pac_ingest_since_success_seconds) > 93600
+        for: 15m
+        annotations: {summary: "No accepted batch for 26 hours; set to the feed's schedule"}
+      - alert: DataNotMoving
+        expr: max by (source) (pac_ingest_watermark_age_seconds) > 259200
+        for: 1h
+        annotations: {summary: "Newest applied event older than three days"}
+      - alert: FreshnessNotReported
+        expr: absent_over_time(pac_ingest_since_success_seconds[30m])
+        annotations: {summary: "No process is reporting freshness"}
+      - alert: BatchRejected
+        expr: max by (source) (pac_ingest_rejected_since_success) > 0
+        annotations: {summary: "A feed's batches are being rejected and none has been accepted since; read from the batch log"}
+      - alert: QuarantineRising
+        expr: sum(pac_ingest_quarantined_last_day) > 100
+        annotations: {summary: "More than 100 events quarantined in a day; read from the batch log"}
+      - alert: TelemetryPipelineDown
+        expr: up{job="otel-collector"} == 0
+        for: 5m
+        annotations: {summary: "Prometheus cannot scrape the collector: every metric and alert above is blind"}

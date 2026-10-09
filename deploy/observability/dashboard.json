@@ -1,0 +1,338 @@
+{
+ "title": "Pharma analytics copilot -- operations",
+ "description": "Panels of docs/OPERATIONS_DASHBOARD.md over the Prometheus names. Each query is executed against a live Prometheus by scripts/ops_drill.py (local evidence). The audit and feedback panels are SQL (docs/OPERATIONS_DASHBOARD.md) and are not here.",
+ "schemaVersion": 39,
+ "time": {
+  "from": "now-15m",
+  "to": "now"
+ },
+ "templating": {
+  "list": [
+   {
+    "name": "datasource",
+    "type": "datasource",
+    "query": "prometheus"
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "timeseries",
+   "title": "Outcomes by status",
+   "description": "Clarification and denial are valid outcomes, kept apart from errors and overload",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (status) (rate(pac_ask_outcomes_total[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "Answer latency p95 by status",
+   "description": "SLO thresholds need agreement",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, status) (rate(pac_ask_duration_milliseconds_bucket[5m])))"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Stage latency p95",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(pac_stage_duration_milliseconds_bucket[5m])))"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "HTTP requests by route and status class",
+   "description": "Includes failures before the pipeline; not additive with outcomes",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 8,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (http_route, http_response_status_class) (rate(pac_http_server_requests_total[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "Model attempts",
+   "description": "Attempt frequency, not questions repaired",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (kind, outcome, model) (rate(pac_llm_attempts_total[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Tokens, spend and unknown usage",
+   "description": "Unknown usage is never zero spend; cost exists only with configured rates",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 16,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (direction, model) (increase(pac_llm_tokens_total[1h]))"
+    },
+    {
+     "refId": "B",
+     "expr": "sum by (model) (increase(pac_llm_cost_total[1h]))"
+    },
+    {
+     "refId": "C",
+     "expr": "sum by (model) (increase(pac_llm_usage_unknown_total[1h]))"
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "Admission refusals and pool pressure",
+   "description": "Refusals and waits, not queue occupancy",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (stage, reason) (rate(pac_admission_refused_total[5m]))"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.95, sum by (le, pool) (rate(pac_db_pool_wait_milliseconds_bucket[5m])))"
+    },
+    {
+     "refId": "C",
+     "expr": "sum by (pool) (increase(pac_db_pool_timeouts_total[15m]))"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Denials",
+   "description": "Never labelled with the place, question or user",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(pac_ask_outcomes_total{status=\"denied\"}[5m]))"
+    }
+   ]
+  },
+  {
+   "id": 9,
+   "type": "timeseries",
+   "title": "Audit and turn persistence failures",
+   "description": "Any audit loss pages under best effort; a telemetry outage can hide loss",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 32,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (kind) (increase(pac_persistence_failures_total[1h]))"
+    }
+   ]
+  },
+  {
+   "id": 10,
+   "type": "timeseries",
+   "title": "Feed freshness",
+   "description": "Both keep ageing without another batch; a missing series is unknown, not fresh",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 32,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (source) (pac_ingest_since_success_seconds)"
+    },
+    {
+     "refId": "B",
+     "expr": "max by (source) (pac_ingest_watermark_age_seconds)"
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "type": "timeseries",
+   "title": "Feed quality",
+   "description": "From the batch log, read by the serving processes: the jobs process is one-shot, so its own counters are exported once per run",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (source) (pac_ingest_rejected_since_success)"
+    },
+    {
+     "refId": "B",
+     "expr": "max by (source) (pac_ingest_quarantined_last_day)"
+    },
+    {
+     "refId": "C",
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(pac_ingest_duration_seconds_bucket[1h])))"
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "type": "timeseries",
+   "title": "Database errors",
+   "description": "timeout, unavailable, generation_changed",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 40,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (kind) (increase(pac_db_errors_total[15m]))"
+    }
+   ]
+  },
+  {
+   "id": 13,
+   "type": "timeseries",
+   "title": "Telemetry pipeline",
+   "description": "Collector scrape health, and how many processes are reporting",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "${datasource}"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 48,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "up{job=\"otel-collector\"}"
+    },
+    {
+     "refId": "B",
+     "expr": "count(count by (instance) (pac_ask_outcomes_total))"
+    }
+   ]
+  }
+ ]
+}

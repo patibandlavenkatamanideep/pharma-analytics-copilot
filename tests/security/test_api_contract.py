@@ -116,6 +116,19 @@ class _StubPlanner:
 
     def plan(self, question, context):
         from app.analytics.plan import AnalyticalPlan, MetricKey, TimeWindow
+        from app.llm.planner import (PLANNER_CONTRACT_VERSION, PROMPT_VERSION,
+                                     PlanningAttempt, PlanningResult)
+
+        def as_result(plan):
+            # Planners return a PlanningResult, not a bare plan: usage and
+            # provider identity are request-local rather than instance state.
+            return PlanningResult(
+                plan=plan, provider="stub", model_id=None,
+                prompt_version=PROMPT_VERSION,
+                planner_contract_version=PLANNER_CONTRACT_VERSION,
+                attempts=(PlanningAttempt(ordinal=1, kind="initial",
+                                          outcome="plan"),),
+            )
 
         if self.behaviour == "clarify":
             # A clarification still has to carry a metric and a time window,
@@ -123,11 +136,11 @@ class _StubPlanner:
             # "clarification (and nothing else)", which the type does not
             # actually allow -- recorded as R09 (clarification union contract)
             # and not addressed in this phase.
-            return AnalyticalPlan(
+            return as_result(AnalyticalPlan(
                 metric=MetricKey.paid_pack_units,
                 time=TimeWindow(kind="named", named="r3m"),
                 clarification="Which product did you mean?",
-            )
+            ))
         detail = "connection reset by peer while calling postgresql://secret@host"
         if self.behaviour == "planner-error":
             from app.llm.planner import PlannerError

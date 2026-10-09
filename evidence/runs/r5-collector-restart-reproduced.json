@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T02:32:02+00:00",
+  "claim": "Reproduction at 952c6a9: the real collector (contrib 0.162.0), started with the configuration the drill used, loses the span written before a restart; the drill's sentinel scan therefore covered only exports after its collector restart",
+  "application": {
+    "sha": "952c6a9f8e08eb58c86b2a65b40a0e392406739e",
+    "tree": "9c7a19e0f1bb3621d8aa8cd49fc27f65adbbb7fd",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/collector_restart_keeps_exports.py",
+      "--tools",
+      "/Users/manideep/src/pac-work/tools"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 5.1
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"configs\": [\"deploy/observability/otel-collector.yaml\"], \"bytes_before_restart\": 374, \"bytes_after_restart\": 374, \"first_span_kept\": false, \"second_span_written\": true}"
+  },
+  "artifacts": [],
+  "limits": [
+    "one span through one restart on loopback; says nothing about a hosted collector"
+  ]
+}

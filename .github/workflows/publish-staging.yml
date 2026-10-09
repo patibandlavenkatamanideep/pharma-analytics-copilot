@@ -1,0 +1,142 @@
+# Publish one release image to the staging registry. Manual only, and only in
+# the GitHub environment "staging" (a required reviewer; main and
+# codex/release-* only). It publishes a commit only if CI's four required
+# jobs passed on that exact commit, builds it for linux/amd64 (the task
+# definitions' platform) as one single-platform manifest, scans and runs the
+# hardened image journeys on that image, pushes it with the commit as an
+# immutable tag, and checks that what the registry holds is the image it
+# tested. It does not deploy: what runs changes only by a reviewed Terraform
+# plan with the reported digest (infra/aws-staging/README.md).
+#
+# A workflow_dispatch workflow can be run only once its file is on the
+# default branch; this one reaches main with the release integration pull
+# request.
+#
+# Needs, as variables of the "staging" environment (none is a secret):
+#   AWS_REGION, AWS_ACCOUNT_ID, PAC_PUBLISH_ROLE_ARN (Terraform output
+#   github_publish_role_arn), PAC_ECR_REPOSITORY_URL (output
+#   ecr_repository_url).
+#
+# Prepared, never run: no such role or repository existed when it was written.
+
+name: publish-staging
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-staging
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      contents: read
+      checks: read
+      id-token: write
+
+    steps:
+      - name: Required configuration
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          ROLE: ${{ vars.PAC_PUBLISH_ROLE_ARN }}
+          REPO: ${{ vars.PAC_ECR_REPOSITORY_URL }}
+        run: |
+          for v in AWS_REGION AWS_ACCOUNT_ID ROLE REPO; do
+            [ -n "${!v}" ] || { echo "::error::environment variable for $v is not set"; exit 1; }
+          done
+
+      # The four checks main requires, from GitHub Actions (app 15368), each
+      # the latest run of its name on this exact commit.
+      - name: CI passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for check in test frontend supply-chain image; do
+            result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=$check&filter=latest" \
+              --jq '[.check_runs[] | select(.app.id == 15368)] | .[0].conclusion // "missing"')
+            echo "$check: $result"
+            [ "$result" = success ] || { echo "::error::$check is $result on $GITHUB_SHA"; exit 1; }
+          done
+
+      - uses: actions/checkout@v4
+
+      # No build cache: a release image is built from the commit alone. No
+      # provenance or SBOM attestation, so the pushed manifest is this one
+      # image and its config digest can be compared below.
+      - name: Build the image
+        run: |
+          docker build --pull --no-cache --platform linux/amd64 --provenance=false --sbom=false \
+            --build-arg PAC_RELEASE="$GITHUB_SHA" -t pharma-analytics-copilot:publish .
+          docker inspect --format '{{.Id}}' pharma-analytics-copilot:publish > "$RUNNER_TEMP/local-id"
+
+      - name: Scan the image for vulnerabilities with a fix available
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: pharma-analytics-copilot:publish
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      # Hardened runs (read-only root, every capability dropped), no setuid
+      # or setgid file, the pinned RDS CA bundle, a fresh database, sign-in
+      # journeys and a clean stop: the same script the image job runs.
+      - name: Image journeys on a freshly provisioned database
+        env:
+          PAC_SMOKE_IMAGE: pharma-analytics-copilot:publish
+        run: bash scripts/image_smoke.sh
+
+      - name: Still the image that was tested
+        run: |
+          now=$(docker inspect --format '{{.Id}}' pharma-analytics-copilot:publish)
+          [ "$now" = "$(cat "$RUNNER_TEMP/local-id")" ] || { echo "::error::the image changed after its tests"; exit 1; }
+
+      - name: Expiring credentials for the publishing role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.PAC_PUBLISH_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: publish-${{ github.run_id }}
+          role-duration-seconds: 3600
+
+      # The registry's manifest must point at the tested image: its config
+      # digest is the local image ID (the classic store), or the manifest
+      # digest is (the containerd store).
+      - name: Push, then check the registry holds the tested image
+        env:
+          REPO: ${{ vars.PAC_ECR_REPOSITORY_URL }}
+        run: |
+          registry=${REPO%%/*}
+          name=${REPO#*/}
+          local_id=$(cat "$RUNNER_TEMP/local-id")
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          docker tag pharma-analytics-copilot:publish "$REPO:$GITHUB_SHA"
+          docker push "$REPO:$GITHUB_SHA"
+          docker logout "$registry"
+          digest=$(aws ecr describe-images --repository-name "$name" \
+            --image-ids imageTag="$GITHUB_SHA" --query 'imageDetails[0].imageDigest' --output text)
+          case "$digest" in sha256:*) ;; *) echo "::error::no digest for $GITHUB_SHA"; exit 1 ;; esac
+          config=$(aws ecr batch-get-image --repository-name "$name" --image-ids imageDigest="$digest" \
+            --query 'images[0].imageManifest' --output text | jq -r '.config.digest // empty')
+          if [ "$config" != "$local_id" ] && [ "$digest" != "$local_id" ]; then
+            echo "::error::registry manifest $digest (config $config) is not the tested image $local_id"; exit 1
+          fi
+          {
+            echo "### Published"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| source commit | \`$GITHUB_SHA\` (CI: test, frontend, supply-chain, image passed) |"
+            echo "| tested image | \`$local_id\` |"
+            echo "| registry image | \`$REPO@$digest\` (config \`$config\`) |"
+            echo
+            echo "For the reviewed plan: \`image_digest = \"$digest\"\`. Before deploying, protect it"
+            echo "from routine expiry with a \`keep-\` tag (infra/aws-staging/README.md, \"Deploy\")."
+          } >> "$GITHUB_STEP_SUMMARY"

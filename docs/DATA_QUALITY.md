@@ -211,18 +211,26 @@ supplied schema.
 
 A question like "what is the generic share in Platinum Compounds" therefore
 cannot be answered from `brand_flag` alone without relabelling all competitor
-volume as generic. `migrations/003_derived_classification.sql` adds an explicit,
-versioned lookup derived by a documented drug-name rule:
+volume as generic. Each product's class comes from an authority recorded with it
+(`app_ref.product_classification.authority`, rule 2.0.0, `migrations/023_classification_authority.sql`):
 
-| Rule | Classification |
+| Authority | Classification |
 |---|---|
-| `brand_flag = 1` | `company_brand` |
-| name ends `' BIOSIMILAR'` | `biosimilar` |
-| name ends `' GENERIC'` | `generic` |
-| otherwise | `branded_competitor` |
+| source: `brand_flag = 1` | `company_brand` |
+| the dataset's classification mapping (version and SHA-256 recorded) | its entry: `branded_competitor`, `generic` or `biosimilar` |
+| none | `unknown` |
 
-It is marked derived-not-supplied, versioned with the metric registry, and
-answers that use it say the classification is derived.
+For the supplied data the mapping is `app/data/classification_supplied.json`, curated
+from the tables of `docs/market_classification.md`: all 40 products are classified,
+none unknown. The load reports a mapping entry that names no product
+(`classification_mapping_unused_entries`) and products of unknown class
+(`products_of_unknown_classification`); the manifest's `source_coverage.classification`
+counts classes and authorities. Answers that use a class name the mapping, and a
+segment share with volume of unknown class is stated as a range.
+
+Before 7 October 2026 (rule 1.0.0) the class came from the drug name: a ' GENERIC' or
+' BIOSIMILAR' suffix, and `branded_competitor` for everything else. That suffix is a
+convention of the supplied generator, and the last step classed by elimination.
 
 ---
 

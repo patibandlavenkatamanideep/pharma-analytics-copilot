@@ -1,0 +1,106 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T17:09:37+00:00",
+  "claim": "Entities are resolved before planning under the caller's scope: an unknown product is refused in any casing; a named product or account that the plan drops, or one the plan invents, blocks the answer; a RAM's out-of-scope account is refused in the same words as a nonexistent one; a named in-scope account is answered with that account's figure.",
+  "application": {
+    "sha": "4971b58726a263a8fac35335200d2ec220e7e2f1",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/analytics/entities.py",
+      "app/analytics/intent.py",
+      "app/analytics/mentions.py",
+      "app/api/main.py",
+      "app/config.py",
+      "app/llm/planner.py",
+      "app/pipeline.py",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "tests/security/test_entity_scope.py",
+      "tests/unit/test_entity_fidelity.py",
+      "tests/unit/test_mentions.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_mentions.py",
+      "tests/unit/test_entity_fidelity.py",
+      "tests/security/test_entity_scope.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.68
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 51
+    },
+    "blocked_reason": null,
+    "summary": "51 passed in 0.45s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Accounts are matched by full name only; partial names are not recognised as mentions, by design.",
+    "Facility-level names are not indexed; only top-level accounts. The 267 shared names in the full data are at facility level.",
+    "Ambiguity is tested with a built index: top-level account names in the full and authtest data are unique.",
+    "Unknown-name detection is lexical and can raise a false clarification; the evaluation sets raise none (38/38, 12/12, 11/12 unchanged)."
+  ]
+}

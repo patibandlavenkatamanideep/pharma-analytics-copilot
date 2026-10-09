@@ -1,0 +1,98 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T15:53:56+00:00",
+  "claim": "The ported log-leak and telemetry-outage tests fail on the reviewed code 58b3d3e (expected outcome: failed): markers reach the JSON log, and the freshness read and shutdown are unbounded during an outage",
+  "application": {
+    "sha": "58b3d3ec7c87012867ee02e409aad80e5a4c6d9a",
+    "tree": "d41d8e53c59780d351564385e9437dd31aba163f",
+    "branch": "HEAD",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "scripts/record_evidence.py",
+      "tests/integration/test_telemetry_outages.py",
+      "tests/unit/test_log_allowlist.py"
+    ],
+    "dirty_digests": {
+      "scripts/record_evidence.py": "453fa6f9b3fda08c4b136a07c902c8beb4b25773fc92c37c29f6c5bede210234",
+      "tests/integration/test_telemetry_outages.py": "4dcfe2e300a352d7e854a7fac4e3d110c8277222ee6acc7c2e7015b9ab547015",
+      "tests/unit/test_log_allowlist.py": "63f1bb1e35f996315860455d5fd5be21b044d8d56e73bbb29851340ca2184269"
+    }
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-f21012146196",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_log_allowlist.py",
+      "tests/integration/test_telemetry_outages.py",
+      "-q",
+      "-p",
+      "no:cacheprovider"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 185.7
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 12,
+      "passed": 2
+    },
+    "blocked_reason": null,
+    "summary": "12 failed, 2 passed in 185.30s (0:03:05)"
+  },
+  "artifacts": [],
+  "limits": [
+    "The tree is 58b3d3e plus the two ported test files and the fixed evidence recorder, each recorded by digest; nothing else differs",
+    "Local outages simulated with a closed port, a silent socket, a held pool and a table lock"
+  ]
+}

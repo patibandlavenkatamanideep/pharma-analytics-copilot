@@ -1,0 +1,62 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T19:21:14+00:00",
+  "claim": "R3 reproduces on unmodified code (expected outcome: failed): the evaluation spend cap is checked against a fixed estimate rather than the request sent, and the output reservation ignores max_tokens",
+  "application": {
+    "sha": "0340ec128479dd7f200a438039cd61a3d2673914",
+    "branch": "post-assessment/release-risks",
+    "worktree_clean": true,
+    "dirty_paths": []
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_eval_budget.py",
+      "-q",
+      "--runxfail",
+      "-k",
+      "first_call or output_reservation or unreported_usage or preflight"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.44
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 5
+    },
+    "blocked_reason": null,
+    "summary": "5 failed, 15 deselected in 0.08s"
+  },
+  "artifacts": [],
+  "limits": null
+}

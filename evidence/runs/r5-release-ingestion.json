@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T15:20:32+00:00",
+  "claim": "Strict ingestion gate, floor 176",
+  "application": {
+    "sha": "a05237b3e3621c6744c435e5007776adec3f46a1",
+    "tree": "5760707c86da1fe74eff8a76b70a5c93992439ed",
+    "branch": "HEAD",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "python",
+      "-m",
+      "pytest",
+      "tests/integration/test_ingestion.py",
+      "tests/unit/test_ingest_calendar.py",
+      "tests/integration/test_ingest_contract.py",
+      "tests/integration/test_ingest_observability.py",
+      "tests/unit/test_ingest_validation.py",
+      "-q",
+      "--release-gate",
+      "--min-tests",
+      "176"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 18.23
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 176
+    },
+    "blocked_reason": null,
+    "summary": "176 passed in 17.57s"
+  },
+  "artifacts": [],
+  "limits": null
+}

@@ -1,0 +1,116 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:02:03+00:00",
+  "claim": "Throughput at 8 concurrent clients on a fresh copy of the full dataset, before any incremental publication.",
+  "application": {
+    "sha": "2fc0070d1df6df2fbc2a47500f19575fe1c7659f",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "app/config.py",
+      "app/conversation/feedback.py",
+      "app/conversation/privacy.py",
+      "app/data/ingest.py",
+      "app/data/loader.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/INGESTION.md",
+      "docs/RETENTION.md",
+      "docs/RUNBOOK.md",
+      "docs/SUPPLY_CHAIN.md",
+      "evidence/runs/r2-load-failures.json",
+      "evidence/runs/r2-load-profile-before-settle.json",
+      "evidence/runs/r2-load-profile.json",
+      "migrations/019_feedback.sql",
+      "scripts/build_authtest_db.py",
+      "scripts/build_ingesttest_db.py",
+      "scripts/failure_sample.py",
+      "scripts/load_test.py",
+      "scripts/restore_drill.py",
+      "tests/conftest.py",
+      "tests/integration/test_ingestion.py",
+      "tests/security/test_feedback.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/load_test.py",
+      "--levels",
+      "8",
+      "--seconds",
+      "40",
+      "--no-publication"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 44.61
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"database\": \"pharma_analytics_ingestscale\", \"sales_rows\": 2000000, \"workers\": 2, \"pool_max_per_worker\": {\"exec\": 8, \"scoped\": 8, \"auth\": 4, \"graph\": 4}, \"users\": {\"ram\": 6, \"director\": 4, \"exec\": 2}, \"role_mix\": {\"ram\": 0.6, \"director\": 0.3, \"exec\": 0.1}, \"class_mix\": {\"cheap\": 0.45, \"medium\": 0.4, \"expensive\": 0.15}, \"questions\": {\"cheap\": [\"total paid pack units last quarter\", \"paid pack units this month\", \"top 10 accounts by paid pack units last quarter\"], \"medium\": [\"paid pack units by product last 6 months\", \"volume growth by account last quarter\", \"top 20 facilities by paid pack units last 6 months\", \"market share by territory last quarter\"], \"expensive\": [\"paid pack units by month for the last 6 months\", \"paid pack units by facility and month, all time\"]}, \"phases\": [{\"phase\": \"c8\", \"concurrency\": 8, \"wall_s\": 41.2, \"window\": null, \"requests\": 793, \"throughput_rps\": 19.25, \"error_rate\": 0.0, \"statuses\": {\"answered\": 793}, \"client_ms\": {\"n\": 793, \"p50\": 202.1, \"p95\": 2011.9, \"p99\": 2129.0, \"max\": 2198.4}, \"server_total_ms\": {\"n\": 793, \"p50\": 179, \"p95\": 2002, \"p99\": 2104, \"max\": 2159}, \"server_db_ms\": {\"n\": 793, \"p50\": 159, \"p95\": 1972, \"p99\": 2083, \"max\": 2128}, \"client_ms_by_class\": {\"cheap\": {\"n\": 358, \"p50\": 115.7, \"p95\": 275.8, \"p99\": 311.8, \"max\": 320.0}, \"medium\": {\"n\": 320, \"p50\": 225.9, \"p95\": 823.9, \"p99\": 886.3, \"max\": 928.6}, \"expensive\": {\"n\": 115, \"p50\": 1208.0, \"p95\": 2145.8, \"p99\": 2192.6, \"max\": 2198.4}}, \"failures\": []}], \"db_connections_peak\": {\"manideep\": 1, \"pac_auth_login\": 11, \"pac_owner\": 2, \"pac_scoped_login\": 8}, \"db_connections_active_peak\": {\"manideep\": 1, \"pac_auth_login\": 2, \"pac_owner\": 0, \"pac_scoped_login\": 8}, \"model_cost\": {\"this_run\": \"offline planner; no model calls\", \"live_tokens_per_question\": {\"input\": 4670, \"output\": 160, \"source\": \"docs/EVALUATION.md, live runs 2026-09-25\"}, \"per_answer\": \"input x PAC_LLM_INPUT_USD_PER_MTOK/1e6 + output x PAC_LLM_OUTPUT_USD_PER_MTOK/1e6; a repaired plan costs two calls\"}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Offline planner; one machine; quotas lifted."
+  ]
+}

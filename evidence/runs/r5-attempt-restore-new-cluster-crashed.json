@@ -1,0 +1,61 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T03:03:37+00:00",
+  "claim": "Reproduction at 2b4aa5c: restoring a full-size copy (2,000,000 sales) into a new PostgreSQL cluster by the procedure RUNBOOK \u00a78 documents (bootstrap_db.py without --drop, then pg_restore)",
+  "application": {
+    "sha": "2b4aa5c44f80784bc4f379d09513bde7b56b7c90",
+    "tree": "7fbf83f57a20ce20cdde8496f879622521848f5c",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/restore_drill.py",
+      "--new-cluster",
+      "--source",
+      "pac_release"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 113.06
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "app.conversation.state.ConversationAccessError: That conversation does not exist."
+  },
+  "artifacts": [],
+  "limits": [
+    "one machine; a new cluster on the same host from a dump on local disk; not PITR, not off-host storage, not a managed database"
+  ]
+}

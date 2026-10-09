@@ -1,0 +1,61 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T18:09:40+00:00",
+  "claim": "The actual image, built from the committed tree with podman, passes the CI image job's checks and more: labelled with and reporting its release, refuses to serve without a database or with the owner credential, provisions its own database, not ready until data is published and ready after, serves the UI, 401 when unauthenticated, not root, an Exec and a RAM sign in on a freshly provisioned database and get the right answers over real sessions, sign-out ends the session, clean stop on SIGTERM; and a trivy scan of the exact image finds no HIGH/CRITICAL vulnerability with a fix available.",
+  "application": {
+    "sha": "7848581375b2b8d52c71c9bfc1777305035467e5",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/runs/r2-image-smoke-7292f42.json",
+      "evidence/runs/r2-image-smoke.json"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "scripts/image_smoke.sh"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 93.32
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"release\": \"7848581375b2b8d52c71c9bfc1777305035467e5\", \"checks\": [\"PASS: image builds (20 s)\", \"PASS: image is labelled with commit 7848581375b2b8d52c71c9bfc1777305035467e5\", \"PASS: image size 338 MB\", \"PASS: image id 15c1381be6940ab10d0fcd35eecd0912949b37d3f1d807e7124cb00ce62f2679 (arm64)\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release 7848581375b2b8d52c71c9bfc1777305035467e5\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: runs as 'appuser', not root\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 22, \"failed\": 0}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Built and run with podman 5.7.1 on an arm64 VM (2 CPUs, 4 GiB), not with Docker on amd64 as CI and a server would; the image ID identifies this local build, not a deployable artifact.",
+    "Seed data, not the full dataset.",
+    "Trivy 0.58.1 with its vulnerability database as downloaded on 2026-10-01."
+  ]
+}

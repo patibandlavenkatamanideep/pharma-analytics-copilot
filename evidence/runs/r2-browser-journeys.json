@@ -1,0 +1,89 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T01:10:39+00:00",
+  "claim": "Ten real-browser journeys pass in Chromium against a real local server and the disposable database: sign-in, reload, sign-out, follow-up and New conversation, a RAM sees no currency, out-of-scope refusal, identity change leaves nothing on screen, conversation ownership, clarification by choosing, an ended session.",
+  "application": {
+    "sha": "c538175645296e295598262f8e8888b402c1f45d",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "docs/REQUIREMENTS.md",
+      "docs/TEST_INVENTORY.md",
+      "scripts/browser_journeys.py",
+      "tests/unit/test_documented_counts.py",
+      "web/e2e/journeys.spec.js"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "seed-eefd935cbb10",
+    "load_mode": "seed",
+    "fingerprint": "a29d02f0c9b24ea00e05f664",
+    "row_counts": {
+      "sales": 271,
+      "users": 23,
+      "products": 40,
+      "organizations": 85,
+      "zip_territory": 116
+    },
+    "reporting_anchor": {
+      "max_mo": 6,
+      "max_wk": 25,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-15",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-20"
+    },
+    "database": "pharma_analytics_authtest"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/browser_journeys.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 6.63
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 10
+    },
+    "blocked_reason": null,
+    "summary": "  10 passed (4.3s)"
+  },
+  "artifacts": [],
+  "limits": [
+    "Against the seed-sized disposable database, not the full dataset, and not the deployed instance.",
+    "The CI step is configured but has not run on hosted CI from this branch."
+  ]
+}

@@ -20,12 +20,14 @@ from __future__ import annotations
 import csv
 import io
 import pathlib
+import time
 import uuid
 from typing import Any
 
 from psycopg import sql
 
-from app.data.classification import RULE_VERSION, classify
+from app.data.classification import (MAPPING_FILE, RULE_VERSION, SUPPLIED_MAPPING, Mapping,
+                                     MappingError, classify, read_mapping)
 from app.data.manifest import MAPPING_VERSION, LoadReport, file_sha256
 from app.data.schema_contract import CONTRACT_VERSION, require_compatible
 from app.db import owner_transaction
@@ -66,11 +68,83 @@ class LoadError(RuntimeError):
     """Raised when the dataset cannot be safely published."""
 
 
+def reclaim_after_publication(tables: tuple[str, ...]) -> dict[str, int]:
+    """VACUUM what a publication replaced, once readers can no longer need it.
+
+    A VACUUM run the moment a publication commits cannot remove the old row
+    versions: requests already in flight hold snapshots from before the
+    commit, and those versions are still visible to them. Measured under
+    load, the immediate VACUUM after a new-week publication reclaimed none
+    of 2,020,461 dead rows; every scan then read twice the data, and
+    throughput fell by a third until autovacuum -- throttled, several
+    minutes -- caught up.
+
+    So it waits first. This application's own readers are bounded: a
+    statement times out at statement_timeout, and an idle transaction is
+    ended after 10 s. The settle time covers both. A reader outside those
+    bounds (a backup, an ad-hoc session) can still hold rows back; what is
+    left is reported, and autovacuum finishes it.
+    """
+    from app.config import get_settings
+
+    import re
+
+    settings = get_settings()
+    time.sleep(settings.publication_settle_seconds)
+    remaining: dict[str, int] = {}
+    with owner_transaction(autocommit=True) as cur:
+        # Counted from VACUUM's own report. pg_stat_user_tables read straight
+        # after a VACUUM showed 0 dead rows while a reader was still holding
+        # 20 -- a second VACUUM found all 20 -- so the statistic is not
+        # evidence here; the VACUUM's account of what it could not remove is.
+        notes: list[str] = []
+
+        def collect(diagnostic) -> None:
+            notes.append(diagnostic.message_primary or "")
+
+        conn = cur.connection
+        conn.add_notice_handler(collect)
+        try:
+            for table in tables:
+                notes.clear()
+                cur.execute(f"VACUUM (VERBOSE, ANALYZE) {table}")
+                kept = [int(m.group(1)) for n in notes if "finished vacuuming" in n
+                        and ".pg_toast." not in n
+                        for m in [re.search(r"(\d+) are dead but not yet removable", n)] if m]
+                # -1: the report did not say (a server version with other wording).
+                remaining[table] = kept[0] if kept else -1
+        finally:
+            conn.remove_notice_handler(collect)
+    return remaining
+
+
+def publication_lock(cur: Any) -> None:
+    """Serialise everything that publishes a dataset generation -- a full
+    load, a seed load, an incremental batch -- for the rest of the
+    transaction. Two publications interleaving would each build on a parent
+    the other is replacing."""
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext('pac:publication'))")
+
+
 def _truncate_business_data(cur: Any) -> None:
-    cur.execute(
-        "TRUNCATE sales, organizations, products, zip_territory, "
-        "app_ref.product_classification RESTART IDENTITY CASCADE"
-    )
+    """Remove the previous snapshot's rows, inside the publication transaction.
+
+    DELETE, not TRUNCATE -- for two reasons, both measured. TRUNCATE takes an
+    ACCESS EXCLUSIVE lock held until commit, so every reader waited for the
+    whole load; and TRUNCATE is not MVCC-safe, so a reader whose snapshot
+    predates it sees the tables EMPTY afterwards rather than seeing the old
+    rows. DELETE leaves concurrent readers on the old snapshot, complete,
+    until the new one commits. The cost is dead tuples, reclaimed by the
+    VACUUM that follows publication.
+    """
+    for table in ("sales", "app_ref.product_classification", "app_ref.calendar",
+                  "organizations", "products", "zip_territory"):
+        cur.execute(f"DELETE FROM {table}")
+    # The ledger records which events were applied to THIS dataset's facts.
+    # A new base does not contain them, so the same events sent again must
+    # apply again. Batch history is kept: it is a record of what was sent.
+    cur.execute("DELETE FROM app_ingest.event_ledger")
+    cur.execute("DELETE FROM app_ingest.watermarks")
 
 
 def _copy_csv(cur: Any, table: str, columns: list[str], path: pathlib.Path) -> int:
@@ -98,12 +172,12 @@ def _copy_csv(cur: Any, table: str, columns: list[str], path: pathlib.Path) -> i
     return cur.fetchone()["n"]
 
 
-def _load_full(cur: Any, report: LoadReport) -> None:
+def _load_full(cur: Any, report: LoadReport, directory: pathlib.Path = GENERATED) -> None:
     files = {
-        "organizations": (GENERATED / "organizations.csv", ORG_COLS),
-        "products": (GENERATED / "products.csv", PRODUCT_COLS),
-        "zip_territory": (GENERATED / "zip_territory.csv", ZIP_COLS),
-        "sales": (GENERATED / "sales.csv", SALES_COLS),
+        "organizations": (directory / "organizations.csv", ORG_COLS),
+        "products": (directory / "products.csv", PRODUCT_COLS),
+        "zip_territory": (directory / "zip_territory.csv", ZIP_COLS),
+        "sales": (directory / "sales.csv", SALES_COLS),
     }
     missing = [str(p) for p, _ in files.values() if not p.exists()]
     if missing:
@@ -176,20 +250,128 @@ def _count(cur: Any, table: str) -> int:
     return cur.fetchone()["n"]
 
 
-def _populate_classification(cur: Any) -> None:
-    cur.execute("SELECT ndc, drug_name, brand_flag FROM products")
+def classification_mapping(directory: pathlib.Path | None,
+                           explicit: pathlib.Path | None = None) -> Mapping | None:
+    """The authority for classes other than our own (app/data/classification.py).
+
+    An explicit path wins. The supplied dataset (schema/generated, or the seed)
+    uses the mapping curated from docs/market_classification.md. Any other
+    dataset uses the product_classification.json beside its files, or has no
+    mapping -- the supplied one names the supplied products and is not an
+    authority for anyone else's.
+    """
+    try:
+        if explicit is not None:
+            return read_mapping(explicit)
+        if directory is None or directory.resolve() == GENERATED.resolve():
+            return read_mapping(SUPPLIED_MAPPING)
+        beside = directory / MAPPING_FILE
+        return read_mapping(beside) if beside.exists() else None
+    except MappingError as exc:
+        raise LoadError(f"classification mapping refused: {exc}") from None
+
+
+def _populate_classification(cur: Any, report: LoadReport, mapping: Mapping | None) -> None:
+    cur.execute("SELECT ndc, drug_name, brand_flag, market_subcategory FROM products ORDER BY ndc")
     rows = cur.fetchall()
     buf = io.StringIO()
     writer = csv.writer(buf)
+    used: set[tuple[str, str]] = set()
+    unknown: list[str] = []
     for row in rows:
-        classification, derivation = classify(row["drug_name"], row["brand_flag"])
-        writer.writerow([row["ndc"], classification, derivation, RULE_VERSION])
+        try:
+            c = classify(row["drug_name"], row["brand_flag"], row["market_subcategory"], mapping)
+        except MappingError as exc:
+            raise LoadError(f"classification mapping refused: {exc}") from None
+        key = ((row["drug_name"] or "").strip().upper(), (row["market_subcategory"] or "").strip())
+        if mapping is not None and key in mapping.entries:
+            used.add(key)       # including a company brand, classified by the source
+        if c.classification == "unknown":
+            unknown.append(row["ndc"])
+        writer.writerow([row["ndc"], c.classification, c.derivation, RULE_VERSION, c.authority,
+                         mapping.ref if c.authority == "mapping" else None])
     buf.seek(0)
     with cur.copy(
-        "COPY app_ref.product_classification (ndc, classification, derivation, rule_version) "
-        "FROM STDIN WITH (FORMAT csv)"
+        "COPY app_ref.product_classification (ndc, classification, derivation, rule_version, "
+        "authority, mapping_ref) FROM STDIN WITH (FORMAT csv)"
     ) as copy:
         copy.write(buf.read())
+    if mapping is not None:
+        report.source_hashes["classification_mapping"] = mapping.sha256
+        if unused := sorted(set(mapping.entries) - used):
+            report.warn(
+                "classification_mapping_unused_entries",
+                f"{len(unused)} classification mapping entr(ies) name no product in this "
+                "dataset; check the drug name and market subcategory",
+                entries=[f"{name} in {sub}" for name, sub in unused[:20]])
+    if unknown:
+        report.warn(
+            "products_of_unknown_classification",
+            f"{len(unknown)} product(s) have no class from the source or a classification "
+            "mapping; they count in their market and in no segment",
+            ndcs=unknown[:50])
+
+
+def _classification_coverage(cur: Any, report: LoadReport) -> None:
+    """Which authorities classified the published products, recorded so an
+    answer can name them (app/analytics/render.py)."""
+    cur.execute("SELECT classification, authority, mapping_ref, rule_version, count(*) AS n "
+                "FROM app_ref.product_classification GROUP BY 1, 2, 3, 4")
+    rows = cur.fetchall()
+    by_class: dict[str, int] = {}
+    by_authority: dict[str, int] = {}
+    for r in rows:
+        by_class[r["classification"]] = by_class.get(r["classification"], 0) + r["n"]
+        by_authority[r["authority"]] = by_authority.get(r["authority"], 0) + r["n"]
+    report.source_coverage["classification"] = {
+        "rule_versions": sorted({r["rule_version"] for r in rows}),
+        "mappings": sorted({r["mapping_ref"] for r in rows if r["mapping_ref"]}),
+        "by_class": by_class, "by_authority": by_authority,
+        "unknown_products": by_class.get("unknown", 0),
+    }
+
+
+def _populate_calendar(cur: Any, report: LoadReport | None = None) -> None:
+    """Rebuild the reporting calendar from the facts being published.
+
+    In the same transaction as the rows, so a snapshot and its calendar are
+    always published together. A week that maps to two months, or two labels,
+    violates the table's keys and fails the load -- a calendar that is not a
+    function of the week cannot place a period in a series.
+    """
+    cur.execute(
+        "SELECT wk_offset FROM sales GROUP BY wk_offset "
+        "HAVING count(DISTINCT (mo_offset, period_mo, period_qtr, period_wk, "
+        "week_ending_date)) > 1 LIMIT 5"
+    )
+    if bad := [r["wk_offset"] for r in cur.fetchall()]:
+        raise LoadError(
+            f"weeks {bad} map to more than one reporting month or label; the "
+            f"calendar would be ambiguous")
+    cur.execute(
+        "INSERT INTO app_ref.calendar (wk_offset, period_wk, week_ending_date, "
+        "mo_offset, period_mo, period_qtr, sources) "
+        "SELECT wk_offset, period_wk, week_ending_date, mo_offset, period_mo, "
+        "period_qtr, array_agg(DISTINCT data_source ORDER BY data_source) "
+        "FROM sales GROUP BY wk_offset, period_wk, week_ending_date, mo_offset, "
+        "period_mo, period_qtr"
+    )
+    # The calendar is built from the facts, so a week with no row in ANY
+    # source is absent from it -- and a series cannot show a period the
+    # calendar does not have. That is a source outage, not a quiet week, and
+    # it is said here rather than discovered as a missing point on a chart.
+    cur.execute(
+        "SELECT min(wk_offset) AS lo, max(wk_offset) AS hi, count(*) AS n "
+        "FROM app_ref.calendar"
+    )
+    row = cur.fetchone()
+    if report is not None and row["n"] and row["n"] != row["hi"] - row["lo"] + 1:
+        report.warn(
+            "calendar_gaps",
+            f"{row['hi'] - row['lo'] + 1 - row['n']} week(s) between the first "
+            f"and last have no rows in any source; time series cannot show them",
+            first_week=row["lo"], last_week=row["hi"], weeks_present=row["n"],
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +400,25 @@ def _validate(cur: Any, report: LoadReport) -> None:
     unknown = {r["data_source"] for r in cur.fetchall()} - VALID_SOURCES
     if unknown:
         fatal.append(f"unknown data_source values: {sorted(unknown)}")
+
+    # Scope binds by NAME: row-level security compares z.territory_name and
+    # z.region_name with the user's assignment (migrations/004_security.sql).
+    # One territory name for two territories -- or a region name for two
+    # regions -- would let a user assigned that name see both. Refused by
+    # name, never published (qualification of 7 October 2026: a fixture
+    # profile reusing a name loaded, and its RAM saw two territories).
+    cur.execute("SELECT territory_name, count(DISTINCT territory_number) AS numbers, "
+                "count(DISTINCT region_number) AS regions FROM zip_territory "
+                "GROUP BY territory_name HAVING count(DISTINCT territory_number) > 1 "
+                "OR count(DISTINCT region_number) > 1 ORDER BY 1")
+    if reused := [r["territory_name"] for r in cur.fetchall()]:
+        fatal.append(f"territory name used for more than one territory or region: {reused[:5]}; "
+                     "scope is bound by territory name, so each must be unique")
+    cur.execute("SELECT region_name FROM zip_territory GROUP BY region_name "
+                "HAVING count(DISTINCT region_number) > 1 ORDER BY 1")
+    if reused := [r["region_name"] for r in cur.fetchall()]:
+        fatal.append(f"region name used for more than one region: {reused[:5]}; "
+                     "scope is bound by region name, so each must be unique")
 
     if fatal:
         raise LoadError("; ".join(fatal))
@@ -404,13 +605,53 @@ def _validate(cur: Any, report: LoadReport) -> None:
 
     cur.execute("SELECT data_source, count(*) AS n FROM sales GROUP BY 1 ORDER BY 1")
     report.source_coverage["rows_by_source"] = {r["data_source"]: r["n"] for r in cur.fetchall()}
+    _classification_coverage(cur, report)
+    _calendar_extensibility(cur, report)
+
+
+def _calendar_extensibility(cur: Any, report: LoadReport) -> None:
+    """Whether incremental ingestion can add a week to this calendar, by the
+    check ingestion itself runs before it does (app/data/ingest.py).
+
+    A dataset whose labels follow no convention a new week could share --
+    the supplied generator's calendar-year week labels across an ISO week-53
+    year end -- loads and answers questions, and refuses its first batch.
+    Said here, at load, rather than discovered then (qualification of
+    7 October 2026, step 4). Not a refusal: the snapshot itself is sound.
+    """
+    from datetime import date
+
+    from app.data.ingest import CalendarWeek, ConventionError, detect_convention
+
+    cur.execute("SELECT wk_offset, period_wk, week_ending_date, mo_offset, period_mo, "
+                "period_qtr FROM app_ref.calendar")
+    weeks = [CalendarWeek(r["wk_offset"], r["period_wk"], date.fromisoformat(r["week_ending_date"]),
+                          r["mo_offset"], r["period_mo"], r["period_qtr"])
+             for r in cur.fetchall()]
+    try:
+        convention = detect_convention(weeks)
+    except ConventionError as exc:
+        report.source_coverage["calendar"] = {"extendable": False, "reason": str(exc)}
+        report.warn("calendar_not_extendable",
+                    f"incremental ingestion cannot add a week to this calendar: {exc}; "
+                    "reload with labels that follow one convention before ingesting")
+        return
+    report.source_coverage["calendar"] = {
+        "extendable": True, "week_ending_weekday": convention.week_ending_weekday,
+        "month_rules": list(convention.month_rules)}
 
 
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
-def load(mode: str) -> LoadReport:
+def load(mode: str, *, generated_dir: pathlib.Path | None = None,
+         classification_mapping_path: pathlib.Path | None = None) -> LoadReport:
+    """Load and publish a snapshot. `generated_dir` points a full load at
+    same-schema CSVs other than schema/generated -- a fixture profile
+    (scripts/fixture_profile.py); its file hashes are recorded as usual.
+    `classification_mapping_path` names the classification authority; see
+    classification_mapping() for the default."""
     if mode not in ("seed", "full"):
         raise LoadError(f"unknown load mode {mode!r}")
 
@@ -427,8 +668,13 @@ def load(mode: str) -> LoadReport:
         )
 
     try:
+        # Read and checked before anything is written: a refused mapping is a
+        # refused (and recorded) load.
+        mapping = classification_mapping(generated_dir if mode == "full" else None,
+                                         classification_mapping_path)
         # One transaction: either the whole snapshot lands or none of it does.
         with owner_transaction() as cur:
+            publication_lock(cur)
             # Before anything is truncated or written: refuse a database whose
             # shape this system cannot answer questions about. Failing here is
             # far better than failing mid-query, or -- worse -- succeeding
@@ -445,11 +691,12 @@ def load(mode: str) -> LoadReport:
                 )
             _truncate_business_data(cur)
             if mode == "full":
-                _load_full(cur, report)
+                _load_full(cur, report, generated_dir or GENERATED)
             else:
                 _load_seed(cur, report)
             _bootstrap_users(cur, report)
-            _populate_classification(cur)
+            _populate_classification(cur, report, mapping)
+            _populate_calendar(cur, report)
             cur.execute("ANALYZE sales")
             cur.execute("ANALYZE organizations")
             _validate(cur, report)
@@ -470,6 +717,13 @@ def load(mode: str) -> LoadReport:
                 "UPDATE app_meta.dataset_manifest SET load_state = 'superseded' "
                 "WHERE load_state = 'published'"
             )
+            # The generation the query roles can see, flipped in the same
+            # transaction as the facts and the manifest.
+            cur.execute(
+                "INSERT INTO app_ref.generation (singleton, dataset_id, published_at) "
+                "VALUES (TRUE, %s, now()) ON CONFLICT (singleton) DO UPDATE "
+                "SET dataset_id = EXCLUDED.dataset_id, published_at = EXCLUDED.published_at",
+                (dataset_id,))
             cur.execute(
                 "UPDATE app_meta.dataset_manifest SET load_state = 'published', "
                 "published_at = now(), source_hashes = %s::jsonb, "
@@ -491,9 +745,16 @@ def load(mode: str) -> LoadReport:
             )
         raise
 
+    # Reclaim the previous snapshot's rows once readers that started before
+    # the commit have finished. Outside the transaction: VACUUM cannot run
+    # inside one.
+    report.source_coverage["dead_rows_after_reclaim"] = reclaim_after_publication(
+        ("sales", "organizations", "products", "zip_territory"))
+
     # The in-process vocabulary cache describes the snapshot that was live when
     # it was filled. Dropping it here keeps THIS process honest; other
     # processes are covered by the cache being keyed on dataset_id.
+
     from app.analytics.entities import clear_caches
 
     clear_caches()

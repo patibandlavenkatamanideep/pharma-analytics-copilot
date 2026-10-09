@@ -77,6 +77,70 @@ def write_env(passwords: dict[str, str]) -> None:
     print(f"  wrote {ENV_FILE} (0600)")
 
 
+def allow_admin_to_set_owner(cur) -> None:
+    """Let a non-superuser administrator act as the owner, and nothing more.
+
+    A managed service such as Amazon RDS gives no superuser: its administrator
+    has CREATEROLE and CREATEDB. PostgreSQL 16 lets a role create a database
+    owned by another role, or restore objects owned by it, only if it can SET
+    ROLE to that role. The administrator gets exactly that on pac_owner -- SET,
+    without INHERIT, so it does not silently hold the owner's privileges -- as
+    the creator of pac_owner it may grant it. A superuser needs nothing and
+    gets nothing. The serving roles are untouched: none is a member of
+    pac_owner, which verify_runtime_role_safety() checks at every start.
+    """
+    cur.execute("SELECT rolsuper FROM pg_roles WHERE rolname = current_user")
+    if cur.fetchone()[0]:
+        return
+    cur.execute("SELECT current_setting('server_version_num')::int >= 160000")
+    if cur.fetchone()[0]:
+        cur.execute("SELECT pg_has_role(current_user, %s, 'SET')", (OWNER,))
+        if not cur.fetchone()[0]:
+            cur.execute(sql.SQL("GRANT {} TO CURRENT_USER WITH INHERIT FALSE, SET TRUE")
+                        .format(sql.Identifier(OWNER)))
+    else:
+        cur.execute("SELECT pg_has_role(current_user, %s, 'MEMBER')", (OWNER,))
+        if not cur.fetchone()[0]:
+            cur.execute(sql.SQL("GRANT {} TO CURRENT_USER").format(sql.Identifier(OWNER)))
+    print(f"  the administrator may SET ROLE {OWNER} (not a superuser)")
+
+
+def grant_connect(owner_dsn: str) -> None:
+    """The three logins may connect to the database; as its owner."""
+    with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        cur.execute(
+            sql.SQL("GRANT CONNECT ON DATABASE {} TO {}, {}, {}").format(
+                sql.Identifier(DB_NAME),
+                sql.Identifier("pac_auth_login"),
+                sql.Identifier("pac_exec_login"),
+                sql.Identifier("pac_scoped_login"),
+            )
+        )
+    print(f"  CONNECT on {DB_NAME} granted to the logins")
+
+
+def create_login_roles(admin_dsn: str, passwords: dict[str, str]) -> None:
+    print("== login roles ==")
+    with psycopg.connect(admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
+        for login, privilege in LOGIN_ROLES.items():
+            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (login,))
+            stmt = "ALTER ROLE {} WITH LOGIN PASSWORD {}" if cur.fetchone() else (
+                "CREATE ROLE {} WITH LOGIN PASSWORD {} "
+                "NOSUPERUSER NOCREATEROLE NOCREATEDB NOBYPASSRLS"
+            )
+            cur.execute(
+                sql.SQL(stmt).format(sql.Identifier(login), sql.Literal(passwords[login]))
+            )
+            # Exactly one privilege role per login role: a scoped login has no
+            # membership path to pac_rt_exec, so SET ROLE cannot escalate it.
+            cur.execute(
+                sql.SQL("GRANT {} TO {}").format(
+                    sql.Identifier(privilege), sql.Identifier(login)
+                )
+            )
+            print(f"  {login} -> {privilege}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--admin-dsn", default=os.environ.get("PAC_ADMIN_DSN", "postgresql:///postgres"))
@@ -86,6 +150,14 @@ def main() -> int:
         action="store_true",
         help="do not write .env (use when provisioning a secondary database, so "
              "the application's own configuration is not repointed at it)",
+    )
+    ap.add_argument(
+        "--roles-only",
+        action="store_true",
+        help="create the roles and their memberships and stop: no database, schema or "
+             ".env. For restoring a dump into a new cluster (docs/RUNBOOK.md §8). If the "
+             "database already exists (restored without --create, as a non-superuser "
+             "administrator must), its logins are also granted CONNECT",
     )
     args = ap.parse_args()
 
@@ -109,6 +181,7 @@ def main() -> int:
                 ).format(sql.Identifier(OWNER), sql.Literal(passwords[OWNER]))
             )
         print(f"  {OWNER} ready")
+        allow_admin_to_set_owner(cur)
 
         # Privilege roles (NOLOGIN). Created here, in the administrative phase,
         # because pac_owner deliberately has no CREATEROLE.
@@ -123,6 +196,22 @@ def main() -> int:
                 )
             print(f"  privilege role {privilege} ready")
 
+    if args.roles_only:
+        create_login_roles(args.admin_dsn, passwords)
+        # Run again after a restore that did not bring the database's own
+        # grants (pg_restore without --create, as a non-superuser must):
+        # the logins then get CONNECT on the restored database.
+        with psycopg.connect(args.admin_dsn, autocommit=True) as conn:
+            exists = conn.execute("SELECT 1 FROM pg_database WHERE datname = %s",
+                                  (DB_NAME,)).fetchone()
+        if exists:
+            from psycopg.conninfo import make_conninfo
+            grant_connect(make_conninfo(host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+                                        user=OWNER, password=passwords[OWNER]))
+        print("  --roles-only: no database, schema or .env created")
+        return 0
+
+    with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
         if args.drop:
             cur.execute(
                 sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(DB_NAME))
@@ -142,7 +231,13 @@ def main() -> int:
 
     # Migrations run as the owner so every object is owned by a non-superuser
     # role that the runtime roles are not members of.
-    owner_dsn = f"postgresql://{OWNER}:{passwords[OWNER]}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # Keyword form, not a URL: this script GENERATES the passwords, so a
+    # reserved character in one is a real input. In URL form an `@` in the
+    # password ended the userinfo and the host became part of the password.
+    # Same defect, same fix, as Settings.dsn().
+    from psycopg.conninfo import make_conninfo
+    owner_dsn = make_conninfo(host=DB_HOST, port=DB_PORT, dbname=DB_NAME,
+                              user=OWNER, password=passwords[OWNER])
 
     print("== migrations ==")
     with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
@@ -150,35 +245,16 @@ def main() -> int:
             cur.execute(path.read_text())
             print(f"  applied {path.name}")
 
-    print("== login roles ==")
-    with psycopg.connect(args.admin_dsn, autocommit=True) as conn, conn.cursor() as cur:
-        for login, privilege in LOGIN_ROLES.items():
-            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (login,))
-            stmt = "ALTER ROLE {} WITH LOGIN PASSWORD {}" if cur.fetchone() else (
-                "CREATE ROLE {} WITH LOGIN PASSWORD {} "
-                "NOSUPERUSER NOCREATEROLE NOCREATEDB NOBYPASSRLS"
-            )
-            cur.execute(
-                sql.SQL(stmt).format(sql.Identifier(login), sql.Literal(passwords[login]))
-            )
-            # Exactly one privilege role per login role: a scoped login has no
-            # membership path to pac_rt_exec, so SET ROLE cannot escalate it.
-            cur.execute(
-                sql.SQL("GRANT {} TO {}").format(
-                    sql.Identifier(privilege), sql.Identifier(login)
-                )
-            )
-            print(f"  {login} -> {privilege}")
+    # The graph checkpointer's tables come from its own supported setup(),
+    # run as the owner like every other migration.
+    print("== graph store ==")
+    import subprocess
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "setup_graph_store.py")],
+                   check=True, env={**os.environ, "PAC_DB_NAME": DB_NAME,
+                                    "PAC_SETUP_OWNER_DSN": owner_dsn})
 
-    with psycopg.connect(owner_dsn, autocommit=True) as conn, conn.cursor() as cur:
-        cur.execute(
-            sql.SQL("GRANT CONNECT ON DATABASE {} TO {}, {}, {}").format(
-                sql.Identifier(DB_NAME),
-                sql.Identifier("pac_auth_login"),
-                sql.Identifier("pac_exec_login"),
-                sql.Identifier("pac_scoped_login"),
-            )
-        )
+    create_login_roles(args.admin_dsn, passwords)
+    grant_connect(owner_dsn)
 
     if args.no_env:
         print("  .env left untouched (--no-env)")

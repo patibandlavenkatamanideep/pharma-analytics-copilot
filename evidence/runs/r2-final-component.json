@@ -1,0 +1,65 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:48:28+00:00",
+  "claim": "Final head: component tests.",
+  "application": {
+    "sha": "12cecbe7c02b7462c840731f484289b612ba9096",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/runs/r2-eval-final-holdout.json",
+      "evidence/runs/r2-eval-final-holdout2.json",
+      "evidence/runs/r2-eval-final-questions.json",
+      "evidence/runs/r2-final-ingestion.json",
+      "evidence/runs/r2-final-pytest.json",
+      "evidence/runs/r2-final-security.json",
+      "evidence/runs/r2-ledger-final.json"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/bin/bash",
+      "-c",
+      "set -o pipefail; cd web && npm test 2>&1 | grep -E \"Test Files|Tests \""
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.8
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 21
+    },
+    "blocked_reason": null,
+    "summary": "      Tests  21 passed (21)"
+  },
+  "artifacts": [],
+  "limits": null
+}

@@ -1,0 +1,71 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T14:41:00+00:00",
+  "claim": "The image built from a9de92e (b6d52971\u2026) on python:3.13-slim and node:24-slim as resolved on 2026-10-08, with these IDs and digests; its lower layers are exactly the Python base's; it contains these Debian packages",
+  "application": {
+    "sha": "a9de92ee90b804a8f5c72350fd08a87450a5e037",
+    "tree": "93f3c7a1a2a2cc7c01cf0aef17d3bcb1fb2cca16",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/image_build_inputs.py",
+      "pharma-analytics-copilot:smoke",
+      "--packages",
+      "/Users/manideep/src/pac-work/step9/r5-image-a9de92e-packages.txt"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "CONTAINER_CLI": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 0.46
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "}"
+  },
+  "artifacts": [],
+  "limits": [
+    "identities as resolved by the local podman engine for linux/amd64; a later build of the same tags may resolve differently"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "b6d529719b31ff86c09447df8b7b6f21664105911893f10ff96ddce0215f2d37",
+    "digest": "sha256:03cbd3fd5fcad59e766fec9d8636195fc424d3b4fafa4d8dbb8eca95f17131a0",
+    "platform": "linux/amd64",
+    "revision_label": "a9de92ee90b804a8f5c72350fd08a87450a5e037"
+  }
+}

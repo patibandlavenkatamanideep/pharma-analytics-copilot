@@ -25,7 +25,7 @@ def planned(question):
     return OfflinePlanner().plan(question, PlanningContext(
         role="exec", scope_description="all", wac_authorized=True,
         reporting_anchor=ANCHOR, known_products=["ZENOVAX"],
-        known_specialties=["Oncology", "Urology"]))
+        known_specialties=["Oncology", "Urology"])).plan
 
 
 # ---------------------------------------------------------------------------

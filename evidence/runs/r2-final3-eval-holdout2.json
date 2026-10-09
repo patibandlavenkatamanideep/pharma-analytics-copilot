@@ -1,0 +1,72 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T18:15:16+00:00",
+  "claim": "Offline evaluation set holdout2 on the final head (deterministic planner; not language accuracy).",
+  "application": {
+    "sha": "52d773d54986e4f07b73c7fd2d05860932a42675",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "evidence/runs/r2-final3-browser.json",
+      "evidence/runs/r2-final3-eval-holdout.json",
+      "evidence/runs/r2-final3-eval-questions.json",
+      "evidence/runs/r2-final3-ingestion.json",
+      "evidence/runs/r2-final3-ledger.json",
+      "evidence/runs/r2-image-smoke-7292f42.json",
+      "evidence/runs/r2-image-smoke.json"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/run_evals.py",
+      "--provider",
+      "offline",
+      "--questions",
+      "evals/holdout2.yaml"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 2.59
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "  accuracy and must not be reported as one."
+  },
+  "artifacts": [],
+  "limits": [
+    "Offline planner only."
+  ]
+}

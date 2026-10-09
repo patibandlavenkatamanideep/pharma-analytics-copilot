@@ -443,15 +443,19 @@ policy version and metric version.
 
 ## 11. Testing
 
-148 tests, all passing, in four layers that deliberately do different jobs.
+Layers that deliberately do different jobs. Counts and the commands that
+produce them live in [docs/TEST_INVENTORY.md](docs/TEST_INVENTORY.md), which
+is measured rather than typed; they are not repeated here, because four
+documents each holding their own copy is how they came to disagree.
 
-| Layer | Count | What it proves |
-|---|---:|---|
-| Unit | 41 | Window semantics, plan-schema limits, registry invariants, formatting |
-| Integration | 16 | Metric correctness against 2M rows, vs **hand-written reference SQL** |
-| Coherent fixture | 14 | The intended market-share contract, on a separate hand-calculated database |
-| Security | 63 | The authorization boundary, from three directions |
-| Failure paths | 14 | Provider outage, query timeout, database down, empty results, oversized input, schema mismatch |
+| Layer | What it proves |
+|---|---|
+| Unit | Window semantics, plan-schema limits, registry invariants, formatting, continuity classification, credential handling |
+| Integration — metrics | Metric correctness against 2M rows, vs **hand-written reference SQL** |
+| Integration — coherent fixture | The intended market-share contract, on a separate hand-calculated database |
+| Integration — failure paths | Provider outage, query timeout, database down, empty results, oversized input, schema mismatch |
+| Integration — snapshot publication | A partially loaded dataset is never visible |
+| Security | The authorization boundary, from three directions |
 
 **Expected values never come from the compiler under test.** Integration
 expectations are SQL written by hand in the test files; if the compiler and the
@@ -469,16 +473,19 @@ Metamorphic properties tested: free drug moves neither paid demand nor share;
 total equals the sum of the RAM totals inside the region; renaming does not
 merge distinct ids; out-of-scope data cannot change a RAM's result.
 
-Beyond the suite, `evals/questions.yaml` holds 38 **held-out** checks across 15
-families, run by `scripts/run_evals.py`. The planner prompt carries metric
+Beyond the suite, `evals/questions.yaml` holds 38 checks across 15 families,
+**developed against** — it is a regression guard, not an accuracy estimate.
+The genuinely held-out sets are `evals/holdout.yaml` and `evals/holdout2.yaml`;
+see [docs/TEST_INVENTORY.md](docs/TEST_INVENTORY.md) for what each one is worth.
+All three are run by `scripts/run_evals.py`. The planner prompt carries metric
 definitions and window semantics, not these phrasings; several are deliberate
 paraphrases and the compositional family asks for combinations found in no
 document. It scored 30/38 on its first run and 38/38 after the fixes below.
 
 CI (`.github/workflows/ci.yml`) runs the whole no-spend path on every push:
 bootstrap, the **full** dataset, the coherent fixture, a startup assertion that
-the security boundary is intact, the security gate, all 148 tests and the
-held-out set. Full data rather than seed on purpose — under seed most scoped
+the security boundary is intact, the security gate, the whole pytest suite
+and the held-out set. Full data rather than seed on purpose — under seed most scoped
 accounts resolve to nothing and the security tests would pass vacuously.
 
 ### Bugs these tests found
@@ -519,7 +526,8 @@ Stated plainly rather than implied.
 **Verified**
 - Full 2M-row dataset loads in 78 s and every documented anomaly is reproduced
   automatically by the loader's validator.
-- The authorization boundary holds on full data across 63 tests.
+- The authorization boundary holds on full data across the security suite,
+  run under the strict release gate.
 - Metric semantics match hand-written reference SQL.
 - The API and UI serve together from one origin; forged cookies and forged role
   headers are refused.

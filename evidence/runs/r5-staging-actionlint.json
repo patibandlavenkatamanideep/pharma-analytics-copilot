@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T19:47:12+00:00",
+  "claim": "At 4c90704: actionlint 1.7.12 finds no problem in ci.yml or publish-staging.yml",
+  "application": {
+    "sha": "4c90704de91dbdf0b67fab3905d15c54e07f87fa",
+    "tree": "32928c47738f9ff58ef6ecf6bbc4f243deff2f92",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/src/pac-work/tools/actionlint/actionlint",
+      "-no-color",
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish-staging.yml"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.02
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": null
+  },
+  "artifacts": [],
+  "limits": [
+    "shellcheck was not installed, so run: scripts were not linted; publish-staging has never run"
+  ]
+}

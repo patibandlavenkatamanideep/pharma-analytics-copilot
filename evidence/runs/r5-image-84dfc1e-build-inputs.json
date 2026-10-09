@@ -1,0 +1,71 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T14:15:27+00:00",
+  "claim": "The tested image (config 263a2296\u2026, revision 84dfc1e) was built on python:3.13-slim and node:24-slim as resolved on 2026-10-08, with these IDs and digests; its lower layers are exactly the Python base's; it contains these 87 Debian packages",
+  "application": {
+    "sha": "f464392123127aa1ebb93fcf04f03e58c69e06f8",
+    "tree": "cbf3df00c9df24b5fa7cffefa018735eb0747584",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/image_build_inputs.py",
+      "pharma-analytics-copilot:smoke",
+      "--packages",
+      "/Users/manideep/src/pac-work/step9/r5-image-84dfc1e-packages.txt"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "CONTAINER_CLI": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 0.54
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "}"
+  },
+  "artifacts": [],
+  "limits": [
+    "identities as resolved by the local podman engine for linux/amd64; a later build of the same tags may resolve differently"
+  ],
+  "image": {
+    "ref": "pharma-analytics-copilot:smoke",
+    "inspected_with": "podman",
+    "id": "263a2296d35b1e35654c041ab60a5ed003180fe3b388d007460d7d2b602fcd09",
+    "digest": "sha256:3e3ed28864e5412f848bb550c52fb6b5da22844c6a2c10461ea27fd337b8d4c5",
+    "platform": "linux/amd64",
+    "revision_label": "84dfc1e0ad70f70dda8d537470203aedc04e5d2d"
+  }
+}

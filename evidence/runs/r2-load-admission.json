@@ -1,0 +1,87 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T18:07:14+00:00",
+  "claim": "Load at 8, 16, 32 and 64 concurrent clients on a disposable copy of the full dataset with admission control on (defaults: 24 questions in flight, 4 query slots and 16 waiting per worker, 10 s longest wait): overload is refused early with 503 overloaded instead of statement timeouts, and admitted questions keep a bounded latency.",
+  "application": {
+    "sha": "01f2303b0ae3265a375ba211502f3c6b1dabb506",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": true,
+    "dirty_paths": []
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/load_test.py",
+      "--levels",
+      "8,16,32,64",
+      "--seconds",
+      "30",
+      "--no-publication"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 135.39
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"database\": \"pharma_analytics_ingestscale\", \"sales_rows\": 2000000, \"workers\": 2, \"pool_max_per_worker\": {\"exec\": 8, \"scoped\": 8, \"auth\": 4, \"graph\": 4}, \"users\": {\"ram\": 6, \"director\": 4, \"exec\": 2}, \"role_mix\": {\"ram\": 0.6, \"director\": 0.3, \"exec\": 0.1}, \"class_mix\": {\"cheap\": 0.45, \"medium\": 0.4, \"expensive\": 0.15}, \"questions\": {\"cheap\": [\"total paid pack units last quarter\", \"paid pack units this month\", \"top 10 accounts by paid pack units last quarter\"], \"medium\": [\"paid pack units by product last 6 months\", \"volume growth by account last quarter\", \"top 20 facilities by paid pack units last 6 months\", \"market share by territory last quarter\"], \"expensive\": [\"paid pack units by month for the last 6 months\", \"paid pack units by facility and month, all time\"]}, \"phases\": [{\"phase\": \"c8\", \"concurrency\": 8, \"wall_s\": 32.2, \"window\": null, \"requests\": 797, \"throughput_rps\": 24.75, \"answers_per_s\": 24.75, \"error_rate\": 0.0, \"refused_rate\": 0.0, \"statuses\": {\"answered\": 797}, \"client_ms\": {\"n\": 797, \"p50\": 143.1, \"p95\": 1206.4, \"p99\": 1387.5, \"max\": 4165.7}, \"server_total_ms\": {\"n\": 797, \"p50\": 131, \"p95\": 1198, \"p99\": 1377, \"max\": 4113}, \"server_db_ms\": {\"n\": 797, \"p50\": 118, \"p95\": 1178, \"p99\": 1363, \"max\": 4071}, \"client_ms_by_class\": {\"cheap\": {\"n\": 364, \"p50\": 85.5, \"p95\": 243.8, \"p99\": 542.4, \"max\": 1176.8}, \"medium\": {\"n\": 319, \"p50\": 155.6, \"p95\": 659.4, \"p99\": 830.7, \"max\": 909.9}, \"expensive\": {\"n\": 114, \"p50\": 762.9, \"p95\": 1573.2, \"p99\": 4143.5, \"max\": 4165.7}}, \"failures\": [], \"refused_overloaded\": 0, \"refused_ms\": {\"n\": 0, \"p50\": null, \"p95\": null, \"p99\": null, \"max\": null}}, {\"phase\": \"c16\", \"concurrency\": 16, \"wall_s\": 31.3, \"window\": null, \"requests\": 720, \"throughput_rps\": 23.0, \"answers_per_s\": 23.0, \"error_rate\": 0.0, \"refused_rate\": 0.0, \"statuses\": {\"answered\": 720}, \"client_ms\": {\"n\": 720, \"p50\": 528.1, \"p95\": 1629.7, \"p99\": 2246.5, \"max\": 5397.9}, \"server_total_ms\": {\"n\": 720, \"p50\": 511, \"p95\": 1603, \"p99\": 2189, \"max\": 5341}, \"server_db_ms\": {\"n\": 720, \"p50\": 487, \"p95\": 1584, \"p99\": 2163, \"max\": 5299}, \"client_ms_by_class\": {\"cheap\": {\"n\": 353, \"p50\": 366.7, \"p95\": 869.5, \"p99\": 1349.2, \"max\": 1527.6}, \"medium\": {\"n\": 263, \"p50\": 620.5, \"p95\": 1185.9, \"p99\": 1560.6, \"max\": 1607.0}, \"expensive\": {\"n\": 104, \"p50\": 1520.4, \"p95\": 2401.9, \"p99\": 5096.9, \"max\": 5397.9}}, \"failures\": [], \"refused_overloaded\": 0, \"refused_ms\": {\"n\": 0, \"p50\": null, \"p95\": null, \"p99\": null, \"max\": null}}, {\"phase\": \"c32\", \"concurrency\": 32, \"wall_s\": 33.2, \"window\": null, \"requests\": 681, \"throughput_rps\": 20.51, \"answers_per_s\": 20.51, \"error_rate\": 0.0, \"refused_rate\": 0.0, \"statuses\": {\"answered\": 681}, \"client_ms\": {\"n\": 681, \"p50\": 1301.4, \"p95\": 2476.0, \"p99\": 5014.1, \"max\": 6567.6}, \"server_total_ms\": {\"n\": 681, \"p50\": 1279, \"p95\": 2440, \"p99\": 4948, \"max\": 6504}, \"server_db_ms\": {\"n\": 681, \"p50\": 1252, \"p95\": 2420, \"p99\": 4872, \"max\": 6453}, \"client_ms_by_class\": {\"cheap\": {\"n\": 296, \"p50\": 1120.5, \"p95\": 1936.5, \"p99\": 2404.5, \"max\": 2613.2}, \"medium\": {\"n\": 285, \"p50\": 1315.5, \"p95\": 2107.2, \"p99\": 2476.0, \"max\": 2534.4}, \"expensive\": {\"n\": 100, \"p50\": 2116.9, \"p95\": 5561.3, \"p99\": 6567.6, \"max\": 6567.6}}, \"failures\": [], \"refused_overloaded\": 0, \"refused_ms\": {\"n\": 0, \"p50\": null, \"p95\": null, \"p99\": null, \"max\": null}}, {\"phase\": \"c64\", \"concurrency\": 64, \"wall_s\": 33.7, \"window\": null, \"requests\": 961, \"throughput_rps\": 28.52, \"answers_per_s\": 20.15, \"error_rate\": 0.001, \"refused_rate\": 0.2924, \"statuses\": {\"http_503\": 281, \"answered\": 679, \"error\": 1}, \"client_ms\": {\"n\": 679, \"p50\": 1664.1, \"p95\": 3223.6, \"p99\": 4315.5, \"max\": 6578.0}, \"server_total_ms\": {\"n\": 679, \"p50\": 1592, \"p95\": 3205, \"p99\": 4280, \"max\": 6482}, \"server_db_ms\": {\"n\": 679, \"p50\": 1550, \"p95\": 3188, \"p99\": 4242, \"max\": 6423}, \"client_ms_by_class\": {\"cheap\": {\"n\": 312, \"p50\": 1484.0, \"p95\": 2501.3, \"p99\": 3226.2, \"max\": 3590.9}, \"medium\": {\"n\": 261, \"p50\": 1707.6, \"p95\": 2655.5, \"p99\": 3551.0, \"max\": 3762.0}, \"expensive\": {\"n\": 106, \"p50\": 2597.9, \"p95\": 4388.8, \"p99\": 5859.5, \"max\": 6578.0}}, \"failures\": [{\"audit_status\": \"db_error\", \"class\": \"expensive\", \"message\": \"That question took too long to answer. N\", \"n\": 1}], \"refused_overloaded\": 281, \"refused_ms\": {\"n\": 281, \"p50\": 28.4, \"p95\": 82.2, \"p99\": 137.4, \"max\": 692.9}}], \"db_connections_peak\": {\"manideep\": 1, \"pac_auth_login\": 15, \"pac_owner\": 2, \"pac_scoped_login\": 15, \"pac_exec_login\": 5}, \"db_connections_active_peak\": {\"manideep\": 1, \"pac_auth_login\": 3, \"pac_owner\": 0, \"pac_scoped_login\": 8, \"pac_exec_login\": 4}, \"model_cost\": {\"this_run\": \"offline planner; no model calls\", \"live_tokens_per_question\": {\"input\": 4670, \"output\": 160, \"source\": \"docs/EVALUATION.md, live runs 2026-09-25\"}, \"per_answer\": \"input x PAC_LLM_INPUT_USD_PER_MTOK/1e6 + output x PAC_LLM_OUTPUT_USD_PER_MTOK/1e6; a repaired plan costs two calls\"}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Same machine, offline planner, quotas lifted, as r2-load-profile.json; clients honour Retry-After with jitter, as the interface does.",
+    "Closed-loop clients: a stress profile, not real pacing."
+  ]
+}

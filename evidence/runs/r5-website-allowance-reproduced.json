@@ -1,0 +1,90 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T03:17:14+00:00",
+  "claim": "At d0fdf28: an allowance configured for the website (PAC_LLM_SPEND_LIMIT_USD, below one model call's bound) stops a question through the serving pipeline before any model call",
+  "application": {
+    "sha": "d0fdf289c1d5c3ad6c52fc6a2a1bfd0ff8b64441",
+    "tree": "ec5bd4b3f567e9b11615f631837e1c4259ac46fb",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-0b3c6fb9026d",
+    "load_mode": "full",
+    "fingerprint": "1edc425858a2466a94d43657",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "fake",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/integration/test_failure_modes.py",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "-k",
+      "allowance"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.44
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 11 deselected in 1.04s"
+  },
+  "artifacts": [],
+  "limits": [
+    "a reproduction: the strict-xfail test is run with --runxfail; a fake model transport, no provider is called"
+  ]
+}

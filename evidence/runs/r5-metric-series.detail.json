@@ -1,0 +1,39 @@
+{
+ "database": "pac_release",
+ "questions_per_user": 57,
+ "requests": {
+  "GET /health 200": 1,
+  "GET /ready 200": 1,
+  "GET auth 200": 1,
+  "GET conversations 200": 2,
+  "GET conversations 401": 1,
+  "GET conversations 404": 2,
+  "GET me 200": 4,
+  "GET me 401": 1,
+  "POST ask 200": 228,
+  "POST ask 401": 1,
+  "POST ask 403": 2,
+  "POST ask 413": 2,
+  "POST ask 429": 3,
+  "POST login 200": 3,
+  "POST login 401": 4,
+  "POST logout 200": 2
+ },
+ "series_by_metric": {
+  "pac.stage.duration": 234,
+  "pac.http.server.duration": 198,
+  "pac.ask.duration": 72,
+  "pac.db.pool.wait": 36,
+  "pac.admission.wait": 18,
+  "pac.http.server.requests": 15,
+  "pac.ask.outcomes": 6,
+  "pac.db.errors": 3,
+  "pac.db.pool.timeouts": 3,
+  "pac.persistence.failures": 2
+ },
+ "series_observed": 587,
+ "target_info": 1,
+ "series_per_process": 588,
+ "model_metrics_observed": {},
+ "note": "offline planner: no pac.llm.* series unless listed above"
+}

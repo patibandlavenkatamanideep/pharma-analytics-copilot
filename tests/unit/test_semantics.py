@@ -8,7 +8,7 @@ from app.analytics.periods import PeriodError, resolve
 from app.analytics.plan import AnalyticalPlan, NamedWindow, TimeWindow
 from app.analytics.registry import get_registry
 from app.analytics.render import format_value
-from app.data.classification import classify
+from app.data.classification import SUPPLIED_MAPPING, classify, read_mapping
 
 ANCHOR = {
     "min_mo": 0, "max_mo": 36, "min_wk": 0, "max_wk": 155,
@@ -237,15 +237,24 @@ def test_whole_pack_counts_have_no_spurious_decimals():
 # ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize(
-    "name,brand_flag,expected",
+    "name,brand_flag,subcategory,expected",
     [
-        ("ZENOVAX", 1, "company_brand"),
-        ("TAXOTERE", 0, "branded_competitor"),
-        ("DOCETAXEL GENERIC", 0, "generic"),
-        ("BEVACIZUMAB BIOSIMILAR", 0, "biosimilar"),
-        ("KEYTRUDA", 0, "branded_competitor"),
+        ("ZENOVAX", 1, "Docetaxel", "company_brand"),
+        ("TAXOTERE", 0, "Docetaxel", "branded_competitor"),
+        ("DOCETAXEL GENERIC", 0, "Docetaxel", "generic"),
+        ("BEVACIZUMAB BIOSIMILAR", 0, "VEGF Inhibitors", "biosimilar"),
+        ("KEYTRUDA", 0, "PD-1 Inhibitors", "branded_competitor"),
     ],
 )
-def test_competitor_is_not_the_same_as_generic(name, brand_flag, expected):
-    classification, _ = classify(name, brand_flag)
-    assert classification == expected
+def test_competitor_is_not_the_same_as_generic(name, brand_flag, subcategory, expected):
+    """On the supplied data, by the mapping curated from its documentation."""
+    got = classify(name, brand_flag, subcategory, read_mapping(SUPPLIED_MAPPING))
+    assert got.classification == expected
+    assert got.authority == ("source" if brand_flag else "mapping")
+
+
+@pytest.mark.parametrize("name", ["PRAXOLONE", "TAXOTERE", "DOCETAXEL GENERIC"])
+def test_a_name_alone_does_not_make_a_branded_competitor(name):
+    """Rule 1.0.0 classed these by name suffix, and by elimination."""
+    got = classify(name, 0)
+    assert (got.classification, got.authority) == ("unknown", "none")

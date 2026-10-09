@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T19:47:07+00:00",
+  "claim": "At 4c90704: terraform validate passes for infra/aws-staging (Terraform 1.16.5, AWS provider 6.68.0 from the committed lock file)",
+  "application": {
+    "sha": "4c90704de91dbdf0b67fab3905d15c54e07f87fa",
+    "tree": "32928c47738f9ff58ef6ecf6bbc4f243deff2f92",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/src/pac-work/tools/terraform/terraform",
+      "-chdir=infra/aws-staging",
+      "validate",
+      "-no-color"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1.8
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "Success! The configuration is valid."
+  },
+  "artifacts": [],
+  "limits": [
+    "validate checks syntax, types and references only; no plan ran (a plan needs credentials for the target account) and nothing was applied"
+  ]
+}

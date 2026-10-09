@@ -1,0 +1,679 @@
+{
+  "description": "The release defects of this round, as data. scripts/evidence_index.py checks every reference: that each fix commit exists and is an ancestor of the candidate, each regression file exists and is collected, and each reproduction artifact exists, parses and failed on code without the fix. Prose in docs/REVIEW_2026_10_06.md explains; this file is what is checked.",
+  "baselines": {
+    "58b3d3e": "the reviewed snapshot (application code 45db088)",
+    "76298b6": "codex/nl2sql-readiness, where codex/release-defects-oct06 began"
+  },
+  "defects": [
+    {
+      "id": "checkpoint-safety",
+      "title": "Checkpoint bytes could run constructors through the runtime factory; a graph-version mismatch silently discarded a checkpoint",
+      "fix_commits": [
+        "fabb9c0",
+        "0e582c7"
+      ],
+      "regression_files": [
+        "tests/security/test_checkpoint_loading.py",
+        "tests/security/test_graph_durability.py",
+        "tests/security/test_conversation_reliability.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r4-checkpoint-reproduced.json",
+          "baseline": "58b3d3e"
+        }
+      ]
+    },
+    {
+      "id": "ci-startup-refusal",
+      "title": "CI's startup-refusal checks grepped for text the sanitised logs no longer print; the no-database refusal took 30.9 s against a 25 s timeout",
+      "fix_commits": [
+        "b189650",
+        "5290ec0"
+      ],
+      "regression_files": [
+        "tests/unit/test_startup_refusal.py",
+        "tests/security/test_startup_refusal.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ci-startup-behaviour.json",
+          "baseline": "76298b6",
+          "kind": "probe",
+          "result": "evidence/runs/r5-replay-ci-startup-behaviour.result.json"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ci-startup-refusal.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-ci-startup-refusal.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "eval-budget-terminal",
+      "title": "A violated evaluation budget was not terminal across turns",
+      "fix_commits": [
+        "0e582c7"
+      ],
+      "regression_files": [
+        "tests/integration/test_eval_terminal.py",
+        "tests/unit/test_eval_budget.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-eval-budget-terminal.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-eval-budget-terminal.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "failed-attempt-accounting",
+      "title": "Failed planning attempts lost their usage; transport failure had no planning summary",
+      "fix_commits": [
+        "0e582c7",
+        "b872a71"
+      ],
+      "regression_files": [
+        "tests/unit/test_live_adapter_contract.py",
+        "tests/security/test_audit_contract.py",
+        "tests/unit/test_eval_budget.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-failed-attempt-accounting.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "ingestion-boundaries",
+      "title": "Numbers, sizes and text past the reader's, digest's or columns' limits crashed ingestion",
+      "fix_commits": [
+        "ad10165"
+      ],
+      "regression_files": [
+        "tests/unit/test_ingest_validation.py",
+        "tests/integration/test_ingest_contract.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-ingestion-boundaries.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-ingestion-boundaries.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "log-allowlist",
+      "title": "Structured logs kept identifier-shaped tokens, entities, addresses, preformatted messages and access paths",
+      "fix_commits": [
+        "b189650",
+        "7526e69"
+      ],
+      "regression_files": [
+        "tests/unit/test_logs.py",
+        "tests/security/test_log_hygiene.py",
+        "tests/unit/test_log_allowlist.py",
+        "tests/unit/test_log_registry.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-port-reproduced.json",
+          "baseline": "58b3d3e"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-log-allowlist.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-log-allowlist.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "telemetry-outage-bounds",
+      "title": "The freshness read waited on the serving pool during an outage; shutdown ignored the configure() timeout",
+      "fix_commits": [
+        "5290ec0"
+      ],
+      "regression_files": [
+        "tests/unit/test_telemetry.py",
+        "tests/integration/test_ingest_observability.py",
+        "tests/integration/test_telemetry_outages.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-original-reproductions.json",
+          "baseline": "76298b6",
+          "kind": "summary"
+        },
+        {
+          "artifact": "evidence/runs/r5-port-reproduced.json",
+          "baseline": "58b3d3e"
+        },
+        {
+          "artifact": "evidence/runs/r5-replay-telemetry-outage-bounds.json",
+          "baseline": "76298b6",
+          "junit": "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml"
+        }
+      ]
+    },
+    {
+      "id": "evidence-recorder-counts",
+      "title": "The evidence recorder counted results from any output line",
+      "fix_commits": [
+        "cb8f00b"
+      ],
+      "regression_files": [
+        "tests/unit/test_evidence_record_accuracy.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-replay-evidence-recorder-counts.json",
+          "junit": "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml",
+          "baseline": "76298b6",
+          "note": "recorded with the baseline's own recorder, so its counts field shows the defect (error: 680); the summary line is pytest's"
+        }
+      ]
+    },
+    {
+      "id": "ci-trivy-action-tag",
+      "title": "CI's image job could not start: trivy-action@0.28.0 no longer resolves",
+      "fix_commits": [
+        "9519f28"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37650229833",
+          "baseline": "eb65af3",
+          "kind": "hosted-ci-run"
+        }
+      ],
+      "verified_by": "hosted_ci:37651718276",
+      "note": "fixed after the executable candidate 7950e71; a workflow/deployment change with no application code"
+    },
+    {
+      "id": "ci-postgres-shared-memory",
+      "title": "CI's PostgreSQL container (and compose's) had 64 MB of /dev/shm; the post-load parallel VACUUM failed",
+      "fix_commits": [
+        "7bca4ca"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ci-shm-reproduced.json",
+          "baseline": "9519f28"
+        }
+      ],
+      "verified_by": "hosted_ci:37651718276",
+      "note": "fixed after the executable candidate 7950e71; a workflow/deployment change with no application code"
+    },
+    {
+      "id": "k07-period-over-period",
+      "title": "A supplied sample question (growth month over month) could not be planned; the refusal named the grain by its code",
+      "fix_commits": [
+        "fce6b93"
+      ],
+      "regression_files": [
+        "tests/unit/test_period_over_period.py",
+        "tests/integration/test_period_over_period_fixture.py",
+        "tests/integration/test_period_over_period_pipeline.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-k07-reproduced.json",
+          "baseline": "1b59504"
+        }
+      ]
+    },
+    {
+      "id": "segment-share-population",
+      "title": "With an inferred market, a segment share's numerator covered all markets and its denominator only ours (59.67% reported for 26.43%); denominator-only rows lost their label",
+      "fix_commits": [
+        "eb3ba13"
+      ],
+      "regression_files": [
+        "tests/integration/test_invariant_oracles.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ratio-population-reproduced.json",
+          "baseline": "14ce17e"
+        }
+      ]
+    },
+    {
+      "id": "territory-name-scope",
+      "title": "A geography reusing a territory or region name loaded, and scope -- bound by name -- widened to both",
+      "fix_commits": [
+        "fa02451"
+      ],
+      "regression_files": [
+        "tests/integration/test_fixture_profiles.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-territory-name-reproduced.json",
+          "baseline": "51cf05e"
+        }
+      ]
+    },
+    {
+      "id": "classification-by-elimination",
+      "title": "Classification rule 1.0.0 read the generator's name suffixes and made every other brand_flag 0 product a branded competitor; on unseen data a segment share reported its upper bound (50.2%) as the share (27.2% known, 23.0% of unknown class)",
+      "fix_commits": [
+        "3cc4b14"
+      ],
+      "regression_files": [
+        "tests/integration/test_fixture_profiles.py",
+        "tests/integration/test_classification_authority.py",
+        "tests/unit/test_classification_mapping.py",
+        "tests/unit/test_semantics.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-classification-reproduced.json",
+          "baseline": "f26e8a8"
+        }
+      ]
+    },
+    {
+      "id": "calendar-not-extendable-at-load",
+      "title": "A dataset whose week labels follow the supplied generator's calendar-year convention across an ISO week-53 year end loaded silently, and its first batch was rejected",
+      "fix_commits": [
+        "2cc7bd9"
+      ],
+      "regression_files": [
+        "tests/integration/test_calendar_convention_at_load.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-calendar-convention-reproduced.json",
+          "baseline": "b7aa31e"
+        }
+      ]
+    },
+    {
+      "id": "telemetry-process-identity",
+      "title": "Two processes of one release (replicas, or the image's uvicorn --workers 2) exported the same metric series: the resource was service.name and service.version only, so each export overwrote the other's running total",
+      "fix_commits": [
+        "4187419"
+      ],
+      "regression_files": [
+        "tests/unit/test_telemetry_identity.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-telemetry-identity-reproduced.json",
+          "baseline": "c2e5915"
+        }
+      ]
+    },
+    {
+      "id": "alerts-that-could-not-fire",
+      "title": "Alerting checked only on paper: in the local drill (6 of 13 scenarios passed) a single audit loss, database error or pool timeout never paged (a counter first seen at its first increment is invisible to increase()), BatchRejected never fired (it read counters of the one-shot jobs process, exported once and expired), and a collector outage left no log line",
+      "fix_commits": [
+        "4187419"
+      ],
+      "regression_files": [
+        "tests/unit/test_telemetry.py",
+        "tests/integration/test_ingest_observability.py",
+        "tests/unit/test_alert_rules.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-drill-findings-reproduced.json",
+          "baseline": "b974af7"
+        },
+        {
+          "artifact": "evidence/runs/r5-ops-drill-before.json",
+          "baseline": "b974af7",
+          "note": "the drill itself (scripts/ops_drill.py) against a real collector and Prometheus; 6 passed, 7 failed"
+        }
+      ]
+    },
+    {
+      "id": "collector-local-files",
+      "title": "The deployable collector configuration wrote every span and metric to local files (to /tmp by default) although its header said only when PAC_OTEL_FILE_DIR was set; and its file exporter truncated at each start, so the drill's sentinel scan covered only exports after the collector restart, not every exported trace as stated",
+      "fix_commits": [
+        "fba626c"
+      ],
+      "regression_files": [
+        "tests/unit/test_collector_config.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-collector-files-reproduced.json",
+          "baseline": "952c6a9"
+        },
+        {
+          "artifact": "evidence/runs/r5-collector-restart-reproduced.json",
+          "baseline": "952c6a9",
+          "note": "evidence/probes/collector_restart_keeps_exports.py: the real collector, a span before a restart lost after it"
+        }
+      ]
+    },
+    {
+      "id": "log-error-type-generic",
+      "title": "A database error was logged with error type Exception: the refused audit insert (InsufficientPrivilege) read the same as a lost connection or a constraint violation",
+      "fix_commits": [
+        "9fb1d1f"
+      ],
+      "regression_files": [
+        "tests/unit/test_logs.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-log-error-type-reproduced.json",
+          "baseline": "7366937"
+        }
+      ]
+    },
+    {
+      "id": "restore-new-cluster-procedure",
+      "title": "RUNBOOK §8's restore into a new cluster (bootstrap_db.py, then pg_restore) exited with 142 errors and restored no conversation, turn, run, attempt or clarification, while the database reported ready and answered questions; a stored answer was recomputed rather than replayed",
+      "fix_commits": [
+        "6ced978"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-restore-new-cluster-reproduced.json",
+          "baseline": "4be5d4e",
+          "note": "scripts/restore_drill.py --new-cluster following the documented procedure; the drill itself is the regression check (r5-restore-new-cluster-fixed.json), not a pytest file"
+        }
+      ]
+    },
+    {
+      "id": "ci-full-suite-not-strict",
+      "title": "CI's Full test suite step ran without the release gate: the tests on the coherent-market fixture database (the k-07 regressions among them) skipped on an empty fixture and the step stayed green",
+      "fix_commits": [
+        "03316f3"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-ci-full-suite-gate-reproduced.json",
+          "baseline": "cff458e",
+          "note": "evidence/probes/ci_full_suite_gate.py runs the step as ci.yml writes it; it is the regression check (r5-ci-full-suite-gate-fixed.json). A hosted run of the changed step is pending authorization to push"
+        }
+      ]
+    },
+    {
+      "id": "evidence-commit-secret-scan",
+      "title": "The candidate's evidence commit added trivy reports that quote the base image's GPG_KEY (the public CPython release key); gitleaks over the history found it four times, so CI's supply-chain job would have failed on a push",
+      "fix_commits": [
+        "bbc2242"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-head-gitleaks-reproduced.json",
+          "baseline": "47bf736",
+          "note": "gitleaks over the history; the rerun at the fix is r5-head-gitleaks-fixed.json"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-head-gitleaks-fixed.json (local rerun over the whole history at bbc2242)"
+    },
+    {
+      "id": "image-setuid-binaries",
+      "title": "The release image carried eleven setuid or setgid binaries the application never uses, among them setuid-root mount, umount, su and newgrp from util-linux, whose open HIGH advisories need privilege to matter",
+      "fix_commits": [
+        "42e9090",
+        "a9de92e"
+      ],
+      "regression_files": [],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-image-setuid-reproduced.json",
+          "baseline": "3389045",
+          "note": "evidence/probes/image_privileged_files.py on the image tested for 84dfc1e (263a2296). The regression check is the image smoke's and CI image job's 'no setuid or setgid file' step; 42e9090's first version of that check aborted the smoke silently (kept as r5-attempt-image-42e9090-setuid-check.json) and a9de92e corrected it"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-image-setuid-fixed.json (local, the image built from a9de92e)"
+    },
+    {
+      "id": "rds-admin-provisioning",
+      "title": "Provisioning assumed a PostgreSQL superuser: as a managed database's administrator (CREATEROLE and CREATEDB, as on RDS), bootstrap_db.py stopped at CREATE DATABASE ... OWNER pac_owner (must be able to SET ROLE \"pac_owner\"), so no database could be provisioned, and RUNBOOK §8's restore used pg_restore --create, which such an administrator cannot run",
+      "fix_commits": [
+        "4ab8fd7"
+      ],
+      "regression_files": [
+        "evidence/probes/restricted_admin_provisioning.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-rds-admin-reproduced.json",
+          "baseline": "739957a",
+          "note": "The probe runs every provisioning and restore step as rds_master_emul (LOGIN CREATEROLE CREATEDB; not SUPERUSER, BYPASSRLS or REPLICATION) in clusters of its own on local PostgreSQL 16: an emulation of RDS's permission model for these statements, not RDS"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-rds-admin-fixed.json (4ab8fd7: all 7 steps, the runtime boundary intact and an answer after provisioning and after a restore into a new cluster; the administrator gets SET on pac_owner without INHERIT, and no serving role is a member of it). Not run against RDS"
+    },
+    {
+      "id": "proxy-client-address",
+      "title": "Behind a load balancer that the server does not trust, every client has the load balancer's address, so 20 failed sign-ins by anyone refuse every user's correct password for 15 minutes (MAX_FAILURES_PER_IP); nothing in the deployment configuration set FORWARDED_ALLOW_IPS",
+      "fix_commits": [
+        "5a49a34"
+      ],
+      "regression_files": [
+        "evidence/probes/client_address_behind_proxy.py",
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-proxy-client-address-reproduced.json",
+          "baseline": "128c558",
+          "note": "The real server behind a local proxy with FORWARDED_ALLOW_IPS empty, i.e. the load balancer untrusted, as every deployment configuration before 5a49a34 left it: after 20 failures from 20 forwarded addresses another user's correct password is refused (429). The defect is configuration, so it is reproduced on the current code with the old configuration. r5-proxy-client-address.json (b4315bb) runs both configurations in one record"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-proxy-client-address-fixed.json (128c558, the proxy trusted: the same sign-in succeeds) and evidence/runs/r5-staging-policy-tests.json (the staging module trusts the VPC range only, the load balancer appends, ingress to the tasks only from it). Not verified through a real load balancer"
+    },
+    {
+      "id": "logout-cookie-attributes",
+      "title": "Sign-out deleted the session cookie with delete_cookie(name, path='/'): the deletion carried no Secure and no HttpOnly, so a browser ignores it for a __Host- cookie name and a scanner reports an insecure Set-Cookie. The server revoked the token, so no session survived sign-out",
+      "fix_commits": [
+        "e551650"
+      ],
+      "regression_files": [
+        "tests/security/test_session_lifecycle.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-logout-cookie-reproduced.json",
+          "baseline": "11dd083",
+          "note": "test_signing_out_clears_the_cookie_with_the_attributes_it_was_set_with, committed as a strict xfail and run with --runxfail: the deletion lacked secure and httponly. Found while proving cookie attributes for staging: no client in the suites, the image smoke or the browser journeys ran with Secure cookies"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-logout-cookie-fixed.json (e551650, over https://testserver with PAC_COOKIE_SECURE=true); the security suite under the release gate at 436"
+    },
+    {
+      "id": "staging-files-not-ignored",
+      "title": "infra/aws-staging/README.md's procedure writes staging.tfvars and saved plans (foundation.plan) into the module, and Git did not ignore either; a saved plan holds every variable's value and the provider's view of the account (state was ignored)",
+      "fix_commits": [
+        "2f937f4"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-tf-files-ignored-reproduced.json",
+          "baseline": "ac6f370",
+          "note": "test_files_the_procedure_creates_are_never_committed, committed as a strict xfail and run with --runxfail: git check-ignore did not list staging.tfvars, foundation.plan or deploy.tfplan"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-tf-files-ignored-fixed.json (2f937f4)"
+    },
+    {
+      "id": "collector-pin-warning-only",
+      "title": "With observability on, a collector image named by tag was only warned about: the module's sole guard was a check block, which in a plan or apply is a warning, and the task definition that runs the collector accepted the tag",
+      "fix_commits": [
+        "2f937f4"
+      ],
+      "regression_files": [
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-collector-pin-reproduced.json",
+          "baseline": "ac6f370",
+          "note": "terraform test with a mocked AWS provider: the run an_unpinned_collector_is_refused expected the task definition to fail and it did not (Missing expected failure); the other 7 runs passed"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-collector-pin-fixed.json (2f937f4: a precondition of the task definition; terraform test 8 of 8)"
+    },
+    {
+      "id": "ci-ledger-check-shallow-checkout",
+      "title": "CI's test job checked out one commit, and test_every_ledger_reference_exists, which checks that every fix commit the ledger names exists, failed there on 31 commits; every local run had the whole history. Added in bb33a5b, after 69c62de, it had never run in hosted CI",
+      "fix_commits": [
+        "f874b89"
+      ],
+      "regression_files": [
+        "evidence/probes/shallow_checkout_tests.sh"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37865432807",
+          "baseline": "e6cb251",
+          "kind": "hosted-ci-run"
+        },
+        {
+          "artifact": "evidence/runs/r5-shallow-checkout-reproduced.json",
+          "baseline": "6605d08",
+          "note": "the branch cloned at depth 1, the unit suite without a database: 1 failed (that test), 846 passed"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-shallow-checkout-fixed.json (f874b89, a whole-history clone: 847 passed) and hosted run 37866607406 on f874b89, whose test job passed"
+    },
+    {
+      "id": "terraform-lock-single-platform",
+      "title": "infra/aws-staging/.terraform.lock.hcl held a provider package hash (h1:) for darwin_arm64 only, as generated on the Mac; on CI's linux_amd64 runner, init with -lockfile=readonly verified the download but validate then refused the cached package",
+      "fix_commits": [
+        "aea40b2"
+      ],
+      "regression_files": [
+        ".github/workflows/ci.yml"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37866339109",
+          "baseline": "811713c",
+          "kind": "hosted-ci-run"
+        }
+      ],
+      "verified_by": "hosted run 37866723060 on aea40b2: the supply-chain job's Terraform step (lock read-only, fmt, validate, mocked plans) passed"
+    },
+    {
+      "id": "signout-before-revocation",
+      "title": "Sign out showed the sign-in form before the server had ended the session: signOut() cleared the screen, showed the form, then sent POST /api/logout, so leaving the page in between (a reload, a closed tab) could cancel the request and leave the session alive for the next person on that browser",
+      "fix_commits": [
+        "8157017"
+      ],
+      "regression_files": [
+        "web/e2e/journeys.spec.js"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37866723060",
+          "baseline": "aea40b2",
+          "kind": "hosted-ci-run"
+        },
+        {
+          "artifact": "evidence/runs/r5-signout-wait-reproduced.json",
+          "baseline": "cf9e823",
+          "note": "Real Chromium against the real server with /api/logout held by Playwright: the sign-in form appeared while the request was still held. The hosted failure was the identity-change journey navigating away right after Sign out and finding the previous user still signed in; it had passed on f874b89 and in every local run"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-signout-wait-fixed.json (8157017: 11 journeys; three consecutive local runs) and hosted run 37868427618 on 8157017, all four jobs"
+    },
+    {
+      "id": "signout-unconfirmed-presented-as-done",
+      "title": "A sign-out the server refused or never answered was presented as done: the page showed the sign-in form (with a notice) while the session was still alive, so a reload or the next person on that browser got the first user back",
+      "fix_commits": [
+        "7a1a2bb"
+      ],
+      "regression_files": [
+        "web/e2e/signout.spec.js"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-signout-refused-reproduced.json",
+          "baseline": "4738c5e",
+          "note": "Real Chromium against the real server with /api/logout answered 503 by Playwright: the sign-in form appeared and /api/me still answered for the first user. Found while testing failed sign-outs on 8157017, whose fix for the delayed case had introduced the notice"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-signout-refused-fixed.json (7a1a2bb: all 15 journeys; three consecutive local runs) and hosted CI on the candidate"
+    },
+    {
+      "id": "website-model-spend-unbounded",
+      "title": "The website path had no model spend allowance: Pipeline.spend was set only by evaluation tooling (scripts/run_evals.py's in-memory Budget), so a model budget capped an evaluation run but not reviewers' questions, across users, uvicorn workers, replicas and repair attempts; serving was bounded by per-user request quotas only",
+      "fix_commits": [
+        "c524d45"
+      ],
+      "regression_files": [
+        "tests/integration/test_failure_modes.py",
+        "tests/security/test_serving_credentials.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-website-allowance-reproduced.json",
+          "baseline": "d0fdf28",
+          "note": "test_a_configured_allowance_limits_what_the_website_spends, committed as a strict xfail and run with --runxfail: with an allowance below one call's bound (PAC_LLM_SPEND_LIMIT_USD and both rates), a question through the serving pipeline still reached the fake model transport and was answered. Found by review of the staging plan's $5 model allowance"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-website-allowance-fixed.json (fb415ca: the reproduction, six integration tests of the shared row -- settling, unreported usage, ten concurrent reservations against room for three, a bound violation, release, missing rates -- and two of the cloud startup refusal); the whole suite under the release gate at fb415ca"
+    },
+    {
+      "id": "allowance-prices-unvalidated",
+      "title": "The model allowance accepted model prices that make it meaningless: zero, negative, NaN and infinite rates passed the settings and the startup check (which asked only that they be set), a zero price made every reservation cost nothing so the allowance never ran down, and the staging module accepted a zero price",
+      "fix_commits": [
+        "6115774"
+      ],
+      "regression_files": [
+        "tests/integration/test_failure_modes.py",
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-allowance-prices-reproduced.json",
+          "baseline": "10063bd",
+          "note": "Strict xfails run with --runxfail: Settings accepted 0, -1, nan and inf for either rate; a SharedAllowance at zero prices granted a hundred worst-case reservations and counted none. Found by review of c524d45"
+        },
+        {
+          "artifact": "evidence/runs/r5-allowance-prices-tf-reproduced.json",
+          "baseline": "10063bd",
+          "note": "terraform test with a mocked provider: the run a_zero_model_price_is_refused failed (a zero input price was not refused)"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-allowance-prices-fixed.json and r5-staging-terraform-test-ff9fe0d.json (ff9fe0d: settings, meter and module refuse them; a zero limit refuses every call)"
+    }
+  ],
+  "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
+}

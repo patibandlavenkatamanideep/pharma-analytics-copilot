@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuites><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="0.026" timestamp="2026-10-07T14:05:11.380147-04:00"><testcase classname="" name="tests.unit.test_startup_refusal" time="0.000"><error message="collection failure" /></testcase><testcase classname="" name="tests.security.test_startup_refusal" time="0.000"><error message="collection failure" /></testcase></testsuite></testsuites>

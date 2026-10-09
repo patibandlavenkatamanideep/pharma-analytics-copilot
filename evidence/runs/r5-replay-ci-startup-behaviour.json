@@ -1,0 +1,136 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T18:13:17+00:00",
+  "claim": "On the baseline 76298b6, the baseline CI's startup-refusal steps would fail against the baseline app (expected outcome: failed)",
+  "application": {
+    "sha": "69c62de959a988305463be4b0219db7e88b1bcde",
+    "tree": "981b86a810611a9c7c49c57d0a7782af2e799ef7",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "docs/EVIDENCE_INDEX.md",
+      "evidence/external.json",
+      "evidence/index.json",
+      "evidence/ledger.json",
+      "evidence/probes/replay_on_baseline.sh",
+      "evidence/probes/sanitize_junit.py",
+      "evidence/probes/startup_refusal_on_baseline.py",
+      "evidence/runs/r5-replay-ci-startup-behaviour.json",
+      "evidence/runs/r5-replay-ci-startup-behaviour.result.json",
+      "evidence/runs/r5-replay-ci-startup-refusal.json",
+      "evidence/runs/r5-replay-ci-startup-refusal.junit.xml",
+      "evidence/runs/r5-replay-eval-budget-terminal.json",
+      "evidence/runs/r5-replay-eval-budget-terminal.junit.xml",
+      "evidence/runs/r5-replay-evidence-recorder-counts.json",
+      "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml",
+      "evidence/runs/r5-replay-failed-attempt-accounting.json",
+      "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml",
+      "evidence/runs/r5-replay-ingestion-boundaries.json",
+      "evidence/runs/r5-replay-ingestion-boundaries.junit.xml",
+      "evidence/runs/r5-replay-log-allowlist.json",
+      "evidence/runs/r5-replay-log-allowlist.junit.xml",
+      "evidence/runs/r5-replay-telemetry-outage-bounds.json",
+      "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml",
+      "evidence/test_categories.json",
+      "scripts/evidence_index.py"
+    ],
+    "dirty_digests": {
+      "docs/EVIDENCE_INDEX.md": "46cdc18ebe310db27832e34781041e6cb1f7c9d3f8cd90272280819120d62257",
+      "evidence/external.json": "3db063d9089eb33cb5284e1200427e95db658ef8c23c5d436c291da570dff622",
+      "evidence/index.json": "46ca5924eb20f5437a1b52b72d38557e3533b4c55c16a161b3ece84f2d28d30a",
+      "evidence/ledger.json": "ea7c8b49d90a136efc75305d4867bb8b7ffa6ef7efd0a03c5fc5d5f17af89f29",
+      "evidence/probes/replay_on_baseline.sh": "b2172a3a0e9ce262945360f00dd06f0fcd414129d6af29409b5d0951c5739922",
+      "evidence/probes/sanitize_junit.py": "ca1a649b7349610cea3e9db47b720d9a8d473f9764a715398317d9d38f9eae86",
+      "evidence/probes/startup_refusal_on_baseline.py": "398e6211fd99dbe36d9d4a982c2fb237faa7764b5b718e19c6cb8614591efb90",
+      "evidence/runs/r5-replay-ci-startup-behaviour.json": "95308aa17c1ef98b7da73c012b594d90d96d38807a4351411c7aee48048958d6",
+      "evidence/runs/r5-replay-ci-startup-behaviour.result.json": "996d103f82897338a41ca50251dd043829b3a46703da86572f21f6be290bdf43",
+      "evidence/runs/r5-replay-ci-startup-refusal.json": "7fc4c9fec4bc27f4100b159345291733e63874c54756b8be7a45b7481e60ac4a",
+      "evidence/runs/r5-replay-ci-startup-refusal.junit.xml": "50617bc38c7d3f9430822b97e0a1a7ceaffe8ab1084a683e33dea386e079a1a9",
+      "evidence/runs/r5-replay-eval-budget-terminal.json": "acd707a9e4b354d78b82e81aa1df1fd0c412e21bdee759ab601cf707139ed2de",
+      "evidence/runs/r5-replay-eval-budget-terminal.junit.xml": "89948b5bdb711eebdff10e2bd5a6e6bd8cf47c5587455215b0791232d18f3e23",
+      "evidence/runs/r5-replay-evidence-recorder-counts.json": "7f2109948daeb8fbdde6150b8a84adff2a0e52bfbfe2a54923f9bbfebe184560",
+      "evidence/runs/r5-replay-evidence-recorder-counts.junit.xml": "102efd22940b0077433c10d6cf1099cf2acaf9a400fc6686db7d74406a783599",
+      "evidence/runs/r5-replay-failed-attempt-accounting.json": "5a8c004e704581c3e5ce64bfc7f9d58aa9f570c1a90d8a6e4e9f5f0723bfb08c",
+      "evidence/runs/r5-replay-failed-attempt-accounting.junit.xml": "0ac293904ce44e28477bf111c186f8b7b2fc0f6583643818f38ccff5216ebdb6",
+      "evidence/runs/r5-replay-ingestion-boundaries.json": "2e33f701c50c324c48db6c2b73184c9c8dde7622a99eebd2e856e36d185a7932",
+      "evidence/runs/r5-replay-ingestion-boundaries.junit.xml": "5012e7ae2030a2eaf0a382fb6c3fd9e71ff7e14ec36b2a2c17f76a5b2435c194",
+      "evidence/runs/r5-replay-log-allowlist.json": "8c92c554302218de30e57c8cf17ed8486ee88a7ea0576ab700fae84136d04ff3",
+      "evidence/runs/r5-replay-log-allowlist.junit.xml": "5cef5cb6bbbf1e0a2bb0877572911476ec5f49b84b38aa96738ad8af1041e24d",
+      "evidence/runs/r5-replay-telemetry-outage-bounds.json": "1502a5803e70ffe2b55394047744c60569763592de56b90f6c0737ee37a16012",
+      "evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml": "f9cd6898bad2397c2edf01c3072560c661ab4e29fc107b7134c0ac99612b3e36",
+      "evidence/test_categories.json": "c283e4e3a746653d6000cda8568e07995efeded9766aec80076bb3cb674b3713",
+      "scripts/evidence_index.py": "08bd151e04df79c3af6223121ba8693cbb3fc7c9fe7077098d6526762ef1915e"
+    }
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-94491ffd38f6",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/startup_refusal_on_baseline.py",
+      "76298b6",
+      "--out",
+      "evidence/runs/r5-replay-ci-startup-behaviour.result.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 25.99
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "baseline 76298b6: no_database: exit 124 after 25.02 s, baseline grep matched False; owner_credential: exit 3 after 0.78 s, baseline grep matched False"
+  },
+  "artifacts": [],
+  "limits": [
+    "Recorded from HEAD, which holds the probe; the probe runs the baseline application in its own worktree and names the baseline in its result file",
+    "uvicorn on macOS against local PostgreSQL, not the CI container; the probe judges output with the baseline workflow's own grep"
+  ]
+}

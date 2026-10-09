@@ -1,0 +1,66 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T02:31:56+00:00",
+  "claim": "Reproduction at 952c6a9: the deployable collector configuration writes every span and metric to local files (to /tmp unless PAC_OTEL_FILE_DIR is set), and the drill's file exports are truncated when the collector restarts",
+  "application": {
+    "sha": "952c6a9f8e08eb58c86b2a65b40a0e392406739e",
+    "tree": "9c7a19e0f1bb3621d8aa8cd49fc27f65adbbb7fd",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--runxfail",
+      "tests/unit/test_collector_config.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.36
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 2
+    },
+    "blocked_reason": null,
+    "summary": "2 failed in 0.06s"
+  },
+  "artifacts": [],
+  "limits": [
+    "configuration inspection; the restart loss itself is shown by r5-collector-restart-reproduced.json"
+  ]
+}

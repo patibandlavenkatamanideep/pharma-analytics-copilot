@@ -12,7 +12,7 @@ the principal may run it, and the compiler decides what SQL it becomes.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal
+from typing import Any, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -175,8 +175,32 @@ class Threshold(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
-    direction: Literal["above", "below"]
+    #: gt/gte/lt/lte. "At least 100" is gte and includes 100; "more than 100"
+    #: is gt and does not. The field used to be direction: above|below, and
+    #: both compiled to a strict comparison -- so an account that bought
+    #: exactly 100 vanished from an answer that asked for it.
+    op: Literal["gt", "gte", "lt", "lte"]
     value: float
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_direction(cls, data: Any) -> Any:
+        """Read plans stored before the operator existed.
+
+        A conversation's previous plan is loaded and patched by the next turn.
+        Plans written before 30 September 2026 say `direction: above|below`,
+        which always compiled to a strict comparison -- so they are read with
+        exactly that meaning. A follow-up must not quietly move the boundary of
+        the answer it follows.
+        """
+        if isinstance(data, dict) and "direction" in data and "op" not in data:
+            data = dict(data)
+            legacy = {"above": "gt", "below": "lt"}
+            direction = data.pop("direction")
+            if direction not in legacy:
+                raise ValueError(f"unknown legacy threshold direction {direction!r}")
+            data["op"] = legacy[direction]
+        return data
 
 
 class Rolling(BaseModel):
@@ -204,6 +228,18 @@ class AnalyticalPlan(BaseModel):
     ranking: Ranking | None = None
     threshold: Threshold | None = None
     rolling: Rolling | None = None
+    # Each period of the series against the period before it ("month over
+    # month"): the period's value, the previous period's, the change and the
+    # percentage change. Not a two-window comparison, which gives one figure
+    # for one window against another (volume_growth); not a rolling average.
+    period_over_period: bool = Field(
+        default=False,
+        description=(
+            "true to report, for each period of a series, the change against the "
+            "immediately preceding period of the same grain ('month over month', "
+            "'each month vs the previous month'). Needs exactly one period dimension "
+            "and an additive volume metric; never combined with comparison, rolling, "
+            "ranking or threshold."))
 
     # Set when the question cannot be answered as asked. The pipeline returns
     # this text instead of guessing.
@@ -236,6 +272,26 @@ class AnalyticalPlan(BaseModel):
                 raise ValueError(
                     "a rolling average and a two-window comparison cannot be "
                     "combined")
+        if self.period_over_period:
+            periods = [d for d in self.dimensions
+                       if d in (Dimension.period_mo, Dimension.period_qtr,
+                                Dimension.period_wk)]
+            if len(periods) != 1:
+                raise ValueError(
+                    "a period-over-period change needs exactly one period dimension "
+                    "to step through")
+            if self.comparison is not None:
+                raise ValueError(
+                    "a period-over-period change and a two-window comparison cannot be "
+                    "combined: one compares each period with the one before it, the "
+                    "other one window with another")
+            if self.rolling is not None:
+                raise ValueError(
+                    "a period-over-period change and a rolling average cannot be combined")
+            if self.ranking is not None or self.threshold is not None:
+                raise ValueError(
+                    "a period-over-period change cannot be combined with a ranking or a "
+                    "threshold: it is a series, read in order")
         if self.threshold and not self.dimensions:
             raise ValueError(
                 "a threshold requires at least one dimension: filtering a single "

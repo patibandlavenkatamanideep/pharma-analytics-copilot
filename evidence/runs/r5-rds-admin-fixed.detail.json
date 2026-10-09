@@ -1,0 +1,165 @@
+{
+ "admin_role": "rds_master_emul: LOGIN CREATEROLE CREATEDB, not SUPERUSER, not BYPASSRLS, not REPLICATION",
+ "steps": [
+  {
+   "step": "bootstrap_db.py",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "load_data.py --mode seed",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "pg_dump as the owner",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "bootstrap_db.py --roles-only (new cluster)",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "createdb -O pac_owner as the administrator",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "pg_restore --role=pac_owner as the administrator",
+   "exit": 0,
+   "errors": []
+  },
+  {
+   "step": "bootstrap_db.py --roles-only again (CONNECT)",
+   "exit": 0,
+   "errors": []
+  }
+ ],
+ "after_provisioning": {
+  "boundary_problems": [],
+  "answer": "answered"
+ },
+ "roles": [
+  [
+   "pac_auth",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_auth_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_exec_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_owner",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_rt_exec",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_rt_scoped",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_scoped_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ]
+ ],
+ "after_restore": {
+  "boundary_problems": [],
+  "answer": "answered"
+ },
+ "roles_after_restore": [
+  [
+   "pac_auth",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_auth_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_exec_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_owner",
+   false,
+   false,
+   false,
+   false,
+   true
+  ],
+  [
+   "pac_rt_exec",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_rt_scoped",
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  [
+   "pac_scoped_login",
+   false,
+   false,
+   false,
+   false,
+   true
+  ]
+ ],
+ "all_steps_passed": true
+}

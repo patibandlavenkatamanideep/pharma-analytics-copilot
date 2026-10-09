@@ -1,0 +1,97 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T01:21:57+00:00",
+  "claim": "Review ledger after Phase 5A: every finding of the 30 September review is FIXED on this branch.",
+  "application": {
+    "sha": "1718d29103def42fa1048ce2874ac38dc52f8423",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/conversation/runs.py",
+      "app/data/loader.py",
+      "app/db.py",
+      "app/pipeline.py",
+      "docs/API.md",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/probes/review_2026_09_30.py",
+      "evidence/runs/r2-snapshot-consistency.json",
+      "migrations/017_generation_marker.sql",
+      "tests/security/test_snapshot_consistency.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "evidence/probes/review_2026_09_30.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 3.19
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 5
+    },
+    "blocked_reason": null,
+    "summary": "REPRODUCED=0  FIXED=20  OPEN=0  ERROR=0"
+  },
+  "artifacts": [],
+  "limits": [
+    "FIXED means the probe for the finding no longer reproduces it; probes for F4c, F4d and F7b check that the storage exists, and behaviour is covered by their test suites."
+  ]
+}

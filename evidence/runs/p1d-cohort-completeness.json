@@ -1,0 +1,94 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T03:36:09+00:00",
+  "claim": "Cohort completeness distinguishes the ranking limit, the response row cap and the 200-id storage cap; a truncated response is never recorded as a complete cohort, the renderer's discarded probe row is never a cohort member, and a truncated total is left unknown rather than stated.",
+  "application": {
+    "sha": "dbbe846f144f37b1449cb33d269e8d69122570f0",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "app/conversation/continuity.py",
+      "app/pipeline.py",
+      "docs/TEST_INVENTORY.md",
+      "evidence/probes/gate_requires_its_databases.py",
+      "evidence/runs/p1d-gate-requires-databases.json",
+      "evidence/runs/p1d-suite-security.json",
+      "tests/unit/test_cohort_completeness.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_cohort_completeness.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.2
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 16
+    },
+    "blocked_reason": null,
+    "summary": "16 passed in 0.01s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Tests the rule directly. It does not run a query large enough to truncate against the 2M-row dataset with the default cap of 5,000.",
+    "Legacy NULL completeness is asserted at the Cohort boundary, not by reading a pre-migration row from the database."
+  ]
+}

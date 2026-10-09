@@ -1,0 +1,81 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T02:16:24+00:00",
+  "claim": "The unit suite passes at its documented count.",
+  "application": {
+    "sha": "3e21db20a572fd8e5352b2e2ac30f8e4bb7de4fc",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "README.md",
+      "app/api/main.py",
+      "app/config.py",
+      "app/data/ingest.py",
+      "app/db.py",
+      "app/graph/turn.py",
+      "app/llm/planner.py",
+      "app/pipeline.py",
+      "app/telemetry.py",
+      "docs/OBSERVABILITY.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "evidence/runs/r2-telemetry.json",
+      "requirements.txt",
+      "tests/hostile.py",
+      "tests/integration/test_telemetry_pipeline.py",
+      "tests/unit/test_telemetry.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 34.52
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 613
+    },
+    "blocked_reason": null,
+    "summary": "613 passed, 5 warnings in 24.19s"
+  },
+  "artifacts": [],
+  "limits": null
+}

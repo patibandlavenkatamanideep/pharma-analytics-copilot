@@ -1,0 +1,64 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T00:47:06+00:00",
+  "claim": "At 6605d08: the unit suite passes in a checkout of depth 1, as CI's test job gets",
+  "application": {
+    "sha": "6605d08e42ef05f82e9d4ef78b28a83c9cc0488c",
+    "tree": "aeea87643fded69e2f382ad7ad0125aebccc3a6b",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "PYTHON=/Users/manideep/.venvs/pac-release/bin/python",
+      "bash",
+      "evidence/probes/shallow_checkout_tests.sh",
+      "1"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 39.92
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1,
+      "passed": 846
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 846 passed, 5 warnings in 29.18s"
+  },
+  "artifacts": [],
+  "limits": [
+    "a reproduction of hosted run 37865432807's failure on a local shallow clone; no database reachable"
+  ]
+}

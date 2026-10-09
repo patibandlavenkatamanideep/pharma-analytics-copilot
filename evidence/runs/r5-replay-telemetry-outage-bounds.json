@@ -1,0 +1,139 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T18:08:37+00:00",
+  "claim": "The candidate's regression tests for r5-replay-telemetry-outage-bounds, run against application code at 76298b6 that lacks the fix (expected outcome: failed)",
+  "application": {
+    "sha": "76298b648634e4f340d6f2a27f33b19d55d760af",
+    "tree": "91e3bef369ffc9aea50a9e8cfe3e69a3735294e6",
+    "branch": "HEAD",
+    "worktree_clean": false,
+    "dirty_paths": [
+      "scripts/record_evidence.py",
+      "tests/conftest.py",
+      "tests/integration/test_admission_pipeline.py",
+      "tests/integration/test_eval_terminal.py",
+      "tests/integration/test_failure_handling.py",
+      "tests/integration/test_ingest_contract.py",
+      "tests/integration/test_ingest_observability.py",
+      "tests/integration/test_telemetry_outages.py",
+      "tests/security/test_audit_contract.py",
+      "tests/security/test_checkpoint_loading.py",
+      "tests/security/test_graph_durability.py",
+      "tests/security/test_log_hygiene.py",
+      "tests/security/test_startup_refusal.py",
+      "tests/unit/test_eval_budget.py",
+      "tests/unit/test_evidence_record_accuracy.py",
+      "tests/unit/test_ingest_validation.py",
+      "tests/unit/test_live_adapter_contract.py",
+      "tests/unit/test_log_allowlist.py",
+      "tests/unit/test_log_registry.py",
+      "tests/unit/test_logs.py",
+      "tests/unit/test_startup_refusal.py",
+      "tests/unit/test_telemetry.py"
+    ],
+    "dirty_digests": {
+      "scripts/record_evidence.py": "453fa6f9b3fda08c4b136a07c902c8beb4b25773fc92c37c29f6c5bede210234",
+      "tests/conftest.py": "9bf01732f327b17144d5f876fde8673dce10b8441b302ed764b8588059f49d9d",
+      "tests/integration/test_admission_pipeline.py": "46d48f4f2f5cd9c019bdfc6d3e488c20280e0f6e5c31a0851dfc78ca12f07787",
+      "tests/integration/test_eval_terminal.py": "9fce55a8e4aa061cb5e5a92784da63dfd97c989e390f0056a197da840649ef78",
+      "tests/integration/test_failure_handling.py": "ce15daad1a70b2b4cef96a53ddfcdb444fcfc944a858fd049f929dd135bba74c",
+      "tests/integration/test_ingest_contract.py": "01ccfc1438136bef663c5ee12c0acbba22660faa44f5e8dc5f4efbd588056cc0",
+      "tests/integration/test_ingest_observability.py": "64b3b9e48ce6bbb1688eaf5539f490fd11be31fc1a6f0e393e1b7975fa57d7b6",
+      "tests/integration/test_telemetry_outages.py": "0654dcb653eb364d309c1b4608cdafb6b88b24ebd110314fc7f4bd052be9eb64",
+      "tests/security/test_audit_contract.py": "5a72a7d18677d19c5a1b22c44ce50f8345c80fa8b5f98381d8118c024e3e17e9",
+      "tests/security/test_checkpoint_loading.py": "8912ef1a4c5a25eccb8686f40cff3e391ebd962b7ca556b2a65ddbee737886fa",
+      "tests/security/test_graph_durability.py": "2ead6d6f158e990ed199889399a8b854f59506eb36895e3a887547cc29232997",
+      "tests/security/test_log_hygiene.py": "208a0fa1601098c5f22f834870db6eab97de749a41331ee86fccfea6e3364d9e",
+      "tests/security/test_startup_refusal.py": "2fa5fc392ff0f3ca76320cb192f0efe355b419eb6b76c7614ab11871d562795d",
+      "tests/unit/test_eval_budget.py": "7c809b0c2fa4771da480c0668927bbaf4d74803e86d2b40b6b223257c44a1215",
+      "tests/unit/test_evidence_record_accuracy.py": "82989cf9e76a753c72a23b5f85e421f09eafeb44ae645e901f5d27db8e673b07",
+      "tests/unit/test_ingest_validation.py": "7414537590533435205b3813810c378aee86fdd17c6c6f1584e032752e7fd97d",
+      "tests/unit/test_live_adapter_contract.py": "ce126558d012845e418df0905d70d354871afb89d8885c04ab998439ae35c6e0",
+      "tests/unit/test_log_allowlist.py": "63f1bb1e35f996315860455d5fd5be21b044d8d56e73bbb29851340ca2184269",
+      "tests/unit/test_log_registry.py": "47b7cde9152fa5db1efa2ead99b02a7432a07d6518b22277e5eb288ac5e7feec",
+      "tests/unit/test_logs.py": "c59e0b90c3a7b57d152718de934337f714696e217620048c5eed179e80b0e89d",
+      "tests/unit/test_startup_refusal.py": "412a122529f68e2a3e74f4f18a8da6868f1a64cc44bc0f343c2f2f71f6f966a0",
+      "tests/unit/test_telemetry.py": "7ea33e0fc76ff86255f3ff86dd380c6ebead0b2aab732762d480e3638cf08703"
+    }
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-94491ffd38f6",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pac_release"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/test_telemetry.py",
+      "tests/integration/test_ingest_observability.py",
+      "tests/integration/test_telemetry_outages.py",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--continue-on-collection-errors",
+      "--junitxml=/Users/manideep/src/pharma-analytics-copilot/evidence/runs/r5-replay-telemetry-outage-bounds.junit.xml"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 195.28
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 11,
+      "passed": 24,
+      "error": 1
+    },
+    "blocked_reason": null,
+    "summary": "11 failed, 24 passed, 1 error in 194.92s (0:03:14)"
+  },
+  "artifacts": [],
+  "limits": [
+    "tests/ and scripts/record_evidence.py are the candidate's, recorded by digest; application code and every other script are the baseline's"
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-09-30T17:27:40+00:00",
+  "claim": "A 908-account answer followed by 'those same accounts' applies all 908; a clarification is answered against the choices shown, after a restart, only while the choice is still in the caller's access; a retried request with the same key replays one committed turn, and is withheld after access changes; one live run per conversation; a failed save is reported.",
+  "application": {
+    "sha": "e9ed69cc8c06702b60d0941a2ff5d7d4b53d27ea",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "README.md",
+      "app/analytics/compiler.py",
+      "app/analytics/intent.py",
+      "app/analytics/mentions.py",
+      "app/api/main.py",
+      "app/config.py",
+      "app/conversation/clarify.py",
+      "app/conversation/continuity.py",
+      "app/conversation/runs.py",
+      "app/conversation/state.py",
+      "app/llm/planner.py",
+      "app/pipeline.py",
+      "docs/REQUIREMENTS.md",
+      "docs/RUNBOOK.md",
+      "docs/TEST_INVENTORY.md",
+      "migrations/012_conversation_reliability.sql",
+      "scripts/run_evals.py",
+      "tests/integration/test_failure_handling.py",
+      "tests/integration/test_full_cohort.py",
+      "tests/security/test_conversation_reliability.py",
+      "tests/unit/test_cohort_completeness.py",
+      "tests/unit/test_cohort_typing.py",
+      "tests/unit/test_live_adapter_contract.py"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.0.0",
+    "planner": "2.0.0",
+    "graph": null,
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-182fd9082327",
+    "load_mode": "full",
+    "fingerprint": "cba52562c89a4f8fd76c52a3",
+    "row_counts": {
+      "sales": 2000000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 155,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-18",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-19"
+    },
+    "database": "pharma_analytics"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "-m",
+      "pytest",
+      "tests/security/test_conversation_reliability.py",
+      "tests/integration/test_full_cohort.py",
+      "tests/unit/test_cohort_typing.py",
+      "tests/unit/test_cohort_completeness.py",
+      "-q",
+      "-p",
+      "no:randomly"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 3.48
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": {
+      "passed": 60
+    },
+    "blocked_reason": null,
+    "summary": "60 passed in 3.24s"
+  },
+  "artifacts": [],
+  "limits": [
+    "Overlap is exercised by planting a live run row, not by two truly concurrent HTTP requests.",
+    "The revision-conflict path (a lease expiring mid-run) is covered at the state layer only through the planted-run tests; no end-to-end timing race is induced.",
+    "Exactly-once model invocation is not claimed: a run abandoned mid-flight plans again on retry."
+  ]
+}

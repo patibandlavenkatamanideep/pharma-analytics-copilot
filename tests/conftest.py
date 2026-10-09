@@ -13,6 +13,20 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
+# The suite asks hundreds of questions as a handful of principals in seconds.
+# Per-user request limits protect the service from one person's browser; the
+# tests that exercise them set their own low limits explicitly.
+import os as _os
+
+for _name in ("PAC_USER_REQUESTS_PER_MINUTE", "PAC_USER_REQUESTS_PER_HOUR",
+              "PAC_USER_CONCURRENT_RUNS"):
+    _os.environ.setdefault(_name, "1000000")
+
+# A publication waits for in-flight readers before reclaiming the rows it
+# replaced (loader.reclaim_after_publication). A test process has no other
+# readers, and dozens of tests publish.
+_os.environ.setdefault("PAC_PUBLICATION_SETTLE_SECONDS", "0")
+
 
 def _database_available() -> tuple[bool, str]:
     try:
@@ -31,12 +45,28 @@ def _database_available() -> tuple[bool, str]:
         return False, f"database unavailable: {type(exc).__name__}"
 
 
-DB_OK, DB_REASON = _database_available()
+# Database discovery is lazy. Importing/collecting pure unit tests must never
+# acquire a connection. Release-gate still fails every skipped DB requirement.
+needs_db = pytest.mark.usefixtures("_require_database")
+needs_full = pytest.mark.usefixtures("_require_full_dataset")
 
-needs_db = pytest.mark.skipif(not DB_OK, reason=f"needs a loaded database: {DB_REASON}")
-needs_full = pytest.mark.skipif(
-    DB_REASON != "full", reason="needs the full dataset (scripts/load_data.py --mode full)"
-)
+
+@pytest.fixture(scope="session")
+def _database_status():
+    return _database_available()
+
+
+@pytest.fixture(scope="session")
+def _require_database(_database_status):
+    ok, reason = _database_status
+    if not ok:
+        pytest.skip(f"needs a loaded database: {reason}")
+
+
+@pytest.fixture(scope="session")
+def _require_full_dataset(_require_database, _database_status):
+    if _database_status[1] != "full":
+        pytest.skip("needs the full dataset (scripts/load_data.py --mode full)")
 
 
 @pytest.fixture(scope="session")

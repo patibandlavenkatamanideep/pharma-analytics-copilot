@@ -41,4 +41,17 @@ infra/terraform/.terraform.lock.hcl
 
 # playwright
 web/test-results/
+web/e2e-logs/
 web/playwright-report/
+
+# evidence: records and probes are tracked; restricted detail is not
+evidence/restricted/
+
+# the staging module's provider cache (its lock file is committed)
+infra/aws-staging/.terraform/
+# and the files its procedure writes (README.md): variable values, the reviewers' list and saved plans.
+# State is ignored above.
+infra/aws-staging/*.tfvars
+infra/aws-staging/*.csv
+infra/aws-staging/*.plan
+infra/aws-staging/*.tfplan

@@ -1,6 +1,6 @@
 # Pinned runtime dependencies. Kept deliberately small: one web framework, one
 # database driver, one SQL parser, one LLM provider SDK.
-fastapi==0.115.6
+fastapi==0.142.2
 uvicorn[standard]==0.34.0
 pydantic==2.10.4
 pydantic-settings==2.7.0
@@ -8,5 +8,24 @@ psycopg[binary,pool]==3.2.3
 argon2-cffi==23.1.0
 sqlglot==26.2.1
 PyYAML==6.0.2
-python-multipart==0.0.20
+python-multipart==0.0.32
 anthropic[bedrock]==1.8.0
+# Orchestration: the turn workflow and its durable PostgreSQL checkpoints.
+# Pulls langchain-core and the langsmith client in transitively. Neither is
+# used directly -- no chains, no agents -- and LangSmith export is switched
+# off at startup unless PAC_LANGSMITH_TRACING=true (app/graph/__init__.py).
+langgraph==1.2.12
+langgraph-checkpoint-postgres==3.1.2
+# Single sign-on (off unless PAC_OIDC_ENABLED). Authlib performs the
+# authorization-code exchange with PKCE; joserfc (Authlib's JOSE library)
+# verifies ID tokens. Authlib 1.8 is built on httpx2, which the Anthropic SDK
+# already depends on; pinned here because the OIDC code uses it directly.
+authlib==1.8.0
+httpx2==2.13.1
+# Operational telemetry (app/telemetry.py): OpenTelemetry traces and metrics,
+# exported over OTLP/HTTP only when PAC_OTEL_ENDPOINT is set, through
+# exporters that redact before export. Without an endpoint, recording is a
+# no-op.
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-http==1.45.0

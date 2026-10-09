@@ -1,0 +1,63 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T14:59:20+00:00",
+  "claim": "Full Python suite on clean candidate 8c25b0e with PostgreSQL and fake/offline model transports",
+  "application": {
+    "sha": "8c25b0ee2b4048f1edaeae15634d5f5698d29222",
+    "tree": "e12cfae4e4c92e5840729e6a56d7b338844d0d6e",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "python",
+      "-m",
+      "pytest",
+      "tests",
+      "-q",
+      "--junitxml=/tmp/r5-final-full.xml"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 1143.79
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 7,
+      "passed": 2054
+    },
+    "blocked_reason": null,
+    "summary": "7 failed, 2054 passed, 5 warnings in 67198.96s (18:39:58)"
+  },
+  "artifacts": [],
+  "limits": null
+}

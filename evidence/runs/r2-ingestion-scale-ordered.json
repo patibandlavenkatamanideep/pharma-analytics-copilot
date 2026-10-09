@@ -1,0 +1,113 @@
+{
+  "evidence_schema_version": "1.0.0",
+  "recorded_at": "2026-10-01T13:04:40+00:00",
+  "claim": "Incremental publication timings on a disposable copy of the full dataset with the ordered offset shift (delete and ordered insert) and the settled reclaim: an in-week batch, its replay, and a new-week batch, with reader latency sampled throughout.",
+  "application": {
+    "sha": "2fc0070d1df6df2fbc2a47500f19575fe1c7659f",
+    "branch": "post-assessment/production-readiness",
+    "worktree_clean": false,
+    "dirty_paths": [
+      ".github/workflows/ci.yml",
+      "Dockerfile",
+      "app/api/main.py",
+      "app/config.py",
+      "app/conversation/feedback.py",
+      "app/conversation/privacy.py",
+      "app/data/ingest.py",
+      "app/data/loader.py",
+      "compose.yaml",
+      "docs/API.md",
+      "docs/INGESTION.md",
+      "docs/RETENTION.md",
+      "docs/RUNBOOK.md",
+      "docs/SUPPLY_CHAIN.md",
+      "evidence/runs/r2-load-failures.json",
+      "evidence/runs/r2-load-profile-before-settle.json",
+      "evidence/runs/r2-load-profile.json",
+      "evidence/runs/r2-throughput-fresh.json",
+      "migrations/019_feedback.sql",
+      "scripts/build_authtest_db.py",
+      "scripts/build_ingesttest_db.py",
+      "scripts/failure_sample.py",
+      "scripts/load_test.py",
+      "scripts/restore_drill.py",
+      "tests/conftest.py",
+      "tests/integration/test_ingestion.py",
+      "tests/security/test_feedback.py",
+      "web/src/App.jsx",
+      "web/src/__tests__/conversation-contract.test.jsx",
+      "web/src/styles.css"
+    ]
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": {
+    "dataset_id": "full-b4807162aa0b",
+    "load_mode": "full",
+    "fingerprint": "f2f20542dce39ecd27da996b",
+    "row_counts": {
+      "sales": 2001000,
+      "users": 23,
+      "products": 40,
+      "organizations": 40000,
+      "zip_territory": 29728
+    },
+    "reporting_anchor": {
+      "max_mo": 36,
+      "max_wk": 156,
+      "min_mo": 0,
+      "min_wk": 0,
+      "max_txn": "2026-09-24",
+      "max_period_mo": "2026-09",
+      "max_period_qtr": "2026-Q3",
+      "max_week_ending": "2026-09-26"
+    },
+    "database": "pharma_analytics_ingestscale"
+  },
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac/bin/python",
+      "scripts/measure_ingestion.py"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "PAC_DB_NAME": "pharma_analytics_ingestscale",
+      "PAC_LLM_PROVIDER": "offline"
+    },
+    "seed": null,
+    "duration_s": 149.58
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"database\": \"pharma_analytics_ingestscale\", \"sales_rows\": 2000000, \"batches\": [{\"label\": \"in_latest_week\", \"seconds\": 25.1, \"status\": \"published\", \"applied\": 500, \"duplicates\": 0, \"anchor_shift_weeks\": 0}, {\"label\": \"replayed\", \"seconds\": 0.14, \"status\": \"no_change\", \"applied\": 0, \"duplicates\": 500, \"anchor_shift_weeks\": 0}, {\"label\": \"new_week\", \"seconds\": 123.89, \"status\": \"published\", \"applied\": 500, \"duplicates\": 0, \"anchor_shift_weeks\": 1}], \"reader_ms\": {\"idle\": {\"n\": 10, \"min\": 17.0, \"median\": 17.8, \"max\": 41.5}, \"during_in_latest_week\": {\"n\": 24, \"min\": 16.8, \"median\": 49.4, \"max\": 55.8}, \"during_new_week\": {\"n\": 118, \"min\": 18.7, \"median\": 37.7, \"max\": 296.5}}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "Measured on one development machine; the deployed host and a managed database were not measured.",
+    "Includes the 20 s settle before reclaim in each published batch's time."
+  ]
+}

@@ -143,18 +143,22 @@ INSERT INTO sales
    '2026-09-14', '2026-09-19', 'NY', 'Oncology', '2026-W38', '2026-09', '2026-Q3', 0, 0),
 
 -- Standalone facilities, including the duplicate-name pair.
+--   In August (month offset 1). These rows used to carry week 0 and September
+--   labels beside an August offset -- a calendar no real snapshot can have,
+--   which the loader now refuses. Relabelled; r3m sums are unchanged.
   ('SOLO-1', '11111-0801-01', 'NOVATAXEL', 'distributor', 1, 7, 700, 700.00,
-   '2026-09-14', '2026-09-19', 'NY', 'Oncology', '2026-W38', '2026-09', '2026-Q3', 0, 1),
+   '2026-08-17', '2026-08-22', 'NY', 'Oncology', '2026-W34', '2026-08', '2026-Q3', 4, 1),
   ('SOLO-2', '11111-0801-01', 'NOVATAXEL', 'distributor', 1, 9, 900, 900.00,
-   '2026-09-14', '2026-09-19', 'TX', 'Oncology', '2026-W38', '2026-09', '2026-Q3', 0, 1),
+   '2026-08-17', '2026-08-22', 'TX', 'Oncology', '2026-W34', '2026-08', '2026-Q3', 4, 1),
 
 -- Unmapped ZIP: 11 packs that scoped roles must never see.
   ('LOST-1', '11111-0801-01', 'NOVATAXEL', 'distributor', 1, 11, 1100, 1100.00,
    '2026-09-14', '2026-09-19', 'ZZ', 'Oncology', '2026-W38', '2026-09', '2026-Q3', 0, 0),
 
 -- Inactive facility still has historical volume.
+--   In July (month offset 2), relabelled for the same reason.
   ('OLD-1', '11111-0801-01', 'NOVATAXEL', 'distributor', 1, 13, 1300, 1300.00,
-   '2026-09-14', '2026-09-19', 'NY', 'Oncology', '2026-W38', '2026-09', '2026-Q3', 0, 2),
+   '2026-07-13', '2026-07-18', 'NY', 'Oncology', '2026-W29', '2026-07', '2026-Q3', 9, 2),
 
 -- Prior period (offset 3) for comparison metrics: 40 equivalents, market 160.
   ('ACME-1', '11111-0101-01', 'ZENOVAX',  'distributor', 1, 40, 3200, 4000.00,

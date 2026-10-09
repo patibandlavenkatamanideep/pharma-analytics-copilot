@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T16:00:44+00:00",
+  "claim": "At 4a234e2: with PGSSLMODE=verify-full and the server's CA, provisioning, loading and an answer succeed over TLS 1.3 with every application connection encrypted; with another CA or in plaintext the application cannot connect",
+  "application": {
+    "sha": "4a234e275a06528ac34aca5a6c6aef3411b7ef80",
+    "tree": "8d7b56d42f3d2f3a195295e716b152ed39b7e1fb",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "evidence/probes/db_tls_verify_full.py",
+      "--out",
+      "/Users/manideep/src/pac-work/step10/r5-db-tls-verify-full.detail.json"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 29.52
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"steps\": [{\"step\": \"bootstrap_db.py (verify-full)\", \"exit\": 0, \"errors\": []}, {\"step\": \"load_data.py --mode seed (verify-full)\", \"exit\": 0, \"errors\": []}], \"verify_full\": {\"answer\": \"answered\", \"boundary_problems\": [], \"connections\": 2, \"encrypted\": 2, \"tls_version\": \"TLSv1.3\"}, \"another_ca\": {\"refused\": \"error connecting in 'pool-1': connection failed: connection to server at \\\"127.0.0.1\\\", port 63356 failed: SSL error: certificate verify failed\"}, \"plaintext\": {\"refused\": \"psycopg_pool.PoolTimeout: couldn't get a connection after 3.00 sec\"}, \"passed\": true}"
+  },
+  "artifacts": [],
+  "limits": [
+    "a local TLS-only cluster with a CA made for the probe, not RDS's CA; the RDS CA bundle is not yet in the image"
+  ]
+}

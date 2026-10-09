@@ -21,7 +21,10 @@ DB = os.environ.get("PAC_AUTHTEST_DB", "pharma_analytics_authtest")
 
 
 def main() -> int:
-    env = {**os.environ, "PAC_DB_NAME": DB, "PYTHONPATH": str(ROOT)}
+    # Nothing reads a database being built, so nothing to wait for before
+    # reclaiming what the load replaced.
+    env = {**os.environ, "PAC_DB_NAME": DB, "PYTHONPATH": str(ROOT),
+           "PAC_PUBLICATION_SETTLE_SECONDS": "0"}
     r = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "bootstrap_db.py"), "--drop", "--no-env"],
         env=env, capture_output=True, text=True,

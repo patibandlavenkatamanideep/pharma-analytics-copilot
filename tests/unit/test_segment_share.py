@@ -31,7 +31,7 @@ def planned(question: str):
         wac_authorized=True, reporting_anchor=ANCHOR,
         known_products=["ZENOVAX"], known_categories=["Platinum Compounds"],
     )
-    return OfflinePlanner().plan(question, context)
+    return OfflinePlanner().plan(question, context).plan
 
 
 # ---------------------------------------------------------------------------
@@ -100,11 +100,33 @@ def test_the_denominator_drops_the_segment_filter_and_the_numerator_keeps_it():
     })
     query = Compiler().compile(plan, anchor=ANCHOR)
     numerator = query.sql[: query.sql.index("den AS")]
-    denominator = query.sql[query.sql.index("den AS"):]
+    denominator = query.sql[query.sql.index("den AS"):query.sql.index("unk AS")]
+    unknown = query.sql[query.sql.index("unk AS"):query.sql.index("SELECT", query.sql.index("unk AS") + 10)]
     assert "classification" in numerator, "the numerator lost the segment filter"
     assert "classification" not in denominator, (
         "the denominator kept the segment filter, so the share is always 100%"
     )
+    # The volume of unknown class is the denominator's population, of unknown
+    # class only: carried beside the share as the range it allows.
+    unknown_body = query.sql[query.sql.index("unk AS"):]
+    assert "c.classification = 'unknown'" in unknown_body and "= ANY(%s)" in unknown
+    assert query.columns[-2:] == ["unclassified", "value_upper"]
+
+
+def test_a_share_grouped_by_class_or_without_a_segment_carries_no_range():
+    """Grouped by class, unknown is a row of its own; without a segment there
+    is nothing for unknown volume to be part of."""
+    from app.analytics.compiler import Compiler
+
+    for extra in ({"dimensions": ["classification"],
+                   "filters": {"market_categories": ["Platinum Compounds"],
+                               "classifications": ["generic"]}},
+                  {"filters": {"market_categories": ["Platinum Compounds"]}}):
+        plan = AnalyticalPlan.model_validate({
+            "metric": "market_segment_share", "time": {"kind": "named", "named": "r3m"},
+            **extra})
+        query = Compiler().compile(plan, anchor=ANCHOR)
+        assert "unk AS" not in query.sql and "value_upper" not in query.columns, extra
 
 
 # ---------------------------------------------------------------------------

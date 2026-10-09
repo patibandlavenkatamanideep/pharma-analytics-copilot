@@ -1,0 +1,61 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-08T03:06:07+00:00",
+  "claim": "Reproduction at 0f1920c: restoring a full-size copy (2,000,000 sales) into a new PostgreSQL cluster by the procedure RUNBOOK \u00a78 documents (bootstrap_db.py without --drop, then pg_restore)",
+  "application": {
+    "sha": "0f1920c295ebff79f197c46000697deef3705bd7",
+    "tree": "75d86b1189b7ad04ae5dc68dd90d549ec70af0af",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/restore_drill.py",
+      "--new-cluster",
+      "--source",
+      "pac_release"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 107.21
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"mode\": \"new_cluster\", \"source\": \"pac_release\", \"copy\": \"pharma_analytics_restored_src\", \"target\": \"pharma_analytics_restored\", \"procedure\": {\"roles_seconds\": 0.42, \"roles_exit\": 0, \"restore_seconds\": 68.67, \"restore_exit\": 1, \"restore_errors\": 143, \"first_errors\": [\"pg_restore: error: could not execute query: ERROR:  schema \\\"app_auth\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_conv\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_graph\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_ingest\\\" already exists\", \"pg_restore: error: could not execute query: ERROR:  schema \\\"app_meta\\\" already exists\"]}, \"dump_mb\": 39.8, \"timings\": {\"copy_source_seconds\": 25.68, \"dump_seconds\": 3.13, \"new_cluster_seconds\": 0.54, \"restore_to_ready_seconds\": 72.62}, \"checks\": {\"restore_clean\": false, \"row_counts_match\": false, \"generation_matches\": true, \"policies_and_rls_match\": true, \"grants_match\": false, \"memberships_match\": true, \"logins_can_connect\": true, \"boundary_intact\": true, \"ready\": true, \"answers_match\": true, \"cutoff_matches\": false, \"stored_answer_replays\": false, \"paused_clarification_resumes\": false}, \"errors\": {}, \"state\": {\"left\": {\"answered\": \"answered\", \"paused\": \"clarify\"}, \"after_restore\": {\"replayed\": false, \"replay_status\": \"answered\", \"replay_headline\": \"Gross revenue (wac): $250,766,926.42.\", \"resumed\": \"ConversationAccessError\"}}, \"cutoff\": {\"source_copy\": {\"audit\": \"2026-10-07 23:04:47.349831-04:00\", \"turn\": \"2026-10-07 23:04:47.347800-04:00\", \"run\": \"2026-10-07 23:04:47.317120-04:00\", \"dataset_published\": \"2026-10-07 21:58:43.297609-04:00\", \"sales_through\": \"2026-09-18\"}, \"restored\": {\"audit\": \"2026-10-07 23:06:05.354062-04:00\", \"turn\": \"2026-10-07 23:06:05.352113-04:00\", \"run\": \"2026-10-07 23:06:05.046217-04:00\", \"dataset_published\": \"2026-10-07 21:58:43.297609-04:00\", \"sales_through\": \"2026-09-18\"}}, \"sales_rows\": 2000000, \"differences\": {\"app_meta.query_audit\": [74, 80], \"app_conv.conversations\": [74, 0], \"app_conv.turns\": [56, 0], \"app_conv.runs\": [75, 0], \"app_conv.run_attempts\": [77, 0], \"app_conv.clarifications\": [1, 0]}, \"memberships\": [\"pac_auth_login -> pac_auth\", \"pac_exec_login -> pac_rt_exec\", \"pac_scoped_login -> pac_rt_scoped\"], \"answers\": {\"exec: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 526,836 packs.\", 1], \"exec: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,811 packs.\", 10], \"exec: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 15 row(s).\", 15], \"ram: total paid pack units last quarter\": [\"answered\", \"Paid pack units: 38,242 packs.\", 1], \"ram: top 10 accounts by paid pack units last quarter\": [\"answered\", \"Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Jubilee Clinical Network leads with 1,766 packs.\", 10], \"ram: market share by territory last quarter\": [\"answered\", \"Market share by sales territory, 1 row(s).\", 1]}}"
+  },
+  "artifacts": [],
+  "limits": [
+    "one machine; a new cluster on the same host from a dump on local disk; not PITR, not off-host storage, not a managed database"
+  ]
+}

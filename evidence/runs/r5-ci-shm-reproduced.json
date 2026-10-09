@@ -1,0 +1,60 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-07T16:21:37+00:00",
+  "claim": "A full load into postgres:16-alpine with Docker's default 64 MB /dev/shm -- as CI's service container and the compose db run it -- fails in the post-publication VACUUM (expected outcome: failed)",
+  "application": {
+    "sha": "9519f281ae2f47957b4127ac25bad5333f956a02",
+    "tree": "8517979a1540131ec3dff6212896b3bec2246015",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.4.0",
+    "metric_registry_digest": "5a39a26aaa68db9e",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "1.0.0",
+    "prompt": "2.1.0",
+    "planner": "2.0.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "bash",
+      "/Users/manideep/src/pac-work/shm_load.sh",
+      "pac-shm-default",
+      "default"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 85.06
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "psycopg.errors.DiskFull: could not resize shared memory segment \"/PostgreSQL.1186316902\" to 67145536 bytes: No space left on device"
+  },
+  "artifacts": [],
+  "limits": [
+    "podman on an arm64 Mac (postgres:16-alpine arm64), not GitHub's runner; the CI failure itself is run 37650229833"
+  ]
+}
