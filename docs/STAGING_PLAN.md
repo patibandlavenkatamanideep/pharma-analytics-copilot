@@ -16,26 +16,46 @@ NL2SQL), no real identity provider unless one is registered, no real feed, one t
 highly available), a Single-AZ database (no failover), and no hosted telemetry. Each of
 those is a separately costed extension below, enabled only when approved.
 
+## Decided so far, and still open (9 October)
+
+| | Decision |
+|---|---|
+| Account | a new member account, `pac-staging`, in a new AWS organization; the owner signs in through IAM Identity Center with read-only access (an expiring session; no access key) |
+| Read-only discovery | done: the account is empty (only AWS's default VPC), no GitHub OIDC provider, no DNS zone, quotas sufficient (Fargate 6 vCPUs) |
+| Region | `us-east-1`; no residency requirement stated |
+| Budget and lifetime | **$25–30 in total**, for 1–2 weeks of review |
+| Owner | Venkata Manideep |
+| Alert email, testers' address | supplied; kept out of this public repository (they go only into the ignored variable file) |
+| Domain | **none** |
+| **Open: cost option** | **A** (smaller database, app always on: ~$2.76/day, ~$27.59 for 10 days) or **B** (app on only while reviewing: ~$1.87/day, ~$26.18 for 14 days); the module's defaults (~$3.15/day) exceed the budget beyond 9 days |
+| **Open: address** | buy a cheap domain in Route 53 (a valid certificate, no warnings; its price, typically a few dollars a year, shows before purchase) or a self-signed certificate (a browser warning for every reviewer; weaker proof of TLS) |
+
+The September demo's `https://44-217-117-172.sslip.io` cannot be reused: that address
+belonged to the deleted EC2 host, the load balancer has no fixed address, and AWS issues
+certificates only for domains whose DNS the owner controls.
+
 ## Recommended shape
 
 | Part | Choice | Why |
 |---|---|---|
 | Compute | 1 Fargate task, 1 vCPU / 2 GB, linux/amd64 | the image's two uvicorn workers; one task is enough for smoke tests |
 | Egress | tasks in public subnets with a public address, inbound only from the load balancer (`egress_mode = "public_ip"`) | no NAT gateway ($34/month more); the security groups admit the tasks only from the load balancer (policy test), shown on AWS in stage 7 |
-| Database | RDS PostgreSQL 16, `db.t4g.small`, Single-AZ, 20 GB gp3, 7-day backups | `db.t4g.micro` saves $11.68/month but has 1 GB of memory for a 1.2 GB dataset |
-| Edge | internet-facing ALB, HTTPS only from the testers' networks | `0.0.0.0/0` is refused |
+| Database | RDS PostgreSQL 16, Single-AZ, 20 GB gp3, 7-day backups; **`db.t4g.micro` with the synthetic seed data** (options A and B) | fits the budget; `db.t4g.small` and the full 2,000,000-row dataset cost $0.38 a day more |
+| Edge | internet-facing ALB, HTTPS only from the testers' address | `0.0.0.0/0` is refused |
 | Model | offline planner (`llm_provider = "offline"`) | no spend; Bedrock needs its own budget |
 | Telemetry | none hosted (`enable_observability = false`) | ~$22/month for one task; traces would still go only to a debug exporter |
-| Lifetime | **an owner decision**; the plan assumes 14 days | |
+| Lifetime | 1–2 weeks, torn down after review | every day the load balancer and database exist is billed |
 
 ## Cost
 
 From [cost/ESTIMATE.md](../infra/aws-staging/cost/ESTIMATE.md) (us-east-1 list prices,
-offers dated 2026-09-11 to 2026-10-07): **$95.91 a month, $3.15 a day**, so about **$44**
-for 14 days. Largest items: the task ($36.04/month), the database ($23.36), the load
-balancer ($16.43 plus capacity units) and public IPv4 addresses ($10.95). Before
-approval the estimate is refreshed for the chosen region from the then-current price
-list. Budgets send email; they do not stop spending. No free-tier credit is assumed.
+offers dated 2026-09-11 to 2026-10-07): option A **$2.76 a day** ($19.32 for 7 days,
+$27.59 for 10); option B **$1.87 a day** ($26.18 for 14 days); the module's defaults
+**$3.15 a day** ($44.14 for 14 days). What runs all the time: the load balancer
+($0.54 a day), the database (micro $0.38, small $0.77), its storage and three public
+IPv4 addresses; the serving task ($1.18 a day when always on) is what option B
+saves. The price files are dated 2026-09-11 to 2026-10-07; before approval they are
+refreshed from the then-current price list. Budgets send email; they do not stop spending. No free-tier credit is assumed.
 
 | After teardown | Cost |
 |---|---|
@@ -92,15 +112,17 @@ deployment by itself. The database restores from an automated backup to a new in
 (point in time, 7 days); the first staging cycle measures it. One Single-AZ instance
 means no failover is tested in this stage.
 
-## Inputs needed (nothing is assumed)
+## Inputs
 
-| Input | Notes |
+| Input | State |
 |---|---|
-| AWS account and an **IAM Identity Center profile** you have logged in to (`aws configure sso`, then `aws sso login --profile <name>`); tell me the profile name | never access keys or passwords in chat |
-| Region, and data residency | the estimate is refreshed for it |
-| Monthly budget for this stage, and its lifetime | budgets alert, they do not cap |
-| Alert recipients and the resource owner's name | for budget and alert email |
-| Staging hostname, and who controls its DNS (a Route 53 zone id, or you create two records by hand) | |
-| Testers' networks (CIDRs) | never `0.0.0.0/0` |
-| A final-snapshot label convention (a date is enough) | for teardown |
-| Later, each its own approval: identity-provider registration and role mapping; feed samples and source contract; Bedrock model, destinations and token/dollar caps; service, freshness, RTO/RPO, audit-mode and retention targets | |
+| An IAM Identity Center profile on the owner's Mac | **done** (`pac-staging`, read-only) |
+| Region and data residency | **done**: `us-east-1`; no requirement stated |
+| Budget and lifetime | **done**: $25–30 in total, 1–2 weeks |
+| Alert recipient and resource owner | **done** (the address is kept out of this repository) |
+| Testers' networks | **done**: one address (kept out of this repository); a home address can change, and then the allowed list is updated |
+| Cost option (A or B) | **open** |
+| Hostname: a domain to buy, or a self-signed certificate | **open** |
+| At approval: a second permission set, assigned to `pac-staging` only, able to create the approved resources | **open**; the read-only session cannot create anything |
+| A final-snapshot label (a date is enough) | at teardown |
+| Later, each its own approval: identity-provider registration and role mapping; feed samples and source contract; Bedrock model, destinations and token/dollar caps; service, freshness, RTO/RPO, audit-mode and retention targets | open |

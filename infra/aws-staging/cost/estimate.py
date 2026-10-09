@@ -177,13 +177,35 @@ WORKERS_PER_TASK = 2                   # Dockerfile: uvicorn --workers 2
 TOKENS_IN_PER_QUESTION = 4670
 TOKENS_OUT_PER_QUESTION = 160
 
+REVIEW_HOURS = 8 * DAYS                # option B: the app runs about 8 hours a day
+
 SCENARIOS = {
     "low": {
         "title": "Low-cost staging (the module's defaults once data is loaded)",
         "shape": "1 serving task (1 vCPU, 2 GB) with a public address; RDS db.t4g.small Single-AZ, "
                  "20 GB gp3, 7-day backups; no Prometheus workspace; offline planner (no model calls)",
-        "tasks": 1, "db": "rds_t4g_small_single_hour", "storage": "rds_gp3_single_gb_month",
+        "tasks": 1, "serving_hours": HOURS, "db": "rds_t4g_small_single_hour", "db_label": "db.t4g.small",
+        "storage": "rds_gp3_single_gb_month",
         "job_task_hours": 10, "lcu": "0.2", "logs_gb": 1, "flow_gb": 1, "ecr_gb": 2,
+        "data_out_gb": 10, "cross_az_gb": 5, "amp": False,
+    },
+    "lean": {
+        "title": "Option A: smaller database, app always on",
+        "shape": "as low-cost, with RDS db.t4g.micro (1 GB of memory: enough for the synthetic "
+                 "seed data, not the full 2,000,000-row dataset) and fewer one-shot task-hours",
+        "tasks": 1, "serving_hours": HOURS, "db": "rds_t4g_micro_single_hour", "db_label": "db.t4g.micro",
+        "storage": "rds_gp3_single_gb_month",
+        "job_task_hours": 4, "lcu": "0.2", "logs_gb": 1, "flow_gb": 1, "ecr_gb": 2,
+        "data_out_gb": 10, "cross_az_gb": 5, "amp": False,
+    },
+    "review_hours": {
+        "title": "Option B: smaller database, app on only while reviewing",
+        "shape": "as option A, with the serving task running about 8 hours a day "
+                 "(app_desired_count 1 while reviewing, 0 otherwise); the load balancer and "
+                 "database run throughout",
+        "tasks": 1, "serving_hours": REVIEW_HOURS, "db": "rds_t4g_micro_single_hour", "db_label": "db.t4g.micro",
+        "storage": "rds_gp3_single_gb_month",
+        "job_task_hours": 4, "lcu": "0.1", "logs_gb": 1, "flow_gb": 1, "ecr_gb": 2,
         "data_out_gb": 10, "cross_az_gb": 5, "amp": False,
     },
     "failover": {
@@ -191,7 +213,8 @@ SCENARIOS = {
         "shape": "2 serving tasks in two zones with public addresses (a zone loss leaves egress); "
                  "RDS db.t4g.small Multi-AZ, 20 GB gp3; Prometheus workspace with the alert rules; "
                  "offline planner",
-        "tasks": 2, "db": "rds_t4g_small_multi_hour", "storage": "rds_gp3_multi_gb_month",
+        "tasks": 2, "serving_hours": HOURS, "db": "rds_t4g_small_multi_hour", "db_label": "db.t4g.small",
+        "storage": "rds_gp3_multi_gb_month",
         "job_task_hours": 10, "lcu": "0.4", "logs_gb": 3, "flow_gb": 2, "ecr_gb": 2,
         "data_out_gb": 20, "cross_az_gb": 10, "amp": True,
     },
@@ -210,25 +233,26 @@ def rate(x) -> str:
 def lines(s: dict, p: dict) -> list[tuple[str, str, Decimal]]:
     r = {k: Decimal(v["usd"]) for k, v in p.items()}
     tasks = s["tasks"]
+    hours = s["serving_hours"]
     task_hour = r["fargate_vcpu_hour"] + 2 * r["fargate_gb_hour"]
     out = [
-        ("Fargate, serving", f"{tasks} task{'s' if tasks > 1 else ''} x 730 h x (1 vCPU + 2 GB); 20 GB task storage included",
-         tasks * HOURS * task_hour),
+        ("Fargate, serving", f"{tasks} task{'s' if tasks > 1 else ''} x {hours:,.0f} h x (1 vCPU + 2 GB); "
+         "20 GB task storage included", tasks * hours * task_hour),
         ("Fargate, one-shot tasks", f"{s['job_task_hours']} task-hours (bootstrap, migrate, loads, "
          "boundary) x (1 vCPU + 2 GB + 1 GB storage over 20)",
          s["job_task_hours"] * (task_hour + r["fargate_storage_gb_hour"])),
         ("Load balancer", "730 h", HOURS * r["alb_hour"]),
         ("Load balancer capacity units", f"{s['lcu']} LCU average (testers only; assumption)",
          HOURS * Decimal(s["lcu"]) * r["alb_lcu_hour"]),
-        ("RDS instance", f"db.t4g.small, {'Multi-AZ' if 'multi' in s['db'] else 'Single-AZ'}, 730 h",
+        ("RDS instance", f"{s['db_label']}, {'Multi-AZ' if 'multi' in s['db'] else 'Single-AZ'}, 730 h",
          HOURS * r[s["db"]]),
         ("RDS storage", "20 GB gp3 (3,000 IOPS and 125 MiB/s included)", 20 * r[s["storage"]]),
         ("RDS backups", "7 days of a ~1.2 GB database: within the free allocation (equal to "
          f"provisioned storage); beyond it {rate(r['rds_backup_gb_month'])}/GB-month", Decimal(0)),
         ("RDS CPU credits", "assumed none: staging load stays under the t4g baseline "
          f"(else {rate(r['rds_t4g_cpu_credit_vcpu_hour'])}/vCPU-hour)", Decimal(0)),
-        ("Public IPv4 addresses", f"{2 + tasks} in use (load balancer in 2 zones + {tasks} task{'s' if tasks > 1 else ''}) x 730 h",
-         (2 + tasks) * HOURS * r["public_ipv4_hour"]),
+        ("Public IPv4 addresses", f"load balancer in 2 zones x 730 h + {tasks} task{'s' if tasks > 1 else ''} "
+         f"x {hours:,.0f} h", (2 * HOURS + tasks * hours) * r["public_ipv4_hour"]),
         ("Secrets Manager", "7 secrets (4 database roles, test users, OIDC client, RDS-managed "
          "administrator) + 10,000 API calls", 7 * r["secret_month"] + 10000 * r["secret_api_request"]),
         ("KMS requests (AWS-managed keys)", "20,000 requests; AWS-managed keys have no monthly fee",
@@ -320,7 +344,16 @@ def render(doc: dict) -> str:
         out += [f"| {a} | {b} | {usd(c)} |" for a, b, c in rows]
         out += [f"| **Total** | | **{usd(total)}** |", "",
                 f"Per day while it runs: **{usd(total / DAYS)}**.", ""]
-    out += ["## Changes to either shape", "", "| Change | Basis | USD / month |", "|---|---|---:|"]
+    out += ["## For a short stay", "",
+            "Staging is billed by the hour, so a review period costs its share of the month: "
+            "the monthly total / 30.42 days x the days it exists (from the first apply to the "
+            "teardown). The load balancer and the database run throughout, whether anyone is "
+            "reviewing or not. Not included: a domain, if bought (Route 53's domain prices are "
+            "not in this price list; the price shows before purchase) and its hosted zone.", "",
+            "| Shape | USD / day | 7 days | 10 days | 14 days |", "|---|---:|---:|---:|---:|"]
+    out += [f"| {SCENARIOS[k]['title']} | {usd(totals[k] / DAYS)} | {usd(totals[k] / DAYS * 7)} | "
+            f"{usd(totals[k] / DAYS * 10)} | {usd(totals[k] / DAYS * 14)} |" for k in SCENARIOS]
+    out += ["", "## Changes to either shape", "", "| Change | Basis | USD / month |", "|---|---|---:|"]
     out += [f"| {a} | {b} | {'+' if c >= 0 else '−'}{usd(abs(c))} |" for a, b, c in deltas(p)]
     out += ["", "## Model usage (only with `llm_provider = \"bedrock\"`)", "",
             "Claude Opus 4.5. The configured profile, `us.anthropic.claude-opus-4-5-20251101-v1:0`, "
