@@ -10,7 +10,7 @@ separate from the earlier demo (`../terraform`, an EC2 host destroyed on
 against an account or applied.** `terraform validate`, `fmt` and
 `terraform test` pass with Terraform 1.16.5 and the AWS provider 6.68.0
 (`.terraform.lock.hcl`), locally and in CI's `supply-chain` job.
-`tests/plan.tftest.hcl` makes thirteen plans with a mocked AWS provider
+`tests/plan.tftest.hcl` makes fourteen plans with a mocked AWS provider
 (no credentials, no API call): what each configuration creates, and what it
 refuses. [PLAN_INVENTORY.md](PLAN_INVENTORY.md) lists every address those
 plans would create (63 for the foundation, 73 once an image is set, 2 more
@@ -50,6 +50,7 @@ storage there.
 | Public sign-in page | `public_sign_in` (default `false`) | whether anyone may reach the sign-in page; only the load balancer opens, and only the accounts the owner approves (the `reviewers` task) can sign in |
 | Monthly budget and alert addresses | `monthly_budget_usd`, `alert_emails` | spend notifications |
 | Release image | `image_digest` (after publishing) | deployment is by digest only |
+| GitHub token subject | `github_subject_prefix` (null: `repo:<github_repository>`) | repositories with immutable subjects send `repo:<owner>@<id>/<name>@<id>` |
 | Final snapshot name | `final_snapshot_label` | set anew before each teardown, so a kept snapshot never blocks the next |
 | Model use | `llm_provider`, `enable_bedrock`, `llm_spend_limit_usd` (the website's allowance, enforced before each call), `llm_*_usd_per_mtok`, `model_budget_usd` (an AWS alert) | spend; off by default; a live model is refused without the allowance and rates |
 | Single sign-on | `oidc_issuer`, `oidc_client_id`, `oidc_confidential_client` | needs a registration with the provider |
@@ -95,7 +96,11 @@ decisions above (it holds no secret).
    `load_balancer_dns_name` if Route 53 does not.
 4. **Secret values.** `./seed-secrets.sh` (database roles). It prints names
    and "set" only, and leaves a container that already holds a value alone.
-5. **Publish the image.** The GitHub environment `staging` exists (a required
+5. **Publish the image.** The publish role trusts the subject GitHub puts in
+   the repository's tokens: if `gh api repos/<owner>/<name>/actions/oidc/customization/sub`
+   shows `use_immutable_subject: true`, set `github_subject_prefix` to its
+   `sub_claim_prefix` before step 3 (otherwise every token is refused). The
+   GitHub environment `staging` exists (a required
    reviewer; `main` and `codex/release-*` only). Set its variables
    `AWS_REGION`, `AWS_ACCOUNT_ID`, `PAC_PUBLISH_ROLE_ARN` (output
    `github_publish_role_arn`) and `PAC_ECR_REPOSITORY_URL` (output

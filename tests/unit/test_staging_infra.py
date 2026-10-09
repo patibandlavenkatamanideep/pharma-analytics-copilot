@@ -407,7 +407,6 @@ def test_the_github_provider_thumbprint_is_left_to_iam():
 # GitHub sends the immutable subject, repo:<owner>@<owner id>/<name>@<repository id>,
 # for repositories that use it; a role trusting only repo:<owner>/<name> refused
 # every token (hosted run 37939037102).
-@pytest.mark.xfail(strict=True, reason="reproduction: the publish role trusts only the legacy subject")
 def test_the_publish_role_trusts_the_subject_github_sends():
     trust = blocks(text("iam.tf"), "aws_iam_policy_document")["publish_assume"]
     sub = re.search(r'variable\s*=\s*"token.actions.githubusercontent.com:sub"\s*values\s*=\s*\[(.*?)\]', trust, re.S)

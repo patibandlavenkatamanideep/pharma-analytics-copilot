@@ -151,11 +151,15 @@ data "aws_iam_policy_document" "publish_assume" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # One repository, and only a job running in the protected environment.
+    # One repository, and only a job running in the protected environment,
+    # in the subject format the repository's tokens carry (variables.tf,
+    # github_subject_prefix).
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:environment:${var.github_environment}"]
+      values = [
+        "${coalesce(var.github_subject_prefix, "repo:${var.github_repository}")}:environment:${var.github_environment}"
+      ]
     }
   }
 }
