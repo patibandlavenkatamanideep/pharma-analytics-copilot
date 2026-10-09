@@ -27,13 +27,13 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 847 | pass, no skips | `r5-rc-e551650-pytest.json` (`e551650`); without a database too, `r5-rc-e551650-unit-nodb.json` |
-| **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-rc-e551650-pytest.json` (`e551650`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | pass, strict gate | `r5-rc-e551650-security.json` (`e551650`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2240** | pass, strict gate: no skips, no xfails | `r5-rc-e551650-pytest.json` (`e551650`) |
-| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-e551650-component.json` (`e551650`) |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-e551650-browser.json` (`e551650`) |
-| **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-e551650-eval-*.json` (`e551650`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
+| **Unit** | `pytest tests/unit -q` | 847 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`); without a database too, `r5-rc-e101db3-unit-nodb.json` |
+| **Integration** | `pytest tests/integration -q` | 957 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | pass, strict gate | `r5-rc-e101db3-security.json` (`e101db3`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2240** | pass, strict gate: no skips, no xfails | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-e101db3-component.json` (`e101db3`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-e101db3-browser.json` (`e101db3`) |
+| **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-e101db3-eval-*.json` (`e101db3`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.
@@ -91,7 +91,7 @@ and prompt, and prompt 2.3.0 on this branch has not been run live
 so it is the only figure that is not, to some degree, a measure of work
 done against the questions.
 
-| Suite | Checks | Offline (candidate `e551650`) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
+| Suite | Checks | Offline (candidate `e101db3`) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
 |---|---:|---|---|---|
 | `evals/questions.yaml` — regression set | 38 | **38/38** | 37/38 | Developed against. A regression guard, not an accuracy estimate |
 | `evals/holdout.yaml` — held-out set 1 | 12 | **12/12** | 11/12 | Sealed, then run. Fixes were made afterwards, so it is no longer unseen |

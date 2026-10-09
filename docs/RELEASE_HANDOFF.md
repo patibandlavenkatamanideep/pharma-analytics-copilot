@@ -10,11 +10,11 @@ the image's vulnerabilities are triaged in [VULNERABILITY_TRIAGE.md](VULNERABILI
 
 | | |
 |---|---|
-| Public GitHub | `codex/release-defects-oct06` at `69c62de`; hosted CI run [37653591687](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37653591687) passed on it (`evidence/external.json`). `main` at `c8aab5b` |
-| Local branch | unpushed beyond `69c62de`: 84 commits up to the executable candidate, then evidence and documentation commits (`git rev-list --count github/codex/release-defects-oct06..HEAD`). A push was attempted on 8 October 2026 at the owner's request and refused by the working session's permission controls; nothing was pushed |
-| Executable candidate | **`e551650`**: the last commit that changes code, tests, configuration, dependencies, fixtures, workflow or build inputs. Every local gate, the image (`219ddd92…`) and the scans ran on it from a clean tree and fresh databases (`r5-rc-e551650-*.json`, `r5-manifest-e551650.json`), and the restore drill and upgrade compatibility on the same commit. It supersedes `a9de92e` with provisioning by a restricted (RDS-style) administrator, the image run hardened with the RDS CA bundle and one writable volume, sign-out's cookie attributes, the AWS staging module and the publishing workflow ([AWS_STAGING.md](AWS_STAGING.md)); `a9de92e`'s and `84dfc1e`'s records stay as history |
-| Final HEAD | the candidate plus evidence, documentation and exact secret-scan exceptions in `.gitleaksignore` for the candidates' own trivy reports (the public CPython key). The release manifest lists the delta and classes each path; `.gitleaksignore` is the one input in it, it affects only the secret scan, and that scan is rerun over the whole history at HEAD |
-| Hosted CI for the local commits | **Pending**: needs a push. `main` has **no branch protection** and no rulesets (read-only API, 8 October 2026), so nothing yet enforces the checks below before a merge |
+| Public GitHub | `codex/release-defects-oct06` pushed (normally; never forced) to its head. Hosted CI run [37869897240](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37869897240) passed all four jobs on the executable candidate. `main` at `c8aab5b` |
+| Pull request | [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), the release integration into `main` (a fast-forward), open for review; not merged |
+| Executable candidate | **`e101db3`**: the last commit that changes code, tests, configuration, dependencies, fixtures, workflow or build inputs. Every local gate, the image (`68178125…`) and the scans ran on it from a clean tree and fresh databases (`r5-rc-e101db3-*.json`, `r5-manifest-e101db3.json`), as did the restore drill, upgrade compatibility and the mocked Terraform plans. It supersedes `e551650` with sign-out that waits for the server and never presents an unconfirmed sign-out as done, CI defects found by hosted runs, browser-failure evidence, a gated publishing workflow and the staging lifecycle design ([AWS_STAGING.md](AWS_STAGING.md)); earlier candidates' records stay as history |
+| Final HEAD | the candidate plus evidence, documentation and exact secret-scan exceptions in `.gitleaksignore` for the candidates' own trivy reports (the public CPython key). The release manifest lists the delta and classes each path |
+| Branch protection | `main` protected since 9 October: pull request, the four jobs below from GitHub Actions and up to date, administrators included, no force-push or deletion (read back, `evidence/external.json`) |
 
 ## The CI path
 
@@ -29,10 +29,9 @@ on `workflow_dispatch`. Four jobs, none conditional on branch or path:
 | `supply-chain` | `pip-audit` on the hashed lock, `npm audit --omit=dev --audit-level=high`, gitleaks over the history |
 | `image` | the amd64 build (`push: false`: no registry), trivy at HIGH and CRITICAL with a fix available (`ignore-unfixed`, exit code 1; the complete counts are triaged in VULNERABILITY_TRIAGE.md), no setuid or setgid file (since `a9de92e`), and the image's journeys on a fresh database with a read-only root, every capability dropped and `no-new-privileges` (since `b4315bb`) |
 
-The repository does not yet require these checks before a merge (no branch protection
-on `main`); EXTERNAL_VERIFICATION_PLAN.md §2 gives the settings to apply.
+`main` requires all four before a merge (branch protection, 9 October).
 
-## Pushing, when authorized (not done here)
+## Pushing (done 9 October, as authorised)
 
 ```bash
 git fetch github
@@ -44,13 +43,13 @@ gh run watch --repo patibandlavenkatamanideep/pharma-analytics-copilot
 Then record the run in `evidence/external.json` (run id, head SHA, conclusion), and from
 the image job's log its image id and the revision label. A CI-built image will not share
 the local image's id (another builder, another host); compare the revision label with the
-SHA. A pull request to `main`, and any merge, need their own authorization.
+SHA. Any merge into `main` needs the owner's approval; pull request #1 is prepared for it.
 
 ## Inspecting offline
 
 The bundle, its SHA-256 and a short inventory are delivered side by side, outside the
 repository: a file inside the bundle cannot carry the bundle's own checksum. The release
-manifest inside it (`evidence/runs/r5-manifest-e551650.json`) identifies the candidate, its
+manifest inside it (`evidence/runs/r5-manifest-e101db3.json`) identifies the candidate, its
 records, the image and the scans.
 
 ```bash
@@ -67,12 +66,11 @@ record, its command and the commit it measured.
 
 | | Needs | Then |
 |---|---|---|
-| Hosted CI on the local commits | authorization to push | the procedure above |
-| Branch protection requiring the four jobs | repository settings access | require `test`, `frontend`, `supply-chain`, `image` on `main` |
+| Merging pull request #1 | the owner's review | makes `publish-staging` dispatchable; `main` then carries the release |
 | Live model evaluation of prompt 2.3.0 | credentials, an approved spend cap, the contracted rates | smoke, regression sets, then an independently written holdout frozen before its first run (`evals/packet/AUTHORING.md`, `PROTOCOL.md`) |
 | Single sign-on with a real provider | an IdP registration (issuer, client, redirect URI) | RUNBOOK.md, "Verifying with a real provider" |
 | A real source feed | representative records, control totals, classification provenance, source keys, deletion semantics, schedule | REAL_FEED_ACCEPTANCE.md |
-| Staging | an AWS account and region, a budget, a hostname, the testers' networks, and authorization to plan, apply and deploy | infra/aws-staging/README.md ("Create"), then AWS_STAGING.md's hosted checks and STAGING_VERIFICATION.md: hosted collector and backend, two replicas, forward-fix and restore drills, managed database recovery |
+| Staging | the inputs in STAGING_PLAN.md and approval of that plan and its spend | infra/aws-staging/README.md ("Create"), then AWS_STAGING.md's hosted checks and STAGING_VERIFICATION.md: hosted collector and backend, two replicas, forward-fix and restore drills, managed database recovery |
 | Owner decisions | the product, data and compliance owners | TARGETS_DECISION.md (service, freshness, recovery), AUDIT_DECISION.md (audit mode), retention and residency |
-| Publishing the release image | the staging foundation, the `staging` environment, and authorization to publish | `.github/workflows/publish-staging.yml` (EXTERNAL_VERIFICATION_PLAN.md §3): build from the pushed commit, scan, run the journeys, push, record the registry digest |
+| Publishing the release image | #1 merged, the staging foundation, and the approved plan | `.github/workflows/publish-staging.yml` (EXTERNAL_VERIFICATION_PLAN.md §3): build from the pushed commit, scan, run the journeys, push, record the registry digest |
 | A named release owner | the deploying team | owns the triage in VULNERABILITY_TRIAGE.md, which expires on 2026-11-07 or at the next rebuild |

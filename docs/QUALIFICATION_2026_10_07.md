@@ -684,3 +684,32 @@ the hardened runtime, proxy trust, cookies and OIDC.
 Hosted CI with enforced protection, staging itself, a live evaluation, a real identity
 provider and feed, and the owners' targets are all outstanding. Locally, `e551650` is
 ready to push for hosted CI.
+
+## Exact-head CI and the staging review — 9 October 2026
+
+The branch was pushed, as the owner authorised, and hosted CI ran on it for the first
+time since `69c62de`. It found what no local run could, and each finding was reproduced
+before its fix: the ledger check needs the whole history and CI checked out one commit
+(`ci-ledger-check-shallow-checkout`); the provider lock held a package hash for this Mac
+only (`terraform-lock-single-platform`); a browser journey found the previous user still
+signed in after Sign out (`signout-before-revocation`). The last was not retried away.
+Under a controlled network, the sign-out tests show the two outcomes possible when a page
+leaves an unanswered sign-out (the session survives if the request never reached the
+server; it ends if it did, cookie or not); the page now shows the sign-in form only once
+the server has ended the session, and a refused sign-out is no longer presented as done
+(`signout-unconfirmed-presented-as-done`, found by those tests). Which outcome the hosted
+run hit is not recorded: CI kept no artifacts then; it keeps sanitised ones now.
+
+The Terraform review found two defects (`staging-files-not-ignored`,
+`collector-pin-warning-only`) and four designs to change before the first deployment:
+image retention that could expire the deployed image, a publishing workflow not tied to
+CI or to the image it tested, and secret-name and snapshot-name collisions on teardown and
+recreate. Mocked plans now run in CI; the collisions are verified only on AWS.
+
+**The candidate is now `e101db3`:** the full local chain passed on it (strict suite 2240,
+security 436, ingestion 177, 847 without a database, 32 components, 15 browser journeys,
+audits, the image's 28 checks, restore drill, upgrade compatibility), and hosted run
+37869897240 passed all four jobs on it. `main` is protected; pull request #1 is open for
+review. AWS staging waits for the owner's inputs and approval of
+[STAGING_PLAN.md](STAGING_PLAN.md); the go/no-go is in [PILOT_DECISION.md](PILOT_DECISION.md):
+no-go for a restricted pilot and for production.

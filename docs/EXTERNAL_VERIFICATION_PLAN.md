@@ -7,7 +7,11 @@ step needs an authorization that this repository's work does not have. Prepared 
 
 ## 1. Push, pull request and hosted CI
 
-**Needs:** authorization to push to `github` (`patibandlavenkatamanideep/pharma-analytics-copilot`).
+**Done 9 October 2026, as authorised.** The branch was pushed normally; the first hosted runs
+found three defects the local chain could not (a one-commit checkout, a single-platform
+provider lock, a sign-out race), each reproduced and fixed; run 37869897240 passed all four
+jobs on the executable candidate `e101db3` (`evidence/external.json` lists every run). The
+procedure, for each later candidate:
 
 ```bash
 git fetch github
@@ -29,27 +33,24 @@ failed: it searched as `appuser`; `a9de92e` searches as root.) Record the run in
 id, head SHA, conclusion, per-job outcome), the image job's image ID and revision label,
 and keep the log and the `eval-run` artifact with their SHA-256.
 
-A green run on `69c62de` (run 37653591687) says nothing about this candidate.
+A green run on an earlier commit says nothing about a later candidate. If a browser
+journey fails, the run keeps its evidence for 7 days (artifact `browser-failure-<sha>`:
+screenshots, page snapshot, API timeline, sanitised server log).
 
-**Then, with separate authorization**, a draft pull request — never a merge:
-
-```bash
-gh pr create --repo patibandlavenkatamanideep/pharma-analytics-copilot --draft \
-  --base main --head codex/release-defects-oct06 --title "Release qualification: <sha>"
-```
+**Pull request:** [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1),
+the release integration into `main` (a fast-forward), open for the owner's review — never
+merged without that approval.
 
 ## 2. Branch protection on `main`
 
-**Found (8 October 2026, read-only API):** `main` is **not protected** and has no
-rulesets. Nothing enforces the checks above before a merge.
-
-**Needs:** repository-settings authorization. Then require, on `main`: a pull request; the
-status checks `test`, `frontend`, `supply-chain`, `image` (workflow `CI`), up to date with
-`main`; no force pushes; no deletions; administrators included. One approving review
-once a second maintainer exists (with one, a required review blocks every merge or needs a
-bypass). The exact `gh api` commands, and the `staging` environment the publishing
-workflow needs, are prepared in [AWS_STAGING.md](AWS_STAGING.md) ("Blocked actions").
-Verify by opening a pull request with a failing check and confirming merge is blocked.
+**Applied 9 October 2026 with the owner's authorisation, and read back**
+(`evidence/external.json`): a pull request; the status checks `test`, `frontend`,
+`supply-chain`, `image` bound to GitHub Actions and up to date with `main`; no force
+pushes; no deletions; administrators included; conversations resolved; 0 approvals while
+there is one maintainer (raise to 1 with a second). The `staging` environment requires the
+owner's review, cannot be bypassed by administrators, and accepts `main` and
+`codex/release-*` only. Still to observe: a pull request with a failing check being
+blocked; #1 is the first pull request.
 
 ## 3. The release image
 
@@ -57,8 +58,11 @@ CI builds the image with `push: false`; nothing is published. A release needs:
 
 1. **Authorization and a registry.** Prepared for Amazon ECR:
    `.github/workflows/publish-staging.yml` (manual, environment `staging`, GitHub OIDC to a
-   push-only role from `infra/aws-staging`); it builds, scans, runs the image journeys,
-   pushes and reports the registry digest. Never run.
+   push-only role from `infra/aws-staging`). It refuses a commit whose four CI checks did
+   not pass, builds one single-platform image, scans it and runs the image journeys on it,
+   pushes it, checks that the registry's manifest is that image, and reports source commit,
+   tested image and registry digest. GitHub dispatches a manual workflow only once its
+   file is on the default branch: it reaches `main` with pull request #1. Never run.
 2. Build once, from the pushed commit, for `linux/amd64`, and push; record the
    **registry manifest digest** (and the index digest if multi-platform). The local image
    ID (`b6d529719b31…`) will not match a CI-built one: another builder, another time, and the
