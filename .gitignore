@@ -41,6 +41,7 @@ infra/terraform/.terraform.lock.hcl
 
 # playwright
 web/test-results/
+web/e2e-logs/
 web/playwright-report/
 
 # evidence: records and probes are tracked; restricted detail is not

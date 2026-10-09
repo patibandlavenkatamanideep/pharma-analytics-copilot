@@ -6,6 +6,7 @@
  */
 
 import { expect, test } from "@playwright/test";
+import { keepTimelineOnFailure, recordApiTimeline } from "./timeline.js";
 
 const EXEC = { email: process.env.PAC_E2E_EMAIL, password: process.env.PAC_E2E_PASSWORD };
 const OTHER = { email: process.env.PAC_E2E_OTHER_EMAIL, password: process.env.PAC_E2E_OTHER_PASSWORD };
@@ -14,6 +15,10 @@ const TWIN = process.env.PAC_E2E_TWIN;
 
 test.skip(!EXEC.email || !OTHER.email || !RAM.email || !TWIN,
   "run through scripts/browser_journeys.py, which provisions the identities");
+
+let timeline;
+test.beforeEach(({ page }) => { timeline = recordApiTimeline(page); });
+test.afterEach(({ page: _ }, testInfo) => { keepTimelineOnFailure(testInfo, timeline); });
 
 async function signIn(page, who) {
   await page.goto("/");

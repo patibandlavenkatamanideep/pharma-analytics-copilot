@@ -62,9 +62,18 @@ def main() -> int:
     env = {**os.environ, "PAC_DB_NAME": DB, "PAC_COOKIE_SECURE": "false",
            "PAC_LLM_PROVIDER": "offline", "PAC_ENVIRONMENT": "local",
            "PAC_USER_REQUESTS_PER_MINUTE": "1000", "PAC_USER_CONCURRENT_RUNS": "10"}
+    # The production log configuration (sanitised JSON lines: no exception
+    # text, query strings or client addresses), written beside the test
+    # results (Playwright empties its own test-results/ when it starts) so a
+    # failure keeps the server's side of it. An unread pipe here would also
+    # stop the server once it filled.
+    logs = ROOT / "web" / "e2e-logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    server_log = (logs / "server.log").open("w")
     server = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(PORT)],
-        cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        [sys.executable, "-m", "uvicorn", "app.api.main:app", "--port", str(PORT),
+         "--log-config", "app/log_config.json"],
+        cwd=ROOT, env=env, stdout=server_log, stderr=subprocess.STDOUT)
     try:
         for _ in range(60):
             try:
@@ -86,6 +95,7 @@ def main() -> int:
     finally:
         server.terminate()
         server.wait(timeout=10)
+        server_log.close()
         with owner_transaction() as cur:
             ids = [u[0] for u in users.values()]
             cur.execute("DELETE FROM app_conv.turns WHERE conversation_id IN "
