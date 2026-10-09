@@ -100,6 +100,55 @@ Model IDs must be inference profiles (the `us.` or `global.` prefix) for the
 dated releases; bare IDs return
 `Invocation ... with on-demand throughput isn't supported`.
 
+### Model allowance
+
+A live model is called by every user, every uvicorn worker and every replica, so
+the website has one shared allowance, enforced before each model call
+(`app/llm/allowance.py`):
+
+```bash
+export PAC_LLM_SPEND_LIMIT_USD=3            # the website's share of the model budget
+export PAC_LLM_INPUT_USD_PER_MTOK=5.5       # contracted rates that price each call
+export PAC_LLM_OUTPUT_USD_PER_MTOK=27.5
+```
+
+Each call -- the repair attempt included -- first reserves the most its request
+can bill (its input bound and its `max_tokens`, at those rates) against one row,
+`app_meta.model_allowance`, in a single atomic update; the reservation then
+becomes what the provider billed, or stays at the reservation when usage is not
+reported. When the allowance cannot cover the next call, no call is made and the
+user is told the model's spend limit is exhausted. A call billed beyond its
+bound stops every further call until an operator looks. In the cloud
+environment the application refuses to start with `PAC_LLM_PROVIDER=bedrock`
+unless the limit and both rates are set; a limit without rates refuses every
+call.
+
+The evaluation runner's token caps are separate and apply only to its own
+calls: a model budget covering both is split, for example $5 = $3 for the
+website + an evaluation capped at $2.
+
+Read the total (any role that can read `app_meta`):
+
+```sql
+SELECT committed_microusd / 1e6 AS committed_usd, calls, refused,
+       bound_violations, unreported_calls, updated_at
+FROM app_meta.model_allowance WHERE allowance_id = 'serving';
+```
+
+Start a new allowance, or clear a bound violation after investigating it, only
+as the owner (the serving roles cannot), and only deliberately:
+
+```sql
+UPDATE app_meta.model_allowance
+SET committed_microusd = 0, calls = 0, refused = 0, bound_violations = 0,
+    unreported_calls = 0, updated_at = now()
+WHERE allowance_id = 'serving';
+```
+
+The allowance bounds what the application asks for at its configured rates; the
+provider's bill is the truth. Keep an AWS budget on Bedrock as well
+(`model_budget_usd` in infra/aws-staging): it alerts, it does not stop calls.
+
 ### Enabling single sign-on
 
 Off by default. Password sign-in is unaffected either way.
@@ -185,7 +234,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # counts: docs/TEST_INVENTORY.md
-python3 -m pytest tests/security -q --release-gate --min-tests 436
+python3 -m pytest tests/security -q --release-gate --min-tests 438
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

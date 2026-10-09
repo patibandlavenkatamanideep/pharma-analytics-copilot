@@ -185,13 +185,18 @@ class DeadlineExceeded(RuntimeError):
 
 
 class Pipeline:
-    #: A metered spend for model calls (PlanningContext.spend). Set only by
-    #: evaluation tooling; serving requests are bounded by per-user quotas.
+    #: A metered spend for model calls (PlanningContext.spend): the website's
+    #: allowance (PAC_LLM_SPEND_LIMIT_USD, shared by every worker and replica,
+    #: app/llm/allowance.py) when one is configured; evaluation tooling sets
+    #: its own. Per-user request quotas apply as well.
     spend: Any = None
 
     def __init__(self, planner: Planner) -> None:
+        from app.llm import allowance
+
         self.planner = planner
         self.settings = get_settings()
+        self.spend = allowance.from_settings(self.settings)
         self.compiler = Compiler(max_rows=self.settings.max_result_rows)
         self._graph = None
         disable_external_tracing()
@@ -868,7 +873,7 @@ class Turn:
             self._adopt_planning({"planning": getattr(exc, "planning", None)})
             self.finish(PipelineResult(
                 status="error", conversation_id=self.state.conversation_id,
-                message="Not run: the evaluation's spend limit is exhausted.",
+                message="Not run: the model's spend limit is exhausted.",
             ), "budget_exhausted", denial_reason="budget_exhausted")
             return {"route": "end", "outcome": "error"}
         except PlannerUnavailable as exc:

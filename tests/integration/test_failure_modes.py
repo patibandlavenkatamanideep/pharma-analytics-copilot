@@ -243,30 +243,130 @@ def test_an_exhausted_evaluation_budget_makes_no_model_call(exec_user):
 # The website's model allowance: every user, worker, replica and retry
 # ---------------------------------------------------------------------------
 
+def reset_allowance() -> None:
+    from app.db import owner_transaction
+    with owner_transaction() as cur:
+        cur.execute("UPDATE app_meta.model_allowance SET committed_microusd = 0, calls = 0, "
+                    "refused = 0, bound_violations = 0, unreported_calls = 0 "
+                    "WHERE allowance_id = 'serving'")
+
+
+def allowance_row() -> dict:
+    from app.db import owner_transaction
+    with owner_transaction() as cur:
+        cur.execute("SELECT committed_microusd, calls, refused, bound_violations, unreported_calls "
+                    "FROM app_meta.model_allowance WHERE allowance_id = 'serving'")
+        return dict(cur.fetchone())
+
+
 @pytest.fixture
 def allowance(monkeypatch):
     """Configure PAC_LLM_SPEND_LIMIT_USD (with the rates that price it) for
-    the pipelines built in one test, and restore the settings after it."""
+    the pipelines built in one test, start from an untouched allowance, and
+    restore both afterwards."""
     from app.config import get_settings
 
-    def configure(limit_usd: str, input_rate: str = "5.5", output_rate: str = "27.5"):
+    def configure(limit_usd: str, input_rate: str | None = "5.5", output_rate: str | None = "27.5"):
         monkeypatch.setenv("PAC_LLM_SPEND_LIMIT_USD", limit_usd)
-        monkeypatch.setenv("PAC_LLM_INPUT_USD_PER_MTOK", input_rate)
-        monkeypatch.setenv("PAC_LLM_OUTPUT_USD_PER_MTOK", output_rate)
+        for name, rate in (("PAC_LLM_INPUT_USD_PER_MTOK", input_rate),
+                           ("PAC_LLM_OUTPUT_USD_PER_MTOK", output_rate)):
+            if rate is None:
+                monkeypatch.delenv(name, raising=False)
+            else:
+                monkeypatch.setenv(name, rate)
         get_settings.cache_clear()
 
+    reset_allowance()
     yield configure
     monkeypatch.undo()
     get_settings.cache_clear()
+    reset_allowance()
 
 
-@pytest.mark.xfail(strict=True, reason="the website path has no spend allowance: Pipeline.spend "
-                                       "is set only by evaluation tooling")
 def test_a_configured_allowance_limits_what_the_website_spends(exec_user, allowance):
     """An allowance below one call's bound: a question through the serving
     pipeline asks the model nothing and says why. An evaluation script's token
     cap does not reach this path; only the pipeline's own meter does."""
     allowance("0.0001")
+    pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
+    result = pipe.ask(exec_user, QUESTION)
+    assert planner._client.messages.requests == []
+    assert result.status == "error" and "spend limit" in result.message
+
+
+
+def test_the_allowance_is_charged_what_was_billed_not_what_was_reserved(exec_user, allowance):
+    allowance("1.00")
+    pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
+    assert pipe.ask(exec_user, QUESTION).status == "answered"
+    row = allowance_row()
+    # 10 input tokens at $5.50 and 1 output token at $27.50 per million.
+    assert row["committed_microusd"] == 83 and row["calls"] == 1, row
+
+
+def test_usage_the_provider_did_not_report_stays_charged_at_its_reservation(allowance):
+    from app.llm.allowance import SharedAllowance
+
+    allowance("1.00")
+    meter = SharedAllowance(1.00, 5.5, 27.5)
+    assert meter.reserve(20_000, 4_096)
+    meter.record_call(FakeUsage(None, None), (20_000, 4_096))
+    row = allowance_row()
+    assert row["committed_microusd"] == meter.micro_usd(20_000, 4_096)
+    assert row["unreported_calls"] == 1
+
+
+def test_workers_cannot_take_the_last_of_the_allowance_together(allowance):
+    """Ten concurrent reservations, each a separate meter as separate
+    processes would hold, against an allowance with room for exactly three."""
+    from app.llm.allowance import SharedAllowance
+
+    allowance("1.00")
+    cost = SharedAllowance(1, 5.5, 27.5).micro_usd(20_000, 4_096)
+    limit = 3 * cost / 1_000_000
+    granted, lock = [], threading.Lock()
+
+    def worker():
+        ok = SharedAllowance(limit, 5.5, 27.5).reserve(20_000, 4_096)
+        with lock:
+            granted.append(ok)
+
+    threads = [threading.Thread(target=worker) for _ in range(10)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(30)
+    row = allowance_row()
+    assert granted.count(True) == 3 and granted.count(False) == 7, granted
+    assert row["committed_microusd"] == 3 * cost and row["refused"] == 7, row
+
+
+def test_a_call_billed_beyond_its_bound_stops_every_further_call(allowance):
+    from app.llm.allowance import SharedAllowance
+
+    allowance("10.00")
+    meter = SharedAllowance(10.00, 5.5, 27.5)
+    assert meter.reserve(1_000, 100)
+    meter.record_call(FakeUsage(5_000, 100), (1_000, 100))
+    assert meter.violated
+    assert allowance_row()["bound_violations"] == 1
+    # Another process's meter: no further call anywhere.
+    assert not SharedAllowance(10.00, 5.5, 27.5).reserve(10, 1)
+
+
+def test_a_call_never_sent_returns_its_reservation(allowance):
+    from app.llm.allowance import SharedAllowance
+
+    allowance("1.00")
+    meter = SharedAllowance(1.00, 5.5, 27.5)
+    assert meter.reserve(20_000, 4_096)
+    meter.release((20_000, 4_096))
+    row = allowance_row()
+    assert row["committed_microusd"] == 0 and row["calls"] == 0, row
+
+
+def test_an_allowance_without_rates_refuses_every_call(exec_user, allowance):
+    allowance("100.00", input_rate=None, output_rate=None)
     pipe, planner = pipeline_with_transport([FakeResponse([valid_plan_block()], FakeUsage(10, 1))])
     result = pipe.ask(exec_user, QUESTION)
     assert planner._client.messages.requests == []

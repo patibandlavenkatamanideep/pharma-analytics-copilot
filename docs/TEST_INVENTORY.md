@@ -28,9 +28,9 @@ whether an answer is arithmetically right.
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
 | **Unit** | `pytest tests/unit -q` | 847 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`); without a database too, `r5-rc-e101db3-unit-nodb.json` |
-| **Integration** | `pytest tests/integration -q` | 958 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 436` | 436 | pass, strict gate | `r5-rc-e101db3-security.json` (`e101db3`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2241** | pass, strict gate: no skips, no xfails | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Integration** | `pytest tests/integration -q` | 964 | pass, no skips | `r5-rc-e101db3-pytest.json` (`e101db3`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 438` | 438 | pass, strict gate | `r5-rc-e101db3-security.json` (`e101db3`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2249** | pass, strict gate: no skips, no xfails | `r5-rc-e101db3-pytest.json` (`e101db3`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-e101db3-component.json` (`e101db3`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-e101db3-browser.json` (`e101db3`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-e101db3-eval-*.json` (`e101db3`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
@@ -50,7 +50,7 @@ every metric against every grain, every filter family and a comparison
 window, each required to be refused by name or to compile, pass the SQL
 validator and be **planned** by PostgreSQL (`EXPLAIN`). They prove no
 combination reaches the database as an error; they do not check a single
-result. The other 221 do check results or behaviour:
+result. The other 227 do check results or behaviour:
 
 - most compare answers with SQL written by hand;
 - 40 apply real batches to a disposable database
@@ -62,7 +62,8 @@ result. The other 221 do check results or behaviour:
 - 11 run the real ingestion command against a local OTLP receiver, a
   hanging one and none, and check freshness after a feed stops
   (`tests/integration/test_ingest_observability.py`);
-- 12 inject provider and database failures, or an exhausted spend or allowance
+- 18 inject provider and database failures, or an exhausted spend, or test the
+  website's shared model allowance
   (`tests/integration/test_failure_modes.py`);
 - 5 exercise admission control on the real request path
   (`tests/integration/test_admission_pipeline.py`).
@@ -186,7 +187,7 @@ module-level skip produces no items at all. Both exited 0 under
 15 subprocess tests in `tests/unit/test_release_gate_strict.py`.
 
 What is true now: the security job builds its database, runs under
-`--release-gate --min-tests 436`, and fails on a skip in any phase, a
+`--release-gate --min-tests 438`, and fails on a skip in any phase, a
 module-level skip, a collection error, an unapproved xfail or xpass, a
 narrowed selection, or a session in which nothing passed.
 
@@ -202,7 +203,7 @@ python3 scripts/build_authtest_db.py    # disposable authorization database
 
 python3 -m pytest tests/unit -q
 python3 -m pytest tests/integration -q
-python3 -m pytest tests/security -q --release-gate --min-tests 436
+python3 -m pytest tests/security -q --release-gate --min-tests 438
 python3 -m pytest tests -q              # the total
 
 python3 scripts/run_evals.py --provider offline

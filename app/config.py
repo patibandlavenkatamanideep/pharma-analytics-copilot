@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     # estimated -- a made-up price would read as a measurement.
     llm_input_usd_per_mtok: float | None = None
     llm_output_usd_per_mtok: float | None = None
+    # The website's model allowance, in USD, shared by every worker and replica
+    # (app/llm/allowance.py). Unset: no allowance (the evaluation runner meters
+    # its own spend). Set without both rates: every model call is refused.
+    llm_spend_limit_usd: float | None = None
 
     # --- audit ------------------------------------------------------------------
     # best_effort (default): the audit row is written in its own transaction

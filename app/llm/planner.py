@@ -599,6 +599,8 @@ class BedrockPlanner:
             span.set(**{"pac.outcome": attempt.outcome, "pac.usage_known": usage.known,
                         "pac.tokens.input": usage.input_tokens,
                         "pac.tokens.output": usage.output_tokens})
+        if spend is not None and not attempt.called and hasattr(spend, "release"):
+            spend.release(reserved)          # never sent: nothing was billed
         if spend is not None and attempt.called:
             from dataclasses import replace
             spend.record_call(usage, reserved)

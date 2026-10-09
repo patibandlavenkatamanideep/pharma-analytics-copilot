@@ -63,3 +63,39 @@ def test_the_app_refuses_to_start_in_the_cloud_holding_the_owner_credential(
     finally:
         monkeypatch.undo()
         get_settings.cache_clear()
+
+
+def test_a_live_model_without_an_allowance_is_named():
+    """Every user, worker and replica calls the model: with no allowance the
+    website could spend without bound (app/llm/allowance.py)."""
+    from app.api.main import model_spend_problems
+    from app.config import Settings
+
+    assert model_spend_problems(Settings(llm_provider="offline")) == []
+    found = model_spend_problems(Settings(llm_provider="bedrock", llm_spend_limit_usd=None,
+                                          llm_input_usd_per_mtok=5.5, llm_output_usd_per_mtok=27.5))
+    assert found and "PAC_LLM_SPEND_LIMIT_USD" in found[0]
+    assert model_spend_problems(Settings(llm_provider="bedrock", llm_spend_limit_usd=5,
+                                         llm_input_usd_per_mtok=5.5,
+                                         llm_output_usd_per_mtok=27.5)) == []
+
+
+def test_the_app_refuses_to_start_in_the_cloud_with_a_live_model_and_no_allowance(
+        authtest_db, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+
+    monkeypatch.setenv("PAC_ENVIRONMENT", "cloud")
+    monkeypatch.setenv("PAC_DB_OWNER_PASSWORD", "")
+    monkeypatch.setenv("PAC_LLM_PROVIDER", "bedrock")
+    monkeypatch.delenv("PAC_LLM_SPEND_LIMIT_USD", raising=False)
+    get_settings.cache_clear()
+    try:
+        from app.api.main import app
+        with pytest.raises(RuntimeError, match="no spend allowance"):
+            with TestClient(app):
+                pass
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()

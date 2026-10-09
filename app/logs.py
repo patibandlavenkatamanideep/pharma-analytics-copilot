@@ -52,7 +52,8 @@ EVENTS = {
     "metric %s not recorded": "telemetry.metric_dropped",
     "telemetry not started (%s); ingesting without it": "ingest.telemetry_unavailable",
 }
-REASONS = {"database_unreachable", "security_boundary_broken", "owner_credential_present"}
+REASONS = {"database_unreachable", "security_boundary_broken", "owner_credential_present",
+           "model_allowance_missing"}
 ERROR_CODES = REASONS | {"browser_mismatch", "invalid_state", "expired_state"}
 ERROR_TYPES = {"ValueError", "TypeError", "RuntimeError", "OperationalError",
                "PoolTimeout", "QueryCanceled", "CheckpointError", "PlannerError",

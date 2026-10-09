@@ -77,6 +77,15 @@ async def lifespan(app: FastAPI):
         log.warning("serving with %s (allowed only because PAC_ENVIRONMENT=local)",
                     "owner_credential_present")
 
+    # A live model with no allowance could spend without bound: every user,
+    # worker and replica calls it. Refused in the cloud environment.
+    for problem in model_spend_problems(settings):
+        if settings.environment == "cloud":
+            log.critical("startup.refused", extra={"reason": "model_allowance_missing"})
+            raise RuntimeError(problem)
+        log.warning("serving with %s (allowed only because PAC_ENVIRONMENT=local)",
+                    "model_allowance_missing")
+
     # Exports nothing unless a collector is configured; never fatal.
     telemetry.configure(settings)
 
@@ -106,6 +115,19 @@ async def lifespan(app: FastAPI):
     yield
     telemetry.shutdown()
     close_pools()
+
+
+def model_spend_problems(settings) -> list[str]:
+    """A live model needs an allowance and the rates that price it
+    (app/llm/allowance.py); the offline planner spends nothing."""
+    if settings.llm_provider != "bedrock":
+        return []
+    missing = [name for name, value in (
+        ("PAC_LLM_SPEND_LIMIT_USD", settings.llm_spend_limit_usd),
+        ("PAC_LLM_INPUT_USD_PER_MTOK", settings.llm_input_usd_per_mtok),
+        ("PAC_LLM_OUTPUT_USD_PER_MTOK", settings.llm_output_usd_per_mtok)) if value is None]
+    return ([f"the live model has no spend allowance: {', '.join(missing)} not set"]
+            if missing else [])
 
 
 def serving_credential_problems(settings) -> list[str]:
