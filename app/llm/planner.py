@@ -49,8 +49,12 @@ log = logging.getLogger(__name__)
 #: 2.3.0 -- the metric registry it carries is 1.5.0: a segment share reports
 #:          the volume of unknown classification and the range it allows
 #:          (step 4 of the same qualification). The instructions did not
-#:          change. No live model has been run under 2.3.0.
-PROMPT_VERSION = "2.3.0"
+#:          change. Run live on 9 October 2026 (Haiku 4.5, Sonnet 4.5):
+#:          "this quarter" was read as last_quarter.
+#: 2.4.0 -- the phrases users type, mapped to their windows, generated from
+#:          the offline planner's own table (window_phrases), so "this
+#:          quarter" reads as r3m live as it does offline.
+PROMPT_VERSION = "2.4.0"
 
 #: Free text a model wrote in an earlier plan. Never carried into the next
 #: prompt: a remembered instruction must not reach the model as context it
@@ -274,6 +278,32 @@ class Planner(Protocol):
 # Prompt
 # ---------------------------------------------------------------------------
 
+def _expand(pattern: str) -> list[str]:
+    """The phrases one OfflinePlanner.WINDOWS pattern matches, readably.
+
+    Only the forms that table uses: top-level alternatives, word boundaries
+    and (?:a|b) groups. tests/unit/test_prompt_version.py checks that each
+    phrase matches its own pattern, so a new form cannot pass unexpanded.
+    """
+    import itertools
+
+    phrases = []
+    for alternative in re.split(r"\|(?![^(]*\))", pattern):
+        alternative = alternative.replace(r"\b", "")
+        pieces = re.split(r"\(\?:([^)]*)\)", alternative)
+        options = [[piece] if i % 2 == 0 else piece.split("|") for i, piece in enumerate(pieces)]
+        phrases += ["".join(choice) for choice in itertools.product(*options)]
+    return phrases
+
+
+def window_phrases() -> list[str]:
+    """What users say, and the window each phrase means: the offline planner's
+    table, so the live model and the offline planner cannot read a time
+    phrase differently."""
+    return [f"  {', '.join(repr(p) for p in _expand(pattern))} -> {window}"
+            for pattern, window in OfflinePlanner.WINDOWS]
+
+
 def build_system_prompt(context: PlanningContext) -> str:
     registry = get_registry()
     anchor = context.reporting_anchor
@@ -301,6 +331,10 @@ def build_system_prompt(context: PlanningContext) -> str:
         "  last_month     = offset 1;  current_month = offset 0;  r30d = last 4 weeks",
         "For an explicit calendar quarter or year use kind='period_labels' with labels",
         "like '2026-Q2'. Use kind='date_range' ONLY when the user gives explicit dates.",
+        "",
+        "WHAT USERS SAY -> WINDOW. Read these phrases as these windows; a named",
+        "calendar period (Q2, 2026) is period_labels instead:",
+        *window_phrases(),
         "",
         prompt_guidance(),
         "",
