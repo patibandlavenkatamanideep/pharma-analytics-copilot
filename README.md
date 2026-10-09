@@ -1,17 +1,23 @@
 # Pharma Analytics Copilot
 
-### 🔗 Live (historical deployment of the submitted build): **https://44-217-117-172.sslip.io**
-
-> **This branch** (`codex/release-defects-oct06`, from `codex/nl2sql-readiness`)
-> is post-submission engineering. The live URL runs an earlier build (commit
-> `7aae7cf`), and none of this branch is deployed; GitHub has it up to
-> `69c62de`, and the commits after that are local. What it establishes, and
-> what it does not: **[`docs/QUALIFICATION_2026_10_07.md`](docs/QUALIFICATION_2026_10_07.md)**
-> (the qualification pass, step by step), [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md)
-> (generated from the records) and [`docs/RELEASE_HANDOFF.md`](docs/RELEASE_HANDOFF.md)
-> (the candidate, its CI path and what is deferred). Earlier records are in
-> [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). It is not
-> production-ready, and those documents say exactly why.
+> **Not deployed today.** The September demo at `https://44-217-117-172.sslip.io`
+> (one EC2 host running commit `7aae7cf`) was taken down on 2 October 2026; its
+> server and address were deleted, so that URL no longer answers and cannot
+> come back (the address belonged to that server). Its record is kept under
+> [Status](#status) as history.
+>
+> **This branch** (`codex/release-defects-oct06`) is the release line, on GitHub
+> with CI green on its head; [pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1)
+> brings it to `main` and is open for review. Its executable candidate,
+> `e101db3`, passed the full local release chain and all four hosted CI jobs.
+> **AWS staging is prepared, not deployed**: Terraform for a restricted
+> environment (ECS Fargate, RDS PostgreSQL, HTTPS load balancer), validated and
+> planned against a mocked provider, waiting for the owner's choices and
+> approval. Where things stand: **[`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)**;
+> the plan to approve: [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md); the
+> go/no-go: [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md) (not ready for a
+> pilot or production, and why); the evidence:
+> [`docs/EVIDENCE_INDEX.md`](docs/EVIDENCE_INDEX.md), generated from the records.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
 database. Users ask questions in plain English; what they are allowed to see is
@@ -47,6 +53,8 @@ DDL, seed data and the generator are unmodified.
 | **See what this branch has proven, and what is blocked** | [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) |
 | **See how the 1 October review's findings were reproduced and fixed** | [`docs/REVIEW_2026_10_01.md`](docs/REVIEW_2026_10_01.md) |
 | **See what staging must prove before a release** | [`docs/STAGING_VERIFICATION.md`](docs/STAGING_VERIFICATION.md) |
+| **See where AWS staging stands, and its plan and cost** | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md), [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md), [`infra/aws-staging/`](infra/aws-staging/README.md) |
+| **See whether it is ready for a pilot** | [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md) |
 | Ingest new and corrected sales | [`docs/INGESTION.md`](docs/INGESTION.md) |
 | Observe it: traces, metrics, alerts | [`docs/OBSERVABILITY.md`](docs/OBSERVABILITY.md) |
 | Know what is remembered, for how long, and how to export or delete it | [`docs/RETENTION.md`](docs/RETENTION.md) |
@@ -210,17 +218,18 @@ docs/             SUPPLIED business documents — untouched, plus this project's
 
 ## Status
 
-**Current (this branch):** see
-[`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). Everything below in
+**Current (this branch):** see [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)
+and [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md). Everything below in
 this section is the **historical** record of the submitted build and its
 deployment in September 2026. It is kept as it was, and is not a claim
-about this branch.
+about this branch; that deployment was taken down on 2 October 2026.
 
 Verified on the full dataset: ingestion, the authorization boundary,
 metric semantics against hand-written reference SQL, and the API and UI served
 together.
 
-**Deployed** at <https://44-217-117-172.sslip.io> — one EC2 instance on AWS
+**Deployed** (until 2 October 2026; the URL no longer answers) at
+`https://44-217-117-172.sslip.io` — one EC2 instance on AWS
 with the app, PostgreSQL and Caddy under Docker Compose, real Let's Encrypt
 HTTPS, the full 2,000,000-row dataset, and Claude Opus 4.5 on Bedrock.
 `infra/smoke.sh` passed against it end to end on 2026-09-24.
@@ -259,9 +268,9 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt. Prompt 2.1.0 on this branch has not been run live; it needs credentials and an approved budget ([EVALUATION.md](docs/EVALUATION.md)) |
+| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt. Prompt 2.3.0 on this branch has not been run live; it needs Bedrock access and an approved token and dollar budget ([EVALUATION.md](docs/EVALUATION.md)) |
 | One held-out miss, deliberately not fixed | "Which health systems have the most facilities?" resolves to `paid_pack_units` instead of `facility_count`. Fixing it would turn the held-out set into another development set |
-| Single host, no redundancy; deployed latency under concurrency unmeasured | See [DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven) |
+| Not deployed; staging prepared, not applied | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md): the first stage is one task and a Single-AZ database with synthetic data and the offline planner, so it shows the AWS infrastructure, not live NL2SQL, redundancy or latency under concurrency ([DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven)) |
 
 This is not called production-ready while those remain.
 
