@@ -722,6 +722,31 @@
       ],
       "verified_by": "hosted_ci:37939037102 attempt 2 (the same commit, after the trust policy from facd0d4 was applied: credentials, push and the registry check passed; digest sha256:bf04b0175a27...)",
       "note": "an infrastructure trust-policy change; the published image is 5536526's, unchanged"
+    },
+    {
+      "id": "public-sign-in-without-browser-security-headers",
+      "title": "With the sign-in page open to everyone, the live staging site sent no Strict-Transport-Security, X-Content-Type-Options or X-Frame-Options: later visits were not held to HTTPS and the sign-in page could be framed by another site. Nothing in the repository claimed the headers; for a public sign-in page they are the baseline",
+      "fix_commits": [
+        "a786bda"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py",
+        "evidence/probes/staging_live_check.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-staging-headers-reproduced.json",
+          "baseline": "de4352d",
+          "note": "evidence/probes/staging_live_check.py against https://staging.pharma-copilot.click (image 5536526, infrastructure from facd0d4): 12 checks pass, security_headers fails with all three headers absent"
+        },
+        {
+          "artifact": "evidence/runs/r5-staging-headers-tests-reproduced.json",
+          "baseline": "4c4f5e1",
+          "note": "Strict xfail run with --runxfail: the HTTPS listener sets none of the three"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-staging-headers-fixed.json (a786bda applied: 13 of 13 live checks pass; the load balancer adds Strict-Transport-Security max-age=31536000, X-Content-Type-Options nosniff and X-Frame-Options DENY to every response; the plan after the apply is empty)",
+      "note": "found by checking the deployed site; a load-balancer setting, no image change. A Content-Security-Policy is not yet set: it must first be tested against the frontend"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
