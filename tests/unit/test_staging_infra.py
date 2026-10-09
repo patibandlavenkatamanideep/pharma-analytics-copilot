@@ -391,7 +391,6 @@ def test_anything_the_inventory_does_not_account_for_is_unexplained(mutate):
 # changes that are not changes (r5-staging-plan-drift-reproduced.json). A
 # mocked provider cannot show AWS's normalisation, so these read the source.
 
-@pytest.mark.xfail(strict=True, reason="reproduction: AWS stores rds.force_ssl as pending-reboot")
 def test_rds_force_ssl_is_declared_the_way_aws_stores_it():
     params = blocks(text("rds.tf"), "aws_db_parameter_group")["this"]
     ssl = re.search(r'parameter \{\s*name\s*=\s*"rds.force_ssl"(.*?)\}', params, re.S)
@@ -399,7 +398,6 @@ def test_rds_force_ssl_is_declared_the_way_aws_stores_it():
     assert re.search(r'value\s*=\s*"1"', ssl.group(1))
 
 
-@pytest.mark.xfail(strict=True, reason="reproduction: IAM fills in the GitHub provider's thumbprint")
 def test_the_github_provider_thumbprint_is_left_to_iam():
     provider = blocks(text("iam.tf"), "aws_iam_openid_connect_provider")["github"]
     assert re.search(r"ignore_changes\s*=\s*\[thumbprint_list\]", provider)

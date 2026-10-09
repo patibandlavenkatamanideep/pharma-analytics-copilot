@@ -13,9 +13,12 @@ resource "aws_db_parameter_group" "this" {
 
   # Refuse unencrypted connections; the application verifies the server's
   # certificate (PGSSLMODE=verify-full with the image's RDS CA bundle).
+  # Declared as AWS stores it (pending-reboot; in force from creation, and 1
+  # is PostgreSQL 16's default), or every plan shows a change that is not one.
   parameter {
-    name  = "rds.force_ssl"
-    value = "1"
+    name         = "rds.force_ssl"
+    value        = "1"
+    apply_method = "pending-reboot"
   }
 
   parameter {

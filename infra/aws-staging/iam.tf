@@ -126,6 +126,13 @@ resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = []
+
+  # IAM fills in a thumbprint itself and verifies GitHub's tokens through its
+  # own trusted certificate authorities, not the thumbprint; without this,
+  # every plan proposes removing it.
+  lifecycle {
+    ignore_changes = [thumbprint_list]
+  }
 }
 
 locals {
