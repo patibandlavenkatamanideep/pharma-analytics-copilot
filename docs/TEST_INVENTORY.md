@@ -27,10 +27,10 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 855 | pass, no skips | `r5-rc-fb415ca-pytest.json` (`fb415ca`); without a database too, `r5-rc-fb415ca-unit-nodb.json` |
+| **Unit** | `pytest tests/unit -q` | 857 | pass, no skips | `r5-rc-fb415ca-pytest.json` (`fb415ca`); without a database too, `r5-rc-fb415ca-unit-nodb.json` |
 | **Integration** | `pytest tests/integration -q` | 970 | pass, no skips | `r5-rc-fb415ca-pytest.json` (`fb415ca`) |
 | **Security** | `pytest tests/security -q --release-gate --min-tests 450` | 450 | pass, strict gate | `r5-rc-fb415ca-security.json` (`fb415ca`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2275** | pass, strict gate: no skips, no xfails | `r5-rc-fb415ca-pytest.json` (`fb415ca`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2277** | pass, strict gate: no skips, no xfails | `r5-rc-fb415ca-pytest.json` (`fb415ca`) |
 | **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-fb415ca-component.json` (`fb415ca`) |
 | **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-fb415ca-browser.json` (`fb415ca`) |
 | **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-fb415ca-eval-*.json` (`fb415ca`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
