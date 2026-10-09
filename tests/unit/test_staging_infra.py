@@ -13,6 +13,7 @@ import importlib.util
 import json
 import pathlib
 import re
+import subprocess
 
 import pytest
 
@@ -198,3 +199,16 @@ def test_cost_estimate_is_generated_from_the_committed_prices(estimate):
         assert re.fullmatch(r"[0-9a-f]{64}", offer["sha256"]) and offer["version"], key
         assert price["sku"] and price["usagetype"], key
     assert set(prices["prices"]) == set(estimate.RULES)
+
+
+@pytest.mark.xfail(strict=True, reason="README.md's staging.tfvars and saved plans are not ignored")
+def test_files_the_procedure_creates_are_never_committed():
+    """README.md's procedure writes a variable file and saved plans into the
+    module. A saved plan holds every variable's value and the provider's view
+    of the account, and state holds its identifiers: none belongs in Git."""
+    paths = [f"infra/aws-staging/{n}" for n in (
+        "staging.tfvars", "foundation.plan", "deploy.tfplan",
+        "terraform.tfstate", "terraform.tfstate.backup")]
+    out = subprocess.run(["git", "-C", str(ROOT), "check-ignore", "--no-index", *paths],
+                         capture_output=True, text=True)
+    assert sorted(set(paths) - set(out.stdout.split())) == []
