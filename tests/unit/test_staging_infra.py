@@ -201,7 +201,6 @@ def test_cost_estimate_is_generated_from_the_committed_prices(estimate):
     assert set(prices["prices"]) == set(estimate.RULES)
 
 
-@pytest.mark.xfail(strict=True, reason="README.md's staging.tfvars and saved plans are not ignored")
 def test_files_the_procedure_creates_are_never_committed():
     """README.md's procedure writes a variable file and saved plans into the
     module. A saved plan holds every variable's value and the provider's view

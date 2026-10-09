@@ -108,10 +108,3 @@ locals {
     }
   })
 }
-
-check "collector_image_pinned" {
-  assert {
-    condition     = !var.enable_observability || can(regex("@sha256:[0-9a-f]{64}$", coalesce(var.collector_image, "")))
-    error_message = "With enable_observability, collector_image must be pinned by digest (image@sha256:...)."
-  }
-}

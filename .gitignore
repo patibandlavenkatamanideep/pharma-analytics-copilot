@@ -48,3 +48,8 @@ evidence/restricted/
 
 # the staging module's provider cache (its lock file is committed)
 infra/aws-staging/.terraform/
+# and the files its procedure writes (README.md): variable values and saved plans.
+# State is ignored above.
+infra/aws-staging/*.tfvars
+infra/aws-staging/*.plan
+infra/aws-staging/*.tfplan

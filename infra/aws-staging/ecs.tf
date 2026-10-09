@@ -160,6 +160,12 @@ resource "aws_ecs_task_definition" "app" {
       condition     = var.oidc_issuer == null || var.oidc_client_id != null
       error_message = "oidc_issuer needs oidc_client_id."
     }
+    # A refusal, not a warning: a check block only warns, and the plan went on
+    # to run the collector by tag (tests/plan.tftest.hcl).
+    precondition {
+      condition     = !var.enable_observability || can(regex("@sha256:[0-9a-f]{64}$", coalesce(var.collector_image, "")))
+      error_message = "With enable_observability, collector_image must be pinned by digest (image@sha256:...)."
+    }
   }
 
   container_definitions = jsonencode(concat([merge(local.hardened, {
