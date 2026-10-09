@@ -24,6 +24,15 @@ resource "aws_secretsmanager_secret" "test_users" {
   recovery_window_in_days = 7
 }
 
+# The reviewers the owner approved: a JSON list of
+# {"email", "name", "like", "password"} or {"email", "name", "disabled": true}
+# (scripts/provision_reviewers.py), written by seed-secrets.sh --reviewers.
+resource "aws_secretsmanager_secret" "reviewers" {
+  name                    = "${var.name}/${var.secret_generation}/reviewers"
+  description             = "JSON list of the reviewers' accounts the owner approved"
+  recovery_window_in_days = 7
+}
+
 resource "aws_secretsmanager_secret" "oidc_client" {
   name                    = "${var.name}/${var.secret_generation}/oidc-client-secret"
   description             = "The identity provider's client secret, once a registration exists"

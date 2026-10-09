@@ -45,15 +45,37 @@ def all_tf() -> str:
     return "\n".join(p.read_text() for p in sorted(INFRA.glob("*.tf")))
 
 
+# The owner's decision of 9 October 2026 opens the sign-in page to everyone:
+# these two rules, and only when public_sign_in is set.
+PUBLIC_SIGN_IN = {"alb_https_public": 443, "alb_http_public": 80}
+
+
 def test_nothing_is_reachable_from_the_whole_internet():
     sg = text("security_groups.tf")
     ingress = blocks(sg, "aws_vpc_security_group_ingress_rule")
     assert ingress, "no ingress rules found"
+    assert set(PUBLIC_SIGN_IN) <= set(ingress)
     for name, body in ingress.items():
-        assert "0.0.0.0/0" not in body and "::/0" not in body, name
+        assert "::/0" not in body, name
+        if name in PUBLIC_SIGN_IN:
+            continue
+        assert "0.0.0.0/0" not in body, name
         assert "var.allowed_cidrs" in body or "referenced_security_group_id" in body, name
     allowed = blocks(text("variables.tf"), "allowed_cidrs")["allowed_cidrs"]
     assert 'c != "0.0.0.0/0"' in allowed and "default" not in allowed
+
+
+def test_only_the_load_balancer_listeners_open_to_everyone_and_only_by_decision():
+    ingress = blocks(text("security_groups.tf"), "aws_vpc_security_group_ingress_rule")
+    for name, port in PUBLIC_SIGN_IN.items():
+        body = ingress[name]
+        assert re.search(r"^\s*count\s*=\s*var\.public_sign_in \? 1 : 0$", body, re.M), name
+        assert re.search(r"^\s*security_group_id\s*=\s*aws_security_group\.alb\.id$", body, re.M), name
+        assert re.search(r'^\s*ip_protocol\s*=\s*"tcp"$', body, re.M), name
+        assert re.search(r"^\s*from_port\s*=\s*%d$" % port, body, re.M), name
+        assert re.search(r"^\s*to_port\s*=\s*%d$" % port, body, re.M), name
+    decision = blocks(text("variables.tf"), "public_sign_in")["public_sign_in"]
+    assert re.search(r"^\s*default\s*=\s*false$", decision, re.M)
 
 
 def test_database_is_private_encrypted_and_tls_only():
@@ -162,9 +184,68 @@ def test_seed_script_never_puts_a_value_in_argv_or_output():
     script = (INFRA / "seed-secrets.sh").read_text()
     assert "--secret-string file:///dev/stdin" in script
     assert not re.search(r'--secret-string\s+"?\$', script)
-    assert "get-secret-value" not in script
+    # One value is read: the reviewers' list, piped straight into the merge
+    # that keeps the passwords already handed out (and never anywhere else).
+    reads = [line for line in script.splitlines() if "get-secret-value" in line]
+    assert len(reads) == 1 and reads[0].strip().startswith("merged=$(aws secretsmanager")
+    assert script.count("| python3 ../../scripts/provision_reviewers.py --merge-csv") == 2
     # Generated values go straight into the pipe; nothing echoes them.
     assert not re.search(r"echo .*\$\(python3", script)
+    assert not re.search(r"echo .*\$merged", script)
+
+
+STUB_AWS = r"""#!/usr/bin/env bash
+printf '%s\n' "$*" >> "$STUB/argv"
+case "$2" in
+  list-secret-version-ids) case "$4" in *reviewers*) echo "$STUB_REVIEWERS_SET" ;; *) echo 1 ;; esac ;;
+  get-secret-value) cat "$STUB/current.json" ;;
+  put-secret-value) cat > "$STUB/put.json"; echo "$4" ;;
+esac
+"""
+
+
+def seed_reviewers(tmp_path, csv_text: str, current: list | None):
+    """seed-secrets.sh --reviewers against stub aws and terraform commands."""
+    import json
+    import os
+    import shutil
+
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "aws").write_text(STUB_AWS)
+    arns = {k: f"arn:{k}" for k in ("db_owner", "db_auth", "db_exec", "db_scoped",
+                                    "test_users", "reviewers")}
+    (bin_dir / "terraform").write_text(f"#!/bin/sh\necho '{json.dumps(arns)}'\n")
+    for stub in bin_dir.iterdir():
+        stub.chmod(0o755)
+    (tmp_path / "current.json").write_text(json.dumps(current or []))
+    csv_path = tmp_path / "reviewers.csv"
+    csv_path.write_text(csv_text)
+    env = {"PATH": f"{bin_dir}:{os.environ['PATH']}", "STUB": str(tmp_path),
+           "STUB_REVIEWERS_SET": "1" if current is not None else "0", "HOME": str(tmp_path)}
+    result = subprocess.run([shutil.which("bash"), str(INFRA / "seed-secrets.sh"), "--reviewers",
+                             "reviewers.csv"], cwd=tmp_path, env=env, capture_output=True,
+                            text=True, timeout=60)
+    put = tmp_path / "put.json"
+    return result, (tmp_path / "argv").read_text(), json.loads(put.read_text()) if put.exists() else None
+
+
+def test_seed_script_keeps_reviewer_passwords_out_of_argv_and_output(tmp_path):
+    held = "h" * 24
+    result, argv, put = seed_reviewers(
+        tmp_path, "email,name,like\nheld@test.invalid,Held,U1\nnew@test.invalid,New,U1\n",
+        [{"email": "held@test.invalid", "name": "Held", "like": "U1", "password": held}])
+    assert result.returncode == 0, result.stderr
+    passwords = {r["email"]: r["password"] for r in put}
+    assert passwords["held@test.invalid"] == held and len(passwords["new@test.invalid"]) >= 12
+    for password in passwords.values():
+        assert password not in result.stdout + result.stderr + argv
+    assert "reviewers: set" in result.stdout and "2 active (1 new)" in result.stderr
+
+
+def test_seed_script_writes_nothing_for_an_invalid_reviewer_list(tmp_path):
+    result, argv, put = seed_reviewers(tmp_path, "email,name\nx@test.invalid,X\n", None)
+    assert result.returncode != 0 and put is None and "put-secret-value" not in argv
 
 
 def test_publish_workflow_is_manual_scoped_and_pinned():

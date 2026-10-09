@@ -128,6 +128,13 @@ locals {
       env     = []
       secrets = [{ name = "PAC_TEST_USERS", valueFrom = aws_secretsmanager_secret.test_users.arn }]
     }
+    # The reviewers' accounts the owner approved, each with the scope of an
+    # existing user; disabled ones signed out at once. Prints counts only.
+    reviewers = {
+      command = ["python", "scripts/provision_reviewers.py"]
+      env     = []
+      secrets = [{ name = "PAC_REVIEWERS", valueFrom = aws_secretsmanager_secret.reviewers.arn }]
+    }
     # The dataset the serving task will publish: the full synthetic load, at
     # its known size, or this exits 1. Prints counts only.
     dataset-check = {

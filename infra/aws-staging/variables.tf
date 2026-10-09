@@ -16,6 +16,12 @@ variable "route53_zone_id" {
   default     = null
 }
 
+variable "public_sign_in" {
+  description = "The owner's decision of 9 October 2026: \"Anyone may reach the sign-in page, but only accounts I approve may use the application.\" True: the load balancer admits HTTPS (and the redirect from HTTP) from every address; the tasks and the database stay reachable only from it, there is no public sign-up, and accounts come from the reviewers job. False (the default): only allowed_cidrs."
+  type        = bool
+  default     = false
+}
+
 variable "allowed_cidrs" {
   description = "Source ranges allowed to reach the load balancer (the testers' networks). Never the whole internet."
   type        = list(string)

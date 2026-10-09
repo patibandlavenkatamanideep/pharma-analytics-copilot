@@ -50,7 +50,8 @@
         "tests/security/test_retry_quotas.py",
         "tests/security/test_log_hygiene.py",
         "tests/security/test_startup_refusal.py",
-        "tests/security/test_checkpoint_loading.py"
+        "tests/security/test_checkpoint_loading.py",
+        "tests/security/test_reviewer_accounts.py"
       ]
     },
     "durability_recovery_concurrency": {

@@ -70,6 +70,10 @@ run "foundation_without_an_image" {
     error_message = "the low-cost shape has no NAT gateway and no Prometheus workspace"
   }
   assert {
+    condition     = length(aws_vpc_security_group_ingress_rule.alb_https_public) == 0 && length(aws_vpc_security_group_ingress_rule.alb_http_public) == 0
+    error_message = "by default, nothing is open to the whole internet"
+  }
+  assert {
     condition     = aws_db_instance.this.final_snapshot_identifier == "pac-staging-final-test1"
     error_message = "the final snapshot is named by the operator's label"
   }
@@ -123,8 +127,8 @@ run "deployable_at_zero_tasks" {
     error_message = "the serving service starts at zero tasks until data is loaded"
   }
   assert {
-    condition     = toset(keys(aws_ecs_task_definition.job)) == toset(["bootstrap", "migrate", "load-seed", "load-full", "dataset-check", "test-users", "boundary"])
-    error_message = "the seven one-shot task definitions"
+    condition     = toset(keys(aws_ecs_task_definition.job)) == toset(["bootstrap", "migrate", "load-seed", "load-full", "dataset-check", "test-users", "reviewers", "boundary"])
+    error_message = "the eight one-shot task definitions"
   }
   assert {
     condition     = output.image == "123456789012.dkr.ecr.us-east-1.amazonaws.com/pac-staging@sha256:d266c32ae92e1a0590b7cd3dee9bc0a9521019bd01e17d47dcbb228cb4961443"
@@ -235,4 +239,23 @@ run "a_zero_model_price_is_refused" {
   }
 
   expect_failures = [var.llm_input_usd_per_mtok]
+}
+
+# The owner's decision: anyone may reach the sign-in page. Only the load
+# balancer's listeners open; the tasks and the database do not.
+run "a_public_sign_in_page_opens_only_the_load_balancer" {
+  command = plan
+
+  variables {
+    public_sign_in = true
+  }
+
+  assert {
+    condition     = aws_vpc_security_group_ingress_rule.alb_https_public[0].cidr_ipv4 == "0.0.0.0/0" && aws_vpc_security_group_ingress_rule.alb_https_public[0].from_port == 443
+    error_message = "HTTPS to the load balancer from anywhere"
+  }
+  assert {
+    condition     = length(aws_vpc_security_group_ingress_rule.alb_http_public) == 1
+    error_message = "and the HTTP redirect"
+  }
 }

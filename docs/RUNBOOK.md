@@ -160,6 +160,26 @@ The allowance bounds what the application asks for, as it calculates it from
 reported usage and configured prices; the provider's bill is the truth. Keep an AWS budget on Bedrock as well
 (`model_budget_usd` in infra/aws-staging): it alerts, it does not stop calls.
 
+### Reviewers' accounts
+
+There is no sign-up. When the sign-in page is reachable by everyone
+(`public_sign_in` in infra/aws-staging), the accounts the owner approves are the
+only way in. Each reviewer gets an account of their own (`rev-` and a hash of
+the address) with the scope of an existing user the owner names, so row-level
+security shows them exactly what that user may see:
+
+```sh
+# reviewers.csv, kept outside the repository: email,name,like[,disabled]
+infra/aws-staging/seed-secrets.sh --reviewers reviewers.csv
+# then the one-shot task `reviewers` (scripts/provision_reviewers.py)
+```
+
+Run both again after editing the CSV. A reviewer already listed keeps their
+password and sessions; a new one gets a random password; one marked disabled,
+or dropped from the CSV, is disabled and signed out at once. Hand each password
+over privately, from the `reviewers` secret. Neither step prints a password;
+both print counts.
+
 ### Enabling single sign-on
 
 Off by default. Password sign-in is unaffected either way.
@@ -245,7 +265,7 @@ python3 scripts/build_fixture_db.py
 
 # Tests
 python3 -m pytest tests -q               # counts: docs/TEST_INVENTORY.md
-python3 -m pytest tests/security -q --release-gate --min-tests 438
+python3 -m pytest tests/security -q --release-gate --min-tests 450
 ```
 
 `seed` and `full` are mutually exclusive: each truncates the other's rows,

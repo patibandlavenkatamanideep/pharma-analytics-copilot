@@ -26,6 +26,8 @@ SHAPES = {
     "deployable_at_zero_tasks": "Deployable (step 6): image_digest set, app_desired_count = 0",
     "private_tasks_behind_nat": "Private tasks: egress_mode = \"nat\"",
     "failover_shape": "Failover test: app_desired_count = 2, db_multi_az = true",
+    "a_public_sign_in_page_opens_only_the_load_balancer":
+        "Foundation with the public sign-in page: public_sign_in = true",
 }
 
 
@@ -66,7 +68,7 @@ def main() -> int:
            "computes are unknown here, and nothing here shows that AWS accepts the plan.", "",
            "| Configuration | Resources to create |", "|---|---:|"]
     out += [f"| {title} | {len(runs[key])} |" for key, title in SHAPES.items()]
-    for key in ("deployable_at_zero_tasks", "private_tasks_behind_nat", "failover_shape"):
+    for key in [k for k in SHAPES if k != "foundation_without_an_image"]:
         added = sorted(set(runs[key]) - base)
         out += ["", f"## {SHAPES[key]}: beyond the foundation", ""]
         out += [f"- `{a}`" for a in added] or ["- nothing"]

@@ -27,6 +27,28 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   to_port           = 80
 }
 
+# Only when the owner opens the sign-in page to everyone (var.public_sign_in):
+# the load balancer's two listeners, nothing else.
+resource "aws_vpc_security_group_ingress_rule" "alb_https_public" {
+  count             = var.public_sign_in ? 1 : 0
+  security_group_id = aws_security_group.alb.id
+  description       = "HTTPS from anywhere: the sign-in page (owner decision, public_sign_in)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_http_public" {
+  count             = var.public_sign_in ? 1 : 0
+  security_group_id = aws_security_group.alb.id
+  description       = "HTTP from anywhere, redirected to HTTPS (owner decision, public_sign_in)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
+}
+
 resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
   security_group_id            = aws_security_group.alb.id
   description                  = "To the application tasks"

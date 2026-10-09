@@ -39,7 +39,8 @@ data "aws_iam_policy_document" "execution" {
   for_each = {
     app = [for r in ["auth", "exec", "scoped"] : aws_secretsmanager_secret.db_role[r].arn]
     jobs = concat([for r in local.db_roles : aws_secretsmanager_secret.db_role[r].arn],
-    [aws_db_instance.this.master_user_secret[0].secret_arn, aws_secretsmanager_secret.test_users.arn])
+      [aws_db_instance.this.master_user_secret[0].secret_arn, aws_secretsmanager_secret.test_users.arn,
+    aws_secretsmanager_secret.reviewers.arn])
   }
 
   statement {

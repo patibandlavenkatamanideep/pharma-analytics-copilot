@@ -51,6 +51,7 @@ output "secret_arns" {
   description = "Containers only; their values are set by seed-secrets.sh or the owner."
   value = merge({ for r, s in aws_secretsmanager_secret.db_role : "db_${r}" => s.arn }, {
     test_users  = aws_secretsmanager_secret.test_users.arn
+    reviewers   = aws_secretsmanager_secret.reviewers.arn
     oidc_client = aws_secretsmanager_secret.oidc_client.arn
     rds_admin   = aws_db_instance.this.master_user_secret[0].secret_arn
   })
