@@ -696,6 +696,32 @@
         }
       ],
       "verified_by": "evidence/runs/r5-staging-plan-drift-fixed.json (5536526, git archive 5536526 against the same applied infrastructure: 0 to add, 0 to change, 0 to destroy)"
+    },
+    {
+      "id": "publish-role-legacy-oidc-subject",
+      "title": "The staging publish role trusted only GitHub's legacy OIDC subject (repo:<owner>/<name>:environment:staging); this repository's tokens carry the immutable subject (repo:<owner>@<owner id>/<name>@<repository id>:environment:staging), so AWS refused every token and nothing could be published",
+      "fix_commits": [
+        "facd0d4"
+      ],
+      "regression_files": [
+        "tests/unit/test_staging_infra.py",
+        "infra/aws-staging/tests/plan.tftest.hcl"
+      ],
+      "reproductions": [
+        {
+          "artifact": "hosted-ci:37939037102",
+          "baseline": "5536526",
+          "kind": "hosted-ci-run",
+          "note": "publish-staging, attempt 1: CI verified, image built, scanned and its journeys passed; 'Expiring credentials for the publishing role' failed: Not authorized to perform sts:AssumeRoleWithWebIdentity (12 attempts)"
+        },
+        {
+          "artifact": "evidence/runs/r5-publish-oidc-subject-reproduced.json",
+          "baseline": "bb7d9b8",
+          "note": "Strict xfail run with --runxfail: the trust condition names only repo:${var.github_repository}, with no way to configure the subject GitHub sends"
+        }
+      ],
+      "verified_by": "hosted_ci:37939037102 attempt 2 (the same commit, after the trust policy from facd0d4 was applied: credentials, push and the registry check passed; digest sha256:bf04b0175a27...)",
+      "note": "an infrastructure trust-policy change; the published image is 5536526's, unchanged"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
