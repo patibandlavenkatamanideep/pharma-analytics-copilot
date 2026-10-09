@@ -1,0 +1,68 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T18:51:05+00:00",
+  "claim": "At f61b600: the planner's system prompt does not map 'this quarter' to r3m, the window the offline planner reads it as (strict xfail run with --runxfail)",
+  "application": {
+    "sha": "f61b600d3163d0d129fefed8d4648793890a02e1",
+    "tree": "03c0044ca751b37a1b92501fe8d87cd5fefe17a5",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "--runxfail",
+      "-p",
+      "no:cacheprovider",
+      "tests/unit/test_prompt_version.py",
+      "-k",
+      "this_quarter"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 0.5
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": {
+      "failed": 1
+    },
+    "blocked_reason": null,
+    "summary": "1 failed, 3 deselected in 0.09s"
+  },
+  "artifacts": [],
+  "limits": [
+    "reads the prompt text; the live reproductions are r5-live-smoke-haiku45.json and r5-live-smoke-sonnet45.json"
+  ]
+}

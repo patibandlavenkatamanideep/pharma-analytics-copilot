@@ -1,0 +1,1203 @@
+{
+  "run_at": "20261009T184932Z",
+  "provider": "bedrock",
+  "model_id": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "measures_nl_accuracy": true,
+  "dataset_id": "full-56238262863b",
+  "dataset_mode": "full",
+  "question_set_version": "1.0.0",
+  "question_set_status": "regression",
+  "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
+  "smoke_subset": true,
+  "prompt_version": "2.3.0",
+  "prompt_fingerprint": "5dd66431f2ba8230",
+  "budget": {
+    "max_input_tokens": 103190,
+    "max_output_tokens": 28043,
+    "charged_input_tokens": 53965,
+    "charged_output_tokens": 1506,
+    "model_calls": 9,
+    "unreported_calls_charged_at_reservation": 0,
+    "calls_refused_by_budget": 0,
+    "bound_violations": 0,
+    "largest_input_reservation": 25143,
+    "largest_output_reservation": 4096,
+    "input_bound_method": "utf8-nfkc-bytes+framing-allowance; checked against reported usage",
+    "output_bound_method": "the request's max_tokens"
+  },
+  "not_run_budget_exhausted": [
+    "growth-01",
+    "sec-01",
+    "comp-01",
+    "amb-01",
+    "turn-01"
+  ],
+  "metric_version": "1.5.0",
+  "policy_version": "1.0.0",
+  "total": 9,
+  "passed": 5,
+  "failed": 4,
+  "performance": {
+    "questions": 9,
+    "latency_ms": {
+      "p50": 4343,
+      "p95": 5152,
+      "max": 5152
+    },
+    "usage": {
+      "input_tokens": 53965,
+      "output_tokens": 1506,
+      "questions_with_reported_usage": 9,
+      "questions_with_unknown_usage": 0
+    },
+    "cost_usd": 0.2029,
+    "rates_usd_per_mtok": {
+      "input": 3.3,
+      "output": 16.5
+    }
+  },
+  "by_category": {
+    "answer": 5,
+    "refusal": 0,
+    "unsupported": 0,
+    "wrong": 4,
+    "failure": 0
+  },
+  "plan_extraction": {
+    "checks": 0,
+    "matched": 0,
+    "matched_and_executed": 0
+  },
+  "results": [
+    {
+      "id": "acc-01",
+      "family": "account_ranking",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "What are the top 10 accounts by pack units this quarter?",
+      "status": "answered",
+      "passed": false,
+      "reason": "missing ['GP0002'], unexpected ['GP0460']",
+      "category": "wrong",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "account"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_quarter",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": {
+          "direction": "top",
+          "limit": 10
+        },
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT COALESCE(o.grandparent_org_id, o.org_id) AS dim0_id, COALESCE(o.grandparent_org_name, o.org_name) AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\nGROUP BY COALESCE(o.grandparent_org_id, o.org_id), COALESCE(o.grandparent_org_name, o.org_name)\nORDER BY value DESC NULLS LAST\nLIMIT 10\n",
+      "answer": {
+        "headline": "Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,811 packs.",
+        "columns": [
+          "top-level account (grandparent, or the facility if standalone)",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": "Liberty Health Partners",
+            "dim0_id": "GP0186",
+            "value": 2811.0,
+            "value_formatted": "2,811 packs"
+          },
+          {
+            "dim0": "Aspen Health Partners",
+            "dim0_id": "GP0106",
+            "value": 2507.0,
+            "value_formatted": "2,507 packs"
+          },
+          {
+            "dim0": "Westfield Health Network",
+            "dim0_id": "GP0351",
+            "value": 2506.0,
+            "value_formatted": "2,506 packs"
+          },
+          {
+            "dim0": "Meridian Care Network",
+            "dim0_id": "GP0263",
+            "value": 2172.0,
+            "value_formatted": "2,172 packs"
+          },
+          {
+            "dim0": "Juniper Medical Alliance",
+            "dim0_id": "GP0415",
+            "value": 2165.0,
+            "value_formatted": "2,165 packs"
+          },
+          {
+            "dim0": "Hillside Clinical Network",
+            "dim0_id": "GP0138",
+            "value": 2108.0,
+            "value_formatted": "2,108 packs"
+          },
+          {
+            "dim0": "Dominion Care Network",
+            "dim0_id": "GP0192",
+            "value": 2085.0,
+            "value_formatted": "2,085 packs"
+          },
+          {
+            "dim0": "Harbor Health Services",
+            "dim0_id": "GP0460",
+            "value": 2019.0,
+            "value_formatted": "2,019 packs"
+          },
+          {
+            "dim0": "Pinnacle Health Services",
+            "dim0_id": "GP0055",
+            "value": 1988.0,
+            "value_formatted": "1,988 packs"
+          },
+          {
+            "dim0": "Lakeshore Medical Center",
+            "dim0_id": "GP0196",
+            "value": 1971.0,
+            "value_formatted": "1,971 packs"
+          }
+        ],
+        "row_count": 10,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: last quarter \u2014 the three months ending one month back (offsets 1-3), which is the supplied definition of 'last quarter' and is not the previous calendar quarter.",
+        "notes": [],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Top 10 by top-level account (grandparent, or the facility if standalone), ranked on paid pack units. Liberty Health Partners leads with 2,811 packs.",
+      "latency_ms": 5152,
+      "timings": {
+        "plan_ms": 4546,
+        "db_ms": 261,
+        "total_ms": 5105
+      },
+      "input_tokens": 5996,
+      "output_tokens": 142,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5996,
+            "output_tokens": 142,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25122,
+            4096
+          ],
+          "charged": [
+            5996,
+            142
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "hier-01",
+      "family": "hierarchy",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How many distinct top-level accounts did we sell to in the last three months?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 7116, got 7116",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "account_count",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT count(DISTINCT COALESCE(o.grandparent_org_id, o.org_id)) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\n",
+      "answer": {
+        "headline": "Number of accounts: 7,116 accounts.",
+        "columns": [
+          "number of accounts"
+        ],
+        "rows": [
+          {
+            "value": 7116,
+            "value_formatted": "7,116 accounts"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Number of accounts: 7,116 accounts.",
+      "latency_ms": 4996,
+      "timings": {
+        "plan_ms": 4728,
+        "db_ms": 206,
+        "total_ms": 4988
+      },
+      "input_tokens": 5999,
+      "output_tokens": 105,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5999,
+            "output_tokens": 105,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25143,
+            4096
+          ],
+          "charged": [
+            5999,
+            105
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "geo-01",
+      "family": "geography",
+      "principal": {
+        "role": "director",
+        "scope": "Northeast",
+        "wac_authorized": false
+      },
+      "question": "How are the territories in my region performing this quarter?",
+      "status": "answered",
+      "passed": false,
+      "reason": "New York Metro: expected 35689.0, got 38242.0",
+      "category": "wrong",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "territory"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_quarter",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": "Showing paid volume (pack units) by territory for the last quarter. The question asks about 'this quarter' but the latest complete data period available is the last quarter (offsets 1,2,3). Your territory scope will be automatically applied to show only the territories within your authorized region."
+      },
+      "sql": "SELECT z.territory_name AS dim0_id, z.territory_name AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nLEFT JOIN zip_territory z ON z.zip = o.zip\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\nGROUP BY z.territory_name, z.territory_name\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Paid pack units by sales territory, 2 row(s).",
+        "columns": [
+          "sales territory",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": "New York Metro",
+            "dim0_id": "New York Metro",
+            "value": 38242.0,
+            "value_formatted": "38,242 packs"
+          },
+          {
+            "dim0": "New England",
+            "dim0_id": "New England",
+            "value": 35379.0,
+            "value_formatted": "35,379 packs"
+          }
+        ],
+        "row_count": 2,
+        "truncated": false,
+        "scope_note": "Showing data for the Northeast region only.",
+        "period_note": "Reporting window: last quarter \u2014 the three months ending one month back (offsets 1-3), which is the supplied definition of 'last quarter' and is not the previous calendar quarter.",
+        "notes": [
+          "Showing paid volume (pack units) by territory for the last quarter. The question asks about 'this quarter' but the latest complete data period available is the last quarter (offsets 1,2,3). Your territory scope will be automatically applied to show only the territories within your authorized region."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units by sales territory, 2 row(s).",
+      "latency_ms": 4962,
+      "timings": {
+        "plan_ms": 4767,
+        "db_ms": 106,
+        "total_ms": 4956
+      },
+      "input_tokens": 5996,
+      "output_tokens": 186,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5996,
+            "output_tokens": 186,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25131,
+            4096
+          ],
+          "charged": [
+            5996,
+            186
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "prod-01",
+      "family": "product",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How is Zenovax performing this quarter in pack units?",
+      "status": "answered",
+      "passed": false,
+      "reason": "expected 67569.0, got 73221.0",
+      "category": "wrong",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [],
+        "filters": {
+          "product_names": [
+            "ZENOVAX"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_quarter",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": "Interpreting 'this quarter' as the last_quarter window (offsets 1,2,3), which represents the most recent complete 3-month period. 'Pack units' means paid_pack_units, the default volume metric."
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND upper(p.drug_name) = ANY(%s)\n",
+      "answer": {
+        "headline": "Paid pack units: 73,221 packs.",
+        "columns": [
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "value": 73221.0,
+            "value_formatted": "73,221 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: last quarter \u2014 the three months ending one month back (offsets 1-3), which is the supplied definition of 'last quarter' and is not the previous calendar quarter.",
+        "notes": [
+          "Interpreting 'this quarter' as the last_quarter window (offsets 1,2,3), which represents the most recent complete 3-month period. 'Pack units' means paid_pack_units, the default volume metric."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units: 73,221 packs.",
+      "latency_ms": 4037,
+      "timings": {
+        "plan_ms": 3944,
+        "db_ms": 37,
+        "total_ms": 4027
+      },
+      "input_tokens": 5995,
+      "output_tokens": 189,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5995,
+            "output_tokens": 189,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25119,
+            4096
+          ],
+          "charged": [
+            5995,
+            189
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "share-01",
+      "family": "market_share",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "What is our market share for Zenovax in the Docetaxel market?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 1.1377684545650766, got 1.1377684545650766",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "brand_market_share",
+        "dimensions": [],
+        "filters": {
+          "product_names": [
+            "ZENOVAX"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [
+            "Docetaxel"
+          ],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "WITH num AS (\nSELECT SUM(s.pack_units * p.unit_conversion_factor) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND upper(p.drug_name) = ANY(%s) AND p.market_subcategory = ANY(%s)\n), den AS (\nSELECT SUM(s.pack_units * p.unit_conversion_factor) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.mo_offset = ANY(%s) AND p.market_subcategory = ANY(%s) AND p.market_subcategory = ANY(%s)\n)\nSELECT n.value AS numerator, d.value AS denominator,\n       n.value / NULLIF(d.value, 0) AS value\nFROM num n CROSS JOIN den d\n",
+      "answer": {
+        "headline": "Market share is 113.78% (42,170.25 equivalents against a reported market of 37,064 equivalents).",
+        "columns": [
+          "market share"
+        ],
+        "rows": [
+          {
+            "numerator": 42170.25,
+            "denominator": 37064.0,
+            "value": 1.1377684545650766,
+            "value_formatted": "113.78%"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": [
+          "Market share here divides our distributor volume by the reported market total. In this dataset the market source contains only competitor products, so the denominator understates the true total market. Treat these percentages as indicative of relative position, not as a reliable share.",
+          "This value exceeds 100%, which is not a real market share. It means the reported market volume is smaller than our own shipments, so the sources are inconsistent rather than the share being genuine."
+        ]
+      },
+      "alternative": null,
+      "message": "Market share is 113.78% (42,170.25 equivalents against a reported market of 37,064 equivalents).",
+      "latency_ms": 4343,
+      "timings": {
+        "plan_ms": 4206,
+        "db_ms": 64,
+        "total_ms": 4333
+      },
+      "input_tokens": 6001,
+      "output_tokens": 261,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 6001,
+            "output_tokens": 261,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25127,
+            4096
+          ],
+          "charged": [
+            6001,
+            261
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "src-01",
+      "family": "data_source",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "How much free drug did we provide for Carbotrel last month?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 3325.0, got 3325.0",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "pap_volume",
+        "dimensions": [],
+        "filters": {
+          "product_names": [
+            "CARBOTREL"
+          ],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_month",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\nJOIN products p ON p.ndc = s.ndc\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND upper(p.drug_name) = ANY(%s)\n",
+      "answer": {
+        "headline": "Patient assistance (free drug) volume: 3,325 packs.",
+        "columns": [
+          "patient assistance (free drug) volume"
+        ],
+        "rows": [
+          {
+            "value": 3325.0,
+            "value_formatted": "3,325 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: last month \u2014 the most recently completed month.",
+        "notes": [],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Patient assistance (free drug) volume: 3,325 packs.",
+      "latency_ms": 4799,
+      "timings": {
+        "plan_ms": 4727,
+        "db_ms": 5,
+        "total_ms": 4788
+      },
+      "input_tokens": 5997,
+      "output_tokens": 244,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5997,
+            "output_tokens": 244,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25125,
+            4096
+          ],
+          "charged": [
+            5997,
+            244
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "gpo-01",
+      "family": "gpo",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "Compare Onmark vs ION affiliated accounts by total pack units",
+      "status": "answered",
+      "passed": true,
+      "reason": "2 group(s) match",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [
+          "gpo"
+        ],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [
+            "Onmark",
+            "ION"
+          ],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "r3m",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": "Comparing total paid pack units between accounts affiliated with Onmark GPO versus ION GPO over the rolling 3-month period."
+      },
+      "sql": "SELECT o.gpo_name AS dim0_id, o.gpo_name AS dim0_label, SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND o.gpo_name = ANY(%s)\nGROUP BY o.gpo_name, o.gpo_name\nORDER BY value DESC NULLS LAST\nLIMIT 5001\n",
+      "answer": {
+        "headline": "Paid pack units by GPO affiliation, 2 row(s).",
+        "columns": [
+          "GPO affiliation",
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "dim0": "Onmark",
+            "dim0_id": "Onmark",
+            "value": 115341.0,
+            "value_formatted": "115,341 packs"
+          },
+          {
+            "dim0": "ION",
+            "dim0_id": "ION",
+            "value": 93643.0,
+            "value_formatted": "93,643 packs"
+          }
+        ],
+        "row_count": 2,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: r3m \u2014 the rolling 3 months (current month plus the two prior).",
+        "notes": [
+          "Comparing total paid pack units between accounts affiliated with Onmark GPO versus ION GPO over the rolling 3-month period.",
+          "This window includes the current reporting period, which is still accumulating."
+        ],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units by GPO affiliation, 2 row(s).",
+      "latency_ms": 3619,
+      "timings": {
+        "plan_ms": 3438,
+        "db_ms": 125,
+        "total_ms": 3612
+      },
+      "input_tokens": 5995,
+      "output_tokens": 166,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5995,
+            "output_tokens": 166,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25127,
+            4096
+          ],
+          "charged": [
+            5995,
+            166
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "b340-01",
+      "family": "three_forty_b",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "What percentage of our volume comes from 340B accounts this quarter?",
+      "status": "answered",
+      "passed": false,
+      "reason": "expected 0.12266667217182707, got 0.11940338169753016",
+      "category": "wrong",
+      "plan_matched": null,
+      "plan": {
+        "metric": "share_340b",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_quarter",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "WITH num AS (\nSELECT SUM(s.pack_units) AS value\nFROM sales s\nJOIN organizations o ON o.org_id = s.org_id\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s) AND COALESCE(o.is_340b, 0) = 1\n), den AS (\nSELECT SUM(s.pack_units) AS value\nFROM sales s\n\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\n)\nSELECT n.value AS numerator, d.value AS denominator,\n       n.value / NULLIF(d.value, 0) AS value\nFROM num n CROSS JOIN den d\n",
+      "answer": {
+        "headline": "340b share of volume: 11.94%.",
+        "columns": [
+          "340B share of volume"
+        ],
+        "rows": [
+          {
+            "numerator": 62906.0,
+            "denominator": 526836.0,
+            "value": 0.11940338169753016,
+            "value_formatted": "11.94%"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: last quarter \u2014 the three months ending one month back (offsets 1-3), which is the supplied definition of 'last quarter' and is not the previous calendar quarter.",
+        "notes": [],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "340b share of volume: 11.94%.",
+      "latency_ms": 2736,
+      "timings": {
+        "plan_ms": 2572,
+        "db_ms": 106,
+        "total_ms": 2729
+      },
+      "input_tokens": 5996,
+      "output_tokens": 106,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5996,
+            "output_tokens": 106,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25134,
+            4096
+          ],
+          "charged": [
+            5996,
+            106
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    },
+    {
+      "id": "time-01",
+      "family": "periods",
+      "principal": {
+        "role": "exec",
+        "scope": null,
+        "wac_authorized": true
+      },
+      "question": "What were our pack units last month?",
+      "status": "answered",
+      "passed": true,
+      "reason": "expected 203762.0, got 203762.0",
+      "category": "answer",
+      "plan_matched": null,
+      "plan": {
+        "metric": "paid_pack_units",
+        "dimensions": [],
+        "filters": {
+          "product_names": [],
+          "ndcs": [],
+          "strengths": [],
+          "market_categories": [],
+          "market_subcategories": [],
+          "specialties": [],
+          "classifications": [],
+          "account_ids": [],
+          "facility_ids": [],
+          "org_archetypes": [],
+          "gpo_names": [],
+          "org_types": [],
+          "is_340b": "include",
+          "active_only": false,
+          "standalone_only": false,
+          "territories": [],
+          "regions": [],
+          "states": []
+        },
+        "time": {
+          "kind": "named",
+          "named": "last_month",
+          "month_offsets": null,
+          "week_offsets": null,
+          "period_labels": null,
+          "date_from": null,
+          "date_to": null
+        },
+        "comparison": null,
+        "ranking": null,
+        "threshold": null,
+        "rolling": null,
+        "period_over_period": false,
+        "clarification": null,
+        "interpretation": null
+      },
+      "sql": "SELECT SUM(s.pack_units) AS value\nFROM sales s\n\nWHERE s.data_source = ANY(%s) AND s.brand_flag = 1 AND s.mo_offset = ANY(%s)\n",
+      "answer": {
+        "headline": "Paid pack units: 203,762 packs.",
+        "columns": [
+          "paid pack units"
+        ],
+        "rows": [
+          {
+            "value": 203762.0,
+            "value_formatted": "203,762 packs"
+          }
+        ],
+        "row_count": 1,
+        "truncated": false,
+        "scope_note": "Showing company-wide data (all territories).",
+        "period_note": "Reporting window: last month \u2014 the most recently completed month.",
+        "notes": [],
+        "warnings": []
+      },
+      "alternative": null,
+      "message": "Paid pack units: 203,762 packs.",
+      "latency_ms": 3543,
+      "timings": {
+        "plan_ms": 3419,
+        "db_ms": 18,
+        "total_ms": 3534
+      },
+      "input_tokens": 5990,
+      "output_tokens": 107,
+      "usage_known": true,
+      "provider": "bedrock",
+      "planner_attempts": 1,
+      "attempts": [
+        {
+          "ordinal": 1,
+          "kind": "initial",
+          "outcome": "plan",
+          "usage": {
+            "input_tokens": 5990,
+            "output_tokens": 107,
+            "known": true
+          },
+          "error": null,
+          "called": true,
+          "reserved": [
+            25102,
+            4096
+          ],
+          "charged": [
+            5990,
+            107
+          ],
+          "usage_state": "reported"
+        }
+      ],
+      "unknown_usage_calls": 0,
+      "model_calls": 1,
+      "planner_repaired": false
+    }
+  ]
+}
