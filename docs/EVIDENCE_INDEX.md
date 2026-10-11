@@ -8,14 +8,14 @@ detail file, git or the code.
 
 | | SHA | Tree |
 |---|---|---|
-| Executable candidate (what the records measured) | `a786bdaab8510cf747218d013cd70dc5d6f76835` | `dba45c05ce6c14d1be23832d754e3f7a0f275733` |
-| HEAD (`codex/release-defects-oct06`, clean: True) | `09cc4b939560773f68d704c465e4fb88e3092a9e` | `552b5bee6c59cea31458054f10f50a5c540f95b7` |
+| Executable candidate (what the records measured) | `2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259` | `3cecc0b21f7cfedbc98951aab9b2de6ca2a08a7b` |
+| HEAD (`codex/release-defects-oct06`, clean: True) | `b03b15400873772659411ceb477f6aea6c2378fb` | `209e3ba2302708d76c84e309e75ad3ef2164fc38` |
 
 Changed between the candidate and HEAD:
 
 - **application and build** (1): `.gitleaksignore`
 - **documentation** (9): `README.md`, `docs/AWS_STAGING.md`, `docs/EXTERNAL_VERIFICATION_PLAN.md`, `docs/PILOT_DECISION.md`, `docs/QUALIFICATION_2026_10_07.md`, `docs/RELEASE_HANDOFF.md`, `docs/STAGING_PLAN.md`, `docs/TEST_INVENTORY.md` …
-- **evidence data** (45): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-image-a786bda-build-inputs.detail.json`, `evidence/runs/r5-image-a786bda-build-inputs.json`, `evidence/runs/r5-image-a786bda-packages.txt`, `evidence/runs/r5-rc-a786bda-boundary.json`, `evidence/runs/r5-rc-a786bda-browser.json`, `evidence/runs/r5-rc-a786bda-component.detail.json` …
+- **evidence data** (44): `evidence/external.json`, `evidence/ledger.json`, `evidence/runs/r5-image-2dfd2f1-build-inputs.detail.json`, `evidence/runs/r5-image-2dfd2f1-build-inputs.json`, `evidence/runs/r5-image-2dfd2f1-packages.txt`, `evidence/runs/r5-live-regression-haiku45-prompt240.detail.json`, `evidence/runs/r5-live-regression-haiku45-prompt240.json`, `evidence/runs/r5-live-smoke-haiku45-prompt240.detail.json` …
 
 **Needs evidence beyond the candidate's records:** application and build. See the external runs below for what covered them.
 
@@ -28,8 +28,8 @@ Changed between the candidate and HEAD:
 | schema_contract | `1.0.0` |
 | mapping | `1.0.0` |
 | classification_rule | `2.0.0` |
-| prompt | `2.3.0` |
-| prompt_fingerprint | `5dd66431f2ba8230` |
+| prompt | `2.4.0` |
+| prompt_fingerprint | `7a2d26b457fdc6a5` |
 | planner_contract | `2.1.0` |
 | graph | `1.0.0` |
 
@@ -37,33 +37,33 @@ Changed between the candidate and HEAD:
 
 | Record | Status | Result | Measures the candidate |
 |---|---|---|---|
-| `r5-rc-a786bda-boundary.json` | passed | boundary intact | yes |
-| `r5-rc-a786bda-browser.json` | passed |   15 passed (7.2s) | yes |
-| `r5-rc-a786bda-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
-| `r5-rc-a786bda-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a786bda-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a786bda-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
-| `r5-rc-a786bda-gitleaks.json` | passed | [90m12:23PM[0m [32mINF[0m [1mno leaks found[0m | yes |
-| `r5-rc-a786bda-image.json` | passed | {"release": "a786bdaab8510cf747218d013cd70dc5d6f76835", "checks": ["PASS: image builds (81 | yes |
-| `r5-rc-a786bda-ingestion.json` | passed | 177 passed in 18.49s | yes |
-| `r5-rc-a786bda-npm-audit.json` | passed | found 0 vulnerabilities | yes |
-| `r5-rc-a786bda-pip-audit.json` | passed | No known vulnerabilities found | yes |
-| `r5-rc-a786bda-pytest.json` | passed | 2279 passed, 5 warnings in 157.39s (0:02:37) | yes |
-| `r5-rc-a786bda-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 4.85s | yes |
-| `r5-rc-a786bda-security.json` | passed | 450 passed in 50.48s | yes |
-| `r5-rc-a786bda-unit-nodb.json` | passed | 859 passed, 5 warnings in 30.45s | yes |
-| `r5-rc-a786bda-web-build.json` | passed | ✓ built in 209ms | yes |
+| `r5-rc-2dfd2f1-boundary.json` | passed | boundary intact | yes |
+| `r5-rc-2dfd2f1-browser.json` | passed |   15 passed (7.9s) | yes |
+| `r5-rc-2dfd2f1-component.json` | passed | component gate satisfied: 32 passed, none skipped (floor 32) | yes |
+| `r5-rc-2dfd2f1-eval-holdout.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-2dfd2f1-eval-holdout2.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-2dfd2f1-eval-questions.json` | passed |   accuracy and must not be reported as one. | yes |
+| `r5-rc-2dfd2f1-gitleaks.json` | passed | [90m3:01PM[0m [32mINF[0m [1mno leaks found[0m | yes |
+| `r5-rc-2dfd2f1-image.json` | passed | {"release": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259", "checks": ["PASS: image builds (10 | yes |
+| `r5-rc-2dfd2f1-ingestion.json` | passed | 177 passed in 19.31s | yes |
+| `r5-rc-2dfd2f1-npm-audit.json` | passed | found 0 vulnerabilities | yes |
+| `r5-rc-2dfd2f1-pip-audit.json` | passed | No known vulnerabilities found | yes |
+| `r5-rc-2dfd2f1-pytest.json` | passed | 2281 passed, 5 warnings in 174.83s (0:02:54) | yes |
+| `r5-rc-2dfd2f1-release-gate-selftest.json` | passed | 19 passed, 5 warnings in 6.29s | yes |
+| `r5-rc-2dfd2f1-security.json` | passed | 450 passed in 63.96s (0:01:03) | yes |
+| `r5-rc-2dfd2f1-unit-nodb.json` | passed | 861 passed, 5 warnings in 36.74s | yes |
+| `r5-rc-2dfd2f1-web-build.json` | passed | ✓ built in 248ms | yes |
 
 ## What the test suite establishes, by category
 
-From `evidence/runs/r5-rc-a786bda-pytest.junit.xml`: 2279 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
+From `evidence/runs/r5-rc-2dfd2f1-pytest.junit.xml`: 2281 tests, each counted once (the security and ingestion gates are subsets of this run, not added to it).
 
 | Category | Tests | Passed | Not passed | Establishes |
 |---|---:|---:|---:|---|
 | authorization_security | 378 | 378 | 0 | Row and column authorization, identity, sessions, sign-in, request guards, prompt injection, data rights, credentials and provisioning of the security boundary, against PostgreSQL. |
 | deployment_configuration | 27 | 27 | 0 | The deployment source -- Terraform, the publishing workflow, the secret seeding script and the cost estimate -- read as text: what a change would have to remove to open the database, run a privileged container, put a password in plain environment or let CI deploy. No cloud API is called; nothing here establishes that the module plans or applies. |
 | durability_recovery_concurrency | 120 | 120 | 0 | Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas. |
-| evaluation_harness | 112 | 112 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
+| evaluation_harness | 114 | 114 | 0 | The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called. |
 | ingestion_contract | 187 | 187 | 0 | Batch input contract, validation, replay, corrections, quarantine, publication and freshness against PostgreSQL and in unit form. Synthetic and JSON-file sources only. |
 | numerical_oracle | 115 | 115 | 0 | Executes queries and compares numbers with an independent oracle: hand-written SQL or fixture expectations computed outside the compiler. |
 | observability | 60 | 60 | 0 | Spans, metrics, log allowlisting and telemetry bounds, with in-memory exporters, a local receiver and simulated outages. |
@@ -76,9 +76,9 @@ From `evidence/runs/r5-rc-a786bda-pytest.junit.xml`: 2279 tests, each counted on
 
 | Set | Status | Provider | Passed | Failed | Failures |
 |---|---|---|---:|---:|---|
-| `r5-rc-a786bda-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-a786bda-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
-| `r5-rc-a786bda-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
+| `r5-rc-2dfd2f1-eval-holdout.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-2dfd2f1-eval-holdout2.detail.json` | spent | offline | 12 | 0 | — |
+| `r5-rc-2dfd2f1-eval-questions.detail.json` | regression | offline | 38 | 0 | — |
 
 Offline results exercise compilation, authorization, execution and rendering with a
 deterministic planner. They are not natural-language accuracy (`measures_nl_accuracy` is
@@ -399,6 +399,16 @@ With the sign-in page open to everyone, the live staging site sent no Strict-Tra
 - Reproduction on `de4352d`: `r5-staging-headers-reproduced.json` — failed — {"checks": {"cross_site_post_refused": "pass", "director_rev (evidence/probes/staging_live_check.py against https://staging.pharma-copilot.click (image 5536526, infrastructure from facd0d4): 12 checks pass, security_headers fails with all three headers absent)
 - Reproduction on `4c4f5e1`: `r5-staging-headers-tests-reproduced.json` — failed — 1 failed, 26 deselected in 0.06s (Strict xfail run with --runxfail: the HTTPS listener sets none of the three)
 
+### live-prompt-this-quarter-window
+
+The live planner's prompt defined every reporting window but never mapped the phrases users type to them: the offline planner reads 'this quarter' as r3m, and live, Claude Haiku 4.5 and Sonnet 4.5 both read it as last_quarter, so questions about this quarter were answered for a different window (stated in the answer, but not the one the system defines). Prompt 2.3.0 had never run live.
+
+- Fix: `2dfd2f1`
+- Regression on the candidate: `test_prompt_version.py` (5, all pass)
+- Reproduction on `234e8e8`: `r5-live-smoke-haiku45.json` — failed —   written to evals/runs/20261009T180843Z-bedrock-questions.j (Live smoke on Claude Haiku 4.5, prompt 2.3.0: 11/16; all five failures planned last_quarter for 'this quarter' (acc-01, geo-01, prod-01, b340-01, comp-01))
+- Reproduction on `234e8e8`: `r5-live-smoke-sonnet45.json` — failed —   written to evals/runs/20261009T184932Z-bedrock-questions.j (Live smoke on Claude Sonnet 4.5, prompt 2.3.0: 5/9 run (budget stopped five), the same four failures, the same reading)
+- Reproduction on `f61b600`: `r5-prompt-window-phrases-reproduced.json` — failed — 1 failed, 3 deselected in 0.09s (Strict xfail run with --runxfail: the prompt does not map 'this quarter' to r3m)
+
 ## Externally verified (hosted)
 
 - Run [37650229833](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37650229833) on `eb65af3`: **failure** — image job could not resolve trivy-action@0.28.0; test job failed loading the full dataset (PostgreSQL shared memory). Frontend and supply-chain passed
@@ -435,6 +445,7 @@ With the sign-in page open to everyone, the live staging site sent no Strict-Tra
 - Run [37939037102](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37939037102) on `5536526`: **success** — publish-staging. Attempt 1 failed at the publishing role's credentials (the role trusted only the legacy OIDC subject; ledger publish-role-legacy-oidc-subject); attempt 2, after the trust policy from facd0d4 was applied, built, scanned and tested the image and pushed it: sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c. Both attempts approved by the owner in the staging environment
 - Run [37940273033](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37940273033) on `facd0d4`: **success** — all four jobs on the executable candidate facd0d4 (the publish role trusts the subject GitHub sends)
 - Run [37957713810](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810) on `a786bda`: **success** — all four jobs on the executable candidate a786bda (the load balancer adds browser security headers)
+- Run [37976328588](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37976328588) on `2dfd2f1`: **success** — all four jobs on the executable candidate 2dfd2f1 (prompt 2.4.0: time phrases read as the offline planner reads them)
 
 ## Missing artifacts
 
