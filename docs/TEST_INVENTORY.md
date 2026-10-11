@@ -27,13 +27,13 @@ whether an answer is arithmetically right.
 
 | Layer | Command | Tests | Result | Evidence |
 |---|---|---:|---|---|
-| **Unit** | `pytest tests/unit -q` | 859 | pass, no skips | `r5-rc-a786bda-pytest.json` (`a786bda`); without a database too, `r5-rc-a786bda-unit-nodb.json` |
-| **Integration** | `pytest tests/integration -q` | 970 | pass, no skips | `r5-rc-a786bda-pytest.json` (`a786bda`) |
-| **Security** | `pytest tests/security -q --release-gate --min-tests 450` | 450 | pass, strict gate | `r5-rc-a786bda-security.json` (`a786bda`) |
-| **Total (pytest)** | `pytest tests -q --release-gate` | **2279** | pass, strict gate: no skips, no xfails | `r5-rc-a786bda-pytest.json` (`a786bda`) |
-| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-a786bda-component.json` (`a786bda`) |
-| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-a786bda-browser.json` (`a786bda`) |
-| **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-a786bda-eval-*.json` (`a786bda`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
+| **Unit** | `pytest tests/unit -q` | 861 | pass, no skips | `r5-rc-2dfd2f1-pytest.json` (`2dfd2f1`); without a database too, `r5-rc-2dfd2f1-unit-nodb.json` |
+| **Integration** | `pytest tests/integration -q` | 970 | pass, no skips | `r5-rc-2dfd2f1-pytest.json` (`2dfd2f1`) |
+| **Security** | `pytest tests/security -q --release-gate --min-tests 450` | 450 | pass, strict gate | `r5-rc-2dfd2f1-security.json` (`2dfd2f1`) |
+| **Total (pytest)** | `pytest tests -q --release-gate` | **2281** | pass, strict gate: no skips, no xfails | `r5-rc-2dfd2f1-pytest.json` (`2dfd2f1`) |
+| **Browser — component** | `cd web && npm test` | 32 | pass, strict gate | `r5-rc-2dfd2f1-component.json` (`2dfd2f1`) |
+| **Browser — end to end** | `python3 scripts/browser_journeys.py` | 15 | pass, no skips | `r5-rc-2dfd2f1-browser.json` (`2dfd2f1`) |
+| **Model evaluation** | see the table below | 62 checks | 62 pass (offline planner) | `r5-rc-2dfd2f1-eval-*.json` (`2dfd2f1`, offline); `7950e71` had 61 pass / 1 fail (k-07, fixed in step 2) |
 
 Unit and integration counts are what pytest collects, not what anyone
 remembers.
@@ -87,12 +87,14 @@ gate enforces, so the two cannot drift apart without the gate failing.
 
 Separated because they answer different questions and have very different
 standing. The live column is history: it was measured on an earlier build
-and prompt, and prompt 2.3.0 on this branch has not been run live
+and prompt. Prompt 2.4.0 ran live on 9 October on Claude Haiku 4.5 (the owner's choice, for cost):
+**37/38** on the regression set (`r5-live-regression-haiku45-prompt240.json`; the miss, acc-02,
+read "right now" as the current month); the held-out sets have not been run live on it
 ([EVALUATION.md](EVALUATION.md)). Only `holdout2` was ever unseen at the moment it was first run,
 so it is the only figure that is not, to some degree, a measure of work
 done against the questions.
 
-| Suite | Checks | Offline (candidate `a786bda`) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
+| Suite | Checks | Offline (candidate `2dfd2f1`) | Live, **historical** (2026-09-25, commit `7e91f9f`, unversioned prompt before 2.1.0) | Standing |
 |---|---:|---|---|---|
 | `evals/questions.yaml` — regression set | 38 | **38/38** | 37/38 | Developed against. A regression guard, not an accuracy estimate |
 | `evals/holdout.yaml` — held-out set 1 | 12 | **12/12** | 11/12 | Sealed, then run. Fixes were made afterwards, so it is no longer unseen |

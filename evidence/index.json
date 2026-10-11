@@ -1,16 +1,16 @@
 {
- "generated_at": "2026-10-09T16:32:02+00:00",
+ "generated_at": "2026-10-11T00:02:43+00:00",
  "generator": "scripts/evidence_index.py",
  "identity": {
   "head": {
-   "sha": "09cc4b939560773f68d704c465e4fb88e3092a9e",
-   "tree": "552b5bee6c59cea31458054f10f50a5c540f95b7",
+   "sha": "b03b15400873772659411ceb477f6aea6c2378fb",
+   "tree": "209e3ba2302708d76c84e309e75ad3ef2164fc38",
    "branch": "codex/release-defects-oct06",
    "worktree_clean": true
   },
   "candidate": {
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
-   "tree": "dba45c05ce6c14d1be23832d754e3f7a0f275733",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
+   "tree": "3cecc0b21f7cfedbc98951aab9b2de6ca2a08a7b",
    "is_ancestor_of_head": true
   },
   "delta_candidate_to_head": {
@@ -32,49 +32,48 @@
     "evidence data": [
      "evidence/external.json",
      "evidence/ledger.json",
-     "evidence/runs/r5-image-a786bda-build-inputs.detail.json",
-     "evidence/runs/r5-image-a786bda-build-inputs.json",
-     "evidence/runs/r5-image-a786bda-packages.txt",
-     "evidence/runs/r5-rc-a786bda-boundary.json",
-     "evidence/runs/r5-rc-a786bda-browser.json",
-     "evidence/runs/r5-rc-a786bda-component.detail.json",
-     "evidence/runs/r5-rc-a786bda-component.json",
-     "evidence/runs/r5-rc-a786bda-eval-holdout.detail.json",
-     "evidence/runs/r5-rc-a786bda-eval-holdout.json",
-     "evidence/runs/r5-rc-a786bda-eval-holdout2.detail.json",
-     "evidence/runs/r5-rc-a786bda-eval-holdout2.json",
-     "evidence/runs/r5-rc-a786bda-eval-questions.detail.json",
-     "evidence/runs/r5-rc-a786bda-eval-questions.json",
-     "evidence/runs/r5-rc-a786bda-gitleaks.json",
-     "evidence/runs/r5-rc-a786bda-image.json",
-     "evidence/runs/r5-rc-a786bda-ingestion.json",
-     "evidence/runs/r5-rc-a786bda-npm-audit.json",
-     "evidence/runs/r5-rc-a786bda-pip-audit.json",
-     "evidence/runs/r5-rc-a786bda-pytest.json",
-     "evidence/runs/r5-rc-a786bda-pytest.junit.xml",
-     "evidence/runs/r5-rc-a786bda-release-gate-selftest.json",
-     "evidence/runs/r5-rc-a786bda-security.json",
-     "evidence/runs/r5-rc-a786bda-unit-nodb.json",
-     "evidence/runs/r5-rc-a786bda-web-build.json",
-     "evidence/runs/r5-restore-new-cluster-a786bda.json",
-     "evidence/runs/r5-scan-a786bda-trivy-db.json",
-     "evidence/runs/r5-scan-a786bda-trivy-full.json",
-     "evidence/runs/r5-scan-a786bda-trivy-gate.json",
-     "evidence/runs/r5-staging-headers-fixed.json",
-     "evidence/runs/r5-staging-headers-reproduced.json",
-     "evidence/runs/r5-staging-headers-tests-reproduced.json",
-     "evidence/runs/r5-staging-terraform-test-a786bda.json",
-     "evidence/runs/r5-staging-trivy-config-a786bda.json",
-     "evidence/runs/r5-upgrade-compatibility-a786bda.detail.json",
-     "evidence/runs/r5-upgrade-compatibility-a786bda.json",
-     "evidence/runs/walkthrough-2026-10-09/01-sign-in-page.png",
-     "evidence/runs/walkthrough-2026-10-09/02-executive-top-accounts.png",
-     "evidence/runs/walkthrough-2026-10-09/03-executive-revenue.png",
-     "evidence/runs/walkthrough-2026-10-09/04-executive-brand-performance.png",
-     "evidence/runs/walkthrough-2026-10-09/05-executive-signed-out.png",
-     "evidence/runs/walkthrough-2026-10-09/06-director-northeast-revenue-restricted.png",
-     "evidence/runs/walkthrough-2026-10-09/07-director-northeast-territories-in-scope.png",
-     "evidence/runs/walkthrough-2026-10-09/08-director-northeast-signed-out.png"
+     "evidence/runs/r5-image-2dfd2f1-build-inputs.detail.json",
+     "evidence/runs/r5-image-2dfd2f1-build-inputs.json",
+     "evidence/runs/r5-image-2dfd2f1-packages.txt",
+     "evidence/runs/r5-live-regression-haiku45-prompt240.detail.json",
+     "evidence/runs/r5-live-regression-haiku45-prompt240.json",
+     "evidence/runs/r5-live-smoke-haiku45-prompt240.detail.json",
+     "evidence/runs/r5-live-smoke-haiku45-prompt240.json",
+     "evidence/runs/r5-live-smoke-haiku45.detail.json",
+     "evidence/runs/r5-live-smoke-haiku45.json",
+     "evidence/runs/r5-live-smoke-sonnet45.detail.json",
+     "evidence/runs/r5-live-smoke-sonnet45.json",
+     "evidence/runs/r5-prompt-window-phrases-reproduced.json",
+     "evidence/runs/r5-rc-2dfd2f1-boundary.json",
+     "evidence/runs/r5-rc-2dfd2f1-browser.json",
+     "evidence/runs/r5-rc-2dfd2f1-component.detail.json",
+     "evidence/runs/r5-rc-2dfd2f1-component.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-holdout.detail.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-holdout.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-holdout2.detail.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-holdout2.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-questions.detail.json",
+     "evidence/runs/r5-rc-2dfd2f1-eval-questions.json",
+     "evidence/runs/r5-rc-2dfd2f1-gitleaks.json",
+     "evidence/runs/r5-rc-2dfd2f1-image.json",
+     "evidence/runs/r5-rc-2dfd2f1-ingestion.json",
+     "evidence/runs/r5-rc-2dfd2f1-npm-audit.json",
+     "evidence/runs/r5-rc-2dfd2f1-pip-audit.json",
+     "evidence/runs/r5-rc-2dfd2f1-pytest.json",
+     "evidence/runs/r5-rc-2dfd2f1-pytest.junit.xml",
+     "evidence/runs/r5-rc-2dfd2f1-release-gate-selftest.json",
+     "evidence/runs/r5-rc-2dfd2f1-security.json",
+     "evidence/runs/r5-rc-2dfd2f1-unit-nodb.json",
+     "evidence/runs/r5-rc-2dfd2f1-web-build.json",
+     "evidence/runs/r5-restore-new-cluster-2dfd2f1.json",
+     "evidence/runs/r5-scan-2dfd2f1-trivy-db.json",
+     "evidence/runs/r5-scan-2dfd2f1-trivy-full.json",
+     "evidence/runs/r5-scan-2dfd2f1-trivy-gate.json",
+     "evidence/runs/r5-staging-live-2dfd2f1.json",
+     "evidence/runs/r5-staging-terraform-test-2dfd2f1.json",
+     "evidence/runs/r5-staging-trivy-config-2dfd2f1.json",
+     "evidence/runs/r5-upgrade-compatibility-2dfd2f1.detail.json",
+     "evidence/runs/r5-upgrade-compatibility-2dfd2f1.json"
     ]
    },
    "classes_needing_evidence": [
@@ -88,20 +87,20 @@
   "schema_contract": "1.0.0",
   "mapping": "1.0.0",
   "classification_rule": "2.0.0",
-  "prompt": "2.3.0",
-  "prompt_fingerprint": "5dd66431f2ba8230",
+  "prompt": "2.4.0",
+  "prompt_fingerprint": "7a2d26b457fdc6a5",
   "planner_contract": "2.1.0",
   "graph": "1.0.0"
  },
  "datasets": [
   {
-   "dataset_id": "full-56238262863b",
+   "dataset_id": "full-c72d0262d47a",
    "load_mode": "full",
    "fingerprint": "1edc425858a2466a94d43657",
    "database": "pac_release"
   },
   {
-   "dataset_id": "seed-4e1650aaf799",
+   "dataset_id": "seed-fd262cf94aa4",
    "load_mode": "seed",
    "fingerprint": "4fef158affd75813ac877020",
    "database": "pac_release_authtest"
@@ -109,225 +108,225 @@
  ],
  "images": [
   {
-   "file": "r5-rc-a786bda-image.json",
+   "file": "r5-rc-2dfd2f1-image.json",
    "ref": "pharma-analytics-copilot:smoke",
    "inspected_with": "podman",
-   "id": "c8521a6b5658375b6276e93402f3e81c690dc352278a0ab624a381e5b90a6f54",
-   "digest": "sha256:4b5cae8e6eb0ed7b217363673204413e63c3527fea9bed01cf838934decb2d8c",
+   "id": "924061666cb03c8e24ad1f8c1bd3d00e9275a0562cd67d4e88b9493a0e33819b",
+   "digest": "sha256:9fcbbd5dbb5f493d8c56ddae40fe83b8df6b01edcbcf9b50f0463b506ae0cf14",
    "platform": "linux/amd64",
-   "revision_label": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "revision_label": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "note": "id is the local image configuration ID; digest is the local manifest digest reported by the container engine. Neither is a published registry digest."
   }
  ],
  "records": [
   {
-   "file": "evidence/runs/r5-rc-a786bda-boundary.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-boundary.json",
    "claim": "The database security boundary is intact on the freshly provisioned release database",
    "status": "passed",
    "counts": null,
    "summary": "boundary intact",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:17:21+00:00",
+   "recorded_at": "2026-10-09T18:54:51+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-browser.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-browser.json",
    "claim": "The browser journeys pass in real Chromium against a local server",
    "status": "passed",
    "counts": null,
-   "summary": "  15 passed (7.2s)",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "  15 passed (7.9s)",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:14+00:00",
+   "recorded_at": "2026-10-09T19:01:30+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-component.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-component.json",
    "claim": "The component suite passes on Node 24, gated: at least the floor, none skipped, none failed",
    "status": "passed",
    "counts": null,
    "summary": "component gate satisfied: 32 passed, none skipped (floor 32)",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:03+00:00",
+   "recorded_at": "2026-10-09T19:01:18+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-eval-holdout.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-eval-holdout.json",
    "claim": "Held-out set 1, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:22:54+00:00",
+   "recorded_at": "2026-10-09T19:01:06+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-eval-holdout2.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-eval-holdout2.json",
    "claim": "Held-out set 2, offline planner (measurement, spent set)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:22:58+00:00",
+   "recorded_at": "2026-10-09T19:01:11+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-eval-questions.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-eval-questions.json",
    "claim": "Regression set, offline planner (a gate; not natural-language accuracy)",
    "status": "passed",
    "counts": null,
    "summary": "  accuracy and must not be reported as one.",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:22:50+00:00",
+   "recorded_at": "2026-10-09T19:01:02+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-gitleaks.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-gitleaks.json",
    "claim": "No secret in any commit of the history (gitleaks 8.30.1, redacted; .gitleaksignore lists two exact public-fingerprint findings)",
    "status": "passed",
    "counts": null,
-   "summary": "\u001b[90m12:23PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "\u001b[90m3:01PM\u001b[0m \u001b[32mINF\u001b[0m \u001b[1mno leaks found\u001b[0m",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:23+00:00",
+   "recorded_at": "2026-10-09T19:01:40+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-image.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-image.json",
    "claim": "The release image, built from the commit for linux/amd64, passes its journeys on a freshly provisioned database: refusals, provisioning, release identity, readiness, Exec and RAM sign-in and scope, sign-out, sanitised JSON logs, clean stop, and a trivy scan",
    "status": "passed",
    "counts": null,
-   "summary": "{\"release\": \"a786bdaab8510cf747218d013cd70dc5d6f76835\", \"checks\": [\"PASS: image builds (81 s)\", \"PASS: image is labelled with commit a786bdaab8510cf747218d013cd70dc5d6f76835\", \"PASS: image size 305 MB\", \"PASS: image id c8521a6b5658375b6276e93402f3e81c690dc352278a0ab624a381e5b90a6f54 (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release a786bdaab8510cf747218d013cd70dc5d6f76835\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 0 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "{\"release\": \"2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259\", \"checks\": [\"PASS: image builds (101 s)\", \"PASS: image is labelled with commit 2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259\", \"PASS: image size 305 MB\", \"PASS: image id 924061666cb03c8e24ad1f8c1bd3d00e9275a0562cd67d4e88b9493a0e33819b (amd64)\", \"PASS: image platform is linux/amd64\", \"PASS: trivy: no HIGH/CRITICAL vulnerability with a fix available\", \"PASS: refuses to serve with no database\", \"PASS: provisions its own database (roles, schema, policies)\", \"PASS: refuses to serve while holding the owner credential\", \"PASS: /health reports release 2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259\", \"PASS: not ready before any data is published\", \"PASS: UI served from the image\", \"PASS: unauthenticated /api/me is 401\", \"PASS: responses carry a server-generated X-Request-ID\", \"PASS: runs as 'appuser', not root\", \"PASS: no setuid or setgid file\", \"PASS: the pinned RDS CA bundle is in the image\", \"PASS: read-only root: only /app/schema/generated is writable\", \"PASS: seed data loaded by a jobs container\", \"PASS: ready once a dataset is published\", \"PASS: throwaway credentials set for an Exec and a RAM\", \"PASS: an Exec signs in\", \"PASS: the Exec gets a priced answer\", \"PASS: a RAM signs in\", \"PASS: the RAM asking for revenue sees no currency anywhere in the response\", \"PASS: after sign-out the session no longer works\", \"PASS: app logs are sanitised JSON lines (      25 lines)\", \"PASS: stops cleanly on SIGTERM in 1 s (exit 0)\"], \"passed\": 28, \"failed\": 0}",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": [
     "amd64 emulated with Rosetta inside an arm64 podman VM on a developer machine; not a hosted runner and not a deployment",
     "seed data, not the full dataset; offline planner"
    ],
-   "recorded_at": "2026-10-09T16:26:14+00:00",
+   "recorded_at": "2026-10-09T19:05:11+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-ingestion.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-ingestion.json",
    "claim": "Incremental ingestion, its input contract and its observability pass under the strict gate, as CI runs it",
    "status": "passed",
    "counts": {
     "passed": 177
    },
-   "summary": "177 passed in 18.49s",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "177 passed in 19.31s",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:18:32+00:00",
+   "recorded_at": "2026-10-09T18:56:17+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-npm-audit.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-npm-audit.json",
    "claim": "No high or critical vulnerability in the production JavaScript dependencies",
    "status": "passed",
    "counts": null,
    "summary": "found 0 vulnerabilities",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:19+00:00",
+   "recorded_at": "2026-10-09T19:01:35+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-pip-audit.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-pip-audit.json",
    "claim": "No known vulnerability in the hashed Python lock (pip-audit 2.7.3, as CI)",
    "status": "passed",
    "counts": null,
    "summary": "No known vulnerabilities found",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:18+00:00",
+   "recorded_at": "2026-10-09T19:01:34+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-pytest.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-pytest.json",
    "claim": "The full pytest suite passes under the strict release gate, as CI runs it",
    "status": "passed",
    "counts": {
-    "passed": 2279
+    "passed": 2281
    },
-   "summary": "2279 passed, 5 warnings in 157.39s (0:02:37)",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "2281 passed, 5 warnings in 174.83s (0:02:54)",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:21:20+00:00",
+   "recorded_at": "2026-10-09T18:59:23+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-release-gate-selftest.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-release-gate-selftest.json",
    "claim": "The release gate itself rejects unverified runs",
    "status": "passed",
    "counts": {
     "passed": 19
    },
-   "summary": "19 passed, 5 warnings in 4.85s",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "19 passed, 5 warnings in 6.29s",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:22:38+00:00",
+   "recorded_at": "2026-10-09T19:00:48+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-security.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-security.json",
    "claim": "The security suite passes under the strict release gate at its CI floor",
    "status": "passed",
    "counts": {
     "passed": 450
    },
-   "summary": "450 passed in 50.48s",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "450 passed in 63.96s (0:01:03)",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:18:12+00:00",
+   "recorded_at": "2026-10-09T18:55:56+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-unit-nodb.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-unit-nodb.json",
    "claim": "With no PostgreSQL reachable, the whole unit suite passes",
    "status": "passed",
    "counts": {
-    "passed": 859
+    "passed": 861
    },
-   "summary": "859 passed, 5 warnings in 30.45s",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "861 passed, 5 warnings in 36.74s",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:22:01+00:00",
+   "recorded_at": "2026-10-09T19:00:11+00:00",
    "measures_candidate": true
   },
   {
-   "file": "evidence/runs/r5-rc-a786bda-web-build.json",
+   "file": "evidence/runs/r5-rc-2dfd2f1-web-build.json",
    "claim": "The production frontend builds on Node 24 from the locked install",
    "status": "passed",
    "counts": null,
-   "summary": "\u2713 built in 209ms",
-   "sha": "a786bdaab8510cf747218d013cd70dc5d6f76835",
+   "summary": "\u2713 built in 248ms",
+   "sha": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
    "worktree_clean": true,
    "limits": null,
-   "recorded_at": "2026-10-09T16:23:04+00:00",
+   "recorded_at": "2026-10-09T19:01:19+00:00",
    "measures_candidate": true
   }
  ],
  "tests": {
-  "junit": "evidence/runs/r5-rc-a786bda-pytest.junit.xml",
+  "junit": "evidence/runs/r5-rc-2dfd2f1-pytest.junit.xml",
   "by_category": {
    "authorization_security": {
     "tests": 378,
@@ -345,8 +344,8 @@
     "meaning": "Persistence, checkpoints, retries, leases, admission and failure handling in one process (threads and sessions against one database), not across deployed replicas."
    },
    "evaluation_harness": {
-    "tests": 112,
-    "passed": 112,
+    "tests": 114,
+    "passed": 114,
     "meaning": "The evaluation runner, judge, spend budget and live-adapter contract with a recording fake transport. No provider is called."
    },
    "ingestion_contract": {
@@ -389,23 +388,23 @@
   "mapped_but_not_collected": [],
   "files_in_two_categories": [],
   "totals": {
-   "tests": 2279,
-   "passed": 2279
+   "tests": 2281,
+   "passed": 2281
   },
   "record_counts": {
-   "passed": 2279
+   "passed": 2281
   },
   "junit_matches_record": true
  },
  "evaluations": [
   {
-   "set": "r5-rc-a786bda-eval-holdout.detail.json",
+   "set": "r5-rc-2dfd2f1-eval-holdout.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "ab96e7f04dc6fa332a0a5c6fd183a5319fb7e7e338d1fdd45eb1ebbebc4c1917",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.3.0",
-   "dataset_id": "full-56238262863b",
+   "prompt_version": "2.4.0",
+   "dataset_id": "full-c72d0262d47a",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -420,13 +419,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-a786bda-eval-holdout2.detail.json",
+   "set": "r5-rc-2dfd2f1-eval-holdout2.detail.json",
    "question_set_status": "spent",
    "question_set_sha256": "1ab331d1a58ff149ff736533fc9534b44cee40e9b8f9c7d1ab192fbae39405f2",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.3.0",
-   "dataset_id": "full-56238262863b",
+   "prompt_version": "2.4.0",
+   "dataset_id": "full-c72d0262d47a",
    "total": 12,
    "passed": 12,
    "failed": 0,
@@ -441,13 +440,13 @@
    "detail_consistent": true
   },
   {
-   "set": "r5-rc-a786bda-eval-questions.detail.json",
+   "set": "r5-rc-2dfd2f1-eval-questions.detail.json",
    "question_set_status": "regression",
    "question_set_sha256": "8aa6fc8263014553fa2e7968dd7934e11479d06c82b2323bded4505c6bb7e176",
    "provider": "offline",
    "measures_nl_accuracy": false,
-   "prompt_version": "2.3.0",
-   "dataset_id": "full-56238262863b",
+   "prompt_version": "2.4.0",
+   "dataset_id": "full-c72d0262d47a",
    "total": 38,
    "passed": 38,
    "failed": 0,
@@ -2097,6 +2096,67 @@
     }
    ],
    "verified_by": "evidence/runs/r5-staging-headers-fixed.json (a786bda applied: 13 of 13 live checks pass; the load balancer adds Strict-Transport-Security max-age=31536000, X-Content-Type-Options nosniff and X-Frame-Options DENY to every response; the plan after the apply is empty)"
+  },
+  {
+   "id": "live-prompt-this-quarter-window",
+   "title": "The live planner's prompt defined every reporting window but never mapped the phrases users type to them: the offline planner reads 'this quarter' as r3m, and live, Claude Haiku 4.5 and Sonnet 4.5 both read it as last_quarter, so questions about this quarter were answered for a different window (stated in the answer, but not the one the system defines). Prompt 2.3.0 had never run live",
+   "fix_commits": [
+    {
+     "commit": "2dfd2f1",
+     "exists": true,
+     "in_candidate": true,
+     "in_head": true
+    }
+   ],
+   "regression": [
+    {
+     "file": "tests/unit/test_prompt_version.py",
+     "exists": true,
+     "collected": 5,
+     "all_passed_on_candidate": true
+    }
+   ],
+   "reproductions": [
+    {
+     "artifact": "evidence/runs/r5-live-smoke-haiku45.json",
+     "baseline": "234e8e8",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "  written to evals/runs/20261009T180843Z-bedrock-questions.json",
+     "measured": "234e8e83317a",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Live smoke on Claude Haiku 4.5, prompt 2.3.0: 11/16; all five failures planned last_quarter for 'this quarter' (acc-01, geo-01, prod-01, b340-01, comp-01)"
+    },
+    {
+     "artifact": "evidence/runs/r5-live-smoke-sonnet45.json",
+     "baseline": "234e8e8",
+     "kind": "record",
+     "status": "failed",
+     "counts": null,
+     "summary": "  written to evals/runs/20261009T184932Z-bedrock-questions.json",
+     "measured": "234e8e83317a",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Live smoke on Claude Sonnet 4.5, prompt 2.3.0: 5/9 run (budget stopped five), the same four failures, the same reading"
+    },
+    {
+     "artifact": "evidence/runs/r5-prompt-window-phrases-reproduced.json",
+     "baseline": "f61b600",
+     "kind": "record",
+     "status": "failed",
+     "counts": {
+      "failed": 1
+     },
+     "summary": "1 failed, 3 deselected in 0.09s",
+     "measured": "f61b600d3163",
+     "worktree_clean": true,
+     "dirty_files": 0,
+     "note": "Strict xfail run with --runxfail: the prompt does not map 'this quarter' to r3m"
+    }
+   ],
+   "verified_by": "evidence/runs/r5-live-smoke-haiku45-prompt240.json (2dfd2f1, Haiku 4.5: 15/16, every 'this quarter' planned r3m; the remaining failure asked to clarify 'my region' for an executive) and r5-live-regression-haiku45-prompt240.json (2dfd2f1: 37/38; acc-02 read 'right now' as the current month)"
   }
  ],
  "external": {
@@ -2363,6 +2423,14 @@
     "event": "push",
     "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810",
     "note": "all four jobs on the executable candidate a786bda (the load balancer adds browser security headers)"
+   },
+   {
+    "run_id": 37976328588,
+    "commit": "2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259",
+    "conclusion": "success",
+    "event": "push",
+    "url": "https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37976328588",
+    "note": "all four jobs on the executable candidate 2dfd2f1 (prompt 2.4.0: time phrases read as the offline planner reads them)"
    }
   ],
   "not_externally_verified": [

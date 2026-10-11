@@ -1,9 +1,10 @@
 # AWS staging — status
 
-**Status as of 9 October 2026.** Staging is **deployed** in the `pac-staging` account
+**Status as of 10 October 2026.** Staging is **deployed** in the `pac-staging` account
 (us-east-1) under the plan and spend the owner approved ([STAGING_PLAN.md](STAGING_PLAN.md)):
-**https://staging.pharma-copilot.click**, until 16 October. It serves release `5536526` from the registry
-by digest (`sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c`), with the infrastructure from `a786bda`. Each
+**https://staging.pharma-copilot.click**, until 16 October. It serves release `2dfd2f1` from the registry
+by digest (`sha256:e2cb34df3cefcb82a2adc6f42d2ba6907b6d155097d4a9239daca0908d9204ca`), with the infrastructure from `a786bda`, and answers with the live planner
+(Claude Haiku 4.5 on Bedrock, prompt 2.4.0) under a $3 website allowance. Each
 result below says where it ran; "hosted" means on that account. Neither a restricted
 pilot nor production readiness can be claimed ([PILOT_DECISION.md](PILOT_DECISION.md)).
 
@@ -12,8 +13,8 @@ pilot nor production readiness can be claimed ([PILOT_DECISION.md](PILOT_DECISIO
 | Item | State | Identity |
 |---|---|---|
 | Branch on GitHub | `the branch head, after the candidate: evidence and documentation only` (pushed normally; never forced) | `codex/release-defects-oct06` |
-| Executable candidate | `a786bda` | full local release chain: `r5-rc-a786bda-*.json` |
-| Hosted CI on the candidate | all four jobs passed | run [37957713810](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810) |
+| Executable candidate | `2dfd2f1` | full local release chain: `r5-rc-2dfd2f1-*.json` |
+| Hosted CI on the candidate | all four jobs passed | run [37976328588](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37976328588) |
 | `main` | `6b139a7` (pull request #1, merged by the owner on 9 October with a merge commit; its tree is `5536526`'s), protected (read back 9 October): pull request required; checks `test`, `frontend`, `supply-chain`, `image` bound to GitHub Actions (app 15368) and up to date; administrators included; no force-push or deletion; conversations resolved; 0 approvals (one maintainer) | `evidence/external.json` |
 | `staging` environment | required reviewer the owner; administrators cannot bypass; deployments from `main` and `codex/release-*` only | `evidence/external.json` |
 | Registered workflows | `CI` and `publish-staging` (on `main` since #1) | [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), merged |
@@ -34,7 +35,9 @@ retried away:
 | 37936348151 | `5536526` | success | the plan after the apply is empty; the published image's commit |
 | 37939037102 | `5536526` | publish: attempt 1 failure, attempt 2 success | attempt 1: the publish role refused GitHub's token (it trusted the legacy subject; reproduced, fixed in `facd0d4`, applied); attempt 2 pushed `sha256:bf04b0175a27…` |
 | 37940273033 | `facd0d4` | success | the publish role trusts the subject GitHub sends |
-| 37957713810 | `a786bda` | success | the candidate: the load balancer adds browser security headers |
+| 37957713810 | `a786bda` | success | the load balancer adds browser security headers |
+| 37976328588 | `2dfd2f1` | success | the candidate: prompt 2.4.0 reads time phrases as the offline planner does |
+| 37978176436 | `2dfd2f1` | publish: success | owner-approved; pushed `sha256:e2cb34df3cef…`, now serving |
 
 **History.** On 8 October this document said GitHub's copy ended at `69c62de`, the
 last hosted run was 37653591687 and `main` had no protection; all three were true then.
@@ -48,14 +51,14 @@ cleanup are in its README; the plan for approval is [STAGING_PLAN.md](STAGING_PL
 
 | Check | Result | Where | Record |
 |---|---|---|---|
-| Lock read-only, `fmt`, `validate`, mocked plans | passed | CI (`supply-chain`) on `a786bda` | run 37957713810 |
-| 14 mocked plans: the foundation (63 resources), deployable (73), the public sign-in page (+2), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector, an image without a `keep-` tag, a live model without an allowance, a zero price and a wildcard GitHub subject | passed | local | `r5-staging-terraform-test-a786bda.json` |
+| Lock read-only, `fmt`, `validate`, mocked plans | passed | CI (`supply-chain`) on `2dfd2f1` | run 37976328588 |
+| 14 mocked plans: the foundation (63 resources), deployable (73), the public sign-in page (+2), NAT, failover; refusals of a world-open CIDR, a tag for a digest, SSO without a client id, an unpinned collector, an image without a `keep-` tag, a live model without an allowance, a zero price and a wildcard GitHub subject | passed | local | `r5-staging-terraform-test-2dfd2f1.json` |
 | Every address each configuration would create | generated | local | `infra/aws-staging/PLAN_INVENTORY.md` |
 | The real plan, read-only, with the owner's variables | 68 to add, 0 to change, 0 to destroy; every address reconciled with the inventory (`evidence/probes/staging_plan_check.py`) | hosted (plan only) | the probe's count line |
 | Apply: foundation; then image, task definitions, service | 68 added; 10 added; the service at 1 task | hosted, from exact archives of the module | `r5-staging-plan-drift-*.json` |
 | Plan straight after the apply | **was not empty** (two normalisations AWS makes); fixed in `5536526`, then 0/0/0 after every later change | hosted | `r5-staging-plan-drift-reproduced.json` → `-fixed.json` |
-| `trivy config` 0.58.1, with the public sign-in page | only accepted findings (1 HIGH: internet-facing load balancer, open to everyone on 443 and 80 by the owner's decision; 1 MEDIUM: IAM database authentication off; LOW: AWS-managed keys, no Container Insights or Performance Insights) | local, `a786bda` | `r5-staging-trivy-config-a786bda.json` |
-| Security properties from source | passed | CI and local | `r5-rc-a786bda-pytest.json` |
+| `trivy config` 0.58.1, with the public sign-in page | only accepted findings (1 HIGH: internet-facing load balancer, open to everyone on 443 and 80 by the owner's decision; 1 MEDIUM: IAM database authentication off; LOW: AWS-managed keys, no Container Insights or Performance Insights) | local, `2dfd2f1` | `r5-staging-trivy-config-2dfd2f1.json` |
+| Security properties from source | passed | CI and local | `r5-rc-2dfd2f1-pytest.json` |
 
 Lifecycle, designed before the first teardown and verified only on AWS (STAGING_PLAN.md,
 stage 8): ECR retains `keep-*` images (up to 9,999 of them; a lifecycle preview confirms
@@ -78,8 +81,8 @@ questions at the `us.` profile's list rates. Budgets alert; they do not cap.
 
 | Item | State |
 |---|---|
-| Image | published by `publish-staging` (run 37939037102, attempt 2) from `5536526`: built for linux/amd64 without a cache, scanned, its hardened journeys run, then pushed; the registry's manifest checked against the tested image |
-| Registry digest | `sha256:bf04b0175a274fb3d7b62b13edc0c9c51098379d56f3d7e675e5042d9f90057c`, tags `5536526…` and `keep-20261009-5536526` |
+| Image | serving: published by `publish-staging` (run 37978176436) from `2dfd2f1`; before it, run 37939037102 (attempt 2) from `5536526`, kept as the recovery image. Each built for linux/amd64 without a cache, scanned, its hardened journeys run, then pushed; the registry's manifest checked against the tested image |
+| Registry digest | serving `sha256:e2cb34df3cefcb82a2adc6f42d2ba6907b6d155097d4a9239daca0908d9204ca` (`keep-20261010-2dfd2f1`); recovery `sha256:bf04b0175a27…` (`keep-20261009-5536526`) |
 | Retention | the lifecycle preview, with the `keep-` tag on, lists no image for expiry |
 | Publishing identity | role `pac-staging-github-publish`, trusted only for this repository's `staging` environment in the subject format GitHub sends; pushes images and nothing else |
 | Deploying identity | the owner's IAM Identity Center session (administrator set, one hour), applying reviewed plans from exact archives of the module; state in a versioned, encrypted S3 bucket usable only by the account's two Identity Center roles |
@@ -99,7 +102,7 @@ Local results are named as local; "hosted" is filled only by a run on AWS.
 | Proxy trust | untrusted, 20 failures from other clients refuse a user's password (429); trusted, accepted (`128c558`); a forged `X-Forwarded-For` cannot choose the client (guard test) | pass (local proxy) | **not yet run**: needs a second network |
 | Cookies and sign-out | Secure, HttpOnly, SameSite=Lax over HTTPS; sign-out shows the sign-in form only once the server has ended the session, never presents an unconfirmed sign-out as done, and leaves no figure, question or conversation id of the first user (15 journeys, `7a1a2bb`) | pass (local) | **pass** for cookies: `Secure; HttpOnly; SameSite=lax; Path=/` at sign-in and sign-out, and sign-out ends the session (live check). The 15 journeys were not run against the site |
 | OIDC | the security suite against an in-process provider | pass (local) | blocked: no registration with a real provider |
-| Model (Bedrock) | offline planner only; the website's shared allowance (one limit for every user, worker and task, enforced before each call) passes its tests with a fake model transport (`r5-website-allowance-fixed.json`) | allowance: pass (local) | **blocked**: $5 approved; the account's Anthropic use-case form not yet submitted |
+| Model (Bedrock) | the website's shared allowance (one limit for every user, worker and task, enforced before each call) passes its tests with a fake model transport (`r5-website-allowance-fixed.json`) | allowance: pass (local) | **pass**: the site answers with Claude Haiku 4.5 (AWS's own metrics count the calls; no errors), the task role may invoke only that model, the $3 allowance is configured with list prices |
 | Metrics and alerts | local collector and Prometheus; 588 series per process measured | pass (local) | blocked; traces go only to a debug exporter |
 
 ## On AWS, in addition to STAGING_VERIFICATION.md
@@ -121,7 +124,7 @@ stack, each local proof above becomes a hosted one as follows; record each with
 ## SUID/SGID and the eight Debian advisories
 
 The setuid/setgid assertion is kept in the image smoke and CI's image job. The images built
-from `5536526` (published) and `a786bda` have none. Its unfiltered scan (trivy 0.58.1, database of 2026-10-08 19:05Z)
+from `5536526`, `2dfd2f1` (both published) and `a786bda` have none. Its unfiltered scan (trivy 0.58.1, database of 2026-10-08 19:05Z)
 matches `e551650`'s exactly: 164 findings, the same 8 HIGH advisories, none fixable in
 Debian, none in Python packages, each reviewed against the deployed configuration in
 [VULNERABILITY_TRIAGE.md](VULNERABILITY_TRIAGE.md).
@@ -129,7 +132,7 @@ Debian, none in Python packages, each reviewed against the deployed configuratio
 ## Live checks
 
 `evidence/probes/staging_live_check.py`, over HTTPS from outside AWS (the tester's
-network): HTTP redirects to HTTPS; `/health` names `5536526`; `/ready`; an unknown account
+network): HTTP redirects to HTTPS; `/health` names the release (`2dfd2f1` now); `/ready`; an unknown account
 and a cross-site sign-in refused; U001 (executive) sees the full dataset (2,000,000 sales
 rows), gets a revenue answer, and is signed out after signing out; U003 (a regional
 director without pricing) asking for revenue gets volume with the restriction stated and
@@ -137,6 +140,10 @@ no currency or price column (the evaluation's own rule, which fails on the execu
 answer), and a scoped volume answer. **13 of 13 pass** (`r5-staging-headers-fixed.json`),
 including the browser security headers the load balancer now adds: the first run found
 none of them (`r5-staging-headers-reproduced.json`).
+
+With the live planner on (`2dfd2f1`), the same 13 pass (`r5-staging-live-2dfd2f1.json`), and
+"this quarter" is answered for the rolling three months (Zenovax: 67,569 packs, the expected
+figure; 73,221 before the fix). Live evaluations on 9 October, in the owner's budget ($0.74 of $2): Claude Haiku 4.5 with prompt 2.3.0 scored 11/16 on the smoke run, every failure reading "this quarter" as the last completed quarter; Claude Sonnet 4.5 made the same reading (5/9 run). Prompt 2.4.0 (`2dfd2f1`) carries the offline planner's phrase table: Haiku 4.5 then scored 15/16 on the smoke run and **37/38 on the full regression set** (`r5-live-regression-haiku45-prompt240.json`). Live results vary between runs, and the regression set was developed against: a regression guard, not an accuracy estimate.
 
 A walkthrough of the live site, as eight screenshots taken by Chromium through the public
 hostname, is kept in [`evidence/runs/walkthrough-2026-10-09/`](../evidence/runs/walkthrough-2026-10-09/):
@@ -150,15 +157,16 @@ New England, which sum to that total); and sign-out for both.
 | Gate | Status |
 |---|---|
 | Local release chain on the candidate | **pass** |
-| Hosted CI on the candidate | **pass** (run 37957713810) |
+| Hosted CI on the candidate | **pass** (run 37976328588) |
 | Branch protection and the `staging` environment | **pass**; the environment's reviewer approved both publishing attempts |
 | Release integration | **pass**: #1 merged by the owner |
+| Live model | **pass**: Claude Haiku 4.5, prompt 2.4.0; 37/38 on the regression set live; $0.74 of the $2 evaluation budget |
 | Infrastructure validated and planned (mocked); real plan; apply | **pass**; the plan after the first apply was not empty (fixed in `5536526`), and after every apply since it is |
 | Image in a registry by digest; deployment; URL | **pass** |
 | RDS restricted administrator; verified TLS; hardened runtime; cookies | **pass** on AWS (TLS negative run outstanding) |
 | Proxy trust from two networks; the sign-in page from outside `allowed_cidrs` | **not yet run** |
 | SUID/SGID assertion; eight advisories | **pass**; triage owner not named, expires 2026-11-07 |
-| Live model, real IdP, real feed, hosted telemetry, managed restore, failover | **blocked** |
+| Real IdP, real feed, hosted telemetry, managed restore, failover; held-out sets live | **blocked** / not run |
 | Restricted pilot / production | **NO-GO** ([PILOT_DECISION.md](PILOT_DECISION.md)) |
 
 ## What is needed next
@@ -166,8 +174,6 @@ New England, which sum to that total); and sign-out for both.
 1. **From outside the allowed address** (a phone on mobile data): the sign-in page
    loads; with a second network, the proxy-trust check above.
 2. **Reviewers**: their names, addresses and scope, for `seed-secrets.sh --reviewers`.
-3. **Live model**: the account's Anthropic use-case form; then `llm_provider =
-   "bedrock"` with the $3 website allowance, and the evaluation within its $2 caps.
-4. **A walkthrough** of the live site before teardown; **teardown by 16 October**
+3. **A walkthrough** of the live site before teardown; **teardown by 16 October**
    (`deletion_protection = false`, a final-snapshot label, then destroy; the hosted
    zone, kept snapshot and images as decided).

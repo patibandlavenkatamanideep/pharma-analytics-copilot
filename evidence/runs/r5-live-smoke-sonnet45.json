@@ -1,0 +1,72 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-09T18:49:32+00:00",
+  "claim": "Live smoke evaluation of the planner on Claude Sonnet 4.5 (us. profile, pac-staging), the first question of each of the 14 families, with what remained of the owner's evaluation budget after the Haiku 4.5 run: 103,190 input and 28,043 output tokens (200,000 / 30,000 in all; $2 approved)",
+  "application": {
+    "sha": "234e8e83317a2f3cdc5964a92a6fa69ecfccb912",
+    "tree": "b7e9403b2e0708eb4e455823b684669069930a3f",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.3.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "bedrock",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "/Users/manideep/.venvs/pac-release/bin/python",
+      "scripts/run_evals.py",
+      "--provider",
+      "bedrock",
+      "--smoke",
+      "--max-input-tokens",
+      "103190",
+      "--max-output-tokens",
+      "28043"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": {
+      "AWS_PROFILE": "<set, value withheld>",
+      "PAC_LLM_PROVIDER": "bedrock",
+      "PAC_BEDROCK_MODEL_ID": "<set, value withheld>",
+      "PAC_LLM_INPUT_USD_PER_MTOK": "<set, value withheld>",
+      "PAC_LLM_OUTPUT_USD_PER_MTOK": "<set, value withheld>"
+    },
+    "seed": null,
+    "duration_s": 40.29
+  },
+  "outcome": {
+    "status": "failed",
+    "exit_code": 1,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "  written to evals/runs/20261009T184932Z-bedrock-questions.json"
+  },
+  "artifacts": [],
+  "limits": [
+    "14 questions, one per family; a smoke run, not an accuracy estimate",
+    "the planner was developed against Claude Opus 4.5"
+  ]
+}

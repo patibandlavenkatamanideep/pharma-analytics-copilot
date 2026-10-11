@@ -14,7 +14,8 @@ jobs on `e101db3`, run 37920515182 on `fb415ca` (the website's model allowance),
 37933355116 and 37933360426 on `d004a20` (reviewers' own accounts and the owner-gated public
 sign-in page), runs 37936348151 and 37936356463 on `5536526` (the staging plan after the apply is empty;
 its image is the one published, run 37939037102), 37940273033 on `facd0d4` (the publish
-role), and 37957713810 on the executable candidate `a786bda` (browser security headers;
+role), 37957713810 on `a786bda` (browser security headers), and 37976328588 on the executable
+candidate `2dfd2f1` (prompt 2.4.0;
 `evidence/external.json` lists every run). The
 procedure, for each later candidate:
 
@@ -82,7 +83,7 @@ CI builds the image with `push: false`; nothing is published. A release needs:
 
 **Needs:** AWS credentials with Bedrock access to the configured model, the contracted
 per-million-token rates (`PAC_LLM_INPUT_USD_PER_MTOK`, `PAC_LLM_OUTPUT_USD_PER_MTOK`), and
-an approved cap for each run. Prompt **2.3.0**, fingerprint `5dd66431f2ba8230`, planner
+an approved cap for each run. Prompt **2.4.0**, fingerprint `7a2d26b457fdc6a5`, planner
 contract 2.1.0; recorded in every run.
 
 | Run | Command | Token caps (input / output) | Pass criterion |

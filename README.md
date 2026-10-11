@@ -2,10 +2,11 @@
 
 > **Staging is live until 16 October 2026: https://staging.pharma-copilot.click.** Anyone may
 > reach the sign-in page; only accounts the owner approves can sign in (there
-> is no sign-up). It runs release `5536526` (image `sha256:bf04b0175a27…`) on AWS in
+> is no sign-up). It runs release `2dfd2f1` (image `sha256:e2cb34df3cef…`) on AWS in
 > a dedicated account (ECS Fargate, RDS PostgreSQL, an HTTPS load balancer),
-> with the full 2,000,000-row synthetic dataset and the offline planner (no
-> live model yet). It is a review environment, not a pilot and not
+> with the full 2,000,000-row synthetic dataset and the live planner (Claude
+> Haiku 4.5 on Bedrock, prompt 2.4.0, a $3 website allowance). It is a review
+> environment, not a pilot and not
 > production. Where things stand: **[`docs/AWS_STAGING.md`](docs/AWS_STAGING.md)**;
 > the plan the owner approved: [`docs/STAGING_PLAN.md`](docs/STAGING_PLAN.md); the
 > go/no-go: [`docs/PILOT_DECISION.md`](docs/PILOT_DECISION.md); the evidence:
@@ -18,7 +19,7 @@
 >
 > `main` holds the release line ([pull request #1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1), merged by the
 > owner on 9 October); later work on `codex/release-defects-oct06` reaches it by
-> pull request. The executable candidate, `a786bda`, passed the full local release
+> pull request. The executable candidate, `2dfd2f1`, passed the full local release
 > chain and all four hosted CI jobs.
 
 A conversational analytics assistant over a 2,000,000-row pharmaceutical sales
@@ -270,9 +271,9 @@ Recorded rather than rounded off. Full detail in
 
 | Gap | Effect today |
 |---|---|
-| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt. Prompt 2.3.0 on this branch has not been run live; it needs Bedrock access and an approved token and dollar budget ([EVALUATION.md](docs/EVALUATION.md)) |
+| Live accuracy of the current prompt | The figures above are an earlier, unversioned prompt on Claude Opus 4.5. Prompt 2.4.0 has been run live on Claude Haiku 4.5 (the owner's choice, for cost): 37/38 on the regression set, a guard rather than an estimate ([TEST_INVENTORY.md](docs/TEST_INVENTORY.md#model-evaluation-by-suite)); the held-out sets have not been run live on it |
 | One held-out miss, deliberately not fixed | "Which health systems have the most facilities?" resolves to `paid_pack_units` instead of `facility_count`. Fixing it would turn the held-out set into another development set |
-| Not deployed; staging prepared, not applied | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md): the first stage is one task and a Single-AZ database with synthetic data and the offline planner, so it shows the AWS infrastructure, not live NL2SQL, redundancy or latency under concurrency ([DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven)) |
+| Staging is a review environment | [`docs/AWS_STAGING.md`](docs/AWS_STAGING.md): one task and a Single-AZ database with synthetic data, until 16 October: it shows the AWS infrastructure and live NL2SQL, not redundancy or latency under concurrency ([DESIGN.md §12](DESIGN.md#12-status-and-what-is-not-yet-proven)) |
 
 This is not called production-ready while those remain.
 

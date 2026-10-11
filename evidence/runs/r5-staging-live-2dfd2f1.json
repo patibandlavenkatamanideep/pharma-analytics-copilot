@@ -1,0 +1,64 @@
+{
+  "evidence_schema_version": "1.1.0",
+  "recorded_at": "2026-10-11T00:00:48+00:00",
+  "claim": "At 4038723, against https://staging.pharma-copilot.click serving 2dfd2f1 (sha256:e2cb34df3cef..., prompt 2.4.0) with the live planner on Claude Haiku 4.5 under the $3 website allowance: all 13 live checks pass",
+  "application": {
+    "sha": "40387232e1fc671dd257e668043a86f2981dc762",
+    "tree": "612b326353ea57ec6262f5fe41fa24e21fe99451",
+    "branch": "codex/release-defects-oct06",
+    "worktree_clean": true,
+    "dirty_paths": [],
+    "dirty_digests": null
+  },
+  "versions": {
+    "metric_registry": "1.5.0",
+    "metric_registry_digest": "0d7d9c41e3ad7392",
+    "policy": "1.0.0",
+    "schema_contract": "1.0.0",
+    "mapping": "1.0.0",
+    "classification_rules": "2.0.0",
+    "prompt": "2.4.0",
+    "planner": "2.1.0",
+    "graph": "1.0.0",
+    "suite": null,
+    "oracle": null
+  },
+  "dataset": null,
+  "environment": {
+    "provider_mode": "offline",
+    "provider_model_id": null,
+    "python": "3.13.2",
+    "postgresql": "psql (PostgreSQL) 16.14 (Homebrew)",
+    "os": "Darwin 25.2.0 arm64",
+    "cpu_count": 10,
+    "container": false,
+    "notes": null
+  },
+  "command": {
+    "argv": [
+      "env",
+      "AWS_PROFILE=pac-staging-admin",
+      "/opt/homebrew/bin/python3",
+      "evidence/probes/staging_live_check.py",
+      "--url",
+      "https://staging.pharma-copilot.click",
+      "--test-users-secret",
+      "arn:aws:secretsmanager:us-east-1:069519367083:secret:pac-staging/g1/test-users-KORXwx"
+    ],
+    "cwd_relative": ".",
+    "env_overrides": null,
+    "seed": null,
+    "duration_s": 9.11
+  },
+  "outcome": {
+    "status": "passed",
+    "exit_code": 0,
+    "counts": null,
+    "blocked_reason": null,
+    "summary": "{\"checks\": {\"cross_site_post_refused\": \"pass\", \"director_revenue_no_pricing\": \"pass\", \"director_signs_in\": \"pass\", \"director_volume_scoped\": \"pass\", \"exec_revenue_answered\": \"pass\", \"exec_sees_full_dataset\": \"pass\", \"exec_signs_in\": \"pass\", \"health\": \"pass\", \"http_redirects_to_https\": \"pass\", \"ready\": \"pass\", \"security_headers\": \"pass\", \"signed_out_after_logout\": \"pass\", \"unknown_account_refused\": \"pass\"}, \"facts\": {\"dataset_mode\": \"full\", \"dataset_rows\": {\"organizations\": 40000, \"products\": 40, \"sales\": 2000000, \"users\": 23, \"zip_territory\": 29728}, \"director_revenue_status\": \"answered\", \"director_volume_status\": \"answered\", \"exec_revenue_status\": \"answered\", \"exec_role\": \"exec\", \"release\": \"2dfd2f1f01cc6ddcce7fdf053ca45f86af8ba259\", \"security_headers\": {\"Strict-Transport-Security\": \"max-age=31536000\", \"X-Content-Type-Options\": \"nosniff\", \"X-Frame-Options\": \"DENY\"}}, \"failed\": []}"
+  },
+  "artifacts": [],
+  "limits": [
+    "one client network (the tester's allowed address); test users U001 and U003; three questions through the live model"
+  ]
+}

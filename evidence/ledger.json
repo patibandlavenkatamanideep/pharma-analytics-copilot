@@ -747,6 +747,35 @@
       ],
       "verified_by": "evidence/runs/r5-staging-headers-fixed.json (a786bda applied: 13 of 13 live checks pass; the load balancer adds Strict-Transport-Security max-age=31536000, X-Content-Type-Options nosniff and X-Frame-Options DENY to every response; the plan after the apply is empty)",
       "note": "found by checking the deployed site; a load-balancer setting, no image change. A Content-Security-Policy is not yet set: it must first be tested against the frontend"
+    },
+    {
+      "id": "live-prompt-this-quarter-window",
+      "title": "The live planner's prompt defined every reporting window but never mapped the phrases users type to them: the offline planner reads 'this quarter' as r3m, and live, Claude Haiku 4.5 and Sonnet 4.5 both read it as last_quarter, so questions about this quarter were answered for a different window (stated in the answer, but not the one the system defines). Prompt 2.3.0 had never run live",
+      "fix_commits": [
+        "2dfd2f1"
+      ],
+      "regression_files": [
+        "tests/unit/test_prompt_version.py"
+      ],
+      "reproductions": [
+        {
+          "artifact": "evidence/runs/r5-live-smoke-haiku45.json",
+          "baseline": "234e8e8",
+          "note": "Live smoke on Claude Haiku 4.5, prompt 2.3.0: 11/16; all five failures planned last_quarter for 'this quarter' (acc-01, geo-01, prod-01, b340-01, comp-01)"
+        },
+        {
+          "artifact": "evidence/runs/r5-live-smoke-sonnet45.json",
+          "baseline": "234e8e8",
+          "note": "Live smoke on Claude Sonnet 4.5, prompt 2.3.0: 5/9 run (budget stopped five), the same four failures, the same reading"
+        },
+        {
+          "artifact": "evidence/runs/r5-prompt-window-phrases-reproduced.json",
+          "baseline": "f61b600",
+          "note": "Strict xfail run with --runxfail: the prompt does not map 'this quarter' to r3m"
+        }
+      ],
+      "verified_by": "evidence/runs/r5-live-smoke-haiku45-prompt240.json (2dfd2f1, Haiku 4.5: 15/16, every 'this quarter' planned r3m; the remaining failure asked to clarify 'my region' for an executive) and r5-live-regression-haiku45-prompt240.json (2dfd2f1: 37/38; acc-02 read 'right now' as the current month)",
+      "note": "both verification records are status failed because one question in each did not pass; neither is the defect fixed here. Live results vary between runs: geo-01 clarified in the smoke run and passed in the regression run"
     }
   ],
   "replay_method": "evidence/probes/replay_on_baseline.sh: the candidate's tests/ run against application code at the baseline (record names the copied files by digest; JUnit sanitised). evidence/probes/startup_refusal_on_baseline.py: the baseline app judged by the baseline CI's own grep."
