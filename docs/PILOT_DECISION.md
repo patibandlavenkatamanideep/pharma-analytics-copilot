@@ -9,7 +9,7 @@
 No result below is inferred from local test counts; each says where it ran.
 
 **Head.** Branch `codex/release-defects-oct06` on GitHub. Executable candidate
-**`a786bda`** (the last commit changing code, tests, configuration, workflow or build
+**`2dfd2f1`** (the last commit changing code, tests, configuration, workflow or build
 inputs); later commits change documentation, evidence and `.gitleaksignore` only.
 Release integration pull request [#1](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/pull/1) was merged by the owner on
 9 October (merge commit `6b139a7`); later work reaches `main` by pull request.
@@ -27,25 +27,25 @@ owner's own actions.
 | | Result | Where it ran | Identity |
 |---|---|---|---|
 | **Independently verified** | | | |
-| CI, all four jobs, on the candidate | passed: `test` (strict suite, security 450, ingestion, offline evaluations, browser journeys), `frontend`, `supply-chain` (audits, secret scan, Terraform lock, fmt, validate, mocked plans), `image` (build, scan, hardened journeys) | GitHub Actions | run [37957713810](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37957713810), `a786bda` |
-| Publishing | CI verified on `5536526`; image built, scanned, journeys run, pushed, registry manifest checked | GitHub Actions, owner-approved environment | run 37939037102 (attempt 2), `sha256:bf04b0175a27…` |
+| CI, all four jobs, on the candidate | passed: `test` (strict suite, security 450, ingestion, offline evaluations, browser journeys), `frontend`, `supply-chain` (audits, secret scan, Terraform lock, fmt, validate, mocked plans), `image` (build, scan, hardened journeys) | GitHub Actions | run [37976328588](https://github.com/patibandlavenkatamanideep/pharma-analytics-copilot/actions/runs/37976328588), `2dfd2f1` |
+| Publishing | CI verified on the commit; image built, scanned, journeys run, pushed, registry manifest checked | GitHub Actions, owner-approved environment | run 37978176436, `2dfd2f1`, `sha256:e2cb34df3cef…` (serving); run 37939037102, `5536526` (recovery) |
 | Staging on AWS | deployed from approved, reconciled plans; database tasks exit 0 (full dataset, boundary intact); 13 of 13 live checks over HTTPS | `pac-staging`, us-east-1 | [AWS_STAGING.md](AWS_STAGING.md), `r5-staging-headers-fixed.json` |
 | Branch protection on `main` | pull request required; the four checks, from GitHub Actions, up to date; administrators included; no force-push or deletion; conversations resolved; 0 approvals (one maintainer) | GitHub API, read back | `evidence/external.json` |
 | `staging` environment | required reviewer the owner; administrators cannot bypass; `main` and `codex/release-*` only | GitHub API, read back | `evidence/external.json` |
 | **Reported (local, this machine)** | | | |
-| Release chain on the candidate | passed every gate (the same suites as CI, plus the unit tests without a database and the gate's self-test) | macOS arm64, PostgreSQL 16.14, podman (linux/amd64 under emulation) | `r5-rc-a786bda-*.json` |
+| Release chain on the candidate | passed every gate (the same suites as CI, plus the unit tests without a database and the gate's self-test) | macOS arm64, PostgreSQL 16.14, podman (linux/amd64 under emulation) | `r5-rc-2dfd2f1-*.json` |
 | Image | built, scanned (8 HIGH base-image advisories, none fixable, none reachable in the deployed configuration), 28 hardened checks | podman, local | config `c30ad1e871e6…`; not a registry digest |
 | Sign-out | 4 scenarios under a controlled network: abandoned, applied but unanswered, refused, straight to another user | Chromium, local server | `r5-signout-refused-fixed.json` |
 | RDS restricted administrator; verified TLS; proxy trust | pass (emulated administrator; private CA; local proxy) | local | `r5-rds-admin-fixed.json`, `r5-db-tls-verify-full.json`, `r5-proxy-client-address-fixed.json` |
-| New-cluster restore; upgrade from `7950e71` | pass | local clusters | `r5-restore-new-cluster-a786bda.json`, `r5-upgrade-compatibility-a786bda.json` |
-| Staging plans | 63 resources for the foundation, 73 deployable, +2 with the public sign-in page; 14 configurations planned and refused as designed | mocked provider (also in CI) | `r5-staging-terraform-test-a786bda.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
+| New-cluster restore; upgrade from `7950e71` | pass | local clusters | `r5-restore-new-cluster-2dfd2f1.json`, `r5-upgrade-compatibility-2dfd2f1.json` |
+| Staging plans | 63 resources for the foundation, 73 deployable, +2 with the public sign-in page; 14 configurations planned and refused as designed | mocked provider (also in CI) | `r5-staging-terraform-test-2dfd2f1.json`, `infra/aws-staging/PLAN_INVENTORY.md` |
 | Cost | ~$96/month low-cost; ~$213/month during failover tests | AWS public price list, us-east-1 | `infra/aws-staging/cost/ESTIMATE.md` |
 | **Blocked** | | | |
 | A pull request with a failing check being blocked | the first real one is #1; not yet observed failing | — | — |
 | The sign-in page from outside `allowed_cidrs`; proxy trust from two networks; the TLS negative run | not yet run on AWS | — | — |
 | Real IdP role mapping; cross-user checks on staging | no IdP registration; no staging | — | — |
 | RDS provisioning, ingestion and freshness on AWS | no staging; no feed samples | — | — |
-| Live-model accuracy | $5 approved; the account's Anthropic use-case form not yet submitted | — | — |
+| Live-model accuracy on unseen questions | the held-out sets not run live on prompt 2.4.0 | — | — |
 | Telemetry and alert delivery | no staging; traces would go to a debug exporter only | — | — |
 | Managed point-in-time restore; release-pair rollback on AWS; failover | no staging; Single-AZ in the first stage | — | — |
 
@@ -86,7 +86,7 @@ delegated; where independence is required, a second named person is needed.
 |---|---|---|
 | Three hosted checks outstanding | Venkata Manideep | the sign-in page from a phone on mobile data; a second network for proxy trust; the TLS negative run |
 | Staging must end by 16 October | Venkata Manideep | a walkthrough, then teardown (STAGING_PLAN.md, stage 9) |
-| No live-model evaluation of prompt 2.3.0 | Venkata Manideep | submit the Anthropic use-case form in `pac-staging`; the $2 evaluation follows |
+| Live accuracy beyond the regression set | Venkata Manideep | prompt 2.4.0 on Haiku 4.5 scored 37/38 on the set it was developed against; the held-out sets and an independent holdout have not been run live |
 | No independent holdout | an independent author — **unassigned** | someone who has not seen the development sets (`evals/packet/`) |
 | No real identity provider | Venkata Manideep with the IdP administrator — **unassigned** | client registration and role mapping |
 | No real feed | the source-system owner — **unassigned** | samples, control totals, source contract |

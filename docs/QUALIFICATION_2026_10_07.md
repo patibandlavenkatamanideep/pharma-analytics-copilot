@@ -808,3 +808,21 @@ offline checks, audits, the image's 28 checks with findings and packages identic
 `fb415ca`'s, restore drill, upgrade compatibility, 14 mocked Terraform plans, trivy config
 with the public sign-in page), and hosted CI passed on it (run 37957713810). The site serves
 `5536526`'s image; `a786bda` changes only the staging module and its tests since then.
+
+**The live planner (9-10 October).** The owner chose Claude Haiku 4.5 over Opus 4.5 for cost
+($1.10 / $5.50 per million tokens on the `us.` profile against $5.50 / $27.50, from the AWS price
+list). With prompt 2.3.0 the live smoke run scored 11/16: every failure read "this quarter" as
+the last completed quarter, and Claude Sonnet 4.5 read it the same way (5/9 run, the budget
+stopping the rest) -- the prompt defined the windows but never mapped the phrases users type,
+which the offline planner does (`r5-live-smoke-haiku45.json`, `r5-live-smoke-sonnet45.json`; a
+strict xfail at `f61b600`). Prompt 2.4.0 (`2dfd2f1`) carries that phrase table, generated from
+the offline planner's own: Haiku 4.5 then scored 15/16 on the smoke run and 37/38 on the full
+regression set. The owner raised the evaluation's token caps within the $2; $0.74 is spent.
+Published (run 37978176436, approved by the owner) and deployed: 13 of 13 live checks, and "this
+quarter" answered for the rolling three months on the live site.
+
+**The candidate is now `2dfd2f1`:** the full local chain passed on it (strict suite 2281,
+security 450, ingestion 177, 861 without a database, 32 components, 15 browser journeys, 62
+offline checks, audits, the image's 28 checks with findings and packages identical to
+`fb415ca`'s, restore drill, upgrade compatibility, 14 mocked Terraform plans, trivy config), and
+hosted CI passed on it (run 37976328588). The site serves its image.

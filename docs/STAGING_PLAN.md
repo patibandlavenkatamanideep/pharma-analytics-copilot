@@ -2,7 +2,8 @@
 
 **For approval before anything billable is created.** Prepared 9 October 2026 for
 candidate `fb415ca`; updated the same day with the owner's decisions, for candidate `5536526`. **Approved by the owner on 9 October 2026 and deployed the same day**
-(candidate `a786bda`): the status is in [AWS_STAGING.md](AWS_STAGING.md). It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
+(candidate `a786bda`; the live planner on Claude Haiku 4.5, the owner's choice for cost, with candidate `2dfd2f1`):
+the status is in [AWS_STAGING.md](AWS_STAGING.md). It reuses [infra/aws-staging](../infra/aws-staging/README.md); every
 number below is either measured, taken from AWS's public price list, or marked as an
 assumption. Nothing in it has run on AWS.
 
